@@ -1,0 +1,1130 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson Plan Al-Qur'an - SDIT Al-Fityan</title>
+  
+  <!-- Menggunakan Tailwind CSS langsung via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Babel untuk menerjemahkan React JSX langsung di dalam browser -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Peta Impor (Import Map) agar kita bisa menggunakan import gaya modern tanpa build tool -->
+  <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@18.2.0",
+        "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+        "lucide-react": "https://esm.sh/lucide-react@0.294.0?external=react",
+        "firebase/app": "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js",
+        "firebase/auth": "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js",
+        "firebase/firestore": "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"
+      }
+    }
+  </script>
+
+  <!-- CSS khusus untuk scrollbar dan cetak/print -->
+  <style>
+    /* Styling Scrollbar */
+    .custom-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    
+    /* Aturan Cetak / Print Mode */
+    @media print {
+      @page { size: A4 landscape; margin: 10mm 15mm; }
+      body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; background-color: white !important; }
+      .print-hidden { display: none !important; }
+      .print-only { display: block !important; position: absolute !important; left: 0; top: 0; width: 100%; }
+      .page-break { page-break-after: always; break-after: page; }
+      ::-webkit-scrollbar { display: none; }
+    }
+  </style>
+</head>
+<body class="bg-[#F8F9FA] text-gray-800 font-sans overflow-x-hidden antialiased">
+  
+  <!-- Di sinilah aplikasi React akan dimuat -->
+  <div id="root"></div>
+
+  <!-- Kode Utama Aplikasi React -->
+  <script type="text/babel" data-type="module">
+    import React, { useState, useEffect, useRef } from 'react';
+    import { createRoot } from 'react-dom/client';
+    import { BookOpen, Plus, Search, User, ChevronDown, X, Save, Edit3, ChevronLeft, ChevronRight, Calendar, FileText, Repeat, Mic, Image as ImageIcon, Printer, Eye, Trash2, BarChart3, TrendingUp, AlertCircle, Users, Settings, GraduationCap, Camera, FileDown, Loader2, Lock, Star, Share2, Download, CheckCircle2 } from 'lucide-react';
+    
+    import { initializeApp } from 'firebase/app';
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth'; 
+    import { getFirestore, collection, doc, onSnapshot, setDoc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+
+    // --- 1. KONFIGURASI FIREBASE CERDAS ---
+    let firebaseConfig;
+    if (typeof __firebase_config !== 'undefined') {
+      firebaseConfig = JSON.parse(__firebase_config);
+    } else {
+      // Config Firebase milikmu untuk di GitHub Pages
+      firebaseConfig = {
+        apiKey: "AIzaSyDmlufgIku6oN7eFTRP7tlRDGrIVmICTiM",
+        authDomain: "myquranplan.firebaseapp.com",
+        projectId: "myquranplan",
+        storageBucket: "myquranplan.firebasestorage.app",
+        messagingSenderId: "896025622141",
+        appId: "1:896025622141:web:1a6964fcfe3bfea827e314"
+      };
+    }
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'app-quran-alfityan';
+
+    const getMonday = (d) => { const date = new Date(d); const day = date.getDay(); const diff = date.getDate() - day + (day === 0 ? -6 : 1); return new Date(date.setDate(diff)); };
+    const formatDateObj = (dateInput) => { if (!dateInput) return ''; const d = new Date(dateInput); if (isNaN(d.getTime())) return ''; const year = d.getFullYear(); const month = String(d.getMonth() + 1).padStart(2, '0'); const day = String(d.getDate()).padStart(2, '0'); return year + '-' + month + '-' + day; };
+    const getMonthYear = (dateObj) => { const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']; return months[dateObj.getMonth()] + ' ' + dateObj.getFullYear(); };
+    const getDayName = (dateObj) => ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][dateObj.getDay()];
+    const formatShortDate = (dateObj) => { const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des']; return dateObj.getDate() + ' ' + months[dateObj.getMonth()] + ' ' + dateObj.getFullYear(); };
+
+    const surahList = [{ no: 1, name: "Al-Fatihah", ayat: 7 }, { no: 2, name: "Al-Baqarah", ayat: 286 }, { no: 3, name: "Ali 'Imran", ayat: 200 }, { no: 4, name: "An-Nisa'", ayat: 176 }, { no: 5, name: "Al-Ma'idah", ayat: 120 }, { no: 6, name: "Al-An'am", ayat: 165 }, { no: 7, name: "Al-A'raf", ayat: 206 }, { no: 8, name: "Al-Anfal", ayat: 75 }, { no: 9, name: "At-Taubah", ayat: 129 }, { no: 10, name: "Yunus", ayat: 109 }, { no: 11, name: "Hud", ayat: 123 }, { no: 12, name: "Yusuf", ayat: 111 }, { no: 13, name: "Ar-Ra'd", ayat: 43 }, { no: 14, name: "Ibrahim", ayat: 52 }, { no: 15, name: "Al-Hijr", ayat: 99 }, { no: 16, name: "An-Nahl", ayat: 128 }, { no: 17, name: "Al-Isra'", ayat: 111 }, { no: 18, name: "Al-Kahf", ayat: 110 }, { no: 19, name: "Maryam", ayat: 98 }, { no: 20, name: "Taha", ayat: 135 }, { no: 21, name: "Al-Anbiya'", ayat: 112 }, { no: 22, name: "Al-Hajj", ayat: 78 }, { no: 23, name: "Al-Mu'minun", ayat: 118 }, { no: 24, name: "An-Nur", ayat: 64 }, { no: 25, name: "Al-Furqan", ayat: 77 }, { no: 26, name: "Asy-Syu'ara'", ayat: 227 }, { no: 27, name: "An-Naml", ayat: 93 }, { no: 28, name: "Al-Qasas", ayat: 88 }, { no: 29, name: "Al-'Ankabut", ayat: 69 }, { no: 30, name: "Ar-Rum", ayat: 60 }, { no: 31, name: "Luqman", ayat: 34 }, { no: 32, name: "As-Sajdah", ayat: 30 }, { no: 33, name: "Al-Ahzab", ayat: 73 }, { no: 34, name: "Saba'", ayat: 54 }, { no: 35, name: "Fatir", ayat: 45 }, { no: 36, name: "Yasin", ayat: 83 }, { no: 37, name: "As-Saffat", ayat: 182 }, { no: 38, name: "Sad", ayat: 88 }, { no: 39, name: "Az-Zumar", ayat: 75 }, { no: 40, name: "Gafir", ayat: 85 }, { no: 41, name: "Fussilat", ayat: 54 }, { no: 42, name: "Asy-Syura", ayat: 53 }, { no: 43, name: "Az-Zukhruf", ayat: 89 }, { no: 44, name: "Ad-Dukhan", ayat: 59 }, { no: 45, name: "Al-Jasiyah", ayat: 37 }, { no: 46, name: "Al-Ahqaf", ayat: 35 }, { no: 47, name: "Muhammad", ayat: 38 }, { no: 48, name: "Al-Fath", ayat: 29 }, { no: 49, name: "Al-Hujurat", ayat: 18 }, { no: 50, name: "Qaf", ayat: 45 }, { no: 51, name: "Az-Zariyat", ayat: 60 }, { no: 52, name: "At-Tur", ayat: 49 }, { no: 53, name: "An-Najm", ayat: 62 }, { no: 54, name: "Al-Qamar", ayat: 55 }, { no: 55, name: "Ar-Rahman", ayat: 78 }, { no: 56, name: "Al-Waqi'ah", ayat: 96 }, { no: 57, name: "Al-Hadid", ayat: 29 }, { no: 58, name: "Al-Mujadilah", ayat: 22 }, { no: 59, name: "Al-Hasyr", ayat: 24 }, { no: 60, name: "Al-Mumtahanah", ayat: 13 }, { no: 61, name: "As-Saff", ayat: 14 }, { no: 62, name: "Al-Jumu'ah", ayat: 11 }, { no: 63, name: "Al-Munafiqun", ayat: 11 }, { no: 64, name: "At-Tagabun", ayat: 18 }, { no: 65, name: "At-Talaq", ayat: 12 }, { no: 66, name: "At-Tahrim", ayat: 12 }, { no: 67, name: "Al-Mulk", ayat: 30 }, { no: 68, name: "Al-Qalam", ayat: 52 }, { no: 69, name: "Al-Haqqah", ayat: 52 }, { no: 70, name: "Al-Ma'arij", ayat: 44 }, { no: 71, name: "Nuh", ayat: 28 }, { no: 72, name: "Al-Jinn", ayat: 28 }, { no: 73, name: "Al-Muzzammil", ayat: 20 }, { no: 74, name: "Al-Muddassir", ayat: 56 }, { no: 75, name: "Al-Qiyamah", ayat: 40 }, { no: 76, name: "Al-Insan", ayat: 31 }, { no: 77, name: "Al-Mursalat", ayat: 50 }, { no: 78, name: "An-Naba'", ayat: 40 }, { no: 79, name: "An-Nazi'at", ayat: 46 }, { no: 80, name: "'Abasa", ayat: 42 }, { no: 81, name: "At-Takwir", ayat: 29 }, { no: 82, name: "Al-Infitar", ayat: 19 }, { no: 83, name: "Al-Mutaffifin", ayat: 36 }, { no: 84, name: "Al-Insyiqaq", ayat: 25 }, { no: 85, name: "Al-Buruj", ayat: 22 }, { no: 86, name: "At-Tariq", ayat: 17 }, { no: 87, name: "Al-A'la", ayat: 19 }, { no: 88, name: "Al-Gasyiyah", ayat: 26 }, { no: 89, name: "Al-Fajr", ayat: 30 }, { no: 90, name: "Al-Balad", ayat: 20 }, { no: 91, name: "Asy-Syams", ayat: 15 }, { no: 92, name: "Al-Lail", ayat: 21 }, { no: 93, name: "Ad-Duha", ayat: 11 }, { no: 94, name: "Asy-Syarh", ayat: 8 }, { no: 95, name: "At-Tin", ayat: 8 }, { no: 96, name: "Al-'Alaq", ayat: 19 }, { no: 97, name: "Al-Qadr", ayat: 5 }, { no: 98, name: "Al-Bayyinah", ayat: 8 }, { no: 99, name: "Az-Zalzalah", ayat: 8 }, { no: 100, name: "Al-'Adiyat", ayat: 11 }, { no: 101, name: "Al-Qari'ah", ayat: 11 }, { no: 102, name: "At-Takasur", ayat: 8 }, { no: 103, name: "Al-'Asr", ayat: 3 }, { no: 104, name: "Al-Humazah", ayat: 9 }, { no: 105, name: "Al-Fil", ayat: 5 }, { no: 106, name: "Quraisy", ayat: 4 }, { no: 107, name: "Al-Ma'un", ayat: 7 }, { no: 108, name: "Al-Kausar", ayat: 3 }, { no: 109, name: "Al-Kafirun", ayat: 6 }, { no: 110, name: "An-Nasr", ayat: 3 }, { no: 111, name: "Al-Lahab", ayat: 5 }, { no: 112, name: "Al-Ikhlas", ayat: 4 }, { no: 113, name: "Al-Falaq", ayat: 5 }, { no: 114, name: "An-Nas", ayat: 6 }];
+
+    const tahsinCategories = ['Jilid 1', 'Jilid 2', 'Jilid 3', 'Jilid 4', 'Jilid 5', 'Jilid 6', 'Al-Qur\'an', 'Ghorib', 'Tajwid'];
+    const ghoribList = ["أَنَا", "اَنَابَ", "أَفَإِنْ", "مِنْ نَبَإِ", "مَلَئِهِمْ", "مَلَئِهِ", "مِائَتَيْنِ - مِائَةٌ", "لٰكِنَّا", "الظُّنُونَا", "الرَّسُولَا", "السَّبِيلَا", "ثَمُودَا", "سَلَاسِلَا", "قَوَارِيرَا", "يَبْصُطُ", "بَصْطَةً", "بَرَآءَةٌ", "مَجْرֵىٰهَا", "لَا تَأْمَنَّا", "ضَعْفٍ - ضَعْفًا", "ءَا۬عْجَمِيٌّ", "اِئْتُوْنِيْ", "بِئْسَ الِاسْمُ"];
+    const tajwidList = ["Idzhar Halqi", "Idghom Bighunnah", "Idghom Bilaghunnah", "Iqlab", "Ikhfa' Haqiqi", "Idzhar Syafawi", "Idghom Mimi", "Ikhfa' Syafawi", "Hukum Qolqolah", "Mad Thobi'i", "Mad Wajib Muttashil", "Mad Jaiz Munfashil", "Mad 'Aridl Lissukun", "Mad 'Iwadl"];
+
+    const STUDENTS_PER_PAGE = 20; 
+
+    const getStatusColor = (catatan) => {
+      if (!catatan || catatan === '-') return 'text-gray-400';
+      const lower = catatan.toLowerCase();
+      if (lower.includes('lancar') || lower.includes('sangat baik') || lower.includes('bagus')) return 'text-[#00e676] font-bold';
+      if (lower.includes('perlu') || lower.includes('kurang') || lower.includes('ulang')) return 'text-[#f97316] font-bold';
+      return 'text-[#3b82f6] font-bold';
+    };
+
+    const loadScript = (src) => {
+      return new Promise((resolve, reject) => {
+        if (document.querySelector(`script[src="${src}"]`)) return resolve();
+        const script = document.createElement('script'); script.src = src; script.onload = () => resolve(); script.onerror = () => reject(new Error(`Gagal memuat script: ${src}`)); document.head.appendChild(script);
+      });
+    };
+
+    const LoginScreen = ({ onLogin }) => {
+      const [username, setUsername] = useState(''); const [password, setPassword] = useState(''); const [error, setError] = useState('');
+      const handleLogin = (e) => { e.preventDefault(); if (username === 'jumanjayyidin' && password === 'offthewallba123') { onLogin(); } else { setError('Username atau Password yang Anda masukkan salah!'); } };
+
+      return (
+        <div className="min-h-screen bg-[#F8F9FA] flex flex-col justify-center items-center p-4">
+          <div className="bg-white p-8 md:p-10 rounded-3xl shadow-xl w-full max-w-md border border-gray-100 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-2 bg-[#00e676]"></div>
+            <div className="flex flex-col items-center mb-8">
+               <div className="w-16 h-16 bg-[#0f4c5c]/10 rounded-2xl flex items-center justify-center mb-4 shadow-sm border border-[#0f4c5c]/20 relative">
+                 <BookOpen size={32} className="text-[#0f4c5c]" />
+                 <Star size={16} className="absolute -top-1.5 -right-1.5 text-[#f4a261] fill-[#f4a261] drop-shadow-sm" />
+               </div>
+              <h1 className="text-2xl font-black text-gray-800 tracking-tight">Lesson Plan Al-Qur'an</h1>
+              <p className="text-sm text-gray-500 font-medium mt-1 text-center">Silakan masuk untuk mengelola target hafalan</p>
+            </div>
+            <form onSubmit={handleLogin} className="flex flex-col gap-5">
+              <div><label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 pl-1">Username</label><div className="relative"><div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none"><User size={18} className="text-gray-400" /></div><input type="text" value={username} onChange={(e) => {setUsername(e.target.value); setError('');}} className="w-full border border-gray-200 rounded-xl pl-10 pr-4 py-3 outline-none focus:ring-2 focus:ring-[#00e676] bg-gray-50 focus:bg-white text-sm font-semibold transition-all" placeholder="Masukkan username..." required /></div></div>
+              <div><label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 pl-1">Password</label><div className="relative"><div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none"><Lock size={18} className="text-gray-400" /></div><input type="password" value={password} onChange={(e) => {setPassword(e.target.value); setError('');}} className="w-full border border-gray-200 rounded-xl pl-10 pr-4 py-3 outline-none focus:ring-2 focus:ring-[#00e676] bg-gray-50 focus:bg-white text-sm font-semibold transition-all" placeholder="••••••••" required /></div></div>
+              <button type="submit" className="mt-2 w-full bg-[#00e676] hover:bg-green-500 text-white font-black py-3.5 rounded-xl shadow-lg shadow-green-200 transition-all hover:-translate-y-0.5 active:scale-95 flex items-center justify-center gap-2 text-sm">Masuk ke Aplikasi</button>
+            </form>
+          </div>
+          <p className="text-xs text-gray-400 font-bold mt-8">&copy; 2026 Juman Jayyidin. All rights reserved.</p>
+          {error && (<div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-[200] p-4"><div className="bg-white rounded-3xl shadow-2xl w-full max-w-xs md:max-w-sm overflow-hidden flex flex-col items-center p-6 md:p-8 text-center animate-in zoom-in duration-200"><div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-4 border-4 border-red-100"><AlertCircle size={32} strokeWidth={2.5} /></div><h3 className="text-xl font-black text-gray-800 mb-2">Gagal Masuk</h3><p className="text-sm text-gray-500 font-medium mb-6">{error}</p><button onClick={() => setError('')} className="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-black py-3 md:py-3.5 rounded-xl transition-colors text-sm">Coba Lagi</button></div></div>)}
+        </div>
+      );
+    };
+
+    function MainApp() {
+      const [user, setUser] = useState(null);
+      const [isDbReady, setIsDbReady] = useState(false);
+      const [currentView, setCurrentView] = useState('home'); 
+      
+      const [guruHalaqohData, setGuruHalaqohData] = useState({});
+      const guruList = Object.keys(guruHalaqohData);
+      const [kelasList, setKelasList] = useState([]);
+      const [institutionLogo, setInstitutionLogo] = useState('logo.png');
+
+      const [activeGuru, setActiveGuru] = useState('');
+      const [activeHalaqoh, setActiveHalaqoh] = useState('');
+      const [students, setStudents] = useState([]);
+      const [searchQuery, setSearchQuery] = useState('');
+      const initialSeedDone = useRef(false);
+      
+      const [newGuruName, setNewGuruName] = useState('');
+      const [newHalaqohName, setNewHalaqohName] = useState('');
+      const [newKelasName, setNewKelasName] = useState('');
+      const [selectedGuruForHalaqoh, setSelectedGuruForHalaqoh] = useState('');
+      
+      const [editingGuru, setEditingGuru] = useState(null); 
+      const [editingHalaqoh, setEditingHalaqoh] = useState(null); 
+
+      const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+      const [isExportingImage, setIsExportingImage] = useState(false);
+      const [isExportingPDF, setIsExportingPDF] = useState(false);
+      const [toastMessage, setToastMessage] = useState(null);
+
+      const [sharingStudent, setSharingStudent] = useState(null);
+      const [isGeneratingStudentImage, setIsGeneratingStudentImage] = useState(false);
+      const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
+
+      const [weekStart, setWeekStart] = useState(getMonday(new Date()));
+      const [activeDate, setActiveDate] = useState(formatDateObj(getMonday(new Date())));
+
+      const weekDates = Array.from({length: 5}).map((_, i) => { const d = new Date(weekStart); d.setDate(d.getDate() + i); return d; });
+      const daysPart1 = weekDates.slice(0, 3);
+      const daysPart2 = weekDates.slice(3, 5);
+
+      useEffect(() => {
+        const initAuth = async () => {
+          try {
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+              await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+              await signInAnonymously(auth);
+            }
+          } catch (error) {
+            console.error("Firebase auth error:", error);
+          }
+        };
+        initAuth();
+        const unsubscribe = onAuthStateChanged(auth, (currentUser) => { setUser(currentUser); });
+        return () => unsubscribe();
+      }, []);
+
+      useEffect(() => {
+        if (!user) return;
+        
+        const masterDataRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'master');
+        const unsubMaster = onSnapshot(masterDataRef, (docSnap) => {
+           if (docSnap.exists()) {
+              const data = docSnap.data();
+              if (data.guruHalaqohData) setGuruHalaqohData(data.guruHalaqohData);
+              if (data.kelasList) setKelasList(data.kelasList);
+              if (data.institutionLogo) setInstitutionLogo(data.institutionLogo);
+           } else {
+              setDoc(masterDataRef, { guruHalaqohData: {}, kelasList: [], institutionLogo: 'logo.png' });
+           }
+        }, (error) => console.error("Error", error));
+
+        const studentsColRef = collection(db, 'artifacts', appId, 'public', 'data', 'students');
+        const unsubStudents = onSnapshot(studentsColRef, (snapshot) => {
+           const loadedStudents = [];
+           snapshot.forEach(doc => { loadedStudents.push({ ...doc.data(), id: doc.id }); });
+           
+           setStudents(loadedStudents);
+           setIsDbReady(true);
+        }, (error) => console.error("Error", error));
+
+        return () => { unsubMaster(); unsubStudents(); };
+      }, [user]);
+
+      useEffect(() => {
+        if (!activeGuru && guruList.length > 0) {
+          const firstGuru = guruList[0];
+          setActiveGuru(firstGuru);
+          setActiveHalaqoh((guruHalaqohData[firstGuru] && guruHalaqohData[firstGuru].length > 0) ? guruHalaqohData[firstGuru][0] : '');
+          if (!selectedGuruForHalaqoh) setSelectedGuruForHalaqoh(firstGuru);
+        }
+      }, [guruList, guruHalaqohData, activeGuru, selectedGuruForHalaqoh]);
+
+      const updateMasterDataCloud = async (updates) => {
+        if (!user) return;
+        try { const masterDataRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'master'); try { await updateDoc(masterDataRef, updates); } catch (err) { await setDoc(masterDataRef, updates, { merge: true }); } } catch (error) { console.error(error); showToast(`Gagal menyimpan: ${error.message}`); }
+      };
+
+      const changeWeek = (offset) => { const newStart = new Date(weekStart); newStart.setDate(newStart.getDate() + offset); setWeekStart(newStart); setActiveDate(formatDateObj(newStart)); };
+      const getWeekRangeLabel = () => { const endOfWeek = new Date(weekStart); endOfWeek.setDate(weekStart.getDate() + 4); const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des']; if (weekStart.getMonth() === endOfWeek.getMonth() && weekStart.getFullYear() === endOfWeek.getFullYear()) { return weekStart.getDate() + ' - ' + endOfWeek.getDate() + ' ' + months[endOfWeek.getMonth()] + ' ' + endOfWeek.getFullYear(); } else if (weekStart.getFullYear() === endOfWeek.getFullYear()) { return weekStart.getDate() + ' ' + months[weekStart.getMonth()] + ' - ' + endOfWeek.getDate() + ' ' + months[endOfWeek.getMonth()] + ' ' + endOfWeek.getFullYear(); } else { return formatShortDate(weekStart) + ' - ' + formatShortDate(endOfWeek); } };
+      
+      const [isModalOpen, setIsModalOpen] = useState(false);
+      const [modalMode, setModalMode] = useState('full_bulk'); 
+      const [editingId, setEditingId] = useState(null);
+      const [activeDropdown, setActiveDropdown] = useState(null);
+      
+      const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
+      const [newStudent, setNewStudent] = useState({ name: '', kelas: '', halaqoh: '', photo: null });
+      const [isEditStudentModalOpen, setIsEditStudentModalOpen] = useState(false);
+      const [editStudentData, setEditStudentData] = useState({ id: null, name: '', kelas: '', halaqoh: '', photo: null });
+      const [selectedStudents, setSelectedStudents] = useState([]); 
+
+      const emptySurat = () => ({ id: Date.now() + Math.random(), surat: '', ayatStart: '', ayatEnd: '' });
+      const [lessonPlans, setLessonPlans] = useState([{ id: 1, tanggal: '', murojaah: [emptySurat()], tahsinKategori: '', tahsinSuratList: [emptySurat()], tahsinHalaman: [], tahsinBaris: [], tahsinMateri: [], tahsinHalamanTg: [], tahfidzSuratList: [emptySurat()], lainLain: '' }]);
+
+      const filteredStudents = students.filter(s => s.halaqoh === activeHalaqoh && s.name.toLowerCase().includes(searchQuery.toLowerCase()));
+      const studentChunks = [];
+      if (filteredStudents.length === 0) { studentChunks.push([]); } else { for (let i = 0; i < filteredStudents.length; i += STUDENTS_PER_PAGE) { studentChunks.push(filteredStudents.slice(i, i + STUDENTS_PER_PAGE)); } }
+
+      const showToast = (message) => { setToastMessage(message); setTimeout(() => setToastMessage(null), 3500); };
+
+      useEffect(() => { setNewStudent(prev => ({ ...prev, halaqoh: activeHalaqoh, kelas: prev.kelas || (kelasList.length > 0 ? kelasList[0] : '') })); }, [activeHalaqoh, kelasList]);
+
+      const handleAddGuru = () => { if (!newGuruName.trim() || guruHalaqohData[newGuruName.trim()]) return; const newData = { ...guruHalaqohData, [newGuruName.trim()]: [] }; updateMasterDataCloud({ guruHalaqohData: newData }); setNewGuruName(''); showToast('Guru berhasil ditambahkan!'); };
+      const handleSaveEditGuru = () => { if (!editingGuru.newName.trim() || editingGuru.newName === editingGuru.oldName) { setEditingGuru(null); return; } if (guruHalaqohData[editingGuru.newName]) { showToast('Nama Guru sudah digunakan!'); return; } const newData = { ...guruHalaqohData }; newData[editingGuru.newName] = newData[editingGuru.oldName]; delete newData[editingGuru.oldName]; updateMasterDataCloud({ guruHalaqohData: newData }); if (activeGuru === editingGuru.oldName) setActiveGuru(editingGuru.newName); if (selectedGuruForHalaqoh === editingGuru.oldName) setSelectedGuruForHalaqoh(editingGuru.newName); setEditingGuru(null); showToast('Nama Guru berhasil diperbarui!'); };
+      const requestDeleteGuru = (guruName) => { setConfirmDialog({ isOpen: true, title: 'Hapus Guru', message: 'Yakin ingin menghapus guru ini?', onConfirm: () => { const newData = { ...guruHalaqohData }; delete newData[guruName]; updateMasterDataCloud({ guruHalaqohData: newData }); const newGuruList = Object.keys(newData); if (activeGuru === guruName) { const nextGuru = newGuruList.length > 0 ? newGuruList[0] : ''; setActiveGuru(nextGuru); setActiveHalaqoh(nextGuru ? (newData[nextGuru][0] || '') : ''); } showToast('Guru dihapus.'); }}); };
+      const handleAddHalaqoh = () => { if (!newHalaqohName.trim() || !selectedGuruForHalaqoh) return; const currentHalaqohs = guruHalaqohData[selectedGuruForHalaqoh] || []; if (currentHalaqohs.includes(newHalaqohName.trim())) return; const newData = { ...guruHalaqohData, [selectedGuruForHalaqoh]: [...currentHalaqohs, newHalaqohName.trim()] }; updateMasterDataCloud({ guruHalaqohData: newData }); if (activeGuru === selectedGuruForHalaqoh && !activeHalaqoh) setActiveHalaqoh(newHalaqohName.trim()); setNewHalaqohName(''); showToast('Halaqoh ditambahkan!'); };
+      const handleSaveEditHalaqoh = async () => { if (!editingHalaqoh.newName.trim() || editingHalaqoh.newName === editingHalaqoh.oldName) { setEditingHalaqoh(null); return; } const currentHalaqohs = guruHalaqohData[editingHalaqoh.guruName] || []; if (currentHalaqohs.includes(editingHalaqoh.newName)) { showToast('Nama sudah digunakan!'); return; } const newData = { ...guruHalaqohData }; const index = newData[editingHalaqoh.guruName].indexOf(editingHalaqoh.oldName); if (index !== -1) newData[editingHalaqoh.guruName][index] = editingHalaqoh.newName; await updateMasterDataCloud({ guruHalaqohData: newData }); if (user) { const studentsToUpdate = students.filter(s => s.halaqoh === editingHalaqoh.oldName); if (studentsToUpdate.length > 0) { try { const batchPromises = studentsToUpdate.map(student => { const studentRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', student.id); return updateDoc(studentRef, { halaqoh: editingHalaqoh.newName, class: editingHalaqoh.newName }); }); await Promise.all(batchPromises); } catch(e) { console.error(e); } } } if (activeHalaqoh === editingHalaqoh.oldName) setActiveHalaqoh(editingHalaqoh.newName); setEditingHalaqoh(null); showToast('Halaqoh diperbarui!'); };
+      const requestDeleteHalaqoh = (guruName, halaqohName) => { setConfirmDialog({ isOpen: true, title: 'Hapus Halaqoh', message: 'Yakin ingin menghapus halaqoh ini?', onConfirm: () => { const newData = { ...guruHalaqohData }; newData[guruName] = newData[guruName].filter(h => h !== halaqohName); updateMasterDataCloud({ guruHalaqohData: newData }); if (activeGuru === guruName && activeHalaqoh === halaqohName) setActiveHalaqoh(newData[guruName].length > 0 ? newData[guruName][0] : ''); showToast('Halaqoh dihapus.'); }}); };
+      const handleAddKelas = () => { if (!newKelasName.trim() || kelasList.includes(newKelasName.trim())) return; updateMasterDataCloud({ kelasList: [...kelasList, newKelasName.trim()] }); setNewKelasName(''); showToast('Kelas ditambahkan!'); }
+      const handleDeleteKelas = (kelasName) => { updateMasterDataCloud({ kelasList: kelasList.filter(k => k !== kelasName) }); showToast('Kelas dihapus.'); };
+      const handleGuruChange = (e) => { const newGuru = e.target.value; setActiveGuru(newGuru); const halaqohs = guruHalaqohData[newGuru] || []; setActiveHalaqoh(halaqohs.length > 0 ? halaqohs[0] : ''); };
+      const handleInstitutionLogoUpload = (e) => { const file = e.target.files[0]; if (file) { const reader = new FileReader(); reader.onloadend = () => { const img = new Image(); img.onload = () => { const canvas = document.createElement('canvas'); const MAX_SIZE = 400; let width = img.width; let height = img.height; if (width > height) { if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; } } else { if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; } } canvas.width = width; canvas.height = height; const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height); updateMasterDataCloud({ institutionLogo: canvas.toDataURL('image/png') }); showToast('Logo berhasil diperbarui!'); }; img.src = reader.result; }; reader.readAsDataURL(file); } };
+      const handlePrint = () => { setIsPreviewModalOpen(false); setTimeout(() => { window.print(); }, 500); };
+      
+      const handleExportImage = async () => { setIsExportingImage(true); setIsPreviewModalOpen(false); try { await loadScript('https://cdnjs.cloudflare.com/ajax/libs/dom-to-image/2.6.0/dom-to-image.min.js'); await new Promise(r => setTimeout(r, 600)); const element = document.getElementById('export-pdf-wrapper'); const dataUrl = await window.domtoimage.toPng(element, { bgcolor: '#FFFFFF', width: 1250, style: { transform: 'scale(1)', transformOrigin: 'top left' } }); const link = document.createElement('a'); link.href = dataUrl; link.download = 'Lesson_Plan_' + activeHalaqoh.replace(/\s+/g, '_') + '_' + formatDateObj(weekStart) + '.png'; link.click(); } catch (error) { console.error(error); showToast('Gagal mengekspor gambar.'); } setIsExportingImage(false); };
+      const handleExportPDF = async () => { setIsExportingPDF(true); setIsPreviewModalOpen(false); try { await loadScript('https://cdnjs.cloudflare.com/ajax/libs/dom-to-image/2.6.0/dom-to-image.min.js'); await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'); const { jsPDF } = window.jspdf; const pdf = new jsPDF('landscape', 'pt', 'a4'); const pdfWidth = pdf.internal.pageSize.getWidth(); await new Promise(r => setTimeout(r, 600)); for (let i = 0; i < studentChunks.length * 2; i++) { const element = document.getElementById('export-page-' + i); const dataUrl = await window.domtoimage.toPng(element, { bgcolor: '#FFFFFF', width: 1250, style: { transform: 'scale(1)', transformOrigin: 'top left' } }); const imgPropsHeight = (element.offsetHeight * pdfWidth) / 1250; if (i > 0) pdf.addPage(); pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, imgPropsHeight); } pdf.save('Lesson_Plan_' + activeHalaqoh.replace(/\s+/g, '_') + '_' + formatDateObj(weekStart) + '.pdf'); } catch (error) { console.error(error); showToast('Gagal mengekspor PDF.'); } setIsExportingPDF(false); };
+
+      const handleShareStudentImage = async (action = 'download') => {
+        if (!sharingStudent) return;
+        setIsGeneratingStudentImage(true);
+        try {
+          await loadScript('https://cdnjs.cloudflare.com/ajax/libs/dom-to-image/2.6.0/dom-to-image.min.js');
+          await new Promise(r => setTimeout(r, 600)); 
+          
+          const element = document.getElementById('student-share-card');
+          const elHeight = element.offsetHeight;
+          const scale = 2;
+
+          const dataUrl = await window.domtoimage.toPng(element, { 
+            bgcolor: '#FFFFFF', 
+            width: 540 * scale, 
+            height: elHeight * scale,
+            style: { transform: `scale(${scale})`, transformOrigin: 'top left', width: '540px', height: `${elHeight}px` }
+          });
+
+          if (action === 'download') {
+             const link = document.createElement('a'); link.download = `Laporan_${sharingStudent.name.replace(/\s+/g, '_')}_${formatDateObj(weekStart)}.png`; link.href = dataUrl; link.click(); showToast('Gambar berhasil diunduh!');
+          } else if (action === 'share') {
+             const blob = await (await fetch(dataUrl)).blob(); const file = new File([blob], `Laporan_${sharingStudent.name}.png`, { type: blob.type });
+             if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ title: `Laporan LPP - ${sharingStudent.name}`, text: `Laporan progres mingguan Al-Qur'an ananda ${sharingStudent.name}`, files: [file] }); } else { showToast('Browser tidak mendukung Web Share. Gambar diunduh otomatis.'); const link = document.createElement('a'); link.download = file.name; link.href = dataUrl; link.click(); }
+          }
+        } catch(e) { console.error(e); showToast('Gagal memproses gambar.'); }
+        setIsGeneratingStudentImage(false);
+      };
+
+      const parseSuratAyatList = (suratText, ayatText) => { if ((!suratText || suratText === '-') && (!ayatText || ayatText === '-')) return [emptySurat()]; const surats = (suratText || '').split(',').map(s => s.trim()); const ayats = (ayatText || '').split(',').map(s => s.trim()); const len = Math.max(surats.length, ayats.length, 1); const list = []; for (let i = 0; i < len; i++) list.push({ id: Date.now() + Math.random(), surat: surats[i] || '', ayatStart: (ayats[i] || '').split('-')[0] || '', ayatEnd: (ayats[i] || '').split('-')[1] || '' }); return list.length ? list : [emptySurat()]; };
+      const parseMurojaahList = (text) => { if (!text || text === '-') return [emptySurat()]; return text.split(',').map((item) => { let s = item.trim(), aStart = '', aEnd = ''; let match = s.match(/(.+?)\s*\((.*?)\)/); if (match) { s = match[1].trim(); aStart = match[2].split('-')[0] || ''; aEnd = match[2].split('-')[1] || ''; } else { match = s.match(/(.+?)\s+(\d+(?:-\d+)?)$/); if (match) { s = match[1].trim(); aStart = match[2].split('-')[0] || ''; aEnd = match[2].split('-')[1] || ''; } else s = item.trim(); } return { id: Date.now() + Math.random(), surat: s, ayatStart: aStart, ayatEnd: aEnd }; }); };
+      
+      const handleOpenModal = (student = null, mode = 'full_bulk') => {
+        setActiveDropdown(null); setModalMode(mode);
+        if (student) {
+          const dayData = student.records[activeDate] || {};
+          let tKategori = '', tSurat = dayData.tahsin || '', tHalaman = [], tBaris = [], tMateri = [], tHalamanTg = [], rawTahsinAyat = dayData.halAyatTahsin || '', tahsinAyatOnly = rawTahsinAyat;
+          if (tSurat.includes('Jilid')) { tKategori = tahsinCategories.find(c => tSurat.includes(c)) || ''; tSurat = ''; const halMatch = rawTahsinAyat.match(/Hal\. ([\d, ]+)/); if (halMatch) tHalaman = halMatch[1].split(',').map(s => s.trim()); const brsMatch = rawTahsinAyat.match(/Brs ([\d, ]+)/); if (brsMatch) tBaris = brsMatch[1].split(',').map(s => s.trim()); else if (rawTahsinAyat.includes('Penuh')) tBaris = ['Penuh']; tahsinAyatOnly = ''; } else if (tSurat.includes('Tajwid') || tSurat.includes('Ghorib') || tSurat === 'Gharib') { tKategori = tSurat.includes('Tajwid') ? 'Tajwid' : 'Ghorib'; tSurat = tSurat.replace(tKategori + ', ', '').replace(tKategori, '').trim(); const parts = rawTahsinAyat.split('/'); if (parts.length > 0) { let halMatStr = parts[0].trim(); const tgHalMatch = halMatStr.match(/Hal\.\s+([^-]+)/); if (tgHalMatch) { tHalamanTg = tgHalMatch[1].split(',').map(s => s.trim()); halMatStr = halMatStr.replace(tgHalMatch[0], '').replace(/^[\s-]+|[\s-]+$/g, ''); } if (halMatStr) { if (halMatStr.includes(',')) tMateri = halMatStr.split(',').map(s => s.trim()); else { const firstSpace = halMatStr.indexOf(' '); const firstWord = halMatStr.substring(0, firstSpace); if (firstSpace > -1 && !isNaN(firstWord)) { tHalamanTg = [firstWord]; tMateri = [halMatStr.substring(firstSpace + 1).trim()]; } else tMateri = [halMatStr]; } } tahsinAyatOnly = parts.length > 1 ? parts[1].trim() : ''; } } else if (tSurat && tSurat !== '-') tKategori = 'Al-Qur\'an';
+          setLessonPlans([{ id: Date.now(), tanggal: activeDate, murojaah: parseMurojaahList(dayData.murojaah), tahsinKategori: tKategori, tahsinSuratList: parseSuratAyatList(tSurat, tahsinAyatOnly), tahsinHalaman: tHalaman, tahsinBaris: tBaris, tahsinMateri: tMateri, tahsinHalamanTg: tHalamanTg, tahfidzSuratList: parseSuratAyatList(dayData.tahfidz, dayData.ayatTahfidz), lainLain: dayData.catatan && dayData.catatan !== '-' ? dayData.catatan : '' }]);
+          if (mode === 'full_edit') { setEditingId(student.id); setSelectedStudents([student.id]); } else { setEditingId(null); setSelectedStudents([student.id]); }
+        } else {
+          setLessonPlans([{ id: Date.now(), tanggal: activeDate, murojaah: [emptySurat()], tahsinKategori: '', tahsinSuratList: [emptySurat()], tahsinHalaman: [], tahsinBaris: [], tahsinMateri: [], tahsinHalamanTg: [], tahfidzSuratList: [emptySurat()], lainLain: '' }]); setEditingId(null); setSelectedStudents([]);
+        }
+        setIsModalOpen(true);
+      };
+
+      const handleCloseModal = () => { setIsModalOpen(false); setEditingId(null); setActiveDropdown(null); setModalMode('full_bulk'); };
+      const toggleStudent = (id) => setSelectedStudents(prev => prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]);
+      
+      const requestDeleteStudent = (student) => { setConfirmDialog({ isOpen: true, title: 'Hapus Siswa', message: 'Yakin ingin menghapus data siswa ini secara permanen?', onConfirm: async () => { if (!user) return; try { const studentRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', student.id); await deleteDoc(studentRef); showToast('Siswa dihapus.'); } catch (e) { console.error(e); } }}); };
+      const requestClearRecord = (e, studentId, dateStr) => { e.preventDefault(); e.stopPropagation(); setConfirmDialog({ isOpen: true, title: 'Kosongkan Target', message: 'Yakin ingin mengosongkan target hafalan pada tanggal ini?', onConfirm: async () => { if (!user) return; try { const student = students.find(s => s.id === studentId); if(!student) return; const studentRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', studentId); const newRecords = { ...student.records, [dateStr]: { tahsin: '-', halAyatTahsin: '-', tahfidz: '-', ayatTahfidz: '-', murojaah: '-', catatan: '-' } }; await updateDoc(studentRef, { records: newRecords }); showToast('Data dikosongkan!'); } catch (err) { console.error(err); } }}); };
+
+      const handleRemoveData = async (e, studentId, dateStr, type, subIndex = null) => {
+        e.preventDefault(); e.stopPropagation();
+        if (!user) return;
+        try {
+          const student = students.find(s => s.id === studentId); if(!student) return;
+          const studentRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', studentId);
+          const rec = student.records[dateStr] ? { ...student.records[dateStr] } : { tahsin: '-', halAyatTahsin: '-', tahfidz: '-', ayatTahfidz: '-', murojaah: '-', catatan: '-' };
+          if (type === 'catatan') { rec.catatan = '-'; } else if (type === 'tahsin_all') { rec.tahsin = '-'; rec.halAyatTahsin = '-'; } else if (type === 'tahsin_surat') { let tList = rec.tahsin.split(',').map(s=>s.trim()); let aList = rec.halAyatTahsin !== '-' ? (rec.halAyatTahsin || '').split(',').map(s=>s.trim()) : []; tList.splice(subIndex, 1); if (rec.halAyatTahsin !== '-') { while(aList.length < tList.length + 1) aList.push(''); aList.splice(subIndex, 1); } rec.tahsin = tList.length > 0 && tList.join(', ') !== '' ? tList.join(', ') : '-'; rec.halAyatTahsin = tList.length > 0 && rec.halAyatTahsin !== '-' ? aList.join(', ') : '-'; if (rec.tahsin === '-') rec.halAyatTahsin = '-'; } else if (type === 'murojaah') { let items = rec.murojaah.split(',').map(s=>s.trim()); items.splice(subIndex, 1); rec.murojaah = items.length > 0 && items.join(', ') !== '' ? items.join(', ') : '-'; } else if (type === 'tahfidz') { let tList = rec.tahfidz.split(',').map(s=>s.trim()); let aList = rec.ayatTahfidz !== '-' ? (rec.ayatTahfidz || '').split(',').map(s=>s.trim()) : []; tList.splice(subIndex, 1); if (rec.ayatTahfidz !== '-') { while(aList.length < tList.length + 1) aList.push(''); aList.splice(subIndex, 1); } rec.tahfidz = tList.length > 0 && tList.join(', ') !== '' ? tList.join(', ') : '-'; rec.ayatTahfidz = tList.length > 0 && rec.ayatTahfidz !== '-' ? aList.join(', ') : '-'; if (rec.tahfidz === '-') rec.ayatTahfidz = '-'; }
+          await updateDoc(studentRef, { records: { ...student.records, [dateStr]: rec } });
+        } catch (err) { console.error(err); }
+      };
+
+      const handlePlanChange = (id, field, value) => { setLessonPlans(plans => plans.map(p => { if (p.id === id) { let u = { ...p, [field]: value }; if (field === 'tahsinKategori' && ['Jilid 1', 'Jilid 2', 'Jilid 3', 'Jilid 4', 'Jilid 5', 'Jilid 6'].includes(value)) { u.tahsinHalaman = []; u.tahsinBaris = []; u.tahsinMateri = []; u.tahsinHalamanTg = []; u.tahsinAyatEnd = ''; } return u; } return p; })); };
+      const handleToggleArray = (planId, field, value) => { setLessonPlans(plans => plans.map(p => { if (p.id === planId) { const arr = p[field] || []; let newArr = arr.includes(value) ? arr.filter(x => x !== value) : [...arr, value]; if (field === 'tahsinBaris' && value === 'Penuh') newArr = arr.includes('Penuh') ? [] : ['Penuh']; else if (field === 'tahsinBaris' && arr.includes('Penuh')) newArr = [value]; if (field !== 'tahsinMateri') newArr.sort((a,b) => (a==='Penuh' ? -1 : b==='Penuh' ? 1 : Number(a) - Number(b))); return { ...p, [field]: newArr }; } return p; })); };
+      const handleAddSurat = (planId, listName) => setLessonPlans(plans => plans.map(p => p.id === planId ? { ...p, [listName]: [...p[listName], emptySurat()] } : p));
+      const handleRemoveSurat = (planId, listName, suratId) => setLessonPlans(plans => plans.map(p => p.id === planId ? { ...p, [listName]: p[listName].filter(m => m.id !== suratId) } : p));
+      const handleSuratChange = (planId, listName, suratId, field, value) => setLessonPlans(plans => plans.map(p => p.id === planId ? { ...p, [listName]: p[listName].map(m => m.id === suratId ? { ...m, [field]: value } : m) } : p));
+      const getAyatOptions = (suratString) => { const match = surahList.find(s => s.no + '. ' + s.name === suratString); return Array.from({ length: match ? match.ayat : 30 }, (_, i) => String(i + 1)); };
+      const getAyatRangeOrDefault = (surat, start, end) => start && end ? start + '-' + end : start || end || (surahList.find(s => s.no + '. ' + s.name === surat) ? '1-' + surahList.find(s => s.no + '. ' + s.name === surat).ayat : 'Semua Ayat');
+
+      const handleSave = async () => {
+        if (!user) return; if (!editingId && selectedStudents.length === 0) { showToast('Pilih minimal 1 siswa!'); return; }
+        const plan = lessonPlans[0];
+        const formatS = (list) => { const v = list.filter(i => i.surat); return { surat: v.map(i => i.surat).join(', ') || '-', ayat: v.map(i => getAyatRangeOrDefault(i.surat, i.ayatStart, i.ayatEnd)).join(', ') || '-' }; };
+        const mS = formatS(plan.murojaah), tS = formatS(plan.tahsinSuratList), fS = formatS(plan.tahfidzSuratList);
+        let tahsinKat = plan.tahsinKategori, halAyat = tS.ayat;
+        if (['Jilid 1', 'Jilid 2', 'Jilid 3', 'Jilid 4', 'Jilid 5', 'Jilid 6'].includes(tahsinKat)) { let res = []; if (plan.tahsinHalaman.length > 0) res.push('Hal. ' + plan.tahsinHalaman.join(', ')); if (plan.tahsinBaris.length > 0) res.push(plan.tahsinBaris.includes('Penuh') ? 'Penuh' : 'Brs ' + plan.tahsinBaris.join(', ')); halAyat = res.length > 0 ? res.join(' ') : '-'; } else if (['Tajwid', 'Ghorib'].includes(tahsinKat)) { const hStr = plan.tahsinHalamanTg.length > 0 ? 'Hal. ' + plan.tahsinHalamanTg.join(', ') : ''; const mStr = plan.tahsinMateri.length > 0 ? plan.tahsinMateri.join(', ') : ''; const hm = [hStr, mStr].filter(Boolean).join(' - '); halAyat = (hm && tS.ayat !== '-') ? hm + ' / ' + tS.ayat : hm || tS.ayat; tahsinKat = tS.surat !== '-' ? tahsinKat + ', ' + tS.surat : tahsinKat; } else if (tahsinKat === 'Al-Qur\'an') tahsinKat = tS.surat || '-';
+        const modalMurojaah = plan.murojaah.filter(m => m.surat).map(m => { const ayat = getAyatRangeOrDefault(m.surat, m.ayatStart, m.ayatEnd); return ayat === 'Semua Ayat' ? m.surat : m.surat + ' ' + ayat; }).join(', ') || '-';
+        const modalTahsin = tahsinKat || '-'; const modalHalAyatTahsin = halAyat || '-'; const modalTahfidz = fS.surat || '-'; const modalAyatTahfidz = fS.ayat || '-'; const modalCatatan = plan.lainLain || '-';
+        const isBulk = !editingId;
+        
+        try {
+          const batchPromises = students.map(student => {
+            if ((editingId && student.id === editingId) || (!editingId && selectedStudents.includes(student.id))) {
+               const studentRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', student.id);
+               const existingRecord = student.records[plan.tanggal] || { tahsin: '-', halAyatTahsin: '-', tahfidz: '-', ayatTahfidz: '-', murojaah: '-', catatan: '-' };
+               let finalRecord = {};
+               if (isBulk) {
+                  finalRecord = { murojaah: modalMode === 'murojaah' ? modalMurojaah : (modalMode === 'full_bulk' && modalMurojaah !== '-' ? modalMurojaah : existingRecord.murojaah), tahsin: modalMode === 'tahsin' ? modalTahsin : (modalMode === 'full_bulk' && modalTahsin !== '-' ? modalTahsin : existingRecord.tahsin), halAyatTahsin: modalMode === 'tahsin' ? modalHalAyatTahsin : (modalMode === 'full_bulk' && modalTahsin !== '-' ? modalHalAyatTahsin : existingRecord.halAyatTahsin), tahfidz: modalMode === 'tahfidz' ? modalTahfidz : (modalMode === 'full_bulk' && modalTahfidz !== '-' ? modalTahfidz : existingRecord.tahfidz), ayatTahfidz: modalMode === 'tahfidz' ? modalAyatTahfidz : (modalMode === 'full_bulk' && modalTahfidz !== '-' ? modalAyatTahfidz : existingRecord.ayatTahfidz), catatan: modalMode === 'catatan' ? modalCatatan : (modalMode === 'full_bulk' && modalCatatan !== '-' ? modalCatatan : existingRecord.catatan) };
+               } else {
+                  finalRecord = { murojaah: modalMurojaah, tahsin: modalTahsin, halAyatTahsin: modalHalAyatTahsin, tahfidz: modalTahfidz, ayatTahfidz: modalAyatTahfidz, catatan: modalCatatan };
+               }
+               return updateDoc(studentRef, { records: { ...student.records, [plan.tanggal]: finalRecord } });
+            }
+            return Promise.resolve();
+          });
+          await Promise.all(batchPromises); handleCloseModal(); showToast('Target berhasil disimpan!');
+        } catch (e) { console.error(e); }
+      };
+
+      const getInitials = (name) => name ? name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase() : '';
+      const handlePhotoUpload = (e, isEdit = false) => { const file = e.target.files[0]; if (file) { const reader = new FileReader(); reader.onloadend = () => { const img = new Image(); img.onload = () => { const canvas = document.createElement('canvas'); const MAX_SIZE = 250; let width = img.width; let height = img.height; if (width > height) { if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; } } else { if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; } } canvas.width = width; canvas.height = height; const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height); const resizedDataUrl = canvas.toDataURL('image/jpeg', 0.8); if (isEdit) setEditStudentData(prev => ({ ...prev, photo: resizedDataUrl })); else setNewStudent(prev => ({ ...prev, photo: resizedDataUrl })); }; img.src = reader.result; }; reader.readAsDataURL(file); } };
+      const handleSaveNewStudent = async (e) => { e.preventDefault(); if (!user) return; const colors = ['bg-blue-100 text-blue-600', 'bg-emerald-100 text-emerald-600', 'bg-purple-100 text-purple-600', 'bg-orange-100 text-orange-600']; const newStudentData = { name: newStudent.name || '', kelas: newStudent.kelas || '', halaqoh: newStudent.halaqoh || '', class: newStudent.halaqoh || '', initial: getInitials(newStudent.name) || '', color: colors[Math.floor(Math.random() * colors.length)] || colors[0], photo: newStudent.photo || null, records: {} }; try { await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'students'), newStudentData); setNewStudent({ name: '', kelas: kelasList.length > 0 ? kelasList[0] : '', halaqoh: activeHalaqoh, photo: null }); setIsAddStudentModalOpen(false); showToast('Siswa ditambahkan!'); } catch (e) { console.error(e); } };
+      const openEditStudentModal = (student) => { setEditStudentData({ id: student.id, name: student.name, kelas: student.kelas, halaqoh: student.halaqoh, photo: student.photo || null }); setIsEditStudentModalOpen(true); };
+      const handleUpdateStudent = async (e) => { e.preventDefault(); if (!user) return; try { const studentRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', editStudentData.id); await updateDoc(studentRef, { name: editStudentData.name || '', kelas: editStudentData.kelas || '', halaqoh: editStudentData.halaqoh || '', class: editStudentData.halaqoh || '', initial: getInitials(editStudentData.name) || '', photo: editStudentData.photo || null }); setIsEditStudentModalOpen(false); showToast('Siswa diperbarui!'); } catch (e) { console.error(e); } };
+      const combineSuratAyatUI = (suratStr, ayatStr) => { if (!suratStr || suratStr === '-') return ''; const surats = suratStr.split(',').map(s => s.trim()); const ayats = (ayatStr || '').split(',').map(s => s.trim()); return surats.map((s, i) => { const a = ayats[i]; return (a && a !== '-' && a !== 'Semua Ayat') ? s + ' ' + a : s; }).join(', '); };
+
+      const generateStats = () => { let statTotal = filteredStudents.length, statLancar = 0, statPerluUlang = 0, tahsinDistribution = {}; filteredStudents.forEach(s => { const rec = s.records[activeDate]; if (rec) { if (rec.catatan && rec.catatan !== '-') { const note = rec.catatan.toLowerCase(); if (note.includes('lancar') || note.includes('baik') || note.includes('bagus')) statLancar++; else if (note.includes('perlu') || note.includes('kurang') || note.includes('ulang')) statPerluUlang++; } if (rec.tahsin && rec.tahsin !== '-') { const catName = rec.tahsin.split(',')[0].trim(); tahsinDistribution[catName] = (tahsinDistribution[catName] || 0) + 1; } } }); return { total: statTotal, lancar: statLancar, perluUlang: statPerluUlang, categories: tahsinDistribution }; };
+      const reportStats = generateStats();
+
+      const renderExportTable = (studentList, pageIndex = 0, totalPages = 1, isPreview = true, daysToRender = weekDates) => {
+        const containerStyle = isPreview ? { width: '100%', minWidth: '800px', backgroundColor: '#ffffff', padding: '24px', boxSizing: 'border-box', fontFamily: 'system-ui, sans-serif' } : { width: '1250px', minWidth: '1250px', minHeight: '880px', backgroundColor: '#ffffff', padding: '30px 40px', boxSizing: 'border-box', fontFamily: 'system-ui, sans-serif' };
+        const tTitle = isPreview ? "text-xl md:text-2xl lg:text-[28px]" : "text-[24px]"; const tSub = isPreview ? "text-sm md:text-base lg:text-lg" : "text-base"; const tThNo = isPreview ? "text-[10px] md:text-xs" : "text-[10px]"; const tTh = isPreview ? "text-[10px] md:text-xs" : "text-[11px]"; const tThSub = isPreview ? "text-[8px] md:text-[9px]" : "text-[8px]"; const tTdNo = isPreview ? "text-[10px] md:text-[11px]" : "text-[10px]"; const tTdName = "text-[10pt]"; const tTdKelas = isPreview ? "text-[8px] md:text-[9px]" : "text-[8px]"; const tTdData = "text-[6pt]"; const tTdDataSub = "text-[5pt]"; const widthNo = '4%'; const widthName = '18%'; const widthDay = (78 / daysToRender.length) + '%'; const widthSub = (78 / (daysToRender.length * 3)) + '%';
+
+        return (
+          <div id={'preview-page-inner-' + pageIndex} style={containerStyle} className={"bg-white text-gray-900 relative mx-auto flex flex-col " + (!isPreview ? 'h-screen' : 'min-h-[400px]')}>
+            <div>
+              <div className="flex justify-between items-center mb-3 md:mb-4">
+                <div><h1 className={"font-black tracking-tight text-gray-900 mb-0.5 " + tTitle}>Lesson Plan Al-Qur'an</h1><p className={"text-gray-500 italic font-medium " + tSub}>SDIT Al-Fityan School Bogor</p></div>
+                <div className="flex items-center justify-end shrink-0 pl-4">{institutionLogo && institutionLogo !== 'logo.png' && ( <img src={institutionLogo} alt="Logo" className={isPreview ? "h-8 md:h-10 lg:h-12 object-contain" : "h-10 object-contain"} /> )}</div>
+              </div>
+              <div className="grid grid-cols-4 gap-2 md:gap-4 mb-3 md:mb-4 pb-2 border-b border-gray-100">
+                <div className="border-l-[3px] border-green-500 pl-2 md:pl-3"><p className={"font-black text-gray-400 uppercase tracking-widest mb-0.5 " + (isPreview ? 'text-[8px] md:text-[9px]' : 'text-[8px]')}>Bulan</p><p className={"font-extrabold text-gray-800 " + (isPreview ? 'text-xs md:text-sm lg:text-[15px]' : 'text-[13px]')}>{getMonthYear(weekStart)}</p></div>
+                <div className="border-l-[3px] border-green-500 pl-2 md:pl-3"><p className={"font-black text-gray-400 uppercase tracking-widest mb-0.5 " + (isPreview ? 'text-[8px] md:text-[9px]' : 'text-[8px]')}>Halaqoh</p><p className={"font-extrabold text-gray-800 " + (isPreview ? 'text-xs md:text-sm lg:text-[15px]' : 'text-[13px]')}>{activeHalaqoh || '-'}</p></div>
+                <div className="border-l-[3px] border-green-500 pl-2 md:pl-3"><p className={"font-black text-gray-400 uppercase tracking-widest mb-0.5 " + (isPreview ? 'text-[8px] md:text-[9px]' : 'text-[8px]')}>Periode</p><p className={"font-extrabold text-gray-800 " + (isPreview ? 'text-[10px] md:text-xs lg:text-[15px]' : 'text-[13px]')}>{daysToRender.length > 0 ? formatShortDate(daysToRender[0]) + ' - ' + formatShortDate(daysToRender[daysToRender.length - 1]) : getWeekRangeLabel()}</p></div>
+                <div className="border-l-[3px] border-green-500 pl-2 md:pl-3"><p className={"font-black text-gray-400 uppercase tracking-widest mb-0.5 " + (isPreview ? 'text-[8px] md:text-[9px]' : 'text-[8px]')}>Pengajar</p><p className={"font-extrabold text-gray-800 " + (isPreview ? 'text-xs md:text-sm lg:text-[15px]' : 'text-[13px]')}>{activeGuru || '-'}</p></div>
+              </div>
+            </div>
+
+            <div className="flex justify-center w-full flex-1 mb-2">
+              <table className="w-full mx-auto border-collapse" style={{ tableLayout: 'fixed', width: '100%', height: isPreview ? 'auto' : '100%' }}>
+                <thead>
+                  <tr>
+                    <th rowSpan="2" className={"border border-green-200 bg-[#f0fdf4] text-gray-800 font-bold p-1 text-center " + tThNo} style={{ width: widthNo }}>No</th>
+                    <th rowSpan="2" className={"border border-green-200 bg-[#f0fdf4] text-gray-800 font-bold p-1 text-center " + tTh} style={{ width: widthName }}>Nama Siswa</th>
+                    {daysToRender.map((dateObj, idx) => {
+                      if (dateObj.getDay() === 0 || dateObj.getDay() === 6) return null;
+                      return (<th key={'day-' + idx} colSpan="3" className={"border border-green-200 bg-[#f0fdf4] text-gray-800 font-bold p-1 text-center " + tTh + (idx === daysToRender.length - 1 ? ' rounded-tr-xl' : '')} style={{ width: widthDay }}>{getDayName(dateObj)}<div className={"font-medium text-gray-500 mt-0.5 " + tThSub}>{formatShortDate(dateObj)}</div></th>);
+                    })}
+                  </tr>
+                  <tr>
+                    {daysToRender.map((dateObj, idx) => {
+                      if (dateObj.getDay() === 0 || dateObj.getDay() === 6) return null;
+                      return (<React.Fragment key={'sub-' + idx}><th className="border border-green-200 bg-[#f0fdf4] px-0.5 py-1 text-center" style={{ width: widthSub }}><span className={"font-black text-emerald-700 uppercase tracking-widest " + tThSub}>Murojaah</span></th><th className="border border-green-200 bg-[#f0fdf4] px-0.5 py-1 text-center" style={{ width: widthSub }}><span className={"font-black text-blue-700 uppercase tracking-widest " + tThSub}>Tahsin</span></th><th className="border border-green-200 bg-[#f0fdf4] px-0.5 py-1 text-center" style={{ width: widthSub }}><span className={"font-black text-purple-700 uppercase tracking-widest " + tThSub}>Tahfidz</span></th></React.Fragment>);
+                    })}
+                  </tr>
+                </thead>
+                <tbody>
+                  {studentList.length === 0 && ( <tr><td colSpan="17" className="border border-gray-100 p-8 text-center text-gray-400 font-bold">Belum ada data siswa untuk dicetak.</td></tr> )}
+                  {studentList.map((student, index) => {
+                    const displayIndex = (Math.floor(pageIndex / 2) * STUDENTS_PER_PAGE) + index + 1;
+                    const rowBgClass = index % 2 === 0 ? 'bg-white' : 'bg-green-50/20'; 
+                    return (
+                      <React.Fragment key={'print-' + student.id}>
+                        <tr className={rowBgClass}>
+                          <td rowSpan="2" className={"border border-green-200 px-1 py-0.5 text-center font-bold text-gray-800 align-middle " + tTdNo}>{displayIndex}</td>
+                          <td rowSpan="2" className={"border border-green-200 px-1 py-0.5 font-bold text-gray-800 align-middle " + tTdName}><div style={{ display: 'flex', alignItems: 'center', gap: '6px', paddingLeft: '2px', width: '100%', boxSizing: 'border-box' }}><div className={"rounded-full flex items-center justify-center font-black overflow-hidden border border-gray-100 shadow-sm shrink-0 " + (student.color || 'bg-gray-100 text-gray-600') + " " + (isPreview ? 'w-6 h-6 md:w-8 md:h-8 text-[9px] md:text-[11px]' : 'w-[28px] h-[28px] min-w-[28px] min-h-[28px] text-[10px]')} style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>{student.photo ? (<img src={student.photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />) : (student.initial || getInitials(student.name))}</div><div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1, minWidth: 0 }}><span style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', whiteSpace: 'normal', wordBreak: 'break-word', fontWeight: '800', lineHeight: '1.15' }}>{student.name}</span><span className={"font-medium text-gray-500 mt-[1px] truncate " + tTdKelas}>{student.kelas}</span></div></div></td>
+                          {daysToRender.map(dateObj => {
+                            if (dateObj.getDay() === 0 || dateObj.getDay() === 6) return null;
+                            const dStr = formatDateObj(dateObj); const data = student.records[dStr];
+                            if (!data || (data.tahsin === '-' && data.tahfidz === '-' && data.murojaah === '-')) return (<React.Fragment key={'print-empty-' + dStr}><td className={"border border-green-200 px-0.5 py-0.5 text-center text-gray-300 " + tTdData} style={{ wordBreak: 'break-word' }}>-</td><td className={"border border-green-200 px-0.5 py-0.5 text-center text-gray-300 " + tTdData} style={{ wordBreak: 'break-word' }}>-</td><td className={"border border-green-200 px-0.5 py-0.5 text-center text-gray-300 " + tTdData} style={{ wordBreak: 'break-word' }}>-</td></React.Fragment>);
+                            return (
+                              <React.Fragment key={'print-' + dStr}>
+                                <td className="border border-green-200 px-0.5 py-0.5 text-center align-middle"><span className={"font-bold text-emerald-700 block whitespace-normal leading-[1.3] " + tTdData} style={{ wordBreak: 'break-word' }}>{data.murojaah !== '-' ? data.murojaah : '-'}</span></td>
+                                <td className="border border-green-200 px-0.5 py-0.5 text-center align-middle">{data.tahsin !== '-' ? ((!data.tahsin.includes('Jilid') && !data.tahsin.includes('Tajwid') && !data.tahsin.includes('Ghorib') && !data.tahsin.includes('Gharib')) ? (<span className={"font-bold text-blue-800 block whitespace-normal leading-[1.3] " + tTdData} style={{ wordBreak: 'break-word' }}>{combineSuratAyatUI(data.tahsin, data.halAyatTahsin)}</span>) : (<div className="flex flex-col leading-[1.3] items-center text-center whitespace-normal" style={{ wordBreak: 'break-word' }}><span className={"font-bold text-blue-800 " + tTdData}>{data.tahsin}</span>{data.halAyatTahsin !== '-' && <span className={"font-medium text-gray-600 mt-[1px] " + tTdDataSub}>{data.halAyatTahsin}</span>}</div>)) : <span className={"text-gray-300 " + tTdData}>-</span>}</td>
+                                <td className="border border-green-200 px-0.5 py-0.5 text-center align-middle">{data.tahfidz !== '-' ? ( <span className={"font-bold text-purple-800 block whitespace-normal leading-[1.3] " + tTdData} style={{ wordBreak: 'break-word' }}>{combineSuratAyatUI(data.tahfidz, data.ayatTahfidz)}</span> ) : <span className={"text-gray-300 " + tTdData}>-</span>}</td>
+                              </React.Fragment>
+                            );
+                          })}
+                        </tr>
+                        <tr className={rowBgClass}>
+                          {daysToRender.map(dateObj => {
+                            if (dateObj.getDay() === 0 || dateObj.getDay() === 6) return null;
+                            const dStr = formatDateObj(dateObj); const data = student.records[dStr];
+                            if (!data || data.catatan === '-') return ( <td key={'catatan-empty-' + dStr} colSpan="3" className={"border border-green-200 px-1 py-0.5 text-center text-gray-300 bg-green-50/10 " + tTdDataSub} style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>-</td> );
+                            return (<td key={'catatan-' + dStr} colSpan="3" className={"border border-green-200 px-1 py-0.5 text-center italic bg-orange-50/40 " + tTdDataSub} style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact', wordBreak: 'break-word' }}><span className="font-bold text-orange-700 not-italic mr-1">Catatan:</span><span className="text-gray-700 whitespace-normal leading-[1.2]">{data.catatan}</span></td>);
+                          })}
+                        </tr>
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div className={"flex justify-between items-center font-black text-gray-400 tracking-widest uppercase border-t border-gray-200 shrink-0 " + (isPreview ? 'pt-3 pb-1 text-[7px] md:text-[9px]' : 'pt-4 text-[9px]')}><span>Membangun Generasi Qurani dan Pemimpin Masa Depan</span><span>Page {pageIndex + 1} of {totalPages}</span><span>Doc ID: SDITALFITYAN-LP-{formatDateObj(weekStart).replace(/-/g, '')}-{activeHalaqoh.replace(/[^a-zA-Z0-9]/g, '').substring(0, 6).toUpperCase()}</span></div>
+          </div>
+        );
+      };
+
+      const renderTahsinCard = (tahsin, halAyat, studentId, dateStr) => {
+        if ((!tahsin || tahsin === '-') && (!halAyat || halAyat === '-')) return <span className="text-xs sm:text-sm text-gray-300 font-medium">-</span>;
+        if (!tahsin || tahsin === '-') return <span className="text-[11px] md:text-[13px] font-bold text-gray-700 break-words">{halAyat}</span>;
+        let category = tahsin, details = halAyat !== '-' ? halAyat : '';
+        if (tahsin.includes('Tajwid') || tahsin.includes('Ghorib') || tahsin.includes('Gharib')) {
+          const parts = tahsin.split(','); category = parts[0].trim(); const suratList = parts.slice(1).join(',').trim();
+          let halMat = details, ayatList = '';
+          if (details.includes(' / ')) { const splitDetails = details.split(' / '); halMat = splitDetails[0].trim(); ayatList = splitDetails.slice(1).join(' / ').trim(); } else if (!details.includes('Hal') && !details.includes('-')) { ayatList = details; halMat = ''; }
+          const combinedTilawah = combineSuratAyatUI(suratList, ayatList);
+          return (
+            <div className="flex flex-col items-start gap-1.5 w-full min-w-0 group relative pr-6">
+              <div className="flex items-center gap-1.5 max-w-full w-full justify-between"><span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-md text-[8px] md:text-[9px] font-black uppercase tracking-widest break-words w-max">{category}</span></div>
+              {halMat && halMat !== '-' && <span className="text-[10px] md:text-[12px] font-bold text-gray-700 leading-snug break-words whitespace-normal max-w-full">{halMat}</span>}
+              {combinedTilawah && ( <span className="text-[9px] md:text-[11px] lg:text-[12px] text-blue-800 bg-blue-50 px-2 py-1.5 rounded-lg border border-blue-100 flex items-start gap-1.5 font-bold leading-snug mt-0.5 w-fit max-w-full"><BookOpen size={14} className="text-blue-500 shrink-0 mt-0.5"/> <span className="flex-1 min-w-0 break-words whitespace-normal">{combinedTilawah}</span></span> )}
+              {studentId && dateStr && <button onClick={(e) => handleRemoveData(e, studentId, dateStr, 'tahsin_all')} className="absolute top-1/2 -translate-y-1/2 right-0 text-blue-300 hover:text-red-500 hover:bg-red-100 rounded-full p-1 transition-colors shrink-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 cursor-pointer"><X size={14} strokeWidth={3}/></button>}
+            </div>
+          );
+        }
+        if (tahsin.includes('Jilid')) return (
+            <div className="flex flex-col items-start gap-1.5 w-full min-w-0 group relative pr-6">
+               <div className="flex items-start justify-between gap-1 w-full max-w-full"><span className="text-[12px] md:text-[14px] font-bold text-gray-800 leading-none break-words">{tahsin}</span></div>
+               {details && <span className="text-[9px] md:text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded-md border border-blue-100/70 break-words whitespace-normal max-w-full">{details}</span>}
+               {studentId && dateStr && <button onClick={(e) => handleRemoveData(e, studentId, dateStr, 'tahsin_all')} className="absolute top-1/2 -translate-y-1/2 right-0 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full p-1 transition-colors shrink-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 cursor-pointer"><X size={14} strokeWidth={3}/></button>}
+            </div>
+        );
+        const tList = tahsin.split(',').map(s => s.trim()); const aList = (halAyat || '').split(',').map(s => s.trim());
+        return (
+          <div className="flex flex-col gap-1.5 w-full min-w-0">
+             {tList.map((t, i) => {
+                const a = aList[i]; const combined = (a && a !== '-' && a !== 'Semua Ayat') ? t + ' ' + a : t;
+                return (
+                   <div key={i} className="text-[9px] md:text-[11px] lg:text-[12px] font-bold text-blue-800 bg-blue-50 px-2 py-1.5 rounded-lg border border-blue-100 flex items-center justify-between gap-1.5 leading-snug w-fit max-w-full group relative pr-7">
+                      <div className="flex items-start gap-1.5 overflow-hidden"><BookOpen size={14} className="text-blue-500 shrink-0 mt-0.5"/><span className="flex-1 min-w-0 break-words whitespace-normal">{combined}</span></div>
+                      {studentId && dateStr && ( <button onClick={(e) => handleRemoveData(e, studentId, dateStr, 'tahsin_surat', i)} className="absolute right-1 top-1/2 -translate-y-1/2 text-blue-300 hover:text-red-500 hover:bg-red-100 rounded-full p-1 transition-colors shrink-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 cursor-pointer"><X size={12} strokeWidth={3}/></button> )}
+                   </div>
+                );
+             })}
+          </div>
+        );
+      };
+
+      const renderTahfidzCard = (tahfidz, ayat, studentId, dateStr) => {
+        if (!tahfidz || tahfidz === '-') return <span className="text-xs sm:text-sm text-gray-300 font-medium">-</span>;
+        const tList = tahfidz.split(',').map(s => s.trim()); const aList = (ayat || '').split(',').map(s => s.trim());
+        return (
+          <div className="flex flex-col gap-1.5 w-full min-w-0">
+             {tList.map((t, i) => { 
+                const a = aList[i]; const combined = (a && a !== '-' && a !== 'Semua Ayat') ? t + ' ' + a : t; 
+                return ( 
+                   <div key={i} className="text-[9px] md:text-[11px] lg:text-[12px] font-bold text-purple-800 bg-purple-50 px-2 py-1.5 rounded-lg border border-purple-100 flex items-center justify-between gap-1.5 leading-snug w-fit max-w-full group relative pr-7">
+                      <div className="flex items-start gap-1.5 overflow-hidden"><Mic size={14} className="text-purple-500 shrink-0 mt-0.5"/> <span className="flex-1 min-w-0 break-words whitespace-normal">{combined}</span></div>
+                      {studentId && dateStr && ( <button onClick={(e) => handleRemoveData(e, studentId, dateStr, 'tahfidz', i)} className="absolute right-1 top-1/2 -translate-y-1/2 text-purple-300 hover:text-red-500 hover:bg-red-100 rounded-full p-1 transition-colors shrink-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 cursor-pointer"><X size={12} strokeWidth={3}/></button> )}
+                   </div>
+                ); 
+             })}
+          </div>
+        );
+      };
+
+      const renderMurojaahCard = (murojaah, studentId, dateStr) => {
+        if (!murojaah || murojaah === '-') return <span className="text-xs sm:text-sm text-gray-300 font-medium">-</span>;
+        const items = murojaah.split(',').map(s => s.trim());
+        return ( 
+          <div className="flex flex-col gap-1.5 w-full min-w-0">
+             {items.map((item, i) => ( 
+                <div key={i} className="text-[9px] md:text-[11px] lg:text-[12px] font-bold text-emerald-800 bg-emerald-50 px-2 py-1.5 rounded-lg border border-emerald-100 flex items-center justify-between gap-1.5 leading-snug w-fit max-w-full group relative pr-7">
+                   <div className="flex items-start gap-1.5 overflow-hidden"><Repeat size={13} className="text-emerald-500 shrink-0 mt-0.5"/><span className="flex-1 min-w-0 break-words whitespace-normal">{item}</span></div>
+                   {studentId && dateStr && ( <button onClick={(e) => handleRemoveData(e, studentId, dateStr, 'murojaah', i)} className="absolute right-1 top-1/2 -translate-y-1/2 text-emerald-300 hover:text-red-500 hover:bg-red-100 rounded-full p-1 transition-colors shrink-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 cursor-pointer"><X size={12} strokeWidth={3}/></button> )}
+                </div>
+             ))}
+          </div> 
+        );
+      };
+
+      if (!user || !isDbReady) return (<div className="min-h-screen flex flex-col items-center justify-center bg-[#F8F9FA]"><Loader2 size={48} className="animate-spin text-[#00e676] mb-4" /><h2 className="text-xl font-bold text-gray-700">Memuat Data...</h2></div>);
+
+      return (
+        <div className="min-h-screen bg-[#F8F9FA] text-gray-800 font-sans overflow-x-hidden relative flex flex-col">
+          {toastMessage && ( <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-red-500 text-white px-4 py-2 md:px-6 md:py-3 rounded-xl shadow-2xl z-[200] font-bold tracking-wide animate-bounce text-sm md:text-base print-hidden">{toastMessage}</div> )}
+          
+          <div className="print-hidden flex flex-col min-h-screen relative z-10">
+            <nav className="bg-white border-b border-gray-100 px-4 md:px-6 py-3 md:py-4 flex flex-col md:flex-row justify-between items-center gap-4 sticky top-0 z-30 shadow-sm">
+              <div className="flex flex-col sm:flex-row items-center gap-4 md:gap-6 w-full md:w-auto">
+                <div className="flex items-center gap-2 text-green-600 font-black text-lg md:text-xl lg:text-2xl tracking-tight">
+                  <div className="relative flex items-center justify-center"><BookOpen size={26} strokeWidth={2.5} className="w-5 h-5 md:w-6 md:h-6 text-[#0f4c5c]"/><Star size={12} className="absolute -top-1.5 -right-1.5 text-[#f4a261] fill-[#f4a261]" /></div>MyQuranPlan
+                </div>
+                <div className="flex flex-wrap justify-center gap-4 md:gap-6 font-bold text-xs md:text-sm text-gray-500">
+                  <span onClick={() => setCurrentView('home')} className={`pb-1 cursor-pointer transition-colors ${currentView === 'home' ? 'text-green-500 border-b-2 border-green-500 font-bold' : 'hover:text-gray-900'}`}>Beranda</span>
+                  <span onClick={() => setCurrentView('siswa')} className={`pb-1 cursor-pointer transition-colors ${currentView === 'siswa' ? 'text-green-500 border-b-2 border-green-500 font-bold' : 'hover:text-gray-900'}`}>Data Siswa</span>
+                  <span onClick={() => setCurrentView('laporan')} className={`pb-1 cursor-pointer transition-colors ${currentView === 'laporan' ? 'text-green-500 border-b-2 border-green-500 font-bold' : 'hover:text-gray-900'}`}>Laporan</span>
+                  <span onClick={() => setCurrentView('pengaturan')} className={`pb-1 cursor-pointer transition-colors ${currentView === 'pengaturan' ? 'text-green-500 border-b-2 border-green-500 font-bold' : 'hover:text-gray-900'}`}>Pengaturan</span>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-center md:justify-end">
+                <button onClick={() => { localStorage.removeItem('isLoggedIn'); window.location.reload(); }} className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold text-xs md:text-sm transition-all shadow-sm bg-red-50 text-red-600 hover:bg-red-100 hover:shadow-md">Keluar</button>
+                <button onClick={() => setIsPreviewModalOpen(true)} disabled={!activeHalaqoh} className={`flex items-center gap-1.5 px-4 md:px-5 py-2 md:py-2.5 rounded-xl font-bold text-xs md:text-sm transition-all shadow-sm ${!activeHalaqoh ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md'}`}><Eye size={16} strokeWidth={2.5} className="w-4 h-4 md:w-5 md:h-5"/> Preview & Cetak</button>
+              </div>
+            </nav>
+
+            {currentView !== 'pengaturan' && (
+              <div className="bg-white border-b border-gray-200 px-4 md:px-6 lg:px-8 py-2.5 md:py-3 flex flex-col sm:flex-row gap-3 md:gap-4 justify-start items-center sticky top-[100px] sm:top-[73px] z-20 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02)] overflow-x-auto">
+                <div className="flex items-center gap-2 md:gap-3 w-full sm:w-auto shrink-0">
+                  <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest shrink-0"><User size={12} className="inline mr-1 text-gray-400 md:w-3.5 md:h-3.5"/> Guru Pengampu</label>
+                  <select value={activeGuru} onChange={handleGuruChange} className="bg-gray-50 border border-gray-200 text-gray-800 text-xs md:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-1.5 md:p-2 font-bold cursor-pointer hover:bg-gray-100 outline-none transition-colors w-full sm:w-auto max-w-[150px] md:max-w-[200px] truncate">
+                    {guruList.length === 0 ? <option value="">Belum ada Guru</option> : guruList.map(g => <option key={g} value={g}>{g}</option>)}
+                  </select>
+                </div>
+                <div className="hidden sm:block w-px h-5 md:h-6 bg-gray-300"></div>
+                <div className="flex items-center gap-2 md:gap-3 w-full sm:w-auto shrink-0">
+                  <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest shrink-0"><Users size={12} className="inline mr-1 text-gray-400 md:w-3.5 md:h-3.5"/> Halaqoh</label>
+                  <select value={activeHalaqoh} onChange={(e) => setActiveHalaqoh(e.target.value)} disabled={!activeGuru || (guruHalaqohData[activeGuru] || []).length === 0} className="bg-green-50 border border-green-200 text-green-800 text-xs md:text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block p-1.5 md:p-2 font-bold cursor-pointer hover:bg-green-100 outline-none transition-colors w-full sm:w-auto max-w-[150px] md:max-w-[200px] truncate disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-200">
+                    {(!activeGuru || (guruHalaqohData[activeGuru] || []).length === 0) ? <option value="">Belum ada halaqoh</option> : (guruHalaqohData[activeGuru] || []).map(h => <option key={h} value={h}>{h}</option>)}
+                  </select>
+                </div>
+              </div>
+            )}
+
+            <main className="flex-1">
+              {currentView === 'home' && (
+                <div className="max-w-6xl mx-auto p-4 sm:p-6 md:p-8 pb-32">
+                  <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div><h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-[#1a202c] tracking-tight mb-1.5 md:mb-2">Lesson Plan Al-Qur'an</h1><p className="text-gray-500 font-medium text-xs sm:text-sm md:text-base">Kelola rencana pembelajaran Al-Qur'an untuk siswa di halaqoh <strong className="text-green-600 bg-green-50 px-2 py-0.5 rounded">{activeHalaqoh || '-'}</strong></p></div>
+                    <div className="flex gap-2"><button onClick={() => handleOpenModal(null, 'full_bulk')} disabled={!activeHalaqoh} className="flex items-center justify-center gap-1.5 md:gap-2 bg-white hover:bg-gray-50 text-gray-800 border border-gray-200 px-4 py-2 md:px-5 md:py-2.5 rounded-xl font-bold transition-colors text-xs md:text-sm shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"><Edit3 size={16} className="text-green-500 w-4 h-4 md:w-5 md:h-5" /> Input Data Massal</button></div>
+                  </div>
+                  <div className="flex items-center justify-between bg-white px-3 py-2 md:px-4 md:py-3 rounded-2xl border border-gray-100 shadow-sm mb-6">
+                    <button onClick={() => changeWeek(-7)} className="p-1.5 md:p-2 bg-gray-50 hover:bg-green-50 text-gray-500 hover:text-green-600 rounded-lg transition-colors flex items-center gap-1 font-bold text-xs md:text-sm"><ChevronLeft size={16} className="md:w-4 md:h-4"/> <span className="hidden sm:inline">Sebelumnya</span></button>
+                    <div className="flex items-center gap-1.5 md:gap-2 font-black text-gray-700 tracking-wide text-xs sm:text-sm md:text-base text-center"><Calendar size={16} className="text-green-500 md:w-5 md:h-5"/> {getWeekRangeLabel()}</div>
+                    <button onClick={() => changeWeek(7)} className="p-1.5 md:p-2 bg-gray-50 hover:bg-green-50 text-gray-500 hover:text-green-600 rounded-lg transition-colors flex items-center gap-1 font-bold text-xs md:text-sm"><span className="hidden sm:inline">Selanjutnya</span> <ChevronRight size={16} className="md:w-4 md:h-4"/></button>
+                  </div>
+                  <div className="bg-transparent">
+                    <div className="flex border-b-2 border-gray-200 mb-6 sticky top-[175px] sm:top-[138px] bg-[#F8F9FA] z-10 pt-2 overflow-x-auto custom-scrollbar">
+                      {weekDates.map((dateObj) => {
+                        const dateStr = formatDateObj(dateObj); const dayName = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][dateObj.getDay()];
+                        if (dateObj.getDay() === 0 || dateObj.getDay() === 6) return null; 
+                        return (<button key={dateStr} onClick={() => setActiveDate(dateStr)} className={`flex-1 min-w-[70px] sm:min-w-[80px] md:min-w-[95px] text-center pb-2 md:pb-3 pt-1.5 md:pt-2 font-extrabold transition-all duration-300 ${activeDate === dateStr ? 'text-[#00e676] border-b-4 border-[#00e676]' : 'text-gray-400 hover:text-gray-600'}`}><div className="uppercase tracking-widest text-[10px] sm:text-xs md:text-sm mb-0.5 md:mb-1">{dayName}</div><div className="text-[8px] sm:text-[9px] md:text-[10px] font-semibold text-gray-400">{formatShortDate(dateObj)}</div></button>);
+                      })}
+                    </div>
+                    <div className="flex flex-col gap-4 mb-10 min-h-[400px]">
+                      <div className="hidden md:flex items-center justify-between px-6 py-2 text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest pl-24 pr-16"><div className="w-[150px] lg:w-[180px]">Nama Siswa</div><div className="flex-1 grid grid-cols-4 gap-4 px-4"><div>Tahsin</div><div>Tahfidz</div><div>Murojaah</div><div>Catatan</div></div></div>
+                      {!activeHalaqoh ? (<div className="text-center py-16 md:py-20 text-gray-400 font-bold bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center gap-3 px-4"><Settings size={36} className="text-gray-300 md:w-10 md:h-10"/><p className="text-sm md:text-base">Tidak ada Halaqoh yang dipilih. Silakan atur di menu Pengaturan.</p></div>) : filteredStudents.length === 0 ? (<div className="text-center py-16 md:py-20 text-gray-400 font-bold bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center gap-3 px-4"><Users size={36} className="text-gray-300 md:w-10 md:h-10"/><p className="text-sm md:text-base">Tidak ada data siswa ditemukan untuk halaqoh {activeHalaqoh}.</p><button onClick={() => {setCurrentView('siswa'); setIsAddStudentModalOpen(true);}} className="text-xs md:text-sm text-green-600 bg-green-50 px-4 py-2 rounded-lg hover:bg-green-100 transition-colors">Tambahkan Siswa Baru</button></div>) : filteredStudents.map(student => {
+                        const record = student.records[activeDate] || { tahsin: '-', halAyatTahsin: '-', tahfidz: '-', ayatTahfidz: '-', murojaah: '-', catatan: '-' };
+                        return (
+                          <div key={student.id} className="bg-white rounded-2xl p-4 md:p-5 flex flex-col md:flex-row items-start md:items-center shadow-sm border border-gray-100 hover:shadow-md transition-shadow group relative overflow-hidden">
+                            <div className={`absolute left-0 top-0 bottom-0 w-1.5 transition-colors ${record.tahsin === '-' && record.murojaah === '-' ? 'bg-gray-100' : 'bg-[#00e676]'}`}></div>
+                            
+                            <div className="flex items-center gap-3 md:gap-4 w-full md:w-[220px] lg:wfire-[250px] mb-3 md:mb-0 pl-2">
+                              <div className={`w-[40px] h-[40px] md:w-[48px] md:h-[48px] rounded-full flex items-center justify-center font-black text-base md:text-lg overflow-hidden relative shrink-0 ${student.color || 'bg-gray-100 text-gray-600'}`}>{student.photo ? (<img src={student.photo} alt="" className="w-full h-full object-cover" />) : (student.initial || getInitials(student.name))}</div>
+                              <div className="min-w-0"><h3 className="font-extrabold text-gray-800 text-sm sm:text-[15px] md:text-base leading-tight line-clamp-2" title={student.name}>{student.name}</h3><div className="flex flex-wrap gap-1.5 mt-1"><span className="inline-block bg-blue-50 text-blue-600 text-[8px] md:text-[9px] font-black uppercase px-1.5 py-0.5 rounded tracking-wider border border-blue-100">{student.kelas}</span><span className="inline-block bg-green-50 text-green-600 text-[8px] md:text-[9px] font-black uppercase px-1.5 py-0.5 rounded tracking-wider border border-green-100">{student.halaqoh}</span></div></div>
+                            </div>
+
+                            <div className="flex-1 w-full grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-6 px-1 sm:px-2 md:px-4 py-2 min-w-0">
+                              <div onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleOpenModal(student, 'tahsin'); }} className="flex flex-col w-full min-w-0 group/cell relative hover:bg-blue-50/50 p-1 -m-1 rounded-lg transition-colors cursor-pointer">
+                                <div className="flex items-center justify-between mb-1 sm:mb-2">
+                                   <span className="md:hidden text-[8px] font-black text-gray-400 uppercase tracking-widest shrink-0">Tahsin</span>
+                                   <button className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-500 hover:text-white transition-all opacity-100 md:opacity-0 group-hover/cell:opacity-100 shadow-sm md:absolute md:-top-1 md:right-0 z-20" title="Tambah/Copy Tahsin"><Plus size={12} strokeWidth={3} /></button>
+                                </div>
+                                <div className="md:pt-1">{renderTahsinCard(record.tahsin, record.halAyatTahsin, student.id, activeDate)}</div>
+                              </div>
+                              <div onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleOpenModal(student, 'tahfidz'); }} className="flex flex-col w-full min-w-0 group/cell relative hover:bg-purple-50/50 p-1 -m-1 rounded-lg transition-colors cursor-pointer">
+                                <div className="flex items-center justify-between mb-1 sm:mb-2">
+                                   <span className="md:hidden text-[8px] font-black text-gray-400 uppercase tracking-widest shrink-0">Tahfidz</span>
+                                   <button className="p-1.5 rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-500 hover:text-white transition-all opacity-100 md:opacity-0 group-hover/cell:opacity-100 shadow-sm md:absolute md:-top-1 md:right-0 z-20" title="Tambah/Copy Tahfidz"><Plus size={12} strokeWidth={3} /></button>
+                                </div>
+                                <div className="md:pt-1">{renderTahfidzCard(record.tahfidz, record.ayatTahfidz, student.id, activeDate)}</div>
+                              </div>
+                              <div onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleOpenModal(student, 'murojaah'); }} className="flex flex-col col-span-2 md:col-span-1 w-full min-w-0 group/cell relative hover:bg-emerald-50/50 p-1 -m-1 rounded-lg transition-colors cursor-pointer">
+                                <div className="flex items-center justify-between mb-1 sm:mb-2">
+                                   <span className="md:hidden text-[8px] font-black text-gray-400 uppercase tracking-widest shrink-0">Murojaah</span>
+                                   <button className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white transition-all opacity-100 md:opacity-0 group-hover/cell:opacity-100 shadow-sm md:absolute md:-top-1 md:right-0 z-20" title="Tambah/Copy Murojaah"><Plus size={12} strokeWidth={3} /></button>
+                                </div>
+                                <div className="md:pt-1">{renderMurojaahCard(record.murojaah, student.id, activeDate)}</div>
+                              </div>
+                              <div onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleOpenModal(student, 'catatan'); }} className="flex flex-col col-span-2 md:col-span-1 w-full min-w-0 group/cell relative hover:bg-orange-50/50 p-1 -m-1 rounded-lg transition-colors cursor-pointer">
+                                <div className="flex items-center justify-between mb-1 sm:mb-2">
+                                   <span className="md:hidden text-[8px] font-black text-gray-400 uppercase tracking-widest shrink-0">Catatan</span>
+                                   <button className="p-1.5 rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-500 hover:text-white transition-all opacity-100 md:opacity-0 group-hover/cell:opacity-100 shadow-sm md:absolute md:-top-1 md:right-0 z-20" title="Tambah/Copy Catatan"><Plus size={12} strokeWidth={3} /></button>
+                                </div>
+                                <div className="md:pt-1">
+                                  {record.catatan !== '-' ? (
+                                     <div className="flex items-start justify-between gap-1.5 group w-fit max-w-full pr-6 relative">
+                                        <span className={`text-[11px] sm:text-xs md:text-[13px] leading-snug break-words whitespace-pre-wrap flex-1 ${getStatusColor(record.catatan)}`}>{record.catatan}</span>
+                                        <button onClick={(e) => handleRemoveData(e, student.id, activeDate, 'catatan')} className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full p-1 transition-colors shrink-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 cursor-pointer" title="Hapus Catatan"><X size={12} strokeWidth={3}/></button>
+                                     </div>
+                                  ) : <span className="text-[11px] sm:text-xs md:text-[13px] text-gray-400 font-bold">-</span>}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="absolute right-3 top-3 md:relative md:top-auto md:right-auto md:ml-2 lg:ml-4 flex gap-1.5 md:gap-2 z-20">
+                              <button onClick={() => setSharingStudent(student)} className="p-2 md:p-2.5 text-gray-400 bg-gray-50 hover:bg-blue-500 hover:text-white rounded-lg md:rounded-xl transition-all shadow-sm group-hover:shadow" title="Bagikan Laporan Mingguan"><Share2 size={16} strokeWidth={2.5} className="md:w-5 md:h-5"/></button>
+                              <button onClick={() => handleOpenModal(student, 'full_edit')} className="p-2 md:p-2.5 text-gray-400 bg-gray-50 hover:bg-[#00e676] hover:text-white rounded-lg md:rounded-xl transition-all shadow-sm group-hover:shadow" title="Edit semua data tanggal ini"><Edit3 size={16} strokeWidth={2.5} className="md:w-5 md:h-5"/></button>
+                              <button onClick={(e) => requestClearRecord(e, student.id, activeDate)} className="p-2 md:p-2.5 text-gray-400 bg-gray-50 hover:bg-red-500 hover:text-white rounded-lg md:rounded-xl transition-all shadow-sm group-hover:shadow" title="Kosongkan data tanggal ini"><Trash2 size={16} strokeWidth={2.5} className="md:w-5 md:h-5"/></button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {currentView === 'siswa' && (
+                <div className="max-w-6xl mx-auto p-4 sm:p-6 md:p-8 pb-32">
+                  <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-200 pb-4 md:pb-6">
+                    <div><h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-[#1a202c] tracking-tight mb-1.5 md:mb-2">Data Siswa</h1><p className="text-gray-500 font-medium text-xs sm:text-sm md:text-base">Kelola profil dan daftar siswa untuk halaqoh <strong className="text-green-600 bg-green-50 px-2 py-0.5 rounded">{activeHalaqoh || '-'}</strong>.</p></div>
+                    <button onClick={() => setIsAddStudentModalOpen(true)} disabled={!activeHalaqoh} className="flex items-center justify-center gap-1.5 md:gap-2 bg-[#00e676] hover:bg-green-500 text-white px-4 py-2 md:px-5 md:py-2.5 rounded-xl font-bold transition-colors text-xs md:text-sm shadow-md shadow-green-200 disabled:opacity-50 disabled:cursor-not-allowed"><Plus size={16} strokeWidth={3} className="md:w-5 md:h-5"/> Tambah Siswa Baru</button>
+                  </div>
+                  {!activeHalaqoh ? (<div className="text-center py-16 md:py-20 text-gray-400 font-bold bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center gap-3 px-4"><Settings size={36} className="text-gray-300 md:w-10 md:h-10"/><p className="text-sm md:text-base">Tidak ada Halaqoh yang dipilih.</p></div>) : filteredStudents.length === 0 ? (<div className="text-center py-16 md:py-20 text-gray-400 font-bold bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center gap-3 px-4"><Users size={36} className="text-gray-300 md:w-10 md:h-10"/><p className="text-sm md:text-base">Belum ada data siswa di {activeHalaqoh}.</p></div>) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
+                      {filteredStudents.map(student => (
+                        <div key={student.id} className="bg-white p-5 md:p-6 min-h-[110px] md:min-h-[130px] rounded-2xl md:rounded-3xl shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition-all group">
+                          <div className="flex items-center gap-4 md:gap-5 overflow-hidden">
+                            <div className={`w-[50px] h-[50px] md:w-[64px] md:h-[64px] rounded-full flex items-center justify-center font-black text-lg md:text-2xl overflow-hidden relative shrink-0 shadow-inner border border-gray-100 ${student.color || 'bg-blue-100 text-blue-600'}`}>{student.photo ? (<img src={student.photo} alt="" className="w-full h-full object-cover" />) : (student.initial || getInitials(student.name))}</div>
+                            <div className="min-w-0 flex flex-col justify-center">
+                              <h3 className="font-extrabold text-gray-800 text-base md:text-xl leading-tight mb-1.5 md:mb-2 line-clamp-2" title={student.name}>{student.name}</h3>
+                              <div className="flex flex-wrap gap-1.5 md:gap-2">
+                                <span className="inline-block bg-blue-50 text-blue-600 text-[9px] md:text-[10px] font-black uppercase px-2 py-1 rounded-md tracking-wider border border-blue-100 shadow-sm">{student.kelas}</span>
+                                <span className="inline-block bg-gray-50 text-gray-600 text-[9px] md:text-[10px] font-black uppercase px-2 py-1 rounded-md tracking-wider border border-gray-200 shadow-sm">{student.halaqoh}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex flex-col sm:flex-row items-center gap-2 shrink-0 pl-2">
+                            <button onClick={() => openEditStudentModal(student)} className="p-2 md:p-2.5 text-gray-400 bg-gray-50 hover:text-blue-600 hover:bg-blue-100 rounded-xl transition-all shadow-sm" title="Edit Data Siswa"><Edit3 size={18} className="md:w-5 md:h-5"/></button>
+                            <button onClick={() => requestDeleteStudent(student)} className="p-2 md:p-2.5 text-gray-400 bg-gray-50 hover:text-white hover:bg-red-500 rounded-xl transition-all shadow-sm" title="Hapus Siswa"><Trash2 size={18} className="md:w-5 md:h-5"/></button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {currentView === 'laporan' && (
+                <div className="max-w-6xl mx-auto p-4 sm:p-6 md:p-8 pb-32">
+                  <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-200 pb-4 md:pb-6">
+                    <div><h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-[#1a202c] tracking-tight mb-1.5 md:mb-2">Laporan & Statistik</h1><p className="text-gray-500 font-medium text-xs sm:text-sm md:text-base">Ringkasan performa hafalan halaqoh <strong className="text-green-600 bg-green-50 px-2 py-0.5 rounded">{activeHalaqoh || '-'}</strong> pada <strong className="text-gray-800">{formatShortDate(new Date(activeDate))}</strong>.</p></div>
+                    <div className="flex bg-gray-100 rounded-xl p-1 shrink-0 overflow-x-auto custom-scrollbar w-full sm:w-auto">
+                      {weekDates.map((dateObj) => {
+                        const dateStr = formatDateObj(dateObj); if (dateObj.getDay() === 0 || dateObj.getDay() === 6) return null; 
+                        return (<button key={dateStr} onClick={() => setActiveDate(dateStr)} className={`flex-1 sm:flex-none px-3 md:px-4 py-1.5 md:py-2 font-bold text-[10px] md:text-xs rounded-lg transition-colors ${activeDate === dateStr ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>{['Ming', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'][dateObj.getDay()]}</button>);
+                      })}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
+                     <div className="bg-white p-4 md:p-6 rounded-2xl md:rounded-3xl shadow-sm border border-gray-100 flex items-center gap-4 md:gap-5"><div className="w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl bg-blue-50 text-blue-50 flex items-center justify-center shrink-0"><Users size={24} strokeWidth={2.5} className="text-blue-500 md:w-7 md:h-7"/></div><div><p className="text-[10px] md:text-sm font-bold text-gray-400 uppercase tracking-widest mb-0.5 md:mb-1">Total Siswa</p><p className="text-2xl sm:text-3xl md:text-4xl font-black text-gray-800">{reportStats.total} <span className="text-xs md:text-sm font-bold text-gray-500">Anak</span></p></div></div>
+                     <div className="bg-white p-4 md:p-6 rounded-2xl md:rounded-3xl shadow-sm border border-gray-100 flex items-center gap-4 md:gap-5"><div className="w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0"><TrendingUp size={24} strokeWidth={2.5} className="md:w-7 md:h-7"/></div><div><p className="text-[10px] md:text-sm font-bold text-gray-400 uppercase tracking-widest mb-0.5 md:mb-1">Capaian Lancar</p><p className="text-2xl sm:text-3xl md:text-4xl font-black text-gray-800">{reportStats.lancar} <span className="text-xs md:text-sm font-bold text-gray-500">Anak</span></p></div></div>
+                     <div className="bg-white p-4 md:p-6 rounded-2xl md:rounded-3xl shadow-sm border border-gray-100 flex items-center gap-4 md:gap-5"><div className="w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl bg-orange-50 text-orange-500 flex items-center justify-center shrink-0"><AlertCircle size={24} strokeWidth={2.5} className="md:w-7 md:h-7"/></div><div><p className="text-[10px] md:text-sm font-bold text-gray-400 uppercase tracking-widest mb-0.5 md:mb-1">Perlu Diulang</p><p className="text-2xl sm:text-3xl md:text-4xl font-black text-gray-800">{reportStats.perluUlang} <span className="text-xs md:text-sm font-bold text-gray-500">Anak</span></p></div></div>
+                  </div>
+                  <div className="bg-white rounded-2xl md:rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                     <div className="px-4 md:px-6 py-4 md:py-5 border-b border-gray-100 flex items-center gap-2 md:gap-3"><BarChart3 className="text-blue-500 w-5 h-5 md:w-6 md:h-6"/><h3 className="text-lg md:text-xl font-black text-gray-800">Distribusi Level Tahsin</h3></div>
+                     <div className="p-4 md:p-6 lg:p-8 flex flex-col gap-4 md:gap-6">
+                        {Object.keys(reportStats.categories).length === 0 ? (<p className="text-gray-400 font-bold text-center py-8 md:py-10 text-sm md:text-base">Belum ada data Tahsin yang diisi pada hari ini.</p>) : (Object.keys(reportStats.categories).sort().map(cat => { const count = reportStats.categories[cat]; const percentage = Math.round((count / reportStats.total) * 100); return (<div key={cat} className="flex flex-col gap-1.5 md:gap-2"><div className="flex justify-between items-end"><span className="font-bold text-gray-700 text-xs md:text-sm">{cat}</span><span className="font-black text-gray-900 text-xs md:text-sm">{count} <span className="text-[10px] md:text-xs font-semibold text-gray-500">Siswa ({percentage}%)</span></span></div><div className="w-full h-2 md:h-3 bg-gray-100 rounded-full overflow-hidden"><div className="h-full bg-[#00e676] rounded-full transition-all duration-1000" style={{ width: `${percentage}%` }}></div></div></div>)}))}
+                     </div>
+                  </div>
+                </div>
+              )}
+
+              {currentView === 'pengaturan' && (
+                 <div className="max-w-6xl mx-auto p-4 sm:p-6 md:p-8 pb-32">
+                    <div className="mb-6 md:mb-8 border-b border-gray-200 pb-4 md:pb-6">
+                      <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-[#1a202c] tracking-tight mb-1.5 md:mb-2">Pengaturan Master Data</h1>
+                      <p className="text-gray-500 font-medium text-xs sm:text-sm md:text-base">Kelola daftar Kelas Reguler, Guru Pengampu, Logo Sekolah, dan Halaqoh yang diampunya.</p>
+                    </div>
+                    <div className="flex flex-col gap-6 md:gap-8">
+                       <div className="bg-white rounded-2xl md:rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                          <div className="px-4 md:px-6 py-4 md:py-5 border-b border-gray-100 bg-orange-50/30 flex items-center gap-2 md:gap-3">
+                             <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center"><ImageIcon size={18} strokeWidth={2.5} className="md:w-5 md:h-5"/></div>
+                             <div><h3 className="font-black text-gray-800 text-base md:text-lg leading-tight">Logo Sekolah / Institusi</h3><p className="text-[10px] md:text-xs text-gray-500 font-medium mt-0.5">Logo ini akan dipasang di pojok kanan atas laporan cetak PDF.</p></div>
+                          </div>
+                          <div className="p-4 md:p-6 lg:p-8 flex flex-col md:flex-row items-start md:items-center gap-6 lg:gap-8">
+                             <div className="w-full sm:w-[320px] h-28 border-2 border-dashed border-gray-300 rounded-2xl flex items-center justify-center bg-gray-50 overflow-hidden relative group shrink-0">
+                                {institutionLogo && institutionLogo !== 'logo.png' ? ( <img src={institutionLogo} alt="Logo Preview" className="h-full w-full object-contain p-2" /> ) : ( <div className="text-gray-400 text-xs font-bold flex flex-col items-center gap-2"><ImageIcon size={28} /> <span>Gunakan logo bawaan</span></div> )}
+                                <label className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"><Camera size={24} className="mb-1" /><span className="text-xs font-bold">Unggah Logo</span><input type="file" accept="image/*" className="hidden" onChange={handleInstitutionLogoUpload} /></label>
+                             </div>
+                             <div className="flex-1 text-xs md:text-sm text-gray-500 leading-relaxed bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                                <p className="mb-2 text-blue-900"><strong>Tips Anti Terpotong:</strong></p><p className="mb-3">Jika gambar logo tidak muncul saat Anda mencetak, unggah gambar tersebut melalui fitur ini. Logo yang diunggah akan diubah menjadi format khusus yang dijamin kebal dari pemblokiran browser saat diekspor.</p>
+                                {institutionLogo !== 'logo.png' && ( <button onClick={() => { setInstitutionLogo('logo.png'); updateMasterDataCloud({ institutionLogo: 'logo.png' }); showToast('Logo dikembalikan ke default.'); }} className="text-red-500 font-bold hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors border border-red-100 bg-white">Hapus & Kembalikan ke Default</button> )}
+                             </div>
+                          </div>
+                       </div>
+
+                       <div className="bg-white rounded-2xl md:rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                          <div className="px-4 md:px-6 py-4 md:py-5 border-b border-gray-100 bg-blue-50/30 flex items-center gap-2 md:gap-3">
+                             <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center"><GraduationCap size={18} strokeWidth={2.5} className="md:w-5 md:h-5"/></div>
+                             <div><h3 className="font-black text-gray-800 text-base md:text-lg leading-tight">Master Kelas Reguler</h3><p className="text-[10px] md:text-xs text-gray-500 font-medium mt-0.5">Tingkatan kelas resmi di sekolah.</p></div>
+                          </div>
+                          <div className="p-4 md:p-6 lg:p-8 flex flex-col lg:flex-row gap-6 lg:gap-8">
+                             <div className="w-full lg:w-1/3">
+                                <label className="block text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 md:mb-2">Tambah Kelas Baru</label>
+                                <div className="flex gap-2"><input type="text" placeholder="Contoh: Kelas 1A" value={newKelasName} onChange={e => setNewKelasName(e.target.value)} className="flex-1 border border-gray-300 rounded-lg md:rounded-xl px-3 md:px-4 py-2 md:py-2.5 outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 text-xs md:text-sm font-semibold" /><button onClick={handleAddKelas} className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 md:px-5 py-2 md:py-2.5 rounded-lg md:rounded-xl shadow-sm transition-colors shrink-0 text-xs md:text-sm">Tambah</button></div>
+                             </div>
+                             <div className="hidden lg:block w-px bg-gray-100"></div>
+                             <div className="w-full lg:flex-1">
+                                <label className="block text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 md:mb-3">Daftar Kelas Saat Ini</label>
+                                {kelasList.length === 0 ? (<p className="text-xs md:text-sm text-gray-400 italic">Belum ada kelas.</p>) : (
+                                   <div className="flex flex-wrap gap-1.5 md:gap-2">
+                                      {kelasList.map(kelas => ( <div key={kelas} className="bg-white border border-blue-200 text-blue-700 px-2.5 md:px-3 py-1 md:py-1.5 rounded-lg md:rounded-xl text-[11px] md:text-sm font-bold flex items-center gap-1.5 md:gap-2 shadow-sm hover:shadow-md transition-shadow"><span className="truncate max-w-[120px] md:max-w-[150px]" title={kelas}>{kelas}</span><button onClick={() => handleDeleteKelas(kelas)} className="text-blue-300 hover:text-red-500 hover:bg-red-50 rounded p-0.5 transition-colors shrink-0" title={`Hapus ${kelas}`}><X size={12} strokeWidth={3} className="md:w-3.5 md:h-3.5"/></button></div> ))}
+                                   </div>
+                                )}
+                             </div>
+                          </div>
+                       </div>
+
+                       <div className="bg-white rounded-2xl md:rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                          <div className="px-4 md:px-6 py-4 md:py-5 border-b border-gray-100 bg-green-50/30 flex items-center gap-2 md:gap-3">
+                             <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-green-100 text-green-600 flex items-center justify-center"><Users size={18} strokeWidth={2.5} className="md:w-5 md:h-5"/></div>
+                             <div><h3 className="font-black text-gray-800 text-base md:text-lg leading-tight">Master Guru & Halaqoh</h3><p className="text-[10px] md:text-xs text-gray-500 font-medium mt-0.5">Pemetaan pengajar dan kelompok tahfidz/tahsin.</p></div>
+                          </div>
+                          <div className="p-4 md:p-6 lg:p-8">
+                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 mb-6 lg:mb-8 border-b border-gray-100 pb-6 lg:pb-8">
+                                <div>
+                                   <label className="block text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 md:mb-2">Tambah Guru Baru</label>
+                                   <div className="flex gap-2"><input type="text" placeholder="Contoh: Ust. Sulaiman" value={newGuruName} onChange={e => setNewGuruName(e.target.value)} className="flex-1 border border-gray-300 rounded-lg md:rounded-xl px-3 md:px-4 py-2 md:py-2.5 outline-none focus:ring-2 focus:ring-green-500 bg-gray-50 text-xs md:text-sm font-semibold" /><button onClick={handleAddGuru} className="bg-gray-800 hover:bg-gray-900 text-white font-bold px-4 md:px-5 py-2 md:py-2.5 rounded-lg md:rounded-xl shadow-sm transition-colors shrink-0 text-xs md:text-sm">Simpan</button></div>
+                                </div>
+                                <div>
+                                   <label className="block text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 md:mb-2">Tambah Halaqoh Untuk Guru</label>
+                                   <div className="flex flex-col sm:flex-row gap-2">
+                                      <select value={selectedGuruForHalaqoh} onChange={e => setSelectedGuruForHalaqoh(e.target.value)} className="sm:w-[40%] border border-gray-300 rounded-lg md:rounded-xl px-3 md:px-4 py-2 md:py-2.5 outline-none focus:ring-2 focus:ring-green-500 bg-gray-50 font-bold text-gray-700 text-xs md:text-sm cursor-pointer">{guruList.map(g => <option key={g} value={g}>{g}</option>)}</select>
+                                      <div className="flex gap-2 sm:w-[60%]"><input type="text" placeholder="Halaqoh F1..." value={newHalaqohName} onChange={e => setNewHalaqohName(e.target.value)} className="flex-1 border border-gray-300 rounded-lg md:rounded-xl px-3 md:px-4 py-2 md:py-2.5 outline-none focus:ring-2 focus:ring-green-500 bg-gray-50 text-xs md:text-sm font-semibold" /><button onClick={handleAddHalaqoh} disabled={!selectedGuruForHalaqoh} className="bg-[#00e676] hover:bg-green-500 text-white font-bold px-3 md:px-4 py-2 md:py-2.5 rounded-lg md:rounded-xl shadow-sm transition-colors shrink-0 disabled:bg-gray-300 text-xs md:text-sm">Tambah</button></div>
+                                   </div>
+                                </div>
+                             </div>
+                             <div>
+                                <label className="block text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 md:mb-4">Pemetaan Saat Ini</label>
+                                {guruList.length === 0 ? (<div className="text-center bg-gray-50 rounded-xl md:rounded-2xl py-8 md:py-10 border border-gray-200"><p className="text-xs md:text-sm text-gray-400 font-bold">Belum ada data guru. Silakan tambahkan di atas.</p></div>) : (
+                                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-5">
+                                      {guruList.map(guru => (
+                                         <div key={guru} className="bg-gray-50 border border-gray-200 rounded-xl md:rounded-2xl p-4 md:p-5 hover:shadow-md transition-shadow group">
+                                            <div className="flex items-center justify-between mb-3 md:mb-4 border-b border-gray-200 pb-2 md:pb-3">
+                                               {editingGuru?.oldName === guru ? (
+                                                  <div className="flex items-center gap-1.5 flex-1 pr-2">
+                                                     <input type="text" autoFocus value={editingGuru.newName} onChange={e => setEditingGuru({...editingGuru, newName: e.target.value})} className="flex-1 border border-green-300 rounded px-2 py-1 text-xs md:text-sm outline-none focus:ring-2 focus:ring-green-400 font-bold text-gray-800 bg-white" placeholder="Nama Guru..." />
+                                                     <button onClick={handleSaveEditGuru} className="bg-green-500 text-white p-1 md:p-1.5 rounded hover:bg-green-600 shadow-sm" title="Simpan Perubahan"><Save size={14}/></button>
+                                                     <button onClick={() => setEditingGuru(null)} className="bg-gray-200 text-gray-600 p-1 md:p-1.5 rounded hover:bg-gray-300 shadow-sm" title="Batal"><X size={14}/></button>
+                                                  </div>
+                                               ) : (
+                                                  <>
+                                                     <h4 className="font-black text-gray-800 text-sm md:text-[15px] flex items-center gap-2 truncate pr-2" title={guru}><div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center shrink-0"><User size={12} className="md:w-3.5 md:h-3.5"/></div>{guru}</h4>
+                                                     <div className="flex gap-1.5">
+                                                        <button onClick={() => setEditingGuru({oldName: guru, newName: guru})} className="text-gray-400 hover:text-blue-500 bg-white border border-gray-200 hover:border-blue-200 p-1 md:p-1.5 rounded-md md:rounded-lg transition-colors shrink-0 shadow-sm" title={`Edit ${guru}`}><Edit3 size={12} className="md:w-3.5 md:h-3.5"/></button>
+                                                        <button onClick={() => requestDeleteGuru(guru)} className="text-gray-400 hover:text-red-500 bg-white border border-gray-200 hover:border-red-200 p-1 md:p-1.5 rounded-md md:rounded-lg transition-colors shrink-0 shadow-sm" title={`Hapus ${guru}`}><Trash2 size={12} className="md:w-3.5 md:h-3.5"/></button>
+                                                     </div>
+                                                  </>
+                                               )}
+                                            </div>
+                                            <div className="flex flex-wrap gap-1.5 md:gap-2">
+                                               {guruHalaqohData[guru].length === 0 && <span className="text-gray-400 text-[10px] md:text-[11px] italic font-medium bg-gray-100 px-2 md:px-3 py-1 rounded-md">Belum ada halaqoh.</span>}
+                                               {guruHalaqohData[guru].map(halaqoh => {
+                                                  if (editingHalaqoh?.guruName === guru && editingHalaqoh?.oldName === halaqoh) {
+                                                     return (
+                                                        <div key={halaqoh} className="bg-green-100 border border-green-300 p-1 rounded-lg flex items-center gap-1 shadow-inner">
+                                                           <input type="text" autoFocus value={editingHalaqoh.newName} onChange={e => setEditingHalaqoh({...editingHalaqoh, newName: e.target.value})} className="w-20 md:w-24 border border-green-200 rounded px-1.5 py-0.5 text-[10px] md:text-xs font-bold outline-none text-green-900 bg-white" placeholder="Nama halaqoh..." />
+                                                           <button onClick={handleSaveEditHalaqoh} className="text-green-600 hover:text-green-800 bg-white p-0.5 rounded" title="Simpan"><Save size={12}/></button>
+                                                           <button onClick={() => setEditingHalaqoh(null)} className="text-gray-400 hover:text-gray-600 bg-white p-0.5 rounded" title="Batal"><X size={12}/></button>
+                                                        </div>
+                                                     );
+                                                  }
+                                                  return (
+                                                     <div key={halaqoh} className="bg-white border border-green-200 text-green-700 pl-2 pr-1 md:pl-3 md:pr-1.5 py-1 md:py-1.5 rounded-lg md:rounded-xl text-[10px] md:text-xs font-bold flex items-center gap-1 shadow-sm">
+                                                        <span className="truncate max-w-[100px] md:max-w-[120px]" title={halaqoh}>{halaqoh}</span>
+                                                        <button onClick={() => setEditingHalaqoh({guruName: guru, oldName: halaqoh, newName: halaqoh})} className="text-green-400 hover:text-blue-500 rounded p-0.5 transition-colors shrink-0" title={`Edit ${halaqoh}`}><Edit3 size={10} strokeWidth={3} className="md:w-3 md:h-3"/></button>
+                                                        <button onClick={() => requestDeleteHalaqoh(guru, halaqoh)} className="text-green-400 hover:text-red-500 rounded p-0.5 transition-colors shrink-0" title={`Hapus ${halaqoh}`}><X size={10} strokeWidth={3} className="md:w-3 md:h-3"/></button>
+                                                     </div>
+                                                  );
+                                               })}
+                                            </div>
+                                         </div>
+                                      ))}
+                                   </div>
+                                )}
+                             </div>
+                          </div>
+                       </div>
+                    </div>
+                 </div>
+              )}
+            </main>
+
+            <footer className="border-t border-gray-200 py-4 md:py-6 bg-white text-gray-500 text-[10px] md:text-xs font-bold w-full relative z-20">
+              <div className="max-w-6xl mx-auto px-4 md:px-6 flex flex-col md:flex-row justify-between items-center gap-3 md:gap-4 text-center md:text-left">
+                <div className="flex items-center justify-center md:justify-start gap-1.5 md:gap-2 w-full md:w-auto"><div className="w-4 h-4 md:w-5 md:h-5 bg-gray-400 text-white rounded flex items-center justify-center text-[8px] md:text-[10px]">&copy;</div> 2026 Juman Jayyidin. All rights reserved.</div>
+                <div className="flex flex-wrap justify-center md:justify-end gap-4 md:gap-6 w-full md:w-auto"><a href="#" className="hover:text-gray-800 transition-colors">Panduan Guru</a><a href="#" className="hover:text-gray-800 transition-colors">Bantuan</a><a href="#" className="hover:text-gray-800 transition-colors">Kebijakan Privasi</a></div>
+              </div>
+            </footer>
+          </div>
+
+          <div className="hidden print-only w-full bg-white absolute top-0 left-0 m-0 p-0" style={{ zIndex: 999999 }}>
+            {studentChunks.map((chunk, index) => (
+               <React.Fragment key={`native-print-chunk-${index}`}>
+                 <div className="page-break w-full bg-white flex flex-col justify-between" style={{ minHeight: '100vh' }}>{renderExportTable(chunk, index * 2, studentChunks.length * 2, false, daysPart1)}</div>
+                 <div className="page-break w-full bg-white flex flex-col justify-between" style={{ minHeight: '100vh' }}>{renderExportTable(chunk, index * 2 + 1, studentChunks.length * 2, false, daysPart2)}</div>
+               </React.Fragment>
+            ))}
+          </div>
+
+          <div className="print-hidden" style={{ position: 'absolute', top: 0, left: '-20000px', width: '1250px', zIndex: -9999, pointerEvents: 'none' }}>
+            <div id="export-pdf-wrapper" className="flex flex-col gap-12" style={{ width: '1250px', backgroundColor: '#FFFFFF', padding: '40px' }}>
+              {studentChunks.map((chunk, index) => (
+                 <React.Fragment key={`export-chunk-${index}`}>
+                   <div id={`export-page-${index * 2}`}>{renderExportTable(chunk, index * 2, studentChunks.length * 2, false, daysPart1)}</div>
+                   <div id={`export-page-${index * 2 + 1}`}>{renderExportTable(chunk, index * 2 + 1, studentChunks.length * 2, false, daysPart2)}</div>
+                 </React.Fragment>
+              ))}
+            </div>
+          </div>
+
+          {sharingStudent && (
+            <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex justify-center items-center z-[200] p-2 md:p-4 print-hidden">
+              <div className="bg-gray-100 rounded-2xl md:rounded-3xl shadow-2xl w-full max-w-[650px] max-h-[95vh] overflow-hidden flex flex-col relative">
+                <div className="bg-white p-4 border-b border-gray-200 flex justify-between items-center z-20 shadow-sm shrink-0">
+                  <div>
+                    <h2 className="text-lg md:text-xl font-black text-gray-800 flex items-center gap-2"><Share2 size={20} className="text-[#00e676]" /> Bagikan Progres</h2>
+                    <p className="text-xs text-gray-500 font-medium mt-0.5">Pratinjau gambar laporan mingguan ananda {sharingStudent.name}.</p>
+                  </div>
+                  <button onClick={() => setSharingStudent(null)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors bg-gray-50"><X size={18} /></button>
+                </div>
+                
+                <div className="overflow-y-auto flex-1 p-4 md:p-6 custom-scrollbar flex justify-center bg-gray-300/30">
+                   <div id="student-share-card" className="shrink-0 bg-white border border-gray-200 shadow-sm relative flex flex-col" style={{ width: '540px', minHeight: '960px', height: 'max-content', fontFamily: 'system-ui, sans-serif', boxSizing: 'border-box' }}>
+                     
+                     <div className="flex items-center gap-3 bg-green-50 p-5 border-b border-green-100 relative z-10 shrink-0">
+                       <div className="flex items-center justify-center shrink-0">
+                          {institutionLogo && institutionLogo !== 'logo.png' ? (
+                             <img src={institutionLogo} alt="Logo" className="h-12 object-contain drop-shadow-sm" />
+                          ) : (
+                             <div className="w-12 h-12 bg-white rounded-xl border border-green-200 flex items-center justify-center text-green-600 shadow-sm">
+                                <BookOpen size={24} strokeWidth={2.5} />
+                             </div>
+                          )}
+                       </div>
+                       <div className="flex-1 min-w-0 pr-2">
+                         <h1 className="text-[22px] font-black text-gray-900 leading-tight tracking-tight mb-0.5 whitespace-nowrap truncate">Lesson Plan Al-Qur'an</h1>
+                         <p className="text-green-600 font-bold text-sm italic whitespace-nowrap truncate">SDIT Al-Fityan School Bogor</p>
+                       </div>
+                     </div>
+
+                     <div className="flex items-center gap-4 px-5 pt-5 pb-3 relative z-10 shrink-0">
+                       <div className="relative">
+                         <div className={`w-16 h-16 rounded-full border-4 border-white shadow-md flex items-center justify-center font-black text-2xl overflow-hidden ${sharingStudent.color || 'bg-blue-100 text-blue-600'}`}>
+                            {sharingStudent.photo ? <img src={sharingStudent.photo} alt="" className="w-full h-full object-cover" /> : sharingStudent.initial}
+                         </div>
+                         <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 shadow-sm"><CheckCircle2 size={16} className="text-[#00e676] fill-white" /></div>
+                       </div>
+                       <div>
+                         <h2 className="text-2xl font-extrabold text-gray-800 leading-none mb-2 tracking-tight">{sharingStudent.name}</h2>
+                         <div className="flex gap-2">
+                           <span className="bg-green-100 text-green-700 px-3 py-1 rounded-lg text-[10px] font-black shadow-sm uppercase tracking-wider">{sharingStudent.kelas}</span>
+                           <span className="bg-green-100 text-green-700 px-3 py-1 rounded-lg text-[10px] font-black shadow-sm uppercase tracking-wider">{sharingStudent.halaqoh}</span>
+                         </div>
+                       </div>
+                     </div>
+
+                     <div className="flex flex-col gap-3 relative z-10 px-5 flex-1 justify-center pb-6">
+                       {weekDates.map((dateObj, i) => {
+                         if (dateObj.getDay() === 0 || dateObj.getDay() === 6) return null;
+                         const dStr = formatDateObj(dateObj);
+                         const rec = sharingStudent.records[dStr] || { tahsin: '-', halAyatTahsin: '-', tahfidz: '-', ayatTahfidz: '-', murojaah: '-', catatan: '-' };
+                         const dayName = getDayName(dateObj);
+                         
+                         return (
+                           <div key={i} className="bg-white rounded-[20px] p-3.5 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)] border border-gray-100 relative">
+                             <div className="flex justify-between items-center mb-3">
+                               <span className="bg-[#00e676] text-white px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase shadow-sm">{dayName}</span>
+                               <span className="text-[10px] font-bold text-gray-400 italic">{dateObj.getDate()} {['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'][dateObj.getMonth()]} {dateObj.getFullYear()}</span>
+                             </div>
+                             
+                             <div className="grid grid-cols-2 gap-y-2 gap-x-4">
+                               <div>
+                                 <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-0.5 flex items-center gap-1"><BookOpen size={9} className="text-blue-500"/> Tahsin</p>
+                                 <p className="text-[12px] font-bold text-gray-800 leading-snug line-clamp-2">{combineSuratAyatUI(rec.tahsin, rec.halAyatTahsin) || '-'}</p>
+                               </div>
+                               <div>
+                                 <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-0.5 flex items-center gap-1"><Mic size={9} className="text-purple-500"/> Tahfidz</p>
+                                 <p className="text-[12px] font-bold text-gray-800 leading-snug line-clamp-2">{combineSuratAyatUI(rec.tahfidz, rec.ayatTahfidz) || '-'}</p>
+                               </div>
+                               
+                               <div className="col-span-2 pt-1.5 border-t border-gray-50">
+                                  <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-0.5 flex items-center gap-1"><Repeat size={9} className="text-emerald-500"/> Murojaah</p>
+                                  <p className="text-[12px] font-bold text-gray-700 leading-snug line-clamp-2">{rec.murojaah && rec.murojaah !== '-' ? rec.murojaah : '-'}</p>
+                               </div>
+                               <div className="col-span-2 pt-1.5 border-t border-gray-50">
+                                  <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-0.5 flex items-center gap-1"><FileText size={9} className="text-orange-500"/> Catatan Guru</p>
+                                  <p className={`text-[12px] font-bold leading-snug line-clamp-2 ${getStatusColor(rec.catatan)}`}>{rec.catatan && rec.catatan !== '-' ? rec.catatan : '-'}</p>
+                               </div>
+                             </div>
+                           </div>
+                         );
+                       })}
+                     </div>
+
+                     <div className="bg-[#111827] text-white p-4 flex justify-center items-center shrink-0 mt-auto">
+                        <div className="flex items-center justify-center gap-3 text-[11px] font-medium text-gray-300 whitespace-nowrap">
+                           <span className="flex items-center gap-1.5"><User size={14} className="text-gray-400"/> Pengajar: <b className="text-white">{activeGuru}</b></span>
+                           <span className="text-gray-600">|</span>
+                           <span className="flex items-center gap-1.5"><Calendar size={14} className="text-[#00e676]"/> Periode: <b className="text-white">{getWeekRangeLabel()}</b></span>
+                        </div>
+                     </div>
+                   </div>
+                </div>
+
+                <div className="bg-white border-t border-gray-200 p-4 flex flex-wrap justify-end gap-3 z-30 shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                   <button onClick={() => setSharingStudent(null)} className="px-5 py-3 rounded-xl font-bold text-gray-500 hover:bg-gray-100 transition-colors text-sm w-full sm:w-auto">Batal</button>
+                   <button onClick={() => handleShareStudentImage('download')} disabled={isGeneratingStudentImage} className="flex-1 sm:flex-none justify-center flex items-center gap-2 px-5 py-3 bg-[#111827] hover:bg-gray-800 text-white rounded-xl font-black transition-colors shadow-lg text-sm">
+                      {isGeneratingStudentImage ? <Loader2 size={18} className="animate-spin"/> : <Download size={18}/>} Simpan Gambar
+                   </button>
+                   <button onClick={() => handleShareStudentImage('share')} disabled={isGeneratingStudentImage} className="flex-1 sm:flex-none justify-center flex items-center gap-2 px-6 py-3 bg-[#00e676] hover:bg-green-500 text-white rounded-xl font-black transition-colors shadow-lg shadow-green-200 text-sm">
+                      {isGeneratingStudentImage ? <Loader2 size={18} className="animate-spin"/> : <Share2 size={18}/>} Bagikan Langsung
+                   </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {isPreviewModalOpen && (
+            <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex justify-center items-center z-[100] p-2 md:p-4 print-hidden">
+              <div className="bg-gray-100 rounded-2xl md:rounded-3xl shadow-2xl w-full max-w-7xl h-[95vh] md:h-[90vh] overflow-hidden flex flex-col relative">
+                <div className="bg-white p-4 md:p-5 border-b border-gray-200 flex justify-between items-center z-20 shadow-sm shrink-0">
+                  <div><h2 className="text-lg md:text-xl font-black text-gray-800 flex items-center gap-1.5 md:gap-2"><Printer size={20} className="text-blue-600 md:w-6 md:h-6" /> Preview Cetak Laporan</h2><p className="text-xs md:text-sm text-gray-500 font-medium mt-0.5 md:mt-1">Pilih metode unduh di bawah. <b className="text-blue-600">Gulir ke bawah</b> untuk melihat halaman selanjutnya.</p></div>
+                  <button onClick={() => setIsPreviewModalOpen(false)} className="p-1.5 md:p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors bg-gray-50"><X size={18} className="md:w-5 md:h-5"/></button>
+                </div>
+                <div id="print-preview-content" className="p-4 md:p-6 overflow-y-auto flex-1 flex flex-col gap-6 md:gap-8 custom-scrollbar bg-gray-200/50 items-center">
+                   {studentChunks.length === 0 ? (<p className="text-xs md:text-sm text-gray-500 font-bold text-center mt-10 w-full">Tidak ada data untuk dicetak pada halaqoh ini.</p>) : (
+                     studentChunks.map((chunk, index) => (
+                      <React.Fragment key={`preview-chunk-${index}`}>
+                        <div className="w-full overflow-x-auto bg-white rounded-xl shadow-md border border-gray-200 custom-scrollbar flex flex-col shrink-0">{renderExportTable(chunk, index * 2, studentChunks.length * 2, true, daysPart1)}</div>
+                        <div className="w-full overflow-x-auto bg-white rounded-xl shadow-md border border-gray-200 custom-scrollbar flex flex-col shrink-0">{renderExportTable(chunk, index * 2 + 1, studentChunks.length * 2, true, daysPart2)}</div>
+                      </React.Fragment>
+                     ))
+                   )}
+                </div>
+                <div className="bg-white border-t border-gray-200 p-4 md:p-5 flex flex-col md:flex-row justify-between items-center gap-4 z-30 shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                  <button onClick={() => setIsPreviewModalOpen(false)} className="px-4 md:px-6 py-2 md:py-2.5 rounded-lg md:rounded-xl font-bold text-gray-500 hover:bg-gray-100 hover:text-gray-800 transition-colors text-xs md:text-sm w-full md:w-auto">Kembali</button>
+                  {studentChunks.length > 0 && (
+                    <div className="flex flex-col sm:flex-row gap-2 md:gap-3 w-full md:w-auto">
+                      <button onClick={handlePrint} className="flex-1 sm:flex-none justify-center flex items-center gap-1.5 md:gap-2 px-4 md:px-6 py-2 md:py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg md:rounded-xl font-black transition-colors shadow-md text-xs md:text-sm"><Printer size={16} className="md:w-[18px] md:h-[18px]"/> CETAK</button>
+                      <button onClick={handleExportPDF} disabled={isExportingImage || isExportingPDF} className="flex-1 sm:flex-none justify-center flex items-center gap-1.5 md:gap-2 px-4 md:px-6 py-2 md:py-2.5 bg-[#00e676] hover:bg-green-500 text-white rounded-lg md:rounded-xl font-black transition-colors shadow-lg shadow-green-200 text-xs md:text-sm">{isExportingPDF ? <Loader2 size={16} className="animate-spin md:w-[18px] md:h-[18px]"/> : <FileDown size={16} className="md:w-[18px] md:h-[18px]"/>} UNDUH PDF</button>
+                      <button onClick={handleExportImage} disabled={isExportingImage || isExportingPDF} className="flex-1 sm:flex-none justify-center flex items-center gap-1.5 md:gap-2 px-4 md:px-6 py-2 md:py-2.5 bg-white border-2 border-blue-600 text-blue-600 hover:bg-blue-50 rounded-lg md:rounded-xl font-black transition-colors text-xs md:text-sm">{isExportingImage ? <Loader2 size={16} className="animate-spin md:w-[18px] md:h-[18px]"/> : <ImageIcon size={16} className="md:w-[18px] md:h-[18px]"/>} UNDUH GAMBAR</button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {isAddStudentModalOpen && (
+            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-end sm:items-center z-[100] sm:p-4 print-hidden">
+              <div className="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col relative z-[105]">
+                <div className="p-4 md:p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                  <h2 className="text-lg md:text-xl font-black text-gray-800 flex items-center gap-2"><User size={20} className="text-[#00e676]" /> Tambah Siswa Baru</h2>
+                  <button onClick={() => setIsAddStudentModalOpen(false)} className="p-1.5 md:p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors bg-white shadow-sm border border-gray-200"><X size={18}/></button>
+                </div>
+                <form onSubmit={handleSaveNewStudent} className="p-4 md:p-6 flex flex-col gap-4">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden relative group cursor-pointer hover:border-[#00e676] transition-colors">
+                      {newStudent.photo ? <img src={newStudent.photo} alt="Preview" className="w-full h-full object-cover" /> : <Camera size={28} className="text-gray-400 group-hover:text-[#00e676]" />}
+                      <label className="absolute inset-0 bg-black/60 hidden group-hover:flex items-center justify-center text-white text-[10px] md:text-xs font-bold cursor-pointer">Pilih Foto</label>
+                      <input type="file" accept="image/*" onChange={(e) => handlePhotoUpload(e, false)} className="hidden" />
+                    </div>
+                    <span className="text-[10px] md:text-xs text-gray-500 font-bold bg-gray-100 px-3 py-1 rounded-full">Foto Siswa (Opsional)</span>
+                  </div>
+                  <div>
+                    <label className="block text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Nama Lengkap</label>
+                    <input type="text" required value={newStudent.name} onChange={e => setNewStudent({...newStudent, name: e.target.value})} className="w-full border border-gray-300 rounded-xl px-4 py-2.5 md:py-3 outline-none focus:ring-2 focus:ring-[#00e676] bg-white text-sm font-semibold shadow-inner" placeholder="Contoh: Ahmad Fauzi..." />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 md:gap-4">
+                    <div>
+                      <label className="block text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Kelas</label>
+                      <select value={newStudent.kelas} onChange={e => setNewStudent({...newStudent, kelas: e.target.value})} className="w-full border border-gray-300 rounded-xl px-3 py-2.5 md:py-3 outline-none focus:ring-2 focus:ring-[#00e676] bg-white text-xs md:text-sm font-bold cursor-pointer">
+                        {kelasList.map(k => <option key={k} value={k}>{k}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Halaqoh</label>
+                      <input type="text" disabled value={newStudent.halaqoh} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 md:py-3 bg-gray-50 text-xs md:text-sm font-bold text-gray-500 cursor-not-allowed" />
+                    </div>
+                  </div>
+                  <button type="submit" className="mt-4 w-full bg-[#00e676] hover:bg-green-500 text-white font-black py-3 md:py-3.5 rounded-xl shadow-lg shadow-green-200 transition-transform active:scale-95 flex items-center justify-center gap-2 text-sm"><Save size={18} /> Simpan Siswa</button>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {isEditStudentModalOpen && (
+            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-end sm:items-center z-[100] sm:p-4 print-hidden">
+              <div className="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col relative z-[105]">
+                <div className="p-4 md:p-5 border-b border-gray-100 flex justify-between items-center bg-blue-50/50">
+                  <h2 className="text-lg md:text-xl font-black text-gray-800 flex items-center gap-2"><Edit3 size={20} className="text-blue-600" /> Edit Data Siswa</h2>
+                  <button onClick={() => setIsEditStudentModalOpen(false)} className="p-1.5 md:p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors bg-white shadow-sm border border-gray-200"><X size={18}/></button>
+                </div>
+                <form onSubmit={handleUpdateStudent} className="p-4 md:p-6 flex flex-col gap-4">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden relative group cursor-pointer hover:border-blue-500 transition-colors">
+                      {editStudentData.photo ? <img src={editStudentData.photo} alt="Preview" className="w-full h-full object-cover" /> : <Camera size={28} className="text-gray-400 group-hover:text-blue-500" />}
+                      <label className="absolute inset-0 bg-black/60 hidden group-hover:flex items-center justify-center text-white text-[10px] md:text-xs font-bold cursor-pointer">Ubah Foto</label>
+                      <input type="file" accept="image/*" onChange={(e) => handlePhotoUpload(e, true)} className="hidden" />
+                    </div>
+                    <span className="text-[10px] md:text-xs text-gray-500 font-bold bg-gray-100 px-3 py-1 rounded-full">Foto Siswa (Opsional)</span>
+                  </div>
+                  <div>
+                    <label className="block text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Nama Lengkap</label>
+                    <input type="text" required value={editStudentData.name} onChange={e => setEditStudentData({...editStudentData, name: e.target.value})} className="w-full border border-gray-300 rounded-xl px-4 py-2.5 md:py-3 outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm font-semibold shadow-inner" placeholder="Contoh: Ahmad Fauzi..." />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 md:gap-4">
+                    <div>
+                      <label className="block text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Kelas</label>
+                      <select value={editStudentData.kelas} onChange={e => setEditStudentData({...editStudentData, kelas: e.target.value})} className="w-full border border-gray-300 rounded-xl px-3 py-2.5 md:py-3 outline-none focus:ring-2 focus:ring-blue-500 bg-white text-xs md:text-sm font-bold cursor-pointer">
+                        {kelasList.map(k => <option key={k} value={k}>{k}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Halaqoh</label>
+                      <input type="text" disabled value={editStudentData.halaqoh} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 md:py-3 bg-gray-50 text-xs md:text-sm font-bold text-gray-500 cursor-not-allowed" />
+                    </div>
+                  </div>
+                  <button type="submit" className="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-3 md:py-3.5 rounded-xl shadow-lg shadow-blue-200 transition-transform active:scale-95 flex items-center justify-center gap-2 text-sm"><Save size={18} /> Perbarui Data</button>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {confirmDialog.isOpen && (
+            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-[500] p-4 print-hidden">
+              <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col items-center p-6 md:p-8 text-center animate-in zoom-in duration-200">
+                <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-4 border-4 border-red-100">
+                  <AlertCircle size={32} strokeWidth={2.5} />
+                </div>
+                <h3 className="text-xl font-black text-gray-800 mb-2">{confirmDialog.title}</h3>
+                <p className="text-sm text-gray-500 font-medium mb-6">{confirmDialog.message}</p>
+                <div className="flex gap-3 w-full">
+                  <button onClick={() => setConfirmDialog({ isOpen: false, title: '', message: '', onConfirm: null })} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 font-black py-3 rounded-xl transition-colors text-sm">Batal</button>
+                  <button onClick={() => { if(confirmDialog.onConfirm) confirmDialog.onConfirm(); setConfirmDialog({ isOpen: false, title: '', message: '', onConfirm: null }); }} className="flex-1 bg-red-500 hover:bg-red-600 text-white font-black py-3 rounded-xl transition-colors text-sm">Ya, Lanjutkan</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+        </div>
+      );
+    }
+
+    function App() {
+      const [isLoggedIn, setIsLoggedIn] = useState(() => localStorage.getItem('isLoggedIn') === 'true');
+
+      const handleLoginSuccess = () => {
+        localStorage.setItem('isLoggedIn', 'true');
+        setIsLoggedIn(true);
+      };
+
+      if (!isLoggedIn) {
+        return <LoginScreen onLogin={handleLoginSuccess} />;
+      }
+
+      return <MainApp />;
+    }
+
+    // Melakukan render aplikasi ke div ber-ID "root"
+    const rootElement = document.getElementById('root');
+    const root = createRoot(rootElement);
+    root.render(<App />);
+  </script>
+</body>
+</html>
