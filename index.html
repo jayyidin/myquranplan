@@ -128,6 +128,52 @@
       "بِئْسَ الِاسْمُ"
     ];
 
+    // Data List Materi Tajwid
+    const tajwidList = [
+      "Hukum Nun Sukun atau Tanwin",
+      "Idzhar Halqi",
+      "Idghom Bighunnah",
+      "Idghom Bilaghunnah",
+      "Iqlab",
+      "Ikhfa' Haqiqi",
+      "Hukum Nun dan Mim Bertasydid (Ghunnah)",
+      "Hukum Mim Sukun",
+      "Idzhar Syafawi",
+      "Idghom Mitsli",
+      "Ikhfa' Syafawi",
+      "Idghom Mutamatsilain",
+      "Idghom Mutajanisain",
+      "Idghom Mutaqooribain",
+      "Hukum Lafadz Allah Tafkhim",
+      "Hukum Lafadz Allah Tarqiq",
+      "Qolqolah Sughro",
+      "Qolqolah Kubro",
+      "Idzhar Wajib",
+      "Hukum Ro Tafkhim",
+      "Hukum Ro Tarqiq",
+      "Hukum Lam Ta'rif",
+      "Idzhar Qomariyah",
+      "Idghom Syamsiyah",
+      "Hukum Mad",
+      "Mad Thobi'i / Mad Ashli",
+      "Mad Far'i",
+      "Mad Wajib Muttashil",
+      "Mad Jaiz Munfashil",
+      "Mad 'Aridh Lissukun",
+      "Mad 'Iwadh",
+      "Mad Shilah",
+      "Mad Shilah Qoshiroh",
+      "Mad Shilah Thowilah",
+      "Mad Badal",
+      "Mad Tamkin",
+      "Mad Lin",
+      "Mad Lazim Mutsaqqol Kalimi",
+      "Mad Lazim Mukhoffaf Kalimi",
+      "Mad Lazim Mutsaqqol Harfi",
+      "Mad Lazim Mukhoffaf Harfi",
+      "Mad Farqi"
+    ];
+
     const STUDENTS_PER_PAGE = 20; 
 
     // Mewarnai teks catatan berdasarkan status
@@ -381,7 +427,6 @@
              if (halMatch) tHalaman = halMatch[1].split(',').map(s => s.trim()); 
              const brsMatch = rawTahsinAyat.match(/Brs ([\d, ]+)/); 
              if (brsMatch) tBaris = brsMatch[1].split(',').map(s => s.trim()); 
-             else if (rawTahsinAyat.includes('Penuh')) tBaris = ['Penuh']; 
              tahsinAyatOnly = ''; 
           } else if (tSurat.includes('Tajwid') || tSurat.includes('Ghorib') || tSurat === 'Gharib') { 
              tKategori = tSurat.includes('Tajwid') ? 'Tajwid' : 'Ghorib'; 
@@ -448,12 +493,8 @@
             if (p.id === planId) { 
                const arr = p[field] || []; 
                let newArr = arr.includes(value) ? arr.filter(x => x !== value) : [...arr, value]; 
-               if (field === 'tahsinBaris' && value === 'Penuh') newArr = arr.includes('Penuh') ? [] : ['Penuh']; 
-               else if (field === 'tahsinBaris' && arr.includes('Penuh')) newArr = [value]; 
                
-               if (field === 'tahsinBaris') {
-                  newArr.sort((a,b) => (a==='Penuh' ? -1 : b==='Penuh' ? 1 : Number(a) - Number(b))); 
-               } else if (field === 'tahsinHalaman') {
+               if (field === 'tahsinBaris' || field === 'tahsinHalaman') {
                   newArr.sort((a,b) => Number(a) - Number(b));
                }
                return { ...p, [field]: newArr }; 
@@ -497,7 +538,7 @@
            let res = []; 
            const sortedHal = [...plan.tahsinHalaman].sort((a,b) => Number(a) - Number(b));
            if (sortedHal.length > 0) res.push('Hal. ' + sortedHal.join(', ')); 
-           if (plan.tahsinBaris.length > 0) res.push(plan.tahsinBaris.includes('Penuh') ? 'Penuh' : 'Brs ' + plan.tahsinBaris.join(', ')); 
+           if (plan.tahsinBaris.length > 0) res.push('Brs ' + plan.tahsinBaris.join(', ')); 
            halAyat = res.length > 0 ? res.join(' ') : '-'; 
         } else if (['Tajwid', 'Ghorib'].includes(tahsinKat)) { 
            const sortedHal = [...plan.tahsinHalaman].sort((a,b) => Number(a) - Number(b));
@@ -1227,11 +1268,11 @@
                 </div>
                 <form onSubmit={handleSaveNewStudent} className="p-4 md:p-6 flex flex-col gap-4">
                   <div className="flex flex-col items-center gap-3">
-                    <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden relative group cursor-pointer hover:border-[#00e676] transition-colors">
+                    <label className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden relative group cursor-pointer hover:border-[#00e676] transition-colors">
                       {newStudent.photo ? <img src={newStudent.photo} alt="Preview" className="w-full h-full object-cover" /> : <Camera size={28} className="text-gray-400 group-hover:text-[#00e676]" />}
-                      <label className="absolute inset-0 bg-black/60 hidden group-hover:flex items-center justify-center text-white text-[10px] md:text-xs font-bold cursor-pointer">Pilih Foto</label>
+                      <div className="absolute inset-0 bg-black/60 hidden group-hover:flex items-center justify-center text-white text-[10px] md:text-xs font-bold">Pilih Foto</div>
                       <input type="file" accept="image/*" onChange={(e) => handlePhotoUpload(e, false)} className="hidden" />
-                    </div>
+                    </label>
                     <span className="text-[10px] md:text-xs text-gray-500 font-bold bg-gray-100 px-3 py-1 rounded-full">Foto Siswa (Opsional)</span>
                   </div>
                   <div>
@@ -1265,11 +1306,11 @@
                 </div>
                 <form onSubmit={handleUpdateStudent} className="p-4 md:p-6 flex flex-col gap-4">
                   <div className="flex flex-col items-center gap-3">
-                    <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden relative group cursor-pointer hover:border-blue-500 transition-colors">
+                    <label className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden relative group cursor-pointer hover:border-blue-500 transition-colors">
                       {editStudentData.photo ? <img src={editStudentData.photo} alt="Preview" className="w-full h-full object-cover" /> : <Camera size={28} className="text-gray-400 group-hover:text-blue-500" />}
-                      <label className="absolute inset-0 bg-black/60 hidden group-hover:flex items-center justify-center text-white text-[10px] md:text-xs font-bold cursor-pointer">Ubah Foto</label>
+                      <div className="absolute inset-0 bg-black/60 hidden group-hover:flex items-center justify-center text-white text-[10px] md:text-xs font-bold">Ubah Foto</div>
                       <input type="file" accept="image/*" onChange={(e) => handlePhotoUpload(e, true)} className="hidden" />
-                    </div>
+                    </label>
                     <span className="text-[10px] md:text-xs text-gray-500 font-bold bg-gray-100 px-3 py-1 rounded-full">Foto Siswa (Opsional)</span>
                   </div>
                   <div>
@@ -1357,19 +1398,19 @@
                                     </select>
                                  </div>
                                  
-                                 {plan.tahsinKategori === 'Ghorib' && (
+                                 {['Ghorib', 'Tajwid'].includes(plan.tahsinKategori) && (
                                     <div className="relative md:col-span-2">
-                                       <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Materi Ghorib <span className="text-blue-500 lowercase normal-case font-bold ml-1">(Bisa pilih >1)</span></label>
+                                       <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Materi {plan.tahsinKategori} <span className="text-blue-500 lowercase normal-case font-bold ml-1">(Bisa pilih >1)</span></label>
                                        <div 
                                          className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold bg-gray-50 text-gray-800 outline-none cursor-pointer flex justify-between items-center transition-all hover:bg-white"
-                                         onClick={() => setActiveDropdown(activeDropdown === `ghorib-${plan.id}` ? null : `ghorib-${plan.id}`)}
+                                         onClick={() => setActiveDropdown(activeDropdown === `materi-${plan.id}` ? null : `materi-${plan.id}`)}
                                        >
-                                          <span className="truncate">{(plan.tahsinMateri || []).length > 0 ? plan.tahsinMateri.length + ' materi dipilih' : 'Pilih Materi Ghorib...'}</span>
-                                          <ChevronDown size={16} className={`transition-transform ${activeDropdown === `ghorib-${plan.id}` ? 'rotate-180' : ''}`} />
+                                          <span className="truncate">{(plan.tahsinMateri || []).length > 0 ? plan.tahsinMateri.length + ' materi dipilih' : `Pilih Materi ${plan.tahsinKategori}...`}</span>
+                                          <ChevronDown size={16} className={`transition-transform ${activeDropdown === `materi-${plan.id}` ? 'rotate-180' : ''}`} />
                                        </div>
-                                       {activeDropdown === `ghorib-${plan.id}` && (
+                                       {activeDropdown === `materi-${plan.id}` && (
                                           <div className="absolute z-[100] w-full mt-1 bg-white border border-gray-200 shadow-2xl rounded-xl max-h-64 overflow-y-auto custom-scrollbar p-2 left-0">
-                                             {ghoribList.map((materi, i) => (
+                                             {(plan.tahsinKategori === 'Ghorib' ? ghoribList : tajwidList).map((materi, i) => (
                                                 <label key={i} className="flex items-start gap-3 p-3 hover:bg-blue-50 rounded-lg cursor-pointer transition-colors border-b border-gray-50 last:border-0">
                                                    <input 
                                                       type="checkbox" 
@@ -1377,7 +1418,7 @@
                                                       onChange={() => handleToggleArray(plan.id, 'tahsinMateri', materi)}
                                                       className="mt-1 w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-600" 
                                                    />
-                                                   <span className="text-sm font-bold text-gray-700 leading-relaxed text-right w-full font-arabic" dir="rtl">{materi}</span>
+                                                   <span className={`text-sm font-bold text-gray-700 leading-relaxed text-right w-full ${plan.tahsinKategori === 'Ghorib' ? 'font-arabic' : ''}`} dir={plan.tahsinKategori === 'Ghorib' ? "rtl" : "ltr"}>{materi}</span>
                                                 </label>
                                              ))}
                                           </div>
@@ -1407,9 +1448,8 @@
                                     <div className="md:col-span-2 pt-2 border-t border-gray-50">
                                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Baris</label>
                                        <div className="flex flex-wrap gap-2">
-                                          <button type="button" onClick={(e) => { e.preventDefault(); handleToggleArray(plan.id, 'tahsinBaris', 'Penuh'); }} className={`px-6 py-2.5 rounded-xl text-sm font-bold border transition-all ${plan.tahsinBaris.includes('Penuh') ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-white text-gray-600 border-gray-200 hover:bg-blue-50 hover:border-blue-300'}`}>Penuh</button>
-                                          {['1','2','3','4','5'].map(b => (
-                                             <button type="button" key={b} onClick={(e) => { e.preventDefault(); handleToggleArray(plan.id, 'tahsinBaris', b); }} disabled={plan.tahsinBaris.includes('Penuh')} className={`w-11 h-11 rounded-xl text-sm font-bold border transition-all flex items-center justify-center disabled:opacity-40 disabled:bg-gray-100 disabled:cursor-not-allowed ${plan.tahsinBaris.includes(b) && !plan.tahsinBaris.includes('Penuh') ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-white text-gray-600 border-gray-200 hover:bg-blue-50 hover:border-blue-300'}`}>{b}</button>
+                                          {['1','2','3','4','5','6','7','8'].map(b => (
+                                             <button type="button" key={b} onClick={(e) => { e.preventDefault(); handleToggleArray(plan.id, 'tahsinBaris', b); }} className={`w-11 h-11 rounded-xl text-sm font-bold border transition-all flex items-center justify-center ${plan.tahsinBaris.includes(b) ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-white text-gray-600 border-gray-200 hover:bg-blue-50 hover:border-blue-300'}`}>{b}</button>
                                           ))}
                                        </div>
                                     </div>
