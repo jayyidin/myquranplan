@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { 
   UserCheck, CheckCircle2, X, ImageIcon, Camera, 
-  GraduationCap, Plus, User, Edit3, Trash2, Save, Users, Search, ShieldCheck, Database, LayoutGrid
+  GraduationCap, Plus, User, Edit3, Trash2, Save, Users, Search, ShieldCheck, Database, LayoutGrid, LogOut
 } from 'lucide-react';
 
 const SettingsView = ({ 
@@ -13,7 +13,7 @@ const SettingsView = ({
   selectedGuruForHalaqoh, setSelectedGuruForHalaqoh, newHalaqohName, setNewHalaqohName, handleAddHalaqoh,
   currentUser, guruHalaqohData, editingGuru, setEditingGuru, handleSaveEditGuru, requestDeleteGuru,
   editingHalaqoh, setEditingHalaqoh, handleSaveEditHalaqoh, requestDeleteHalaqoh,
-  students, openEditStudentModal, requestDeleteStudent, handleBulkSaveStudents
+  students, openEditStudentModal, requestDeleteStudent, handleBulkSaveStudents, onLogout
 }) => {
   const [studentSearch, setStudentSearch] = useState('');
   const [editingAccount, setEditingAccount] = useState(null);
@@ -51,7 +51,11 @@ const SettingsView = ({
     setEditingAccount(null);
   };
 
-  const myHalaqohs = isSuperAdmin ? [] : (guruHalaqohData[currentUser?.name?.trim()] || []);
+  // Cari key guru secara case-insensitive untuk mendapatkan daftar halaqoh saya
+  const searchName = currentUser?.name?.trim().toLowerCase() || "";
+  const guruKey = Object.keys(guruHalaqohData).find(k => k.trim().toLowerCase() === searchName);
+  const myHalaqohs = isSuperAdmin ? [] : (guruKey ? (guruHalaqohData[guruKey] || []) : []);
+
   const filteredStudentsMaster = (students || []).filter(s => {
     if (!isSuperAdmin && !myHalaqohs.includes(s.halaqoh)) return false;
     const nameMatch = (s?.name || '').toLowerCase().includes((studentSearch || '').toLowerCase());
@@ -60,15 +64,15 @@ const SettingsView = ({
   }).slice(0, 10);
 
   return (
-    <div className="flex-1 h-full overflow-y-auto bg-[#F8F9FA] dark:bg-slate-950 custom-scrollbar min-h-0">
+    <div className="flex-1 h-full overflow-y-auto bg-[#F8F9FA] custom-scrollbar min-h-0">
       <div className="max-w-6xl mx-auto px-4 py-8 sm:px-6 md:px-8 pb-32">
         
         {/* HEADER SECTION */}
         <div className="mb-10">
-          <h1 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white tracking-tight mb-2">
+          <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight mb-2">
             {isSuperAdmin ? 'Pengaturan Sistem' : 'Manajemen Halaqoh'}
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 font-medium">
+          <p className="text-slate-500 font-medium">
             {isSuperAdmin 
               ? 'Konfigurasi identitas sekolah, hak akses guru, dan struktur database halaqoh.' 
               : 'Kelola daftar kelompok halaqoh yang berada di bawah bimbingan Anda.'} 
@@ -82,13 +86,13 @@ const SettingsView = ({
             <section className="animate-in fade-in slide-in-from-top-4 duration-500">
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-2 h-6 bg-orange-500 rounded-full"></div>
-                <h2 className="text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Persetujuan Menunggu</h2>
+                <h2 className="text-sm font-black text-slate-400 uppercase tracking-[0.2em]">Persetujuan Menunggu</h2>
               </div>
-              <div className="bg-white dark:bg-slate-900 rounded-[2rem] border-2 border-orange-100 dark:border-orange-900/30 shadow-xl shadow-orange-900/5 overflow-hidden">
+              <div className="bg-white rounded-[2rem] border-2 border-orange-100 shadow-xl shadow-orange-900/5 overflow-hidden">
                 <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {appUsers.filter(u => u.status === 'pending').map(pendingUser => ( 
                     <div key={pendingUser.id} className="bg-orange-50/50 border border-orange-100 rounded-2xl p-4 flex flex-col gap-3">
-                      <div className="dark:text-slate-100">
+                      <div>
                         <p className="font-black">{pendingUser.name}</p>
                         <p className="text-xs font-bold text-orange-600/70 uppercase">@{pendingUser.username}</p>
                       </div>
@@ -110,10 +114,10 @@ const SettingsView = ({
               <section>
                 <div className="flex items-center gap-2 mb-4">
                   <div className="w-2 h-6 bg-blue-500 rounded-full"></div>
-                  <h2 className="text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Identitas Laporan</h2>
+                  <h2 className="text-sm font-black text-slate-400 uppercase tracking-[0.2em]">Identitas Laporan</h2>
                 </div>
-                <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm p-6 flex flex-col sm:flex-row items-center gap-6">
-                  <div className="w-32 h-32 bg-slate-50 dark:bg-slate-800 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-[2rem] flex items-center justify-center relative group overflow-hidden shrink-0">
+                <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-6 flex flex-col sm:flex-row items-center gap-6">
+                  <div className="w-32 h-32 bg-slate-50 border-2 border-dashed border-slate-200 rounded-[2rem] flex items-center justify-center relative group overflow-hidden shrink-0">
                     {institutionLogo && institutionLogo !== 'logo.png' ? (
                       <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain p-4 transition-transform group-hover:scale-90" />
                     ) : (
@@ -125,7 +129,7 @@ const SettingsView = ({
                       <input type="file" accept="image/*" className="hidden" onChange={handleInstitutionLogoUpload} /> 
                     </label>
                   </div>
-                  <div className="flex-1 text-center sm:text-left dark:text-slate-100">
+                  <div className="flex-1 text-center sm:text-left">
                     <h3 className="font-black text-lg mb-1">Logo Lembaga</h3>
                     <p className="text-xs text-slate-500 font-medium leading-relaxed mb-4">Gunakan logo transparan (PNG) untuk hasil cetak laporan yang maksimal.</p>
                     {institutionLogo !== 'logo.png' && (
@@ -139,17 +143,17 @@ const SettingsView = ({
               <section>
                 <div className="flex items-center gap-2 mb-4">
                   <div className="w-2 h-6 bg-emerald-500 rounded-full"></div>
-                  <h2 className="text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Daftar Kelas</h2>
+                  <h2 className="text-sm font-black text-slate-400 uppercase tracking-[0.2em]">Daftar Kelas</h2>
                 </div>
-                <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm p-6">
+                <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-6">
                   <div className="flex gap-2 mb-6"> 
-                    <input type="text" placeholder="Nama kelas (Misal: 1A)" value={newKelasName} onChange={e => setNewKelasName(e.target.value)} className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all dark:text-slate-100" />
+                    <input type="text" placeholder="Nama kelas (Misal: 1A)" value={newKelasName} onChange={e => setNewKelasName(e.target.value)} className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all" />
                     <button onClick={handleAddKelas} className="bg-emerald-500 hover:bg-emerald-600 text-white p-3 rounded-2xl shadow-lg shadow-emerald-100 transition-all"><Plus size={20}/></button>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {kelasList.map(kelas => (
-                      <div key={kelas} className="group bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 pl-4 pr-2 py-2 rounded-xl flex items-center gap-3 transition-all hover:bg-white dark:hover:bg-slate-700 hover:shadow-md hover:border-emerald-200">
-                        <span className="text-xs font-black text-slate-700 dark:text-slate-300">{kelas}</span>
+                      <div key={kelas} className="group bg-slate-50 border border-slate-100 pl-4 pr-2 py-2 rounded-xl flex items-center gap-3 transition-all hover:bg-white hover:shadow-md hover:border-emerald-200">
+                        <span className="text-xs font-black text-slate-700">{kelas}</span>
                         <button onClick={() => handleDeleteKelas(kelas)} className="p-1 text-slate-300 hover:text-red-500 transition-colors"><X size={14}/></button>
                       </div>
                     ))}
@@ -163,7 +167,7 @@ const SettingsView = ({
           <section>
             <div className="flex items-center gap-2 mb-4">
               <div className="w-2 h-6 bg-indigo-500 rounded-full"></div>
-              <h2 className="text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Manajemen Guru & Halaqoh</h2>
+              <h2 className="text-sm font-black text-slate-400 uppercase tracking-[0.2em]">Manajemen Guru & Halaqoh</h2>
             </div>
             
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
@@ -171,20 +175,20 @@ const SettingsView = ({
               {/* Sidebar: Accounts (Super Admin Only) */}
               {isSuperAdmin && (
                 <div className="xl:col-span-1 space-y-6">
-                  <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col h-full max-h-[600px]">
-                    <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
+                  <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden flex flex-col h-full max-h-[600px]">
+                    <div className="p-6 border-b border-slate-100 bg-slate-50/50">
                       <div className="flex items-center gap-3">
-                        <ShieldCheck className="text-indigo-600 dark:text-indigo-400" size={24} />
-                        <h3 className="font-black text-slate-800 dark:text-slate-100">Akses Pengguna</h3>
+                        <ShieldCheck className="text-indigo-600" size={24} />
+                        <h3 className="font-black text-slate-800">Akses Pengguna</h3>
                       </div>
                     </div>
                     <div className="p-4 space-y-3 overflow-y-auto custom-scrollbar flex-1">
                       {appUsers.filter(u => u.status === 'active' || u.role === 'superadmin').map(user => (
-                        <div key={user.id} className="bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl p-4 transition-all hover:border-indigo-200 group">
+                        <div key={user.id} className="bg-slate-50 border border-slate-100 rounded-2xl p-4 transition-all hover:border-indigo-200 group">
                           {editingAccount?.id === user.id ? (
                             <div className="space-y-3 animate-in fade-in duration-300">
-                              <input type="text" value={editingAccount.name} onChange={e => setEditingAccount({...editingAccount, name: e.target.value})} className="w-full bg-white dark:bg-slate-700 border border-indigo-200 dark:border-indigo-900 rounded-xl px-3 py-2 text-xs font-bold dark:text-slate-100" />
-                              <input type="text" value={editingAccount.password} onChange={e => setEditingAccount({...editingAccount, password: e.target.value})} className="w-full bg-white dark:bg-slate-700 border border-indigo-200 dark:border-indigo-900 rounded-xl px-3 py-2 text-xs dark:text-slate-100" placeholder="Password Baru" /> 
+                              <input type="text" value={editingAccount.name} onChange={e => setEditingAccount({...editingAccount, name: e.target.value})} className="w-full bg-white border border-indigo-200 rounded-xl px-3 py-2 text-xs font-bold" />
+                              <input type="text" value={editingAccount.password} onChange={e => setEditingAccount({...editingAccount, password: e.target.value})} className="w-full bg-white border border-indigo-200 rounded-xl px-3 py-2 text-xs" placeholder="Password Baru" /> 
                               <div className="flex gap-2">
                                 <button onClick={handleSaveAccount} className="flex-1 bg-indigo-600 text-white py-2 rounded-xl text-[10px] font-black uppercase">Simpan</button>
                                 <button onClick={() => setEditingAccount(null)} className="flex-1 bg-white border border-slate-200 py-2 rounded-xl text-[10px] font-black uppercase">Batal</button>
@@ -192,12 +196,12 @@ const SettingsView = ({
                             </div>
                           ) : (
                             <div className="flex items-center justify-between">
-                              <div className="min-w-0 dark:text-slate-100">
+                              <div className="min-w-0">
                                 <p className="font-black text-sm truncate">
                                   {user.name}
                                   {user.resetRequested && <span className="ml-2 text-[8px] bg-red-500 text-white px-1.5 py-0.5 rounded font-black animate-pulse">RESET</span>}
                                 </p>
-                                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase">@{user.username} • {user.role}</p>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase">@{user.username} • {user.role}</p>
                               </div>
                               <button onClick={() => handleStartEditAccount(user)} className="p-2 text-slate-300 hover:text-indigo-600 hover:bg-white rounded-xl transition-all"><Edit3 size={16}/></button>
                             </div>
@@ -211,16 +215,16 @@ const SettingsView = ({
 
               {/* Main: Halaqoh Structures */}
               <div className={isSuperAdmin ? "xl:col-span-2" : "xl:col-span-3"}>
-                <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
                   {/* Input Actions */}
-                  <div className="p-6 bg-slate-50/80 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
+                  <div className="p-6 bg-slate-50/80 border-b border-slate-100">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {isSuperAdmin ? (
                         <>
                           <div className="space-y-1.5">
-                            <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1">Tambah Guru</label>
+                            <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Tambah Guru</label>
                             <div className="flex gap-2"> 
-                              <input type="text" list="approved-gurus" placeholder="Nama lengkap..." value={newGuruName} onChange={e => setNewGuruName(e.target.value)} className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-2.5 text-sm font-bold outline-none focus:border-indigo-500 dark:text-slate-100" />
+                              <input type="text" list="approved-gurus" placeholder="Nama lengkap..." value={newGuruName} onChange={e => setNewGuruName(e.target.value)} className="flex-1 bg-white border border-slate-200 rounded-2xl px-4 py-2.5 text-sm font-bold outline-none focus:border-indigo-500" />
                               <button onClick={handleAddGuru} className="bg-slate-900 text-white px-4 rounded-2xl font-black text-xs uppercase tracking-widest">Add</button>
                               <datalist id="approved-gurus">
                                 {appUsers.filter(u => (u.status === 'active' || u.role === 'superadmin') && !guruList.includes(u.name)).map(u => <option key={u.id} value={u.name}>{u.username}</option>)}
@@ -228,22 +232,22 @@ const SettingsView = ({
                             </div>
                           </div>
                           <div className="space-y-1.5">
-                            <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1">Assign Halaqoh</label>
+                            <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Assign Halaqoh</label>
                             <div className="flex gap-2"> 
-                              <select value={selectedGuruForHalaqoh} onChange={e => setSelectedGuruForHalaqoh(e.target.value)} className="w-[120px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-2 py-2.5 text-xs font-bold outline-none dark:text-slate-100">
+                              <select value={selectedGuruForHalaqoh} onChange={e => setSelectedGuruForHalaqoh(e.target.value)} className="w-[120px] bg-white border border-slate-200 rounded-2xl px-2 py-2.5 text-xs font-bold outline-none">
                                 <option value="">Guru...</option>
                                 {guruList.map(g => <option key={g} value={g}>{g}</option>)}
                               </select>
-                              <input type="text" placeholder="Nama halaqoh..." value={newHalaqohName} onChange={e => setNewHalaqohName(e.target.value)} className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-3 py-2.5 text-sm font-bold outline-none dark:text-slate-100" />
+                              <input type="text" placeholder="Nama halaqoh..." value={newHalaqohName} onChange={e => setNewHalaqohName(e.target.value)} className="flex-1 bg-white border border-slate-200 rounded-2xl px-3 py-2.5 text-sm font-bold outline-none" />
                               <button onClick={handleAddHalaqoh} disabled={!selectedGuruForHalaqoh} className="bg-indigo-500 text-white px-4 rounded-2xl disabled:bg-slate-200 transition-colors"><Plus size={18}/></button>
                             </div>
                           </div>
                         </>
                       ) : (
                         <div className="col-span-2 space-y-1.5">
-                          <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1">Tambah Halaqoh Baru Anda</label>
+                          <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Tambah Halaqoh Baru Anda</label>
                           <div className="flex gap-2"> 
-                            <input type="text" placeholder="Nama kelompok (Misal: Hamzah Bin Abdul Muthalib)" value={newHalaqohName} onChange={e => setNewHalaqohName(e.target.value)} className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3 text-sm font-bold outline-none focus:border-emerald-500 dark:text-slate-100" />
+                            <input type="text" placeholder="Nama kelompok (Misal: Hamzah Bin Abdul Muthalib)" value={newHalaqohName} onChange={e => setNewHalaqohName(e.target.value)} className="flex-1 bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm font-bold outline-none focus:border-emerald-500" />
                             <button onClick={handleAddHalaqoh} disabled={!newHalaqohName.trim()} className="bg-emerald-500 text-white px-6 rounded-2xl font-black text-xs uppercase tracking-widest disabled:bg-slate-200 shadow-lg shadow-emerald-100">Simpan</button>
                           </div>
                         </div>
@@ -256,8 +260,8 @@ const SettingsView = ({
                     {guruList.map(guru => {
                       const linkedUser = appUsers.find(u => u.name?.trim() === guru.trim());
                       return (
-                        <div key={guru} className="bg-slate-50/50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 rounded-3xl p-5 transition-all hover:bg-white dark:hover:bg-slate-800 hover:shadow-xl hover:shadow-slate-200/50 group/card">
-                          <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-700">
+                        <div key={guru} className="bg-slate-50/50 border border-slate-100 rounded-3xl p-5 transition-all hover:bg-white hover:shadow-xl hover:shadow-slate-200/50 group/card">
+                          <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
                             {editingGuru?.oldName === guru ? (
                               <div className="flex items-center gap-2 w-full animate-in fade-in slide-in-from-left-2 duration-300">
                                 <input 
@@ -265,19 +269,19 @@ const SettingsView = ({
                                   autoFocus 
                                   value={editingGuru.newName} 
                                   onChange={e => setEditingGuru({...editingGuru, newName: e.target.value})} 
-                                  className="flex-1 bg-white dark:bg-slate-700 border border-indigo-200 dark:border-indigo-900 rounded-xl px-3 py-1.5 text-sm font-bold outline-none ring-2 ring-indigo-500/10 dark:text-slate-100" 
+                                  className="flex-1 bg-white border border-indigo-200 rounded-xl px-3 py-1.5 text-sm font-bold outline-none ring-2 ring-indigo-500/10" 
                                 />
                                 <button onClick={handleSaveEditGuru} className="p-2 bg-indigo-600 text-white rounded-xl shadow-md hover:bg-indigo-700 transition-all active:scale-90"><Save size={14}/></button>
                                 <button onClick={() => setEditingGuru(null)} className="p-2 bg-slate-100 text-slate-400 rounded-xl hover:bg-slate-200 transition-all"><X size={14}/></button>
                               </div>
                             ) : (
                               <>
-                                <div className="min-w-0 dark:text-slate-100">
+                                <div className="min-w-0">
                                   <h4 className="font-black text-sm truncate flex items-center gap-2">
-                                    <div className="w-6 h-6 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0"><User size={12}/></div>
+                                    <div className="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0"><User size={12}/></div>
                                     {guru}
                                   </h4>
-                                  {linkedUser && <p className="text-[10px] font-bold text-indigo-400 dark:text-indigo-300 ml-8">@{linkedUser.username}</p>}
+                                  {linkedUser && <p className="text-[10px] font-bold text-indigo-400 ml-8">@{linkedUser.username}</p>}
                                 </div>
                                 <div className="flex gap-1 opacity-0 group-hover/card:opacity-100 transition-opacity">
                                   <button onClick={() => setEditingGuru({oldName: guru, newName: guru})} className="p-1.5 text-slate-400 hover:text-indigo-600 transition-colors"><Edit3 size={14}/></button>
@@ -296,16 +300,16 @@ const SettingsView = ({
                                       autoFocus 
                                       value={editingHalaqoh.newName} 
                                       onChange={e => setEditingHalaqoh({...editingHalaqoh, newName: e.target.value})} 
-                                      className="w-24 bg-white dark:bg-slate-700 border border-indigo-100 dark:border-indigo-900 rounded-lg px-2 py-1 text-[11px] font-bold outline-none dark:text-slate-100" 
+                                      className="w-24 bg-white border border-indigo-100 rounded-lg px-2 py-1 text-[11px] font-bold outline-none" 
                                     />
                                     <button onClick={handleSaveEditHalaqoh} className="p-1 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"><Save size={12}/></button>
                                     <button onClick={() => setEditingHalaqoh(null)} className="p-1 text-slate-400 hover:bg-slate-200 rounded-lg"><X size={12}/></button>
                                   </div>
                                 ) : ( 
-                                  <div className="bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 pl-3 pr-1.5 py-1.5 rounded-xl text-[11px] font-bold text-slate-600 dark:text-slate-300 flex items-center gap-2 transition-all hover:border-emerald-300 hover:text-emerald-700">
+                                  <div className="bg-white border border-slate-200 pl-3 pr-1.5 py-1.5 rounded-xl text-[11px] font-bold text-slate-600 flex items-center gap-2 transition-all hover:border-emerald-300 hover:text-emerald-700">
                                     <span>{halaqoh}</span>
                                     <div className="flex items-center gap-0.5 border-l border-slate-100 pl-1.5 ml-0.5">
-                                      <button onClick={() => setEditingHalaqoh({guruName: guru, oldName: halaqoh, newName: halaqoh})} className="p-1 text-slate-300 dark:text-slate-500 hover:text-blue-500 transition-colors"><Edit3 size={10}/></button>
+                                      <button onClick={() => setEditingHalaqoh({guruName: guru, oldName: halaqoh, newName: halaqoh})} className="p-1 text-slate-300 hover:text-blue-500 transition-colors"><Edit3 size={10}/></button>
                                       <button onClick={() => requestDeleteHalaqoh(guru, halaqoh)} className="p-1 text-slate-300 hover:text-red-500 transition-colors"><X size={10}/></button>
                                     </div>
                                   </div>
@@ -324,84 +328,93 @@ const SettingsView = ({
           </section>
 
           {/* 4. PENCARIAN SISWA (FOOTER SECTION) */}
-          {isSuperAdmin && (
-            <section className="animate-in fade-in slide-in-from-bottom-4 duration-700">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-2 h-6 bg-purple-500 rounded-full"></div>
-                <h2 className="text-sm font-black text-slate-400 uppercase tracking-[0.2em]">{isSuperAdmin ? 'Pusat Data Siswa' : 'Data Siswa Saya'}</h2>
+          <section className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-2 h-6 bg-purple-500 rounded-full"></div>
+              <h2 className="text-sm font-black text-slate-400 uppercase tracking-[0.2em]">{isSuperAdmin ? 'Pusat Data Siswa' : 'Data Siswa Saya'}</h2>
+            </div>
+            <div className="bg-slate-900 rounded-[2.5rem] p-8 text-white shadow-2xl shadow-purple-900/20">
+              <div className="flex flex-col md:flex-row items-center gap-6 mb-8">
+                <div className="w-16 h-16 rounded-[1.5rem] bg-purple-500/20 text-purple-400 flex items-center justify-center shrink-0">
+                  <Database size={32} />
+                </div>
+                <div className="flex-1 text-center md:text-left min-w-0">
+                  <h3 className="text-xl font-black mb-1 truncate">{isSuperAdmin ? 'Pencarian Siswa Global' : 'Cari Siswa Anda'}</h3>
+                  <p className="text-slate-400 text-sm font-medium line-clamp-2">{isSuperAdmin ? 'Temukan dan kelola data siswa di seluruh kelompok halaqoh dalam satu pintu.' : 'Temukan data siswa di seluruh kelompok halaqoh binaan Anda.'}</p>
+                </div>
+                <div className="relative w-full md:w-80 flex gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+                    <input 
+                      type="text" 
+                      placeholder="Cari nama siswa..." 
+                      value={studentSearch} 
+                      onChange={(e) => setStudentSearch(e.target.value)}
+                      className="w-full bg-slate-800 border-none rounded-2xl py-4 pl-12 pr-4 text-sm font-bold focus:ring-2 focus:ring-purple-500 outline-none transition-all placeholder:text-slate-600"
+                    /> 
+                  </div>
+                  {isSuperAdmin && (
+                    <button 
+                      onClick={() => setIsBulkImportOpen(!isBulkImportOpen)}
+                      className={`p-4 rounded-2xl shadow-lg transition-all active:scale-95 flex items-center justify-center ${isBulkImportOpen ? 'bg-red-500' : 'bg-purple-600 hover:bg-purple-500'} text-white`}
+                      title="Import Masal"
+                    >
+                      {isBulkImportOpen ? <X size={20} strokeWidth={3}/> : <Plus size={20} strokeWidth={3} />}
+                    </button>
+                  )}
+                </div>
               </div>
-              <div className="bg-slate-900 rounded-[2.5rem] p-8 text-white shadow-2xl shadow-purple-900/20">
-                <div className="flex flex-col md:flex-row items-center gap-6 mb-8">
-                  <div className="w-16 h-16 rounded-[1.5rem] bg-purple-500/20 text-purple-400 flex items-center justify-center shrink-0">
-                    <Database size={32} />
-                  </div>
-                  <div className="flex-1 text-center md:text-left min-w-0">
-                    <h3 className="text-xl font-black mb-1 truncate">{isSuperAdmin ? 'Pencarian Siswa Global' : 'Cari Siswa Anda'}</h3>
-                    <p className="text-slate-400 dark:text-slate-400 text-sm font-medium line-clamp-2">{isSuperAdmin ? 'Temukan dan kelola data siswa di seluruh kelompok halaqoh dalam satu pintu.' : 'Temukan data siswa di seluruh kelompok halaqoh binaan Anda.'}</p>
-                  </div>
-                  <div className="relative w-full md:w-80 flex gap-2">
-                    <div className="relative flex-1">
-                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-                      <input 
-                        type="text" 
-                        placeholder="Cari nama siswa..." 
-                        value={studentSearch} 
-                        onChange={(e) => setStudentSearch(e.target.value)}
-                        className="w-full bg-slate-800 border-none rounded-2xl py-4 pl-12 pr-4 text-sm font-bold focus:ring-2 focus:ring-purple-500 outline-none transition-all placeholder:text-slate-600"
-                      /> 
-                    </div>
-                    {isSuperAdmin && (
-                      <button 
-                        onClick={() => setIsBulkImportOpen(!isBulkImportOpen)}
-                        className={`p-4 rounded-2xl shadow-lg transition-all active:scale-95 flex items-center justify-center ${isBulkImportOpen ? 'bg-red-500' : 'bg-purple-600 hover:bg-purple-500'} text-white`}
-                        title="Import Masal"
-                      >
-                        {isBulkImportOpen ? <X size={20} strokeWidth={3}/> : <Plus size={20} strokeWidth={3} />}
-                      </button>
-                    )}
+
+              {isBulkImportOpen && (
+                <div className="mb-8 p-6 bg-white/5 border border-white/10 rounded-[2rem] animate-in zoom-in-95 duration-300">
+                  <label className="block text-[10px] font-black text-purple-400 uppercase tracking-[0.2em] mb-3">Input Masal (Format: Nama, Kelas, Halaqoh)</label>
+                  <textarea 
+                    value={bulkData}
+                    onChange={(e) => setBulkData(e.target.value)}
+                    placeholder="Ahmad, 1A, Abu Bakar&#10;Siti, 1B, Khadijah&#10;..."
+                    className="w-full h-40 bg-slate-800 border-none rounded-2xl p-4 text-sm font-bold text-white focus:ring-2 focus:ring-purple-500 outline-none transition-all placeholder:text-slate-600 resize-none mb-4"
+                  />
+                  <div className="flex justify-end gap-3">
+                    <button onClick={() => { setBulkData(''); setIsBulkImportOpen(false); }} className="px-6 py-3 rounded-xl text-xs font-black uppercase text-slate-400 hover:text-white transition-colors">Batal</button>
+                    <button onClick={processBulkImport} className="px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-purple-900/20 active:scale-95 transition-all">Proses Impor</button>
                   </div>
                 </div>
+              )}
 
-                {isBulkImportOpen && (
-                  <div className="mb-8 p-6 bg-white/5 border border-white/10 rounded-[2rem] animate-in zoom-in-95 duration-300">
-                    <label className="block text-[10px] font-black text-purple-400 uppercase tracking-[0.2em] mb-3">Input Masal (Format: Nama, Kelas, Halaqoh)</label>
-                    <textarea 
-                      value={bulkData}
-                      onChange={(e) => setBulkData(e.target.value)}
-                      placeholder="Ahmad, 1A, Abu Bakar&#10;Siti, 1B, Khadijah&#10;..."
-                      className="w-full h-40 bg-slate-800 border-none rounded-2xl p-4 text-sm font-bold text-white dark:text-slate-100 focus:ring-2 focus:ring-purple-500 outline-none transition-all placeholder:text-slate-600 dark:placeholder-slate-500 resize-none mb-4"
-                    />
-                    <div className="flex justify-end gap-3">
-                      <button onClick={() => { setBulkData(''); setIsBulkImportOpen(false); }} className="px-6 py-3 rounded-xl text-xs font-black uppercase text-slate-400 hover:text-white transition-colors">Batal</button>
-                      <button onClick={processBulkImport} className="px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-purple-900/20 active:scale-95 transition-all">Proses Impor</button>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {filteredStudentsMaster.map(s => (
+                  <div key={s.id} className="bg-white/5 border border-white/10 rounded-3xl p-4 sm:p-5 flex items-center justify-between transition-all hover:bg-white/10 group gap-4">
+                    <div className="min-w-0 flex-1"> 
+                      <p className="font-black text-white text-sm sm:text-base leading-tight mb-1 truncate">{s.name}</p>
+                      <p className="text-[9px] sm:text-[10px] font-black text-purple-400 uppercase tracking-widest truncate">
+                        Halaqoh: <span className="text-white">{s.halaqoh || 'Unassigned'}</span> • {s.kelas || 'N/A'}
+                      </p>
                     </div>
+                    <div className="flex gap-1.5 sm:gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0">
+                      <button onClick={() => openEditStudentModal(s)} className="p-2 sm:p-3 bg-white/10 hover:bg-white/20 text-white rounded-xl sm:rounded-2xl transition-all"><Edit3 size={16}/></button>
+                      <button onClick={() => requestDeleteStudent(s)} className="p-2 sm:p-3 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-xl sm:rounded-2xl transition-all"><Trash2 size={16}/></button>
+                    </div>
+                  </div>
+                ))}
+                {studentSearch && filteredStudentsMaster.length === 0 && (
+                  <div className="col-span-2 py-10 text-center text-slate-500 font-bold italic">
+                    Data siswa tidak ditemukan di database.
                   </div>
                 )}
+              </div>
+            </div>
+          </section>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {filteredStudentsMaster.map(s => (
-                      <div key={s.id} className="bg-white/5 border border-white/10 rounded-3xl p-5 flex items-center justify-between transition-all hover:bg-white/10 group">
-                        <div> 
-                          <p className="font-black text-white dark:text-white text-base leading-tight mb-1">{s.name}</p>
-                          <p className="text-[10px] font-black text-purple-400 uppercase tracking-widest">
-                            Halaqoh: <span className="text-white">{s.halaqoh || 'Unassigned'}</span> • {s.kelas || 'N/A'}
-                          </p>
-                        </div>
-                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => openEditStudentModal(s)} className="p-3 bg-white/10 hover:bg-white/20 text-white rounded-2xl transition-all"><Edit3 size={16}/></button>
-                          <button onClick={() => requestDeleteStudent(s)} className="p-3 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-2xl transition-all"><Trash2 size={16}/></button>
-                        </div>
-                      </div>
-                    ))}
-                    {studentSearch && filteredStudentsMaster.length === 0 && (
-                      <div className="col-span-2 py-10 text-center text-slate-500 dark:text-slate-400 font-bold italic">
-                        Data siswa tidak ditemukan di database.
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </section>
-            )}
+          {/* 5. TOMBOL KELUAR (KHUSUS MOBILE) */}
+          <div className="md:hidden pt-4">
+            <button 
+              onClick={onLogout}
+              className="w-full flex items-center justify-center gap-3 p-5 bg-white border-2 border-red-100 text-red-600 rounded-[2rem] font-black shadow-xl shadow-red-900/5 active:scale-95 transition-all"
+            >
+              <LogOut size={20} />
+              Keluar dari Akun
+            </button>
+          </div>
 
         </div>
       </div>

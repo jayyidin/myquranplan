@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, User, Menu, Home, Users, BarChart3, Settings, LogOut, Loader2, Edit3, Mic, Repeat, FileText } from 'lucide-react';
+import { BookOpen, User, Menu, Home, Users, BarChart3, Settings, LogOut, Loader2, Edit3, Mic, Repeat, FileText, X } from 'lucide-react';
 import { collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc, addDoc } from 'firebase/firestore';
 
 // Imports
@@ -115,7 +115,11 @@ const MainApp = ({ currentUser, onLogout }) => {
       if (activeGuru !== teacherName) setActiveGuru(teacherName);
       if (selectedGuruForHalaqoh !== teacherName) setSelectedGuruForHalaqoh(teacherName);
       
-      const halaqohs = guruHalaqohData[teacherName] || [];
+      // Cari data halaqoh secara case-insensitive
+      const searchName = teacherName.trim().toLowerCase();
+      const guruKey = Object.keys(guruHalaqohData).find(k => k.trim().toLowerCase() === searchName);
+      const halaqohs = guruKey ? (guruHalaqohData[guruKey] || []) : [];
+
       if (halaqohs.length > 0) {
         if (!activeHalaqoh || !halaqohs.includes(activeHalaqoh)) {
           setActiveHalaqoh(halaqohs[0]);
@@ -151,8 +155,10 @@ const MainApp = ({ currentUser, onLogout }) => {
     const isInActiveHalaqoh = s?.halaqoh && activeHalaqoh && String(s.halaqoh).trim() === String(activeHalaqoh).trim();
     
     if (!isSuperAdmin) {
-      const currentUserName = currentUser?.name?.trim() || "";
-      const myHalaqohs = (currentUserName && guruHalaqohData[currentUserName]) || [];
+      const searchName = currentUser?.name?.trim().toLowerCase() || "";
+      const guruKey = Object.keys(guruHalaqohData).find(k => k.trim().toLowerCase() === searchName);
+      const myHalaqohs = guruKey ? (guruHalaqohData[guruKey] || []) : [];
+      
       return isInActiveHalaqoh && myHalaqohs.includes(activeHalaqoh) && isSearchMatch;
     }
     return isInActiveHalaqoh && isSearchMatch;
@@ -354,7 +360,18 @@ const MainApp = ({ currentUser, onLogout }) => {
       showToast('Siswa ditambahkan!'); 
     } catch (e) { showToast('Gagal menyimpan.'); } 
   };
-  const handleUpdateStudent = async (e) => { e.preventDefault(); try { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'students', editStudentData.id), { ...editStudentData, class: editStudentData.halaqoh, initial: getInitials(editStudentData.name) }); setIsEditStudentModalOpen(false); showToast('Siswa diperbarui!'); } catch (e) { showToast('Gagal memperbarui.'); } };
+  const handleUpdateStudent = async (e) => { 
+    e.preventDefault(); 
+    try { 
+      const { id, ...dataToUpdate } = editStudentData;
+      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'students', id), { 
+        ...dataToUpdate, 
+        initial: getInitials(dataToUpdate.name) 
+      }); 
+      setIsEditStudentModalOpen(false); 
+      showToast('Siswa diperbarui!'); 
+    } catch (e) { showToast('Gagal memperbarui.'); } 
+  };
   const requestDeleteStudent = (student) => { 
     if (isSuperAdmin) { 
       if(window.confirm('Yakin ingin menghapus siswa permanen dari sistem?')) { 
@@ -401,6 +418,16 @@ const MainApp = ({ currentUser, onLogout }) => {
       reader.readAsDataURL(file); 
     } 
   };
+
+  // Fungsi untuk memfilter daftar halaqoh berdasarkan role user
+  function getFilteredHalaqohDataForEdit() {
+    if (isSuperAdmin) return guruHalaqohData;
+
+    const searchName = currentUser?.name?.trim().toLowerCase() || "";
+    const guruKey = Object.keys(guruHalaqohData).find(k => k.trim().toLowerCase() === searchName);
+    
+    return guruKey ? { [guruKey]: guruHalaqohData[guruKey] } : { [currentUser?.name || 'Guru']: [] };
+  }
 
   // -- FUNGSI JURNAL MODAL --
   const parseSuratAyatList = (suratText, ayatText, nilaiText) => { 
@@ -658,6 +685,42 @@ const MainApp = ({ currentUser, onLogout }) => {
         </div>
       </header>
 
+      {/* MOBILE MENU OVERLAY (Drawer untuk HP) */}
+      {mobileMenuOpen && (
+        <div className="md:hidden fixed inset-0 z-[150] flex justify-end animate-in fade-in duration-300">
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)}></div>
+          <div className="relative w-72 h-full bg-white shadow-2xl flex flex-col p-6 animate-in slide-in-from-right duration-300">
+            <div className="flex justify-between items-center mb-8">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center text-green-600">
+                  <User size={20} />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-sm font-black text-slate-800 leading-none">{currentUser.name}</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{currentUser.role}</span>
+                </div>
+              </div>
+              <button onClick={() => setMobileMenuOpen(false)} className="p-2 bg-slate-50 text-slate-400 rounded-xl"><X size={20}/></button>
+            </div>
+            
+            <div className="flex flex-col gap-2">
+              <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest ml-4 mb-2">Navigasi Cepat</p>
+              <button onClick={() => { setCurrentView('home'); setMobileMenuOpen(false); }} className={`flex items-center gap-3 p-4 rounded-2xl font-bold transition-all ${currentView === 'home' ? 'bg-green-50 text-green-600' : 'text-slate-600 hover:bg-slate-50'}`}><Home size={20} /> Beranda</button>
+              <button onClick={() => { setCurrentView('siswa'); setMobileMenuOpen(false); }} className={`flex items-center gap-3 p-4 rounded-2xl font-bold transition-all ${currentView === 'siswa' ? 'bg-green-50 text-green-600' : 'text-slate-600 hover:bg-slate-50'}`}><Users size={20} /> Data Siswa</button>
+              <button onClick={() => { setCurrentView('laporan'); setMobileMenuOpen(false); }} className={`flex items-center gap-3 p-4 rounded-2xl font-bold transition-all ${currentView === 'laporan' ? 'bg-green-50 text-green-600' : 'text-slate-600 hover:bg-slate-50'}`}><BarChart3 size={20} /> Laporan</button>
+              <button onClick={() => { setCurrentView('pengaturan'); setMobileMenuOpen(false); }} className={`flex items-center gap-3 p-4 rounded-2xl font-bold transition-all ${currentView === 'pengaturan' ? 'bg-green-50 text-green-600' : 'text-slate-600 hover:bg-slate-50'}`}><Settings size={20} /> Pengaturan</button>
+            </div>
+
+            <button 
+              onClick={() => { onLogout(); setMobileMenuOpen(false); }}
+              className="mt-auto flex items-center gap-3 p-4 bg-red-50 text-red-600 rounded-2xl font-black transition-all active:scale-95 shadow-sm border border-red-100"
+            >
+              <LogOut size={20} /> Keluar Aplikasi
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Area Filter Halaqoh & Guru */}
       {currentView !== 'pengaturan' && (
         <div className="bg-white/95 border-gray-200 border-b px-3 md:px-6 py-1 flex justify-between items-center shrink-0 z-50 print:hidden h-11 shadow-sm transition-all duration-500 backdrop-blur-md sticky top-[56px] sm:top-[112px]">
@@ -744,8 +807,20 @@ const MainApp = ({ currentUser, onLogout }) => {
       <AddStudentModal 
           isOpen={isAddStudentModalOpen} onClose={() => setIsAddStudentModalOpen(false)} isSuperAdmin={isSuperAdmin} addStudentMode={addStudentMode} setAddStudentMode={setAddStudentMode}
           masterSearchQuery={masterSearchQuery} setMasterSearchQuery={setMasterSearchQuery} students={students} activeHalaqoh={activeHalaqoh} handleAssignFromMaster={handleAssignFromMaster} newStudent={newStudent} setNewStudent={setNewStudent} handlePhotoUpload={handlePhotoUpload} kelasList={kelasList} handleSaveNewStudent={handleSaveNewStudent} getInitials={getInitials}
+          guruHalaqohData={getFilteredHalaqohDataForEdit()}
       />
-      <EditStudentModal isOpen={isEditStudentModalOpen} onClose={() => setIsEditStudentModalOpen(false)} editStudentData={editStudentData} setEditStudentData={setEditStudentData} handlePhotoUpload={handlePhotoUpload} kelasList={kelasList} handleUpdateStudent={handleUpdateStudent} />
+      <EditStudentModal 
+          isOpen={isEditStudentModalOpen} 
+          onClose={() => setIsEditStudentModalOpen(false)} 
+          editStudentData={editStudentData} 
+          setEditStudentData={setEditStudentData} 
+          handlePhotoUpload={handlePhotoUpload} 
+          kelasList={kelasList} 
+          handleUpdateStudent={handleUpdateStudent} 
+          guruHalaqohData={getFilteredHalaqohDataForEdit()} 
+          isSuperAdmin={isSuperAdmin} 
+          currentUser={currentUser} 
+      />
       
       {/* MODAL JURNAL */}
       <JurnalModal 

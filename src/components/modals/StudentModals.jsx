@@ -6,7 +6,7 @@ export const AddStudentModal = ({
   isOpen, onClose, isSuperAdmin, addStudentMode, setAddStudentMode,
   masterSearchQuery, setMasterSearchQuery, students, activeHalaqoh,
   handleAssignFromMaster, newStudent, setNewStudent, handlePhotoUpload,
-  kelasList, handleSaveNewStudent, getInitials
+  kelasList, handleSaveNewStudent, getInitials, guruHalaqohData
 }) => {
   if (!isOpen) return null;
 
@@ -73,8 +73,25 @@ export const AddStudentModal = ({
                     </select>
                 </div>
                 <div>
-                    <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">Halaqoh</label>
-                    <input type="text" disabled value={newStudent.halaqoh} className="w-full bg-gray-100 border border-gray-200 text-gray-400 rounded-xl px-3 py-3 text-xs font-bold" />
+                  <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">Halaqoh</label>
+                  <select 
+                    value={newStudent.halaqoh} 
+                    onChange={e => setNewStudent({...newStudent, halaqoh: e.target.value})}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-3 text-xs font-bold outline-none focus:ring-2 focus:ring-green-500"
+                  >
+                    <option value="">Pilih Halaqoh...</option>
+                    {Object.entries(guruHalaqohData || {}).map(([guru, halaqohs]) => (
+                        <optgroup key={guru} label={`Ustadz/ah ${guru}`}>
+                          {Array.isArray(halaqohs) && halaqohs.length > 0 ? (
+                            halaqohs.map(h => (
+                              <option key={h} value={h}>{h}</option>
+                            ))
+                          ) : (
+                            <option disabled>Belum ada halaqoh terdaftar</option>
+                          )}
+                        </optgroup>
+                    ))}
+                  </select>
                 </div>
               </div>
               <button type="submit" className="w-full bg-[#00e676] hover:bg-green-500 text-white py-3.5 rounded-2xl font-black mt-2 active:scale-95 transition-all text-sm shadow-md shadow-green-200">Simpan Data Siswa</button>
@@ -87,7 +104,8 @@ export const AddStudentModal = ({
 
 export const EditStudentModal = ({
   isOpen, onClose, editStudentData, setEditStudentData,
-  handlePhotoUpload, kelasList, handleUpdateStudent
+  handlePhotoUpload, kelasList, handleUpdateStudent,
+  guruHalaqohData, isSuperAdmin
 }) => {
   if (!isOpen) return null;
 
@@ -118,8 +136,25 @@ export const EditStudentModal = ({
                   </select>
               </div>
               <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">Halaqoh</label>
-                  <input type="text" disabled value={editStudentData.halaqoh} className="w-full bg-gray-100 border border-gray-200 text-gray-400 rounded-xl px-3 py-3 text-xs font-bold" />
+                <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">Halaqoh</label>
+                <select 
+                  value={editStudentData.halaqoh} 
+                  onChange={e => setEditStudentData({...editStudentData, halaqoh: e.target.value})}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-3 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Pilih Halaqoh...</option>
+                  {Object.entries(guruHalaqohData || {}).map(([guru, halaqohs]) => (
+                      <optgroup key={guru} label={`Ustadz/ah ${guru}`}>
+                        {Array.isArray(halaqohs) && halaqohs.length > 0 ? (
+                          halaqohs.map(h => (
+                            <option key={h} value={h}>{h}</option>
+                          ))
+                        ) : (
+                          <option disabled>Belum ada halaqoh terdaftar</option>
+                        )}
+                      </optgroup>
+                  ))}
+                </select>
               </div>
             </div>
             <button type="submit" className="w-full bg-blue-600 text-white py-3.5 rounded-2xl font-black mt-2 active:scale-95 transition-transform text-sm">Simpan Perubahan</button>
