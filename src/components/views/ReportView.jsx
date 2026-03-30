@@ -51,14 +51,13 @@ const ReportView = ({
   };
 
   return (
-    <div className="flex-1 h-full overflow-y-auto bg-gray-100/50 p-4 sm:p-6 md:p-8 w-full print:h-auto print:overflow-visible print:p-0 print:bg-white custom-scrollbar min-h-0">
-      <div className="max-w-5xl mx-auto pb-24 md:pb-8">
+    <div className="max-w-5xl mx-auto pb-24 md:pb-8">
       
       {/* Area Kontrol & Navigasi */}
-      <div className="sticky top-0 z-50 bg-gray-100/80 backdrop-blur-xl -mx-4 sm:-mx-6 md:-mx-8 px-4 sm:px-6 md:px-8 py-4 mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 print:hidden border-b border-gray-200 shadow-sm">
+      <div className="z-50 bg-gray-100/80 border-gray-200 backdrop-blur-xl -mx-4 sm:-mx-6 md:-mx-8 px-4 sm:px-6 md:px-8 py-4 mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 print:hidden border-b shadow-sm transition-all duration-500 text-slate-800">
         <div>
-          <h1 className="text-3xl font-black text-slate-800 tracking-tight">Laporan Halaqoh</h1>
-          <p className="text-slate-500 font-medium">Pratinjau laporan harian untuk wali santri & arsip.</p>
+          <h1 className="text-3xl font-black tracking-tight">Laporan Halaqoh</h1>
+          <p className="font-medium text-slate-500">Pratinjau laporan harian untuk wali santri & arsip.</p>
         </div>
         <button 
           onClick={handlePrint}
@@ -70,50 +69,50 @@ const ReportView = ({
       </div>
 
       {/* Kertas Laporan (Bagian ini yang akan dicetak) */}
-      <div className="max-w-5xl mx-auto bg-white rounded-[2rem] shadow-2xl shadow-slate-200/50 border border-gray-100 p-6 sm:p-12 print:shadow-none print:border-none print:p-0 print:m-0">
+      <div className="max-w-5xl mx-auto bg-white rounded-3xl md:rounded-[2rem] shadow-2xl shadow-slate-200/50 border border-gray-100 p-5 sm:p-8 md:p-12 print:shadow-none print:border-none print:p-0 print:m-0 transition-colors">
         
         {/* Kop Laporan / Header Cetak */}
-        <div className="flex items-center border-b-4 border-slate-900 pb-6 mb-8">
-          <div className="w-24 h-24 shrink-0 mr-6 bg-slate-50 rounded-2xl flex items-center justify-center overflow-hidden border border-slate-100">
+        <div className="flex flex-col sm:flex-row items-center border-b-4 border-slate-900 pb-6 mb-8 gap-4 sm:gap-0 transition-colors">
+          <div className="w-24 h-24 shrink-0 sm:mr-6 bg-slate-50 rounded-2xl flex items-center justify-center overflow-hidden border border-slate-100 transition-colors">
             {institutionLogo && institutionLogo !== 'logo.png' ? (
               <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain p-2" />
             ) : (
               <div className="text-xl text-slate-300 font-black tracking-tighter">MQ<span className="text-green-500">.</span></div>
             )}
           </div>
-          <div className="flex-1 text-left">
-            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight leading-none mb-2">Laporan Progres Qur'an</h2>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1 max-w-md">
+          <div className="flex-1 text-center sm:text-left">
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 uppercase tracking-tight leading-tight mb-2 transition-colors">Laporan Progres Qur'an</h2>
+            <div className="grid grid-cols-1 xs:grid-cols-2 gap-x-4 gap-y-1 max-w-md mx-auto sm:mx-0 text-slate-800 transition-colors">
                <p className="text-slate-500 text-sm font-bold uppercase tracking-wider">Halaqoh</p>
-               <p className="text-slate-800 text-sm font-black">: {activeHalaqoh || '-'}</p>
+               <p className="text-xs sm:text-sm font-black text-left">: {activeHalaqoh || '-'}</p>
                <p className="text-slate-500 text-sm font-bold uppercase tracking-wider">Pengajar</p>
-               <p className="text-slate-800 text-sm font-black">: {activeGuru || '-'}</p>
+               <p className="text-sm font-black">: {activeGuru || '-'}</p>
                <p className="text-slate-500 text-sm font-bold uppercase tracking-wider">Tanggal</p>
-               <p className="text-slate-800 text-sm font-black">: {activeDate ? formatShortDate(new Date(activeDate)) : '-'}</p>
+               <p className="text-sm font-black">: {activeDate ? formatShortDate(new Date(activeDate)) : '-'}</p>
             </div>
           </div>
         </div>
 
         {/* Statistik Ringkas */}
-        <div className="grid grid-cols-3 gap-4 mb-10 print:break-inside-avoid">
-           <div className="bg-slate-50 p-5 rounded-3xl border border-slate-100 flex flex-col items-center text-center">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10 print:break-inside-avoid transition-all">
+           <div className="bg-slate-50 p-5 rounded-3xl border border-slate-100 flex flex-col items-center text-center transition-colors">
              <Users size={24} className="text-blue-500 mb-2" />
              <span className="text-3xl font-black text-slate-900 leading-none">{students.length}</span>
              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Siswa Terdaftar</span>
            </div>
-           <div className="bg-green-50 p-5 rounded-3xl border border-green-100 flex flex-col items-center text-center">
+           <div className="bg-green-50 p-5 rounded-3xl border border-green-100 flex flex-col items-center text-center transition-colors">
              <Award size={24} className="text-green-500 mb-2" />
-             <span className="text-3xl font-black text-green-700 leading-none">
+             <span className="text-3xl font-black text-green-700 leading-none transition-colors">
                {students.filter(s => getStatus(s)?.status === 'Lancar').length}
              </span>
-             <span className="text-[10px] font-black text-green-600/70 uppercase tracking-widest mt-1">Lancar / Baik</span>
+             <span className="text-[10px] font-black text-green-600/70 uppercase tracking-widest mt-1 transition-colors">Lancar / Baik</span>
            </div>
-           <div className="bg-rose-50 p-5 rounded-3xl border border-rose-100 flex flex-col items-center text-center">
+           <div className="bg-rose-50 p-5 rounded-3xl border border-rose-100 flex flex-col items-center text-center transition-colors">
              <FileText size={24} className="text-red-500 mb-2" />
-             <span className="text-3xl font-black text-rose-700 leading-none">
+             <span className="text-3xl font-black text-rose-700 leading-none transition-colors">
                {students.filter(s => getStatus(s)?.status === 'Perlu Ulang').length}
              </span>
-             <span className="text-[10px] font-black text-rose-600/70 uppercase tracking-widest mt-1">Perlu Murojaah</span>
+             <span className="text-[10px] font-black text-rose-600/70 uppercase tracking-widest mt-1 transition-colors">Perlu Murojaah</span>
            </div>
         </div>
 
@@ -124,8 +123,8 @@ const ReportView = ({
           </div>
         ) : (
           <table className="w-full text-left border-separate border-spacing-y-2 print:text-[11px] relative">
-            <thead className="sticky top-[100px] sm:top-[80px] z-20 print:static">
-              <tr className="text-slate-400 uppercase text-[10px] font-black tracking-[0.15em] bg-white/95 backdrop-blur-sm">
+            <thead className="sticky top-[100px] sm:top-[80px] z-20 print:static transition-all">
+              <tr className="uppercase text-[10px] font-black tracking-[0.15em] backdrop-blur-sm transition-colors text-slate-400 bg-white/95">
                 <th className="px-4 py-3 w-10 text-center">No</th>
                 <th className="px-4 py-3 min-w-[150px]">Identitas Siswa</th>
                 <th className="px-4 py-3">Tahsin / Tilawah</th>
@@ -152,16 +151,15 @@ const ReportView = ({
 
                 return (
                   <tr key={student.id} className="print:break-inside-avoid group">
-                    <td className="px-4 py-4 text-center text-slate-400 font-bold bg-slate-50/50 rounded-l-2xl group-hover:bg-slate-50 transition-colors">{index + 1}</td>
-                    <td className="px-4 py-4 bg-slate-50/50 group-hover:bg-slate-50 transition-colors">
-                      <div className="font-black text-slate-800 leading-tight">{student?.name || 'Siswa'}</div>
-                      {/* Pengaman jika student.id tidak ada atau bukan string */}
+                    <td className="px-4 py-4 text-center text-slate-400 font-bold rounded-l-2xl transition-colors bg-slate-50/50 group-hover:bg-slate-50">{index + 1}</td>
+                    <td className="px-4 py-4 transition-colors bg-slate-50/50 group-hover:bg-slate-50">
+                      <div className="font-black leading-tight text-slate-800">{student?.name || 'Siswa'}</div>
                       <div className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">{student?.id ? String(student.id).substring(0, 8) : 'N/A'}</div>
                     </td>
-                    <td className="px-4 py-4 bg-slate-50/50 text-slate-600 font-medium text-sm group-hover:bg-slate-50 transition-colors">{displayTahsin}</td>
-                    <td className="px-4 py-4 bg-slate-50/50 text-slate-600 font-medium text-sm group-hover:bg-slate-50 transition-colors">{displayTahfidz}</td>
-                    <td className="px-4 py-4 bg-slate-50/50 text-slate-600 font-medium text-sm group-hover:bg-slate-50 transition-colors">{displayMurojaah}</td>
-                    <td className={`px-4 py-4 text-center rounded-r-2xl bg-slate-50/50 group-hover:bg-slate-50 transition-colors`}>
+                    <td className="px-4 py-4 font-medium text-sm transition-colors bg-slate-50/50 text-slate-600 group-hover:bg-slate-50">{displayTahsin}</td>
+                    <td className="px-4 py-4 font-medium text-sm transition-colors bg-slate-50/50 text-slate-600 group-hover:bg-slate-50">{displayTahfidz}</td>
+                    <td className="px-4 py-4 font-medium text-sm transition-colors bg-slate-50/50 text-slate-600 group-hover:bg-slate-50">{displayMurojaah}</td>
+                    <td className="px-4 py-4 text-center rounded-r-2xl transition-colors bg-slate-50/50 group-hover:bg-slate-50">
                        <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${status?.bg || 'bg-gray-100'} ${status?.color || 'text-gray-500'}`}>
                          {status?.status || 'Kosong'}
                        </span>
@@ -174,7 +172,7 @@ const ReportView = ({
         )}
 
         {/* Footer Tanda Tangan (Hanya muncul saat print) */}
-        <div className="hidden print:grid grid-cols-2 mt-20 gap-20">
+        <div className="hidden print:grid grid-cols-2 mt-20 gap-20 transition-all">
           <div className="text-center">
              <p className="mb-20 text-xs font-bold text-slate-500 uppercase tracking-widest">Koordinator Al-Qur'an</p>
              <div className="w-48 mx-auto border-b-2 border-slate-900 mb-1"></div>
@@ -182,7 +180,7 @@ const ReportView = ({
           </div>
           <div className="text-center">
              <p className="mb-20 text-xs font-bold text-slate-500 uppercase tracking-widest">Pengajar Halaqoh</p>
-             <p className="font-black text-slate-900 border-b-2 border-slate-900 w-48 mx-auto pb-1 uppercase">{activeGuru || '...........................'}</p>
+             <p className="font-black text-slate-900 border-b-2 border-slate-900 w-48 mx-auto pb-1 uppercase transition-colors">{activeGuru || '...........................'}</p>
              <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">Ustadz / Ustadzah</p>
           </div>
         </div>
@@ -192,9 +190,7 @@ const ReportView = ({
           <p className="text-[8px] text-slate-300 font-bold uppercase tracking-[0.2em]">Laporan digenerate otomatis melalui MyQuranPlan pada {new Date().toLocaleString('id-ID')}</p>
         </div>
       </div>
-      </div>
     </div>
   );
 };
-
 export default ReportView;

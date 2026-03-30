@@ -7,7 +7,8 @@ const HomeView = ({
   activeDate, setActiveDate, weekDates, filteredStudents, handleOpenModal, 
   requestClearRecord, setSharingStudent, handleRemoveData, getStatusColor,
   institutionLogo,
-  isLoading
+  isLoading,
+  darkMode
 }) => {
   // State untuk fitur Share Laporan Individu
   const [shareStudent, setShareStudent] = useState(null);
@@ -413,7 +414,7 @@ const HomeView = ({
                   </h1>
                   <p className="text-[#00e676] font-bold text-sm italic">SDIT Al-Fityan School Bogor</p>
                </div>
-               <div className="w-24 h-24 sm:w-32 sm:h-32 flex items-center justify-center shrink-0 dark:invert">
+               <div className="w-24 h-24 sm:w-32 sm:h-32 flex items-center justify-center shrink-0">
                   {institutionLogo && institutionLogo !== 'logo.png' ? (
                     <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain" />
                   ) : (
@@ -539,57 +540,57 @@ const HomeView = ({
           TAMPILAN APLIKASI WEB NORMAL (APP-SHELL LAYOUT)
           (Terbagi 3 blok kaku: Header Fix, Content Scroll, Footer Fix) 
       ========================================================================= */} {/* Add dark mode styles to this container */}
-      <div className="print:hidden w-full h-full flex flex-col overflow-hidden dark:bg-slate-950 transition-colors duration-500">
+      <div className="print:hidden w-full h-full flex flex-col transition-colors duration-500 bg-slate-50 text-slate-900 overflow-hidden">
         
         {/* BLOK 1: HEADER HALAMAN (SHRINK-0 = SELALU TERKUNCI DI ATAS, TIDAK IKUT SCROLL) */}
-        <div className="shrink-0 z-40 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 px-4 sm:px-6 md:px-8 py-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 transition-colors">
-          <div className="w-full md:w-auto flex items-center gap-2">
-            <div className="w-40 h-40 flex items-center justify-center shrink-0">
-              {institutionLogo && institutionLogo !== 'logo.png' ? (
-                <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain dark:invert" />
+        <div className={`${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'} shrink-0 z-40 border-b px-4 sm:px-6 md:px-8 py-2 sm:py-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-2 sm:gap-4 transition-all`}>
+          <div className="w-full md:w-auto flex items-center gap-1.5 sm:gap-3">
+            <div className="hidden sm:flex w-24 md:w-40 h-24 md:h-40 items-center justify-center shrink-0">
+              {institutionLogo && institutionLogo !== 'logo.png' && institutionLogo !== '' ? (
+                <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain" />
               ) : (
-                <BookOpen size={80} className="text-green-600 dark:text-emerald-400" />
+                <BookOpen size={80} className={darkMode ? 'text-emerald-400' : 'text-green-600'} />
               )}
             </div>
             <div className="dark:text-slate-100">
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-[#1a202c] dark:text-white mb-1 leading-tight">
+            <h1 className="text-sm sm:text-3xl md:text-4xl font-black mb-0.5 sm:mb-1 leading-tight text-[#1a202c]">
               {homeTab === 'lesson_plan' ? "Lesson Plan Al-Qur'an" : "Jurnal Harian Al-Qur'an"}
             </h1>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 text-gray-500 dark:text-slate-400 font-medium text-sm mt-2">
+            <div className="flex flex-wrap sm:flex-row sm:items-center gap-x-3 gap-y-1 text-gray-500 dark:text-slate-400 font-medium text-[9px] sm:text-sm mt-0.5 sm:mt-2">
               <span className="flex items-center gap-1.5">
-                Halaqoh: <strong className="text-green-700 dark:text-emerald-400 bg-green-50 dark:bg-slate-800 px-2.5 py-1 rounded-md border border-green-100 dark:border-slate-700">{String(activeHalaqoh || '-')}</strong>
+                Halaqoh: <strong className="text-green-700 dark:text-emerald-400 bg-green-50 dark:bg-slate-800 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md border border-green-100 dark:border-slate-700">{String(activeHalaqoh || '-')}</strong>
               </span>
-              <span className="hidden sm:inline text-gray-300 dark:text-slate-700">•</span>
+              <span className="hidden md:inline text-gray-300 dark:text-slate-700">•</span>
               <span className="flex items-center gap-1.5">
-                Pengajar: <strong className="text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-slate-800 px-2.5 py-1 rounded-md border border-blue-100 dark:border-slate-700">{String(activeGuru || '-')}</strong>
+                Pengajar: <strong className="text-blue-700 bg-blue-50 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md border border-blue-100 transition-colors">{String(activeGuru || '-')}</strong>
               </span>
             </div>
             </div>
           </div>
-          <div className="flex w-full md:w-auto gap-2 shrink-0">
-            <button onClick={() => handleOpenModal(null, 'full_bulk')} disabled={!activeHalaqoh} className="flex-1 md:flex-none bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-2 border-slate-200 dark:border-slate-700 px-4 py-3 rounded-xl flex items-center justify-center gap-2 font-black text-xs sm:text-sm hover:bg-gray-50 dark:hover:bg-slate-700 transition-all">
+          <div className="flex w-full md:w-auto gap-2 shrink-0 mt-1 sm:mt-0 transition-all">
+            <button onClick={() => handleOpenModal(null, 'full_bulk')} disabled={!activeHalaqoh} className="flex-1 md:flex-none border-2 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 font-black text-xs sm:text-sm transition-all bg-white text-slate-700 border-slate-200 hover:bg-gray-50 disabled:opacity-50">
               <Edit3 size={16} className="text-[#00e676]" /> <span className="inline">Input Massal</span>
             </button>
-            <button onClick={() => window.print()} className="flex-1 md:flex-none bg-gray-800 text-white px-4 py-3 rounded-xl flex items-center justify-center gap-2 font-black text-xs sm:text-sm hover:bg-gray-700 transition-all shadow-lg border-2 border-gray-900">
+            <button onClick={() => window.print()} className="flex-1 md:flex-none px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 font-black text-xs sm:text-sm transition-all shadow-lg border-2 bg-gray-800 text-white border-gray-900 hover:bg-gray-700">
               <Printer size={18} /> <span className="inline">Cetak</span>
             </button>
           </div>
         </div>
         
         {/* BLOK 2: KONTEN UTAMA - AREA SCROLL */}
-        <div className="flex-1 overflow-y-auto w-full relative custom-scrollbar bg-slate-50 p-4 sm:p-6 md:p-8">
+        <div className="flex-1 overflow-y-auto w-full relative custom-scrollbar bg-slate-50 p-4 sm:p-6 md:p-8 transition-colors duration-500">
           <div className="flex flex-col gap-6 w-full mx-auto">
             
             {/* TOMBOL TAB & NAVIGASI */}
-            <div className="flex flex-col sm:flex-row bg-slate-100/80 rounded-2xl p-1.5 gap-1.5 shadow-inner">
-                <button onClick={() => setHomeTab('lesson_plan')} className={`flex-1 px-4 py-3 sm:py-2.5 font-black text-sm rounded-xl transition-all duration-300 min-w-fit ${homeTab === 'lesson_plan' ? 'bg-white text-green-600 shadow-md border border-gray-200/50 scale-[1.01]' : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'}`}>Target (Lesson Plan)</button>
-                <button onClick={() => setHomeTab('jurnal')} className={`flex-1 px-4 py-3 sm:py-2.5 font-black text-sm rounded-xl transition-all duration-300 min-w-fit ${homeTab === 'jurnal' ? 'bg-white text-blue-600 shadow-md border border-gray-200/50 scale-[1.01]' : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'}`}>Capaian (Jurnal)</button>
+            <div className="flex flex-col sm:flex-row rounded-2xl p-1.5 gap-1.5 shadow-inner transition-colors bg-slate-100/80">
+                <button onClick={() => setHomeTab('lesson_plan')} className={`flex-1 px-4 py-3 sm:py-2.5 font-black text-sm rounded-xl transition-all duration-300 min-w-fit ${homeTab === 'lesson_plan' ? 'bg-white text-green-600 shadow-md border border-gray-200/50' : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'}`}>Target (Lesson Plan)</button>
+                <button onClick={() => setHomeTab('jurnal')} className={`flex-1 px-4 py-3 sm:py-2.5 font-black text-sm rounded-xl transition-all duration-300 min-w-fit ${homeTab === 'jurnal' ? 'bg-white text-blue-600 shadow-md border border-gray-200/50' : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'}`}>Capaian (Jurnal)</button>
             </div>
 
             {/* NAVIGASI TANGGAL & MINGGU */}
-            <div className="flex items-center justify-between bg-white px-3 py-3 sm:px-4 rounded-2xl border border-gray-200/80 shadow-sm w-full gap-2">
-              <button onClick={() => changeWeek(-7)} className="p-2 sm:px-3 sm:py-2 bg-gray-50 hover:bg-green-50 text-gray-500 hover:text-green-600 rounded-lg flex items-center gap-1 font-bold text-xs sm:text-sm transition-colors"><ChevronLeft size={16}/><span className="hidden sm:inline">Sebelumnya</span></button>
-              <div className="font-black text-gray-700 text-xs sm:text-sm md:text-base text-center flex-1 sm:flex-none"><Calendar size={14} className="inline text-green-500 mr-1 sm:mr-2 align-text-bottom"/> {formatPeriode(weekDates[0], weekDates[weekDates.length - 1] || weekDates[0])}</div>
+            <div className="flex items-center justify-between px-3 py-3 sm:px-4 rounded-2xl border shadow-sm w-full gap-2 transition-all duration-500 bg-white border-gray-200/80">
+              <button onClick={() => changeWeek(-7)} className="p-2 sm:px-3 sm:py-2 rounded-lg flex items-center gap-1 font-bold text-xs sm:text-sm transition-colors bg-gray-50 text-gray-500 hover:bg-green-50 hover:text-green-600"><ChevronLeft size={16}/><span className="hidden sm:inline">Sebelumnya</span></button>
+              <div className="font-black text-xs sm:text-sm md:text-base text-center flex-1 sm:flex-none text-gray-700 transition-colors"><Calendar size={14} className="inline text-green-500 mr-1 sm:mr-2 align-text-bottom"/> {formatPeriode(weekDates[0], weekDates[weekDates.length - 1] || weekDates[0])}</div>
               <button onClick={() => changeWeek(7)} className="p-2 sm:px-3 sm:py-2 bg-gray-50 hover:bg-green-50 text-gray-500 hover:text-green-600 rounded-lg flex items-center gap-1 font-bold text-xs sm:text-sm transition-colors"><span className="hidden sm:inline">Selanjutnya</span><ChevronRight size={16}/></button>
             </div>
 
@@ -600,7 +601,7 @@ const HomeView = ({
                 const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
                 const dayName = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][dateObj.getDay()];
                 if (dateObj.getDay() === 0 || dateObj.getDay() === 6) return null; 
-                return (
+                return ( // Removed dark mode styles
                     <button key={dateStr} onClick={() => setActiveDate(dateStr)} className={`flex-1 flex flex-col shrink-0 min-w-[80px] sm:min-w-[90px] items-center justify-center p-3 rounded-2xl border transition-all snap-center ${activeDate === dateStr ? 'bg-[#00e676] border-[#00e676] text-white shadow-md transform scale-[1.03]' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
                       <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest mb-0.5">{dayName}</span>
                       <span className="text-xs md:text-base font-black">{dateObj.getDate()} {['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'][dateObj.getMonth()]}</span>
@@ -633,12 +634,12 @@ const HomeView = ({
 
             {/* FRAME RIWAYAT DATA TERAKHIR (MUNCUL SAAT SISWA DIPILIH) */}
             {activeStudentId && window._lastWeekData?.[activeStudentId] && (
-              <div className="bg-white border-2 border-[#00e676]/20 rounded-2xl p-4 shadow-sm animate-in fade-in zoom-in-95 duration-300">
+              <div className={`border-2 rounded-2xl p-4 shadow-sm animate-in fade-in zoom-in-95 duration-300 transition-colors ${darkMode ? 'bg-slate-900 border-emerald-500/20 shadow-emerald-900/10' : 'bg-white border-[#00e676]/20'}`}>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <History size={16} className="text-[#00e676]" />
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Posisi Terakhir:</span>
-                    <span className="text-xs font-black text-slate-700">{filteredStudents.find(s => s.id === activeStudentId)?.name}</span>
+                    <span className="text-[10px] font-black text-slate-400 dark:text-slate-400 uppercase tracking-widest">Posisi Terakhir:</span>
+                    <span className="text-xs font-black text-slate-700 dark:text-slate-200">{filteredStudents.find(s => s.id === activeStudentId)?.name}</span>
                   </div>
                   <button onClick={() => setActiveStudentId(null)} className="text-slate-300 hover:text-slate-500"><X size={14}/></button>
                 </div>
@@ -648,10 +649,10 @@ const HomeView = ({
                      { label: 'Tahfidz', val: window._lastWeekData[activeStudentId][k.f], color: 'purple' },
                      { label: 'Murojaah', val: window._lastWeekData[activeStudentId][k.m], color: 'emerald' },
                      { label: 'Catatan', val: window._lastWeekData[activeStudentId][k.c], color: 'orange' }
-                   ].map((item, i) => (
-                     <div key={i} className={`bg-${item.color}-50/50 p-2 rounded-xl border border-${item.color}-100/50`}>
+                   ].map((item, i) => ( // Fix potential missing colors in tailwind by using full classes or safe list
+                     <div key={i} className={`bg-${item.color}-50/50 dark:bg-${item.color}-900/20 p-2 rounded-xl border border-${item.color}-100/50 dark:border-${item.color}-800/30`}>
                         <p className={`text-[8px] font-black text-${item.color}-400 uppercase mb-0.5`}>{item.label}</p>
-                        <p className={`text-[10px] font-bold text-${item.color}-800 truncate`}>{item.val || '-'}</p>
+                        <p className={`text-[10px] font-bold text-${item.color}-800 dark:text-${item.color}-200 truncate`}>{item.val || '-'}</p>
                      </div>
                    ))}
                 </div>
@@ -667,9 +668,9 @@ const HomeView = ({
             )}
 
             {/* TABEL DATA WEB (TIDAK LAGI FIXED HEIGHT, SEKARANG MEMANJANG BEBAS) */}
-            <div key={homeTab} className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-800 overflow-visible relative flex-1 flex flex-col animate-tab-content transition-colors">
+            <div key={homeTab} className="rounded-2xl shadow-sm border overflow-visible relative flex-1 flex flex-col animate-tab-content transition-colors bg-white border-gray-200 shadow-slate-200/50">
                 {isLoading && (
-                  <div className="absolute top-0 left-0 w-full h-1 overflow-hidden z-50 rounded-t-2xl bg-slate-50 dark:bg-slate-900">
+                  <div className="absolute top-0 left-0 w-full h-1 overflow-hidden z-50 rounded-t-2xl bg-slate-50 transition-colors">
                     <div className="h-full bg-green-500 animate-loading-bar rounded-full shadow-[0_0_8px_rgba(34,197,94,0.4)]"></div>
                   </div>
                 )}
@@ -680,37 +681,37 @@ const HomeView = ({
                   <div className="text-center py-24 flex flex-col items-center justify-center gap-3 text-gray-400 font-bold"><Users size={36} className="text-gray-300"/><p>Belum ada siswa.</p></div>
                 ) : (
                   <div className={`overflow-x-auto custom-scrollbar flex-1 relative transition-all duration-500 ${isLoading ? 'blur-[1.5px] opacity-60 pointer-events-none' : ''}`}>
-                      <table className="w-full text-center border-collapse min-w-[1000px]">
+                      <table className="w-full text-center border-collapse min-w-[1000px] bg-white transition-colors">
                         {/* HEADER TABEL (STICKY DI BAWAH HEADER APLIKASI) */}
-                        <thead className="sticky top-[-1px] z-30 shadow-sm bg-[#f8fafc] dark:bg-slate-900 transition-colors">
-                            <tr className="border-b border-gray-200 dark:border-slate-800 text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest">
-                              <th className="p-3 pl-4 text-left sticky left-0 top-0 bg-[#f8fafc] dark:bg-slate-900 z-40 w-[240px] shadow-[4px_0_12px_rgba(0,0,0,0.05)] border-r border-gray-100 dark:border-slate-800 transition-colors">Nama Siswa</th>
-                              <th className="p-3 w-[200px] sticky top-0 bg-[#f8fafc] dark:bg-slate-900 z-30">
+                        <thead className="sticky top-[-1px] z-30 shadow-sm transition-colors bg-[#f8fafc]">
+                            <tr className="border-b border-gray-200 text-[10px] font-black text-gray-400 uppercase tracking-widest transition-colors">
+                              <th className="p-2.5 sm:p-3 pl-3 sm:pl-4 text-left sticky left-0 top-0 z-40 w-[140px] sm:w-[240px] shadow-[4px_0_12px_rgba(0,0,0,0.05)] border-r transition-colors bg-[#f8fafc] border-gray-100">Nama Siswa</th>
+                              <th className="p-2.5 sm:p-3 w-[200px] sticky top-0 z-30 transition-colors bg-[#f8fafc]">
                                 <div className="flex items-center justify-center gap-1.5 cursor-pointer hover:text-blue-600 transition-colors" onClick={() => handleOpenModal(null, 'tahsin')}>
                                   Tahsin
                                 </div>
                               </th>
-                              <th className="p-3 w-[200px] sticky top-0 bg-[#f8fafc] dark:bg-slate-900 z-30">
+                              <th className="p-2.5 sm:p-3 w-[200px] sticky top-0 z-30 transition-colors bg-[#f8fafc]">
                                 <div className="flex items-center justify-center gap-1.5 cursor-pointer hover:text-purple-600 transition-colors" onClick={() => handleOpenModal(null, 'tahfidz')}>
                                   Tahfidz
                                 </div>
                               </th>
-                              <th className="p-3 w-[200px] sticky top-0 bg-[#f8fafc] dark:bg-slate-900 z-30">
+                              <th className="p-2.5 sm:p-3 w-[200px] sticky top-0 z-30 transition-colors bg-[#f8fafc]">
                                 <div className="flex items-center justify-center gap-1.5 cursor-pointer hover:text-emerald-600 transition-colors" onClick={() => handleOpenModal(null, 'murojaah')}>
                                   Murojaah
                                 </div>
                               </th>
-                              <th className="p-3 w-[200px] sticky top-0 bg-[#f8fafc] dark:bg-slate-900 z-30">
+                              <th className="p-2.5 sm:p-3 w-[200px] sticky top-0 z-30 transition-colors bg-[#f8fafc]">
                                 <div className="flex items-center justify-center gap-1.5 cursor-pointer hover:text-orange-600 transition-colors" onClick={() => handleOpenModal(null, 'catatan')}>
                                   Catatan
                                 </div>
                               </th>
-                              <th className="p-3 w-[120px] sticky right-0 top-0 bg-[#f8fafc] dark:bg-slate-900 z-40 shadow-[-4px_0_12px_rgba(0,0,0,0.03)] border-l border-gray-100 dark:border-slate-800 transition-colors">
+                              <th className="p-2.5 sm:p-3 w-[90px] sm:w-[120px] sticky right-0 top-0 z-40 shadow-[-4px_0_12px_rgba(0,0,0,0.03)] border-l transition-colors bg-[#f8fafc] border-gray-100">
                                 <div className="flex items-center justify-center gap-1.5"><Settings size={12} /> Aksi</div>
                               </th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-100 dark:divide-slate-800 transition-colors">
+                        <tbody className="divide-y divide-gray-100 transition-colors">
                             {filteredStudents.map((student, index) => {
                               const record = student?.records?.[activeDate] || {};
                               
@@ -745,21 +746,21 @@ const HomeView = ({
                               return (
                                   <tr 
                                     key={student?.id || Math.random()} 
-                                    className={`hover:bg-white dark:hover:bg-slate-800 hover:shadow-xl hover:z-20 relative transition-all duration-300 group ${!isLoading ? 'animate-row-slide-in' : ''}`}
+                                    className={`relative transition-all duration-300 group ${!isLoading ? 'animate-row-slide-in' : ''} hover:bg-white hover:shadow-xl hover:z-20`}
                                     style={!isLoading ? { animationDelay: `${index * 0.05}s` } : {}}
                                   >
-                                    <td onClick={() => setActiveStudentId(student.id)} className="p-3 pl-4 text-left sticky left-0 bg-white dark:bg-slate-900 group-hover:bg-[#f4f7fa] dark:group-hover:bg-slate-800 z-10 shadow-[4px_0_12px_rgba(0,0,0,0.03)] transition-all border-r border-gray-50 dark:border-slate-800 cursor-pointer border-l-4 border-transparent group-hover:border-l-green-500 group-hover:shadow-[4px_0_12px_rgba(0,0,0,0.03),inset_8px_0_20px_-6px_rgba(34,197,94,0.6)]">
-                                      <div className="flex items-center gap-3">
+                                    <td onClick={() => setActiveStudentId(student.id)} className="p-2.5 sm:p-3 pl-3 sm:pl-4 text-left sticky left-0 z-10 shadow-[4px_0_12px_rgba(0,0,0,0.03)] transition-all border-r cursor-pointer border-l-4 border-transparent group-hover:border-l-green-500 bg-white border-gray-50 group-hover:bg-[#f4f7fa]">
+                                      <div className="flex items-center gap-2 sm:gap-3">
                                         {student?.photo ? (
-                                          <img src={student.photo} alt={student?.name || ''} className="w-9 h-9 rounded-full object-cover border border-gray-200 shrink-0 shadow-sm" />
-                                        ) : (
-                                          <div className="w-9 h-9 rounded-full bg-blue-50 text-blue-700 flex items-center justify-center text-[11px] font-black shrink-0 border border-blue-100">
+                                          <img src={student.photo} alt={student?.name || ''} className="w-7 h-7 sm:w-9 sm:h-9 rounded-full object-cover border border-gray-200 shrink-0 shadow-sm" />
+                                        ) : ( // Removed dark mode styles
+                                          <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-[9px] sm:text-[11px] font-black shrink-0 border transition-colors bg-blue-50 text-blue-700 border-blue-100">
                                             {initials}
                                           </div>
                                         )}
-                                        <div className="flex flex-col">
-                                          <span className="font-extrabold text-sm text-gray-800 dark:text-slate-100 line-clamp-1 group-hover:text-slate-950 dark:group-hover:text-white transition-colors">{String(student?.name || 'Unknown')}</span>
-                                          <span className="text-[9px] text-gray-400 dark:text-slate-500 font-bold uppercase group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors">Kelas {String(student?.kelas || '-')}</span>
+                                        <div className="flex flex-col min-w-0">
+                                          <span className="font-extrabold text-[11px] sm:text-sm text-gray-800 truncate group-hover:text-slate-950 transition-colors">{String(student?.name || 'Unknown')}</span>
+                                          <span className="text-[8px] sm:text-[9px] text-gray-400 font-bold uppercase group-hover:text-slate-600 transition-colors">Kelas {String(student?.kelas || '-')}</span>
                                         </div>
                                       </div>
                                     </td>
@@ -768,8 +769,8 @@ const HomeView = ({
                                         <div onClick={() => { setActiveStudentId(student.id); handleOpenModal(student, 'tahsin'); }} className="min-h-[60px] flex flex-col items-center justify-center border border-transparent hover:border-gray-200 dark:hover:border-slate-700 rounded-xl cursor-pointer relative group/cell transition-colors active:bg-gray-50 dark:active:bg-slate-800/50">
                                           {!isTahsinEmpty ? (
                                             renderTahsinCard(valT, valH, student?.id, activeDate, valTNilai, valTSNilai)
-                                          ) : lastRec && lastRec[k.t] !== '-' ? (
-                                            <div className="opacity-25 grayscale scale-90 origin-center transition-opacity group-hover/cell:opacity-40">
+                                          ) : lastRec && lastRec[k.t] !== '-' ? ( // Removed dark mode styles
+                                            <div className="grayscale scale-90 origin-center transition-opacity group-hover/cell:opacity-60 opacity-25">
                                               <div className="text-[7px] font-black text-blue-400 uppercase tracking-tighter mb-0.5">Pekan Lalu</div>
                                               {renderTahsinCard(lastRec[k.t], lastRec[k.h], student?.id, 'ghost', lastRec[k.tNilai], lastRec[k.tsNilai])}
                                             </div>
@@ -783,7 +784,7 @@ const HomeView = ({
                                           {!isTahfidzEmpty ? (
                                             renderTahfidzCard(valF, valAF, student?.id, activeDate, valFNilai)
                                           ) : lastRec && lastRec[k.f] !== '-' ? (
-                                            <div className="opacity-25 grayscale scale-90 origin-center transition-opacity group-hover/cell:opacity-40">
+                                            <div className="grayscale scale-90 origin-center transition-opacity group-hover/cell:opacity-60 opacity-25">
                                               <div className="text-[7px] font-black text-purple-400 uppercase tracking-tighter mb-0.5">Pekan Lalu</div>
                                               {renderTahfidzCard(lastRec[k.f], lastRec[k.af], student?.id, 'ghost', lastRec[k.fNilai])}
                                             </div>
@@ -797,7 +798,7 @@ const HomeView = ({
                                           {!isMurojaahEmpty ? (
                                             renderMurojaahCard(valM, student?.id, activeDate)
                                           ) : lastRec && lastRec[k.m] !== '-' ? (
-                                            <div className="opacity-25 grayscale scale-90 origin-center transition-opacity group-hover/cell:opacity-40">
+                                            <div className="grayscale scale-90 origin-center transition-opacity group-hover/cell:opacity-60 opacity-25">
                                               <div className="text-[7px] font-black text-emerald-400 uppercase tracking-tighter mb-0.5">Pekan Lalu</div>
                                               {renderMurojaahCard(lastRec[k.m], student?.id, 'ghost')}
                                             </div>
@@ -811,7 +812,7 @@ const HomeView = ({
                                           {!isCatatanEmpty ? (
                                             <span className={`text-xs text-center ${getStatusColor(valC)}`}>{String(valC)}</span>
                                           ) : lastRec && lastRec[k.c] !== '-' ? (
-                                            <div className="opacity-30 grayscale italic scale-90 origin-center">
+                                            <div className="grayscale italic scale-90 origin-center opacity-30">
                                               <span className="text-[10px] text-gray-400">{String(lastRec[k.c])}</span>
                                             </div>
                                           ) : <span className="text-gray-300 group-hover:text-slate-400 transition-colors">-</span>}
@@ -823,18 +824,18 @@ const HomeView = ({
                                         </div>
                                     </td>
 
-                                    <td className="p-3 sticky right-0 bg-white dark:bg-slate-900 group-hover:bg-slate-50 dark:group-hover:bg-slate-800 z-10 transition-all border-l border-gray-200 dark:border-slate-800 shadow-[-10px_0_15px_rgba(0,0,0,0.02)]">
-                                      <div className="flex items-center justify-center gap-1">
+                                    <td className="p-2.5 sm:p-3 sticky right-0 z-10 transition-all border-l shadow-[-10px_0_15px_rgba(0,0,0,0.02)] bg-white border-gray-200 group-hover:bg-gray-50">
+                                      <div className="flex items-center justify-center gap-0.5 sm:gap-1">
                                         <button 
                                           onClick={() => handleOpenModal(student, 'full_edit')} 
-                                          className="group/btn p-2.5 text-slate-400 group-hover:text-slate-500 hover:text-green-600 hover:bg-green-50 rounded-2xl transition-all" 
+                                          className="group/btn p-1.5 sm:p-2.5 text-slate-400 group-hover:text-slate-500 hover:text-green-600 hover:bg-green-50 rounded-xl sm:rounded-2xl transition-all" 
                                           title="Edit Data"
                                         >
                                           <Edit3 size={18} />
                                         </button>
                                         <button 
                                           onClick={() => setShareStudent(student)} 
-                                          className="group/btn p-2.5 text-slate-400 group-hover:text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-2xl transition-all" 
+                                          className="group/btn p-1.5 sm:p-2.5 text-slate-400 group-hover:text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl sm:rounded-2xl transition-all" 
                                           title="Bagikan Laporan"
                                         >
                                           <Share2 size={18} />
@@ -842,7 +843,7 @@ const HomeView = ({
                                         <div className="w-px h-4 bg-gray-100 mx-0.5" />
                                         <button 
                                           onClick={(e) => requestClearRecord(e, student?.id, activeDate)} 
-                                          className="group/btn p-2.5 text-slate-400 group-hover:text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-2xl transition-all" 
+                                          className="group/btn p-1.5 sm:p-2.5 text-slate-400 group-hover:text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl sm:rounded-2xl transition-all" 
                                           title="Kosongkan Data"
                                         >
                                           <Trash2 size={18} />
@@ -860,11 +861,11 @@ const HomeView = ({
           </div>
         </div>
 
-        <div className="shrink-0 z-40 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 px-4 sm:px-6 py-3 text-center transition-colors">
-          <p className="text-[11px] sm:text-xs text-gray-500 dark:text-slate-400 font-medium leading-relaxed">
-            &copy; {new Date().getFullYear()} <strong className="text-gray-700 dark:text-slate-200">Juman Jayyidin</strong>. All rights reserved.
-          </p>
-        </div>
+        <footer className="shrink-0 z-40 bg-white border-t border-gray-200 px-4 sm:px-6 py-3 text-center transition-colors">
+          <p className="text-[11px] sm:text-xs text-gray-500 font-medium leading-relaxed">
+            &copy; {new Date().getFullYear()} <strong className="text-gray-700">Juman Jayyidin</strong>. All rights reserved.
+          </p> 
+        </footer>
       </div>
     </>
   );

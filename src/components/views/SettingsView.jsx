@@ -60,18 +60,18 @@ const SettingsView = ({
   }).slice(0, 10);
 
   return (
-    <div className="flex-1 h-full overflow-y-auto bg-[#F8F9FA] custom-scrollbar min-h-0">
+    <div className="flex-1 h-full overflow-y-auto bg-[#F8F9FA] dark:bg-slate-950 custom-scrollbar min-h-0">
       <div className="max-w-6xl mx-auto px-4 py-8 sm:px-6 md:px-8 pb-32">
         
         {/* HEADER SECTION */}
         <div className="mb-10">
-          <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight mb-2">
+          <h1 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white tracking-tight mb-2">
             {isSuperAdmin ? 'Pengaturan Sistem' : 'Manajemen Halaqoh'}
           </h1>
-          <p className="text-slate-500 font-medium">
+          <p className="text-slate-500 dark:text-slate-400 font-medium">
             {isSuperAdmin 
               ? 'Konfigurasi identitas sekolah, hak akses guru, dan struktur database halaqoh.' 
-              : 'Kelola daftar kelompok halaqoh yang berada di bawah bimbingan Anda.'}
+              : 'Kelola daftar kelompok halaqoh yang berada di bawah bimbingan Anda.'} 
           </p>
         </div>
 
@@ -82,14 +82,14 @@ const SettingsView = ({
             <section className="animate-in fade-in slide-in-from-top-4 duration-500">
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-2 h-6 bg-orange-500 rounded-full"></div>
-                <h2 className="text-sm font-black text-slate-400 uppercase tracking-[0.2em]">Persetujuan Menunggu</h2>
+                <h2 className="text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Persetujuan Menunggu</h2>
               </div>
-              <div className="bg-white rounded-[2rem] border-2 border-orange-100 shadow-xl shadow-orange-900/5 overflow-hidden">
+              <div className="bg-white dark:bg-slate-900 rounded-[2rem] border-2 border-orange-100 dark:border-orange-900/30 shadow-xl shadow-orange-900/5 overflow-hidden">
                 <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {appUsers.filter(u => u.status === 'pending').map(pendingUser => (
+                  {appUsers.filter(u => u.status === 'pending').map(pendingUser => ( 
                     <div key={pendingUser.id} className="bg-orange-50/50 border border-orange-100 rounded-2xl p-4 flex flex-col gap-3">
-                      <div>
-                        <p className="font-black text-slate-800">{pendingUser.name}</p>
+                      <div className="dark:text-slate-100">
+                        <p className="font-black">{pendingUser.name}</p>
                         <p className="text-xs font-bold text-orange-600/70 uppercase">@{pendingUser.username}</p>
                       </div>
                       <div className="flex gap-2">
@@ -110,10 +110,10 @@ const SettingsView = ({
               <section>
                 <div className="flex items-center gap-2 mb-4">
                   <div className="w-2 h-6 bg-blue-500 rounded-full"></div>
-                  <h2 className="text-sm font-black text-slate-400 uppercase tracking-[0.2em]">Identitas Laporan</h2>
+                  <h2 className="text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Identitas Laporan</h2>
                 </div>
-                <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-6 flex flex-col sm:flex-row items-center gap-6">
-                  <div className="w-32 h-32 bg-slate-50 border-2 border-dashed border-slate-200 rounded-[2rem] flex items-center justify-center relative group overflow-hidden shrink-0">
+                <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm p-6 flex flex-col sm:flex-row items-center gap-6">
+                  <div className="w-32 h-32 bg-slate-50 dark:bg-slate-800 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-[2rem] flex items-center justify-center relative group overflow-hidden shrink-0">
                     {institutionLogo && institutionLogo !== 'logo.png' ? (
                       <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain p-4 transition-transform group-hover:scale-90" />
                     ) : (
@@ -122,11 +122,11 @@ const SettingsView = ({
                     <label className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white cursor-pointer text-center p-2">
                       <Camera size={20} className="mb-1" />
                       <span className="text-[10px] font-black uppercase tracking-widest">Ganti Logo</span>
-                      <input type="file" accept="image/*" className="hidden" onChange={handleInstitutionLogoUpload} />
+                      <input type="file" accept="image/*" className="hidden" onChange={handleInstitutionLogoUpload} /> 
                     </label>
                   </div>
-                  <div className="flex-1 text-center sm:text-left">
-                    <h3 className="font-black text-slate-800 text-lg mb-1">Logo Lembaga</h3>
+                  <div className="flex-1 text-center sm:text-left dark:text-slate-100">
+                    <h3 className="font-black text-lg mb-1">Logo Lembaga</h3>
                     <p className="text-xs text-slate-500 font-medium leading-relaxed mb-4">Gunakan logo transparan (PNG) untuk hasil cetak laporan yang maksimal.</p>
                     {institutionLogo !== 'logo.png' && (
                       <button onClick={() => { setInstitutionLogo('logo.png'); updateMasterDataCloud({ institutionLogo: 'logo.png' }); showToast('Logo direset.'); }} className="text-[10px] font-black text-red-500 uppercase tracking-widest hover:text-red-700 transition-colors">Reset ke Default</button>
@@ -139,17 +139,17 @@ const SettingsView = ({
               <section>
                 <div className="flex items-center gap-2 mb-4">
                   <div className="w-2 h-6 bg-emerald-500 rounded-full"></div>
-                  <h2 className="text-sm font-black text-slate-400 uppercase tracking-[0.2em]">Daftar Kelas</h2>
+                  <h2 className="text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Daftar Kelas</h2>
                 </div>
-                <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-6">
-                  <div className="flex gap-2 mb-6">
-                    <input type="text" placeholder="Nama kelas (Misal: 1A)" value={newKelasName} onChange={e => setNewKelasName(e.target.value)} className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all" />
+                <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm p-6">
+                  <div className="flex gap-2 mb-6"> 
+                    <input type="text" placeholder="Nama kelas (Misal: 1A)" value={newKelasName} onChange={e => setNewKelasName(e.target.value)} className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all dark:text-slate-100" />
                     <button onClick={handleAddKelas} className="bg-emerald-500 hover:bg-emerald-600 text-white p-3 rounded-2xl shadow-lg shadow-emerald-100 transition-all"><Plus size={20}/></button>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {kelasList.map(kelas => (
-                      <div key={kelas} className="group bg-slate-50 border border-slate-100 pl-4 pr-2 py-2 rounded-xl flex items-center gap-3 transition-all hover:bg-white hover:shadow-md hover:border-emerald-200">
-                        <span className="text-xs font-black text-slate-700">{kelas}</span>
+                      <div key={kelas} className="group bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 pl-4 pr-2 py-2 rounded-xl flex items-center gap-3 transition-all hover:bg-white dark:hover:bg-slate-700 hover:shadow-md hover:border-emerald-200">
+                        <span className="text-xs font-black text-slate-700 dark:text-slate-300">{kelas}</span>
                         <button onClick={() => handleDeleteKelas(kelas)} className="p-1 text-slate-300 hover:text-red-500 transition-colors"><X size={14}/></button>
                       </div>
                     ))}
@@ -163,7 +163,7 @@ const SettingsView = ({
           <section>
             <div className="flex items-center gap-2 mb-4">
               <div className="w-2 h-6 bg-indigo-500 rounded-full"></div>
-              <h2 className="text-sm font-black text-slate-400 uppercase tracking-[0.2em]">Manajemen Guru & Halaqoh</h2>
+              <h2 className="text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Manajemen Guru & Halaqoh</h2>
             </div>
             
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
@@ -171,20 +171,20 @@ const SettingsView = ({
               {/* Sidebar: Accounts (Super Admin Only) */}
               {isSuperAdmin && (
                 <div className="xl:col-span-1 space-y-6">
-                  <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden flex flex-col h-full max-h-[600px]">
-                    <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+                  <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col h-full max-h-[600px]">
+                    <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
                       <div className="flex items-center gap-3">
-                        <ShieldCheck className="text-indigo-600" size={24} />
-                        <h3 className="font-black text-slate-800">Akses Pengguna</h3>
+                        <ShieldCheck className="text-indigo-600 dark:text-indigo-400" size={24} />
+                        <h3 className="font-black text-slate-800 dark:text-slate-100">Akses Pengguna</h3>
                       </div>
                     </div>
                     <div className="p-4 space-y-3 overflow-y-auto custom-scrollbar flex-1">
                       {appUsers.filter(u => u.status === 'active' || u.role === 'superadmin').map(user => (
-                        <div key={user.id} className="bg-slate-50 border border-slate-100 rounded-2xl p-4 transition-all hover:border-indigo-200 group">
+                        <div key={user.id} className="bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl p-4 transition-all hover:border-indigo-200 group">
                           {editingAccount?.id === user.id ? (
                             <div className="space-y-3 animate-in fade-in duration-300">
-                              <input type="text" value={editingAccount.name} onChange={e => setEditingAccount({...editingAccount, name: e.target.value})} className="w-full bg-white border border-indigo-200 rounded-xl px-3 py-2 text-xs font-bold" />
-                              <input type="text" value={editingAccount.password} onChange={e => setEditingAccount({...editingAccount, password: e.target.value})} className="w-full bg-white border border-indigo-200 rounded-xl px-3 py-2 text-xs" placeholder="Password Baru" />
+                              <input type="text" value={editingAccount.name} onChange={e => setEditingAccount({...editingAccount, name: e.target.value})} className="w-full bg-white dark:bg-slate-700 border border-indigo-200 dark:border-indigo-900 rounded-xl px-3 py-2 text-xs font-bold dark:text-slate-100" />
+                              <input type="text" value={editingAccount.password} onChange={e => setEditingAccount({...editingAccount, password: e.target.value})} className="w-full bg-white dark:bg-slate-700 border border-indigo-200 dark:border-indigo-900 rounded-xl px-3 py-2 text-xs dark:text-slate-100" placeholder="Password Baru" /> 
                               <div className="flex gap-2">
                                 <button onClick={handleSaveAccount} className="flex-1 bg-indigo-600 text-white py-2 rounded-xl text-[10px] font-black uppercase">Simpan</button>
                                 <button onClick={() => setEditingAccount(null)} className="flex-1 bg-white border border-slate-200 py-2 rounded-xl text-[10px] font-black uppercase">Batal</button>
@@ -192,12 +192,12 @@ const SettingsView = ({
                             </div>
                           ) : (
                             <div className="flex items-center justify-between">
-                              <div className="min-w-0">
-                                <p className="font-black text-slate-800 text-sm truncate">
+                              <div className="min-w-0 dark:text-slate-100">
+                                <p className="font-black text-sm truncate">
                                   {user.name}
                                   {user.resetRequested && <span className="ml-2 text-[8px] bg-red-500 text-white px-1.5 py-0.5 rounded font-black animate-pulse">RESET</span>}
                                 </p>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase">@{user.username} • {user.role}</p>
+                                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase">@{user.username} • {user.role}</p>
                               </div>
                               <button onClick={() => handleStartEditAccount(user)} className="p-2 text-slate-300 hover:text-indigo-600 hover:bg-white rounded-xl transition-all"><Edit3 size={16}/></button>
                             </div>
@@ -211,16 +211,16 @@ const SettingsView = ({
 
               {/* Main: Halaqoh Structures */}
               <div className={isSuperAdmin ? "xl:col-span-2" : "xl:col-span-3"}>
-                <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
+                <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
                   {/* Input Actions */}
-                  <div className="p-6 bg-slate-50/80 border-b border-slate-100">
+                  <div className="p-6 bg-slate-50/80 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {isSuperAdmin ? (
                         <>
                           <div className="space-y-1.5">
-                            <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Tambah Guru</label>
-                            <div className="flex gap-2">
-                              <input type="text" list="approved-gurus" placeholder="Nama lengkap..." value={newGuruName} onChange={e => setNewGuruName(e.target.value)} className="flex-1 bg-white border border-slate-200 rounded-2xl px-4 py-2.5 text-sm font-bold outline-none focus:border-indigo-500" />
+                            <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1">Tambah Guru</label>
+                            <div className="flex gap-2"> 
+                              <input type="text" list="approved-gurus" placeholder="Nama lengkap..." value={newGuruName} onChange={e => setNewGuruName(e.target.value)} className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-2.5 text-sm font-bold outline-none focus:border-indigo-500 dark:text-slate-100" />
                               <button onClick={handleAddGuru} className="bg-slate-900 text-white px-4 rounded-2xl font-black text-xs uppercase tracking-widest">Add</button>
                               <datalist id="approved-gurus">
                                 {appUsers.filter(u => (u.status === 'active' || u.role === 'superadmin') && !guruList.includes(u.name)).map(u => <option key={u.id} value={u.name}>{u.username}</option>)}
@@ -228,22 +228,22 @@ const SettingsView = ({
                             </div>
                           </div>
                           <div className="space-y-1.5">
-                            <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Assign Halaqoh</label>
-                            <div className="flex gap-2">
-                              <select value={selectedGuruForHalaqoh} onChange={e => setSelectedGuruForHalaqoh(e.target.value)} className="w-[120px] bg-white border border-slate-200 rounded-2xl px-2 py-2.5 text-xs font-bold outline-none">
+                            <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1">Assign Halaqoh</label>
+                            <div className="flex gap-2"> 
+                              <select value={selectedGuruForHalaqoh} onChange={e => setSelectedGuruForHalaqoh(e.target.value)} className="w-[120px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-2 py-2.5 text-xs font-bold outline-none dark:text-slate-100">
                                 <option value="">Guru...</option>
                                 {guruList.map(g => <option key={g} value={g}>{g}</option>)}
                               </select>
-                              <input type="text" placeholder="Nama halaqoh..." value={newHalaqohName} onChange={e => setNewHalaqohName(e.target.value)} className="flex-1 bg-white border border-slate-200 rounded-2xl px-3 py-2.5 text-sm font-bold outline-none" />
+                              <input type="text" placeholder="Nama halaqoh..." value={newHalaqohName} onChange={e => setNewHalaqohName(e.target.value)} className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-3 py-2.5 text-sm font-bold outline-none dark:text-slate-100" />
                               <button onClick={handleAddHalaqoh} disabled={!selectedGuruForHalaqoh} className="bg-indigo-500 text-white px-4 rounded-2xl disabled:bg-slate-200 transition-colors"><Plus size={18}/></button>
                             </div>
                           </div>
                         </>
                       ) : (
                         <div className="col-span-2 space-y-1.5">
-                          <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Tambah Halaqoh Baru Anda</label>
-                          <div className="flex gap-2">
-                            <input type="text" placeholder="Nama kelompok (Misal: Hamzah Bin Abdul Muthalib)" value={newHalaqohName} onChange={e => setNewHalaqohName(e.target.value)} className="flex-1 bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm font-bold outline-none focus:border-emerald-500" />
+                          <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1">Tambah Halaqoh Baru Anda</label>
+                          <div className="flex gap-2"> 
+                            <input type="text" placeholder="Nama kelompok (Misal: Hamzah Bin Abdul Muthalib)" value={newHalaqohName} onChange={e => setNewHalaqohName(e.target.value)} className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3 text-sm font-bold outline-none focus:border-emerald-500 dark:text-slate-100" />
                             <button onClick={handleAddHalaqoh} disabled={!newHalaqohName.trim()} className="bg-emerald-500 text-white px-6 rounded-2xl font-black text-xs uppercase tracking-widest disabled:bg-slate-200 shadow-lg shadow-emerald-100">Simpan</button>
                           </div>
                         </div>
@@ -256,8 +256,8 @@ const SettingsView = ({
                     {guruList.map(guru => {
                       const linkedUser = appUsers.find(u => u.name?.trim() === guru.trim());
                       return (
-                        <div key={guru} className="bg-slate-50/50 border border-slate-100 rounded-3xl p-5 transition-all hover:bg-white hover:shadow-xl hover:shadow-slate-200/50 group/card">
-                          <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                        <div key={guru} className="bg-slate-50/50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 rounded-3xl p-5 transition-all hover:bg-white dark:hover:bg-slate-800 hover:shadow-xl hover:shadow-slate-200/50 group/card">
+                          <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-700">
                             {editingGuru?.oldName === guru ? (
                               <div className="flex items-center gap-2 w-full animate-in fade-in slide-in-from-left-2 duration-300">
                                 <input 
@@ -265,19 +265,19 @@ const SettingsView = ({
                                   autoFocus 
                                   value={editingGuru.newName} 
                                   onChange={e => setEditingGuru({...editingGuru, newName: e.target.value})} 
-                                  className="flex-1 bg-white border border-indigo-200 rounded-xl px-3 py-1.5 text-sm font-bold outline-none ring-2 ring-indigo-500/10" 
+                                  className="flex-1 bg-white dark:bg-slate-700 border border-indigo-200 dark:border-indigo-900 rounded-xl px-3 py-1.5 text-sm font-bold outline-none ring-2 ring-indigo-500/10 dark:text-slate-100" 
                                 />
                                 <button onClick={handleSaveEditGuru} className="p-2 bg-indigo-600 text-white rounded-xl shadow-md hover:bg-indigo-700 transition-all active:scale-90"><Save size={14}/></button>
                                 <button onClick={() => setEditingGuru(null)} className="p-2 bg-slate-100 text-slate-400 rounded-xl hover:bg-slate-200 transition-all"><X size={14}/></button>
                               </div>
                             ) : (
                               <>
-                                <div className="min-w-0">
-                                  <h4 className="font-black text-slate-800 text-sm truncate flex items-center gap-2">
-                                    <div className="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0"><User size={12}/></div>
+                                <div className="min-w-0 dark:text-slate-100">
+                                  <h4 className="font-black text-sm truncate flex items-center gap-2">
+                                    <div className="w-6 h-6 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0"><User size={12}/></div>
                                     {guru}
                                   </h4>
-                                  {linkedUser && <p className="text-[10px] font-bold text-indigo-400 ml-8">@{linkedUser.username}</p>}
+                                  {linkedUser && <p className="text-[10px] font-bold text-indigo-400 dark:text-indigo-300 ml-8">@{linkedUser.username}</p>}
                                 </div>
                                 <div className="flex gap-1 opacity-0 group-hover/card:opacity-100 transition-opacity">
                                   <button onClick={() => setEditingGuru({oldName: guru, newName: guru})} className="p-1.5 text-slate-400 hover:text-indigo-600 transition-colors"><Edit3 size={14}/></button>
@@ -296,22 +296,22 @@ const SettingsView = ({
                                       autoFocus 
                                       value={editingHalaqoh.newName} 
                                       onChange={e => setEditingHalaqoh({...editingHalaqoh, newName: e.target.value})} 
-                                      className="w-24 bg-white border border-indigo-100 rounded-lg px-2 py-1 text-[11px] font-bold outline-none" 
+                                      className="w-24 bg-white dark:bg-slate-700 border border-indigo-100 dark:border-indigo-900 rounded-lg px-2 py-1 text-[11px] font-bold outline-none dark:text-slate-100" 
                                     />
                                     <button onClick={handleSaveEditHalaqoh} className="p-1 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"><Save size={12}/></button>
                                     <button onClick={() => setEditingHalaqoh(null)} className="p-1 text-slate-400 hover:bg-slate-200 rounded-lg"><X size={12}/></button>
                                   </div>
-                                ) : (
-                                  <div className="bg-white border border-slate-200 pl-3 pr-1.5 py-1.5 rounded-xl text-[11px] font-bold text-slate-600 flex items-center gap-2 transition-all hover:border-emerald-300 hover:text-emerald-700">
+                                ) : ( 
+                                  <div className="bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 pl-3 pr-1.5 py-1.5 rounded-xl text-[11px] font-bold text-slate-600 dark:text-slate-300 flex items-center gap-2 transition-all hover:border-emerald-300 hover:text-emerald-700">
                                     <span>{halaqoh}</span>
                                     <div className="flex items-center gap-0.5 border-l border-slate-100 pl-1.5 ml-0.5">
-                                      <button onClick={() => setEditingHalaqoh({guruName: guru, oldName: halaqoh, newName: halaqoh})} className="p-1 text-slate-300 hover:text-blue-500 transition-colors"><Edit3 size={10}/></button>
+                                      <button onClick={() => setEditingHalaqoh({guruName: guru, oldName: halaqoh, newName: halaqoh})} className="p-1 text-slate-300 dark:text-slate-500 hover:text-blue-500 transition-colors"><Edit3 size={10}/></button>
                                       <button onClick={() => requestDeleteHalaqoh(guru, halaqoh)} className="p-1 text-slate-300 hover:text-red-500 transition-colors"><X size={10}/></button>
                                     </div>
                                   </div>
                                 )}
                               </React.Fragment>
-                            ))}
+                            ))} 
                             {(!guruHalaqohData[guru] || guruHalaqohData[guru].length === 0) && <p className="text-[10px] text-slate-300 italic font-bold">Belum ada kelompok.</p>}
                           </div>
                         </div>
@@ -337,7 +337,7 @@ const SettingsView = ({
                   </div>
                   <div className="flex-1 text-center md:text-left min-w-0">
                     <h3 className="text-xl font-black mb-1 truncate">{isSuperAdmin ? 'Pencarian Siswa Global' : 'Cari Siswa Anda'}</h3>
-                    <p className="text-slate-400 text-sm font-medium line-clamp-2">{isSuperAdmin ? 'Temukan dan kelola data siswa di seluruh kelompok halaqoh dalam satu pintu.' : 'Temukan data siswa di seluruh kelompok halaqoh binaan Anda.'}</p>
+                    <p className="text-slate-400 dark:text-slate-400 text-sm font-medium line-clamp-2">{isSuperAdmin ? 'Temukan dan kelola data siswa di seluruh kelompok halaqoh dalam satu pintu.' : 'Temukan data siswa di seluruh kelompok halaqoh binaan Anda.'}</p>
                   </div>
                   <div className="relative w-full md:w-80 flex gap-2">
                     <div className="relative flex-1">
@@ -348,7 +348,7 @@ const SettingsView = ({
                         value={studentSearch} 
                         onChange={(e) => setStudentSearch(e.target.value)}
                         className="w-full bg-slate-800 border-none rounded-2xl py-4 pl-12 pr-4 text-sm font-bold focus:ring-2 focus:ring-purple-500 outline-none transition-all placeholder:text-slate-600"
-                      />
+                      /> 
                     </div>
                     {isSuperAdmin && (
                       <button 
@@ -369,7 +369,7 @@ const SettingsView = ({
                       value={bulkData}
                       onChange={(e) => setBulkData(e.target.value)}
                       placeholder="Ahmad, 1A, Abu Bakar&#10;Siti, 1B, Khadijah&#10;..."
-                      className="w-full h-40 bg-slate-800 border-none rounded-2xl p-4 text-sm font-bold text-white focus:ring-2 focus:ring-purple-500 outline-none transition-all placeholder:text-slate-600 resize-none mb-4"
+                      className="w-full h-40 bg-slate-800 border-none rounded-2xl p-4 text-sm font-bold text-white dark:text-slate-100 focus:ring-2 focus:ring-purple-500 outline-none transition-all placeholder:text-slate-600 dark:placeholder-slate-500 resize-none mb-4"
                     />
                     <div className="flex justify-end gap-3">
                       <button onClick={() => { setBulkData(''); setIsBulkImportOpen(false); }} className="px-6 py-3 rounded-xl text-xs font-black uppercase text-slate-400 hover:text-white transition-colors">Batal</button>
@@ -381,8 +381,8 @@ const SettingsView = ({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {filteredStudentsMaster.map(s => (
                       <div key={s.id} className="bg-white/5 border border-white/10 rounded-3xl p-5 flex items-center justify-between transition-all hover:bg-white/10 group">
-                        <div>
-                          <p className="font-black text-white text-base leading-tight mb-1">{s.name}</p>
+                        <div> 
+                          <p className="font-black text-white dark:text-white text-base leading-tight mb-1">{s.name}</p>
                           <p className="text-[10px] font-black text-purple-400 uppercase tracking-widest">
                             Halaqoh: <span className="text-white">{s.halaqoh || 'Unassigned'}</span> • {s.kelas || 'N/A'}
                           </p>
@@ -394,7 +394,7 @@ const SettingsView = ({
                       </div>
                     ))}
                     {studentSearch && filteredStudentsMaster.length === 0 && (
-                      <div className="col-span-2 py-10 text-center text-slate-500 font-bold italic">
+                      <div className="col-span-2 py-10 text-center text-slate-500 dark:text-slate-400 font-bold italic">
                         Data siswa tidak ditemukan di database.
                       </div>
                     )}

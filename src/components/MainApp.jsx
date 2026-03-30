@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, User, Menu, Home, Users, BarChart3, Settings, LogOut, Loader2, Edit3, Mic, Repeat, FileText, Sun, Moon } from 'lucide-react';
+import { BookOpen, User, Menu, Home, Users, BarChart3, Settings, LogOut, Loader2, Edit3, Mic, Repeat, FileText } from 'lucide-react';
 import { collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc, addDoc } from 'firebase/firestore';
 
 // Imports
@@ -22,18 +22,6 @@ const MainApp = ({ currentUser, onLogout }) => {
 
   const isSuperAdmin = currentUser?.role === 'superadmin';
 
-  const [darkMode, setDarkMode] = useState(() => {
-    const savedMode = localStorage.getItem('theme');
-    return savedMode ? savedMode === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
-  });
-
-  useEffect(() => {
-    if (darkMode) document.documentElement.classList.add('dark'); // Debug log
-    else document.documentElement.classList.remove('dark'); // Debug log
-    localStorage.setItem('theme', darkMode ? 'dark' : 'light');
-    console.log('MainApp: Dark mode status applied to HTML:', darkMode); // Debug log
-  }, [darkMode]);
-  
   // -- STATE UTAMA --
   const [isDbReady, setIsDbReady] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -624,65 +612,62 @@ const MainApp = ({ currentUser, onLogout }) => {
   if (!isDbReady) return (<div className="min-h-screen flex flex-col items-center justify-center bg-[#F8F9FA]"><Loader2 size={48} className="animate-spin text-[#00e676] mb-4" /></div>);
 
   return (
-    <div className={`h-screen ${darkMode ? 'dark bg-slate-950 text-slate-100' : 'bg-slate-50 text-gray-800'} font-sans flex flex-col overflow-hidden transition-all duration-500`}>
+    <div className="h-screen bg-slate-50 text-gray-800 font-sans flex flex-col overflow-hidden transition-all duration-500">
       {/* Header */}
-      <header className="bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 shrink-0 z-[60] w-full shadow-sm print:hidden transition-all duration-500">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 h-28 flex items-center justify-between">
-          <div className="flex items-center gap-1 text-green-600 dark:text-emerald-400 font-black text-base md:text-lg">
-            <div className="w-24 h-24 flex items-center justify-center shrink-0 transition-transform hover:scale-105">
+      <header className="bg-white border-gray-100 shrink-0 z-[60] w-full shadow-sm print:hidden border-b sticky top-0 transition-all duration-500">
+        <div className="max-w-7xl mx-auto px-3 md:px-6 h-14 sm:h-28 flex items-center justify-between">
+          <div className="flex items-center gap-1.5 font-bold text-xl sm:text-3xl text-green-600">
+            <div className="w-8 h-8 sm:w-24 sm:h-24 flex items-center justify-center shrink-0 transition-transform hover:scale-105">
               {institutionLogo && institutionLogo !== 'logo.png' ? (
-                <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain dark:invert" />
+                <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain" />
               ) : (
-                <BookOpen size={56} className="text-[#0f4c5c] dark:text-green-300"/>
+                <BookOpen className="w-6 h-6 sm:w-14 sm:h-14 text-[#0f4c5c]"/>
               )}
             </div>
-            <span className="tracking-tight dark:drop-shadow-[0_0_10px_rgba(52,211,153,0.5)] transition-all">MyQuranPlan</span>
+            <div className="flex flex-col items-start">
+              <span className="font-arabic tracking-tight leading-tight transition-all">MyQuranPlan</span>
+              <div className="h-0.5 w-full bg-gradient-to-r from-transparent via-amber-500 to-transparent opacity-80 -mt-1 sm:-mt-2"></div>
+            </div>
           </div>
-          <nav className="hidden md:flex items-center gap-6 font-bold text-sm text-gray-500 dark:text-gray-400">
-            <button onClick={() => setCurrentView('home')} className={`relative pb-1 group transition-colors ${currentView === 'home' ? 'text-green-600 dark:text-green-400' : 'hover:text-green-600 dark:hover:text-green-400'}`}>
+          <nav className="hidden md:flex items-center gap-6 font-bold text-sm text-gray-500">
+            <button onClick={() => setCurrentView('home')} className={`relative pb-1 group transition-colors ${currentView === 'home' ? 'text-green-600' : 'hover:text-green-600'}`}>
               Beranda
-              <span className={`absolute bottom-0 left-0 h-0.5 bg-green-600 dark:bg-green-400 transition-all duration-300 ${currentView === 'home' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
+              <span className={`absolute bottom-0 left-0 h-0.5 transition-all duration-300 ${currentView === 'home' ? 'w-full' : 'w-0 group-hover:w-full'} bg-green-600`}></span>
             </button>
-            <button onClick={() => setCurrentView('siswa')} className={`relative pb-1 group transition-colors ${currentView === 'siswa' ? 'text-green-600 dark:text-green-400' : 'hover:text-green-600 dark:hover:text-green-400'}`}>
+            <button onClick={() => setCurrentView('siswa')} className={`relative pb-1 group transition-colors ${currentView === 'siswa' ? 'text-green-600' : 'hover:text-green-600'}`}>
               Data Siswa
-              <span className={`absolute bottom-0 left-0 h-0.5 bg-green-600 dark:bg-green-400 transition-all duration-300 ${currentView === 'siswa' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
+              <span className={`absolute bottom-0 left-0 h-0.5 bg-green-600 transition-all duration-300 ${currentView === 'siswa' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
             </button>
-            <button onClick={() => setCurrentView('laporan')} className={`relative pb-1 group transition-colors ${currentView === 'laporan' ? 'text-green-600 dark:text-green-400' : 'hover:text-green-600 dark:hover:text-green-400'}`}>
+            <button onClick={() => setCurrentView('laporan')} className={`relative pb-1 group transition-colors ${currentView === 'laporan' ? 'text-green-600' : 'hover:text-green-600'}`}>
               Laporan
-              <span className={`absolute bottom-0 left-0 h-0.5 bg-green-600 dark:bg-green-400 transition-all duration-300 ${currentView === 'laporan' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
+              <span className={`absolute bottom-0 left-0 h-0.5 bg-green-600 transition-all duration-300 ${currentView === 'laporan' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
             </button>
-            <button onClick={() => setCurrentView('pengaturan')} className={`relative pb-1 group transition-colors ${currentView === 'pengaturan' ? 'text-green-600 dark:text-green-400' : 'hover:text-green-600 dark:hover:text-green-400'}`}>
+            <button onClick={() => setCurrentView('pengaturan')} className={`relative pb-1 group transition-colors ${currentView === 'pengaturan' ? 'text-green-600' : 'hover:text-green-600'}`}>
               Pengaturan
-              <span className={`absolute bottom-0 left-0 h-0.5 bg-green-600 dark:bg-green-400 transition-all duration-300 ${currentView === 'pengaturan' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
+              <span className={`absolute bottom-0 left-0 h-0.5 bg-green-600 transition-all duration-300 ${currentView === 'pengaturan' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
             </button>
           </nav>
           <div className="flex items-center gap-3">
-             <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-gray-50 dark:bg-gray-700 rounded-xl border dark:border-gray-600">
-                <User size={14} className="text-gray-400 dark:text-gray-500" />
-                <span className="text-xs font-bold text-gray-600 dark:text-gray-300">{currentUser.name}</span>
+             <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-xl border">
+                <User size={14} className="text-gray-400" />
+                <span className="text-xs font-bold text-gray-600">{currentUser.name}</span>
              </div>
-             <button onClick={onLogout} className="p-2 text-gray-400 hover:text-red-500 bg-gray-50 rounded-xl hidden md:block dark:bg-gray-700 dark:text-gray-300 dark:hover:text-red-400"><LogOut size={18} /></button>
-             <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 text-gray-600 bg-gray-50 rounded-lg dark:bg-gray-700 dark:text-gray-300"><Menu size={18}/></button>
-             <button onClick={() => {
-               setDarkMode(prev => !prev);
-               console.log('MainApp: Dark mode toggle button clicked'); // Debug log
-             }} className="p-2 text-gray-600 bg-gray-50 rounded-lg dark:bg-gray-700 dark:text-gray-300">
-                {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-             </button>
+             <button onClick={onLogout} className="p-2 text-gray-400 hover:text-red-500 bg-gray-50 rounded-xl hidden md:block"><LogOut size={18} /></button>
+             <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 text-gray-600 bg-gray-50 rounded-lg"><Menu size={18}/></button>
           </div>
         </div>
       </header>
 
       {/* Area Filter Halaqoh & Guru */}
-      {currentView !== 'pengaturan' && ( // Add dark mode styles to this filter bar
-        <div className="bg-white/95 dark:bg-slate-900/95 border-b border-gray-200 dark:border-slate-800 px-4 md:px-6 py-2 flex justify-between items-center shrink-0 z-50 print:hidden h-14 shadow-sm transition-all duration-500 backdrop-blur-md">
+      {currentView !== 'pengaturan' && (
+        <div className="bg-white/95 border-gray-200 border-b px-3 md:px-6 py-1 flex justify-between items-center shrink-0 z-50 print:hidden h-11 shadow-sm transition-all duration-500 backdrop-blur-md sticky top-[56px] sm:top-[112px]">
           <div className="flex items-center gap-2">
             {isSuperAdmin ? (
-              <select value={activeGuru} onChange={(e) => setActiveGuru(e.target.value)} className="bg-gray-50 border rounded-lg p-1.5 text-xs font-bold w-[130px] md:w-auto outline-none focus:ring-2 focus:ring-green-500/20 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200">
+              <select value={activeGuru} onChange={(e) => setActiveGuru(e.target.value)} className="bg-gray-50 border rounded-lg p-1.5 text-xs font-bold w-[130px] md:w-auto outline-none focus:ring-2 focus:ring-green-500/20">
                 {guruList.map(g => <option key={g} value={g}>{g}</option>)}
               </select>
             ) : (
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg border border-blue-100 shadow-sm dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-800">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg border border-blue-100 shadow-sm">
                 <User size={14} className="shrink-0" />
                 <span className="text-xs font-black truncate max-w-[120px] md:max-w-none">{currentUser.name}</span>
               </div>
@@ -691,7 +676,7 @@ const MainApp = ({ currentUser, onLogout }) => {
 
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest hidden sm:inline">Kelompok:</span>
-            <select value={activeHalaqoh} onChange={(e) => setActiveHalaqoh(e.target.value)} className="bg-green-50 dark:bg-slate-800 border border-green-200 dark:border-slate-700 text-green-800 dark:text-emerald-400 rounded-lg p-1.5 text-xs font-bold w-[130px] md:w-auto outline-none focus:ring-2 focus:ring-green-500/20">
+            <select value={activeHalaqoh} onChange={(e) => setActiveHalaqoh(e.target.value)} className="bg-green-50 border border-green-200 text-green-800 rounded-lg p-1.5 text-xs font-bold w-[130px] md:w-auto outline-none focus:ring-2 focus:ring-green-500/20">
               {(guruHalaqohData[activeGuru] || []).map(h => <option key={h} value={h}>{h}</option>)}
             </select>
           </div>
@@ -699,7 +684,7 @@ const MainApp = ({ currentUser, onLogout }) => {
       )}
 
       {/* Main Content Area */}
-      <main className="flex-1 w-full max-w-7xl mx-auto overflow-hidden relative flex flex-col min-h-0 dark:bg-slate-950 transition-colors duration-500">
+      <main className="flex-1 w-full max-w-7xl mx-auto overflow-hidden relative flex flex-col min-h-0 transition-colors duration-500">
         {currentView === 'home' && (
            <HomeView 
               activeHalaqoh={activeHalaqoh} 
@@ -727,7 +712,7 @@ const MainApp = ({ currentUser, onLogout }) => {
               openAddStudentModal={() => setIsAddStudentModalOpen(true)} 
               openEditStudentModal={(s) => { setEditStudentData({ id: s.id, name: s.name, kelas: s.kelas, halaqoh: s.halaqoh, photo: s.photo || null }); setIsEditStudentModalOpen(true); }} 
               requestDeleteStudent={requestDeleteStudent} isSuperAdmin={isSuperAdmin} 
-           /> 
+           />
         )}
         {currentView === 'laporan' && ( 
            <ReportView 
@@ -769,11 +754,11 @@ const MainApp = ({ currentUser, onLogout }) => {
 
       {toastMessage && ( <div className="fixed top-4 md:top-20 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-4 py-2 rounded-xl shadow-2xl z-[9999] font-bold text-xs md:text-sm animate-bounce">{toastMessage}</div> )}
 
-      <nav className="md:hidden fixed bottom-0 w-full bg-white border-t border-gray-100 flex justify-around items-center h-[70px] z-40 print:hidden dark:bg-gray-800 dark:border-gray-700">
-         <button onClick={() => setCurrentView('home')} className={`flex flex-col items-center gap-1 ${currentView === 'home' ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}><Home size={20} /><span className="text-[9px] font-bold">Beranda</span></button>
-         <button onClick={() => setCurrentView('siswa')} className={`flex flex-col items-center gap-1 ${currentView === 'siswa' ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}><Users size={20} /><span className="text-[9px] font-bold">Siswa</span></button>
-         <button onClick={() => setCurrentView('laporan')} className={`flex flex-col items-center gap-1 ${currentView === 'laporan' ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}><BarChart3 size={20} /><span className="text-[9px] font-bold">Laporan</span></button>
-         <button onClick={() => setCurrentView('pengaturan')} className={`flex flex-col items-center gap-1 ${currentView === 'pengaturan' ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}><Settings size={20} /><span className="text-[9px] font-bold">Setelan</span></button>
+      <nav className="md:hidden fixed bottom-0 w-full bg-white border-t border-gray-100 flex justify-around items-center h-[70px] z-40 print:hidden">
+         <button onClick={() => setCurrentView('home')} className={`flex flex-col items-center gap-1 ${currentView === 'home' ? 'text-green-600' : 'text-gray-400'}`}><Home size={20} /><span className="text-[9px] font-bold">Beranda</span></button>
+         <button onClick={() => setCurrentView('siswa')} className={`flex flex-col items-center gap-1 ${currentView === 'siswa' ? 'text-green-600' : 'text-gray-400'}`}><Users size={20} /><span className="text-[9px] font-bold">Siswa</span></button>
+         <button onClick={() => setCurrentView('laporan')} className={`flex flex-col items-center gap-1 ${currentView === 'laporan' ? 'text-green-600' : 'text-gray-400'}`}><BarChart3 size={20} /><span className="text-[9px] font-bold">Laporan</span></button>
+         <button onClick={() => setCurrentView('pengaturan')} className={`flex flex-col items-center gap-1 ${currentView === 'pengaturan' ? 'text-green-600' : 'text-gray-400'}`}><Settings size={20} /><span className="text-[9px] font-bold">Setelan</span></button>
       </nav>
     </div>
   );
