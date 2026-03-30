@@ -78,9 +78,9 @@ const HomeView = ({
       if (!tahsin && !halAyat && !nilaiCat) return <span className="text-xs sm:text-sm text-gray-300 font-medium">-</span>;
       if (tahsin === '-' && halAyat === '-' && nilaiCat === '-') return <span className="text-xs sm:text-sm text-gray-300 font-medium">-</span>;
       
-      const catBadge = (nilaiCat && nilaiCat !== '-') ? <div className="mt-1 inline-flex items-center justify-center bg-[#0f4c5c] text-white text-[10px] font-black px-2.5 py-0.5 rounded-full shadow-sm w-max leading-none">{String(nilaiCat)}</div> : null;
+      const catBadge = (nilaiCat && nilaiCat !== '-') ? <div className="mt-1 inline-flex items-center justify-center bg-[#0f4c5c] text-white text-[12px] font-black px-2.5 py-1 rounded-full shadow-sm w-max leading-none">{String(nilaiCat)}</div> : null;
       
-      if (!tahsin || tahsin === '-' || typeof tahsin !== 'string') return <div className="flex flex-col items-center justify-center w-full min-w-0"><span className="text-[11px] md:text-[13px] font-bold text-gray-700 break-words text-center">{halAyat !== '-' ? String(halAyat) : ''}</span>{catBadge}</div>;
+      if (!tahsin || tahsin === '-' || typeof tahsin !== 'string') return <div className="flex flex-col items-center justify-center w-full min-w-0"><span className="text-[13px] md:text-[14px] font-bold text-gray-700 break-words text-center">{halAyat !== '-' ? String(halAyat) : ''}</span>{catBadge}</div>;
 
       if (tahsin.includes('Tajwid') || tahsin.includes('Ghorib') || tahsin.includes('Gharib')) {
         const parts = tahsin.split(','); const category = parts[0].trim(); const suratListStr = parts.slice(1).join(',').trim();
@@ -93,17 +93,17 @@ const HomeView = ({
         return (
           <div className="flex flex-col items-center justify-center gap-1 w-full min-w-0 group relative">
             <div className="flex flex-col items-center justify-center gap-1 max-w-full w-full">
-               <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-md text-[8px] md:text-[9px] font-black uppercase tracking-widest break-words w-max text-center leading-none">{category}</span>
+               <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-md text-[10px] md:text-[11px] font-black uppercase tracking-widest break-words w-max text-center leading-none">{category}</span>
                {catBadge}
             </div>
-            {halMat && halMat !== '-' && <span className="text-[10px] md:text-[12px] font-bold text-gray-700 leading-snug break-words whitespace-normal max-w-full text-center mt-0.5">{halMat}</span>}
+            {halMat && halMat !== '-' && <span className="text-[12px] font-bold text-gray-700 leading-snug break-words whitespace-normal max-w-full text-center mt-0.5">{halMat}</span>}
             {sList.length > 0 && sList.map((s, i) => {
                 const a = aList[i]; const combined = (a && a !== '-' && a !== 'Semua Ayat') ? s + ' ' + a : s;
                 const n = nList[i] && nList[i] !== '-' ? nList[i] : null;
-                const sBadge = n ? <div className="mt-1 inline-flex items-center justify-center bg-[#0f4c5c] text-white text-[10px] font-black px-2.5 py-0.5 rounded-full shadow-sm w-max leading-none">{n}</div> : null;
+                const sBadge = n ? <div className="mt-1 inline-flex items-center justify-center bg-[#0f4c5c] text-white text-[11px] font-black px-2.5 py-1 rounded-full shadow-sm w-max leading-none">{n}</div> : null;
                 return (
-                  <div key={i} className="text-[9px] md:text-[11px] lg:text-[12px] text-blue-800 bg-blue-50 px-2 py-1.5 rounded-lg border border-blue-100 flex flex-col items-center justify-center gap-1 font-bold leading-snug mt-0.5 w-fit max-w-full text-center">
-                    <div className="flex items-center justify-center gap-1"><BookOpen size={12} className="text-blue-500 shrink-0 mt-0.5"/> <span className="flex-1 min-w-0 break-words whitespace-normal">{combined}</span></div>
+                  <div key={i} className="text-[11px] md:text-[12px] text-blue-800 bg-blue-50 px-2.5 py-2 rounded-lg border border-blue-100 flex flex-col items-center justify-center gap-1 font-bold leading-snug mt-0.5 w-fit max-w-full text-center">
+                    <div className="flex items-center justify-center gap-1"><BookOpen size={14} className="text-blue-500 shrink-0 mt-0.5"/> <span className="flex-1 min-w-0 break-words whitespace-normal">{combined}</span></div>
                     {sBadge}
                   </div>
                 );
@@ -113,8 +113,8 @@ const HomeView = ({
       }
       if (tahsin.includes('Jilid')) return (
           <div className="flex flex-col items-center justify-center gap-1 w-full min-w-0 group relative">
-             <div className="flex items-center justify-center gap-1 w-full max-w-full"><span className="text-[12px] md:text-[14px] font-bold text-gray-800 leading-none break-words text-center">{tahsin}</span></div>
-             {halAyat !== '-' && <span className="text-[9px] md:text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded-md border border-blue-100/70 break-words whitespace-normal max-w-full text-center">{String(halAyat)}</span>}
+             <div className="flex items-center justify-center gap-1 w-full max-w-full"><span className="text-[14px] font-bold text-gray-800 leading-none break-words text-center">{tahsin}</span></div>
+             {halAyat !== '-' && <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded-md border border-blue-100/70 break-words whitespace-normal max-w-full text-center">{String(halAyat)}</span>}
              {catBadge}
           </div>
       );
@@ -126,10 +126,10 @@ const HomeView = ({
            {tList.map((t, i) => {
               const a = aList[i]; const combined = (a && a !== '-' && a !== 'Semua Ayat') ? t + ' ' + a : t;
               const n = nList[i] && nList[i] !== '-' ? nList[i] : null;
-              const sBadge = n ? <div className="mt-1 inline-flex items-center justify-center bg-[#0f4c5c] text-white text-[10px] font-black px-2.5 py-0.5 rounded-full shadow-sm w-max leading-none">{n}</div> : null;
+              const sBadge = n ? <div className="mt-1 inline-flex items-center justify-center bg-[#0f4c5c] text-white text-[11px] font-black px-2.5 py-1 rounded-full shadow-sm w-max leading-none">{n}</div> : null;
               return (
-                 <div key={i} className="text-[9px] md:text-[11px] lg:text-[12px] font-bold text-blue-800 bg-blue-50 px-2 py-1.5 rounded-lg border border-blue-100 flex flex-col items-center justify-center gap-1 leading-snug w-fit max-w-full group relative text-center">
-                    <div className="flex items-center justify-center gap-1 overflow-hidden"><BookOpen size={12} className="text-blue-500 shrink-0 mt-0.5"/><span className="flex-1 min-w-0 break-words whitespace-normal">{combined}</span></div>
+                 <div key={i} className="text-[11px] md:text-[12px] font-bold text-blue-800 bg-blue-50 px-2.5 py-2 rounded-lg border border-blue-100 flex flex-col items-center justify-center gap-1 leading-snug w-fit max-w-full group relative text-center">
+                    <div className="flex items-center justify-center gap-1 overflow-hidden"><BookOpen size={14} className="text-blue-500 shrink-0 mt-0.5"/><span className="flex-1 min-w-0 break-words whitespace-normal">{combined}</span></div>
                     {sBadge}
                  </div>
               );
@@ -153,10 +153,10 @@ const HomeView = ({
            {tList.map((t, i) => { 
               const a = aList[i]; const combined = (a && a !== '-' && a !== 'Semua Ayat') ? t + ' ' + a : t; 
               const n = nList[i] && nList[i] !== '-' ? nList[i] : null;
-              const badge = n ? <div className="mt-1 inline-flex items-center justify-center bg-[#0f4c5c] text-white text-[10px] font-black px-2.5 py-0.5 rounded-full shadow-sm w-max leading-none">{n}</div> : null;
+              const badge = n ? <div className="mt-1 inline-flex items-center justify-center bg-[#0f4c5c] text-white text-[11px] font-black px-2.5 py-1 rounded-full shadow-sm w-max leading-none">{n}</div> : null;
               return ( 
-                 <div key={i} className="text-[9px] md:text-[11px] lg:text-[12px] font-bold text-purple-800 bg-purple-50 px-2 py-1.5 rounded-lg border border-purple-100 flex flex-col items-center justify-center gap-1 leading-snug w-fit max-w-full group relative text-center">
-                    <div className="flex items-center justify-center gap-1 overflow-hidden"><Mic size={12} className="text-purple-500 shrink-0 mt-0.5"/> <span className="flex-1 min-w-0 break-words whitespace-normal">{combined}</span></div>
+                 <div key={i} className="text-[11px] md:text-[12px] font-bold text-purple-800 bg-purple-50 px-2.5 py-2 rounded-lg border border-purple-100 flex flex-col items-center justify-center gap-1 leading-snug w-fit max-w-full group relative text-center">
+                    <div className="flex items-center justify-center gap-1 overflow-hidden"><Mic size={14} className="text-purple-500 shrink-0 mt-0.5"/> <span className="flex-1 min-w-0 break-words whitespace-normal">{combined}</span></div>
                     {badge}
                  </div>
               ); 
@@ -176,8 +176,8 @@ const HomeView = ({
       return ( 
         <div className="flex flex-col items-center justify-center gap-1 w-full min-w-0">
            {items.map((item, i) => ( 
-              <div key={i} className="text-[9px] md:text-[11px] lg:text-[12px] font-bold text-emerald-800 bg-emerald-50 px-2 py-1.5 rounded-lg border border-emerald-100 flex items-center justify-center gap-1 leading-snug w-fit max-w-full group relative text-center">
-                 <div className="flex items-center justify-center gap-1 overflow-hidden"><Repeat size={12} className="text-emerald-500 shrink-0 mt-0.5"/><span className="flex-1 min-w-0 break-words whitespace-normal">{item}</span></div>
+              <div key={i} className="text-[11px] md:text-[12px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-2 rounded-lg border border-emerald-100 flex items-center justify-center gap-1 leading-snug w-fit max-w-full group relative text-center">
+                 <div className="flex items-center justify-center gap-1 overflow-hidden"><Repeat size={14} className="text-emerald-500 shrink-0 mt-0.5"/><span className="flex-1 min-w-0 break-words whitespace-normal">{item}</span></div>
               </div>
            ))}
         </div> 
@@ -684,7 +684,7 @@ const HomeView = ({
                       <table className="w-full text-center border-collapse min-w-[1000px] bg-white transition-colors">
                         {/* HEADER TABEL (STICKY DI BAWAH HEADER APLIKASI) */}
                         <thead className="sticky top-[-1px] z-30 shadow-sm transition-colors bg-[#f8fafc]">
-                            <tr className="border-b border-gray-200 text-[10px] font-black text-gray-400 uppercase tracking-widest transition-colors">
+                            <tr className="border-b border-gray-200 text-[11px] font-black text-gray-400 uppercase tracking-widest transition-colors">
                               <th className="p-2.5 sm:p-3 pl-3 sm:pl-4 text-left sticky left-0 top-0 z-40 w-[140px] sm:w-[240px] shadow-[4px_0_12px_rgba(0,0,0,0.05)] border-r transition-colors bg-[#f8fafc] border-gray-100">Nama Siswa</th>
                               <th className="p-2.5 sm:p-3 w-[200px] sticky top-0 z-30 transition-colors bg-[#f8fafc]">
                                 <div className="flex items-center justify-center gap-1.5 cursor-pointer hover:text-blue-600 transition-colors" onClick={() => handleOpenModal(null, 'tahsin')}>
@@ -759,8 +759,8 @@ const HomeView = ({
                                           </div>
                                         )}
                                         <div className="flex flex-col min-w-0">
-                                          <span className="font-extrabold text-[11px] sm:text-sm text-gray-800 truncate group-hover:text-slate-950 transition-colors">{String(student?.name || 'Unknown')}</span>
-                                          <span className="text-[8px] sm:text-[9px] text-gray-400 font-bold uppercase group-hover:text-slate-600 transition-colors">Kelas {String(student?.kelas || '-')}</span>
+                                          <span className="font-extrabold text-[13px] sm:text-sm text-gray-800 truncate group-hover:text-slate-950 transition-colors">{String(student?.name || 'Unknown')}</span>
+                                          <span className="text-[10px] text-gray-400 font-bold uppercase group-hover:text-slate-600 transition-colors">Kelas {String(student?.kelas || '-')}</span>
                                         </div>
                                       </div>
                                     </td>
@@ -771,7 +771,7 @@ const HomeView = ({
                                             renderTahsinCard(valT, valH, student?.id, activeDate, valTNilai, valTSNilai)
                                           ) : lastRec && lastRec[k.t] !== '-' ? ( // Removed dark mode styles
                                             <div className="grayscale scale-90 origin-center transition-opacity group-hover/cell:opacity-60 opacity-25">
-                                              <div className="text-[7px] font-black text-blue-400 uppercase tracking-tighter mb-0.5">Pekan Lalu</div>
+                                              <div className="text-[9px] font-black text-blue-400 uppercase tracking-tighter mb-0.5">Pekan Lalu</div>
                                               {renderTahsinCard(lastRec[k.t], lastRec[k.h], student?.id, 'ghost', lastRec[k.tNilai], lastRec[k.tsNilai])}
                                             </div>
                                           ) : <span className="text-gray-300 group-hover:text-slate-400 transition-colors">-</span>}
@@ -785,7 +785,7 @@ const HomeView = ({
                                             renderTahfidzCard(valF, valAF, student?.id, activeDate, valFNilai)
                                           ) : lastRec && lastRec[k.f] !== '-' ? (
                                             <div className="grayscale scale-90 origin-center transition-opacity group-hover/cell:opacity-60 opacity-25">
-                                              <div className="text-[7px] font-black text-purple-400 uppercase tracking-tighter mb-0.5">Pekan Lalu</div>
+                                              <div className="text-[9px] font-black text-purple-400 uppercase tracking-tighter mb-0.5">Pekan Lalu</div>
                                               {renderTahfidzCard(lastRec[k.f], lastRec[k.af], student?.id, 'ghost', lastRec[k.fNilai])}
                                             </div>
                                           ) : <span className="text-gray-300 group-hover:text-slate-400 transition-colors">-</span>}
@@ -799,7 +799,7 @@ const HomeView = ({
                                             renderMurojaahCard(valM, student?.id, activeDate)
                                           ) : lastRec && lastRec[k.m] !== '-' ? (
                                             <div className="grayscale scale-90 origin-center transition-opacity group-hover/cell:opacity-60 opacity-25">
-                                              <div className="text-[7px] font-black text-emerald-400 uppercase tracking-tighter mb-0.5">Pekan Lalu</div>
+                                              <div className="text-[9px] font-black text-emerald-400 uppercase tracking-tighter mb-0.5">Pekan Lalu</div>
                                               {renderMurojaahCard(lastRec[k.m], student?.id, 'ghost')}
                                             </div>
                                           ) : <span className="text-gray-300 group-hover:text-slate-400 transition-colors">-</span>}
