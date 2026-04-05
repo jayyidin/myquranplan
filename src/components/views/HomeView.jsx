@@ -856,45 +856,47 @@ const HomeView = ({
               />
             </div>
 
-            {/* LOGIKA PENCARIAN DATA PEKAN LALU UNTUK DISPLAY BAYANGAN */}
+            {/* LOGIKA PENCARIAN DATA HARI SEBELUMNYA UNTUK DISPLAY BAYANGAN */}
             {(() => {
-              const prevWeekStart = new Date(weekStart);
-              prevWeekStart.setDate(prevWeekStart.getDate() - 7);
-              const lastWeekFormattedDates = [4, 3, 2, 1, 0].map(offset => {
-                const d = new Date(prevWeekStart);
-                d.setDate(d.getDate() + offset);
-                return getDateString(d);
-              });
+              window._lastDayData = {};
+              const activeDateObj = new Date(activeDate);
 
-              window._lastWeekData = {};
               filteredStudents.forEach(s => {
-                for (let dStr of lastWeekFormattedDates) {
-                  const rec = s.records?.[dStr];
+                // Get all recorded dates for the student and sort them descending
+                const recordedDates = Object.keys(s.records || {})
+                  .map(d => new Date(d))
+                  .filter(d => d < activeDateObj) // Only dates before the active date
+                  .sort((a, b) => b - a); // Sort descending, most recent first
+
+                // Find the first date that has data
+                for (const d of recordedDates) {
+                  const dStr = getDateString(d);
+                  const rec = s.records[dStr];
                   if (rec && (rec[k.t] !== '-' || rec[k.f] !== '-' || rec[k.m] !== '-')) {
-                    window._lastWeekData[s.id] = rec;
-                    break;
+                    window._lastDayData[s.id] = { ...rec, date: dStr }; // Found the most recent record
+                    break; // Move to the next student
                   }
                 }
               });
             })()}
 
             {/* FRAME RIWAYAT DATA TERAKHIR (MUNCUL SAAT SISWA DIPILIH) */}
-            {activeStudentId && window._lastWeekData?.[activeStudentId] && (
+            {activeStudentId && window._lastDayData?.[activeStudentId] && (
               <div className="border-2 rounded-2xl p-4 shadow-sm animate-in fade-in zoom-in-95 duration-300 transition-colors bg-white border-[#00e676]/20">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <History size={16} className="text-[#00e676]" />
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Posisi Terakhir:</span>
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Data Terakhir ({formatShortDate(new Date(window._lastDayData[activeStudentId].date))}):</span>
                     <span className="text-xs font-black text-slate-700">{filteredStudents.find(s => s.id === activeStudentId)?.name}</span>
                   </div>
                   <button onClick={() => setActiveStudentId(null)} className="text-slate-300 hover:text-slate-500"><X size={14} /></button>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                   {[
-                    { label: 'Tahsin', val: window._lastWeekData[activeStudentId][k.t], color: 'blue' },
-                    { label: 'Tahfidz', val: window._lastWeekData[activeStudentId][k.f], color: 'purple' },
-                    { label: 'Murojaah', val: window._lastWeekData[activeStudentId][k.m], color: 'emerald' },
-                    { label: 'Catatan', val: window._lastWeekData[activeStudentId][k.c], color: 'orange' }
+                    { label: 'Tahsin', val: window._lastDayData[activeStudentId][k.t], color: 'blue' },
+                    { label: 'Tahfidz', val: window._lastDayData[activeStudentId][k.f], color: 'purple' },
+                    { label: 'Murojaah', val: window._lastDayData[activeStudentId][k.m], color: 'emerald' },
+                    { label: 'Catatan', val: window._lastDayData[activeStudentId][k.c], color: 'orange' }
                   ].map((item, i) => ( // Fix potential missing colors in tailwind by using full classes or safe list
                     <div key={i} className={`bg-${item.color}-50/50 p-2 rounded-xl border border-${item.color}-100/50`}>
                       <p className={`text-[8px] font-black text-${item.color}-400 uppercase mb-0.5`}>{item.label}</p>
@@ -985,7 +987,7 @@ const HomeView = ({
                           const initials = getInitials(student?.name);
 
                           // Ambil data referensi pekan lalu
-                          const lastRec = window._lastWeekData?.[student.id];
+                          const lastRec = window._lastDayData?.[student.id];
                           const isTahsinEmpty = valT === '-' && valH === '-' && valTNilai === '-';
                           const isTahfidzEmpty = valF === '-' && valAF === '-' && valFNilai === '-';
                           const isMurojaahEmpty = valM === '-';
@@ -1023,9 +1025,9 @@ const HomeView = ({
                                 <div onClick={() => { setActiveStudentId(student.id); handleOpenModal(student, 'tahsin'); }} className="min-h-[60px] flex flex-col items-center justify-center border border-transparent hover:border-gray-200 rounded-xl cursor-pointer relative group/cell transition-colors active:bg-gray-50">
                                   {!isTahsinEmpty ? (
                                     renderTahsinCard(valT, valH, student?.id, activeDate, valTNilai, valTSNilai)
-                                  ) : lastRec && lastRec[k.t] !== '-' ? (
-                                    <div className="grayscale scale-90 origin-center transition-opacity group-hover/cell:opacity-60 opacity-25">
-                                      <div className="text-[9px] font-black text-blue-400 uppercase tracking-tighter mb-0.5">Pekan Lalu</div>
+                                  ) : hasGhostTahsin ? (
+                                    <div className="grayscale scale-90 origin-center transition-opacity group-hover/cell:opacity-60 opacity-25" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>
+                                      <div className="text-[9px] font-black text-blue-400 uppercase tracking-tighter mb-0.5">Hari Sebelumnya</div>
                                       {renderTahsinCard(lastRec[k.t], lastRec[k.h], student?.id, 'ghost', lastRec[k.tNilai], lastRec[k.tsNilai])}
                                     </div>
                                   ) : <span className="text-gray-300 group-hover:text-slate-400 transition-colors">-</span>}
@@ -1040,11 +1042,13 @@ const HomeView = ({
                                   ) : lastRec && lastRec[k.f] !== '-' ? (
                                     <div className="grayscale scale-90 origin-center transition-opacity group-hover/cell:opacity-60 opacity-25">
                                       <div className="text-[9px] font-black text-purple-400 uppercase tracking-tighter mb-0.5">Pekan Lalu</div>
-                                      {renderTahfidzCard(lastRec[k.f], lastRec[k.af], student?.id, 'ghost', lastRec[k.fNilai])}
+                                      <div className="grayscale scale-90 origin-center transition-opacity group-hover/cell:opacity-60 opacity-25" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>
+                                        <div className="text-[9px] font-black text-purple-400 uppercase tracking-tighter mb-0.5">Hari Sebelumnya</div>
+                                        {renderTahfidzCard(lastRec[k.f], lastRec[k.af], student?.id, 'ghost', lastRec[k.fNilai])}
+                                      </div>
+                                      ) : <span className="text-gray-300 group-hover:text-slate-400 transition-colors">-</span>}
+                                      <button className="absolute top-1 right-1 opacity-0 lg:group-hover/cell:opacity-100 text-purple-500 bg-purple-50 p-1 rounded-md transition-opacity"><Plus size={12} /></button>
                                     </div>
-                                  ) : <span className="text-gray-300 group-hover:text-slate-400 transition-colors">-</span>}
-                                  <button className="absolute top-1 right-1 opacity-0 lg:group-hover/cell:opacity-100 text-purple-500 bg-purple-50 p-1 rounded-md transition-opacity"><Plus size={12} /></button>
-                                </div>
                               </td>
 
                               <td className="p-2">
@@ -1054,19 +1058,21 @@ const HomeView = ({
                                   ) : lastRec && lastRec[k.m] !== '-' ? (
                                     <div className="grayscale scale-90 origin-center transition-opacity group-hover/cell:opacity-60 opacity-25">
                                       <div className="text-[9px] font-black text-emerald-400 uppercase tracking-tighter mb-0.5">Pekan Lalu</div>
-                                      {renderMurojaahCard(lastRec[k.m], student?.id, 'ghost')}
+                                      <div className="grayscale scale-90 origin-center transition-opacity group-hover/cell:opacity-60 opacity-25" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>
+                                        <div className="text-[9px] font-black text-emerald-400 uppercase tracking-tighter mb-0.5">Hari Sebelumnya</div>
+                                        {renderMurojaahCard(lastRec[k.m], student?.id, 'ghost')}
+                                      </div>
+                                      ) : <span className="text-gray-300 group-hover:text-slate-400 transition-colors">-</span>}
+                                      <button className="absolute top-1 right-1 opacity-0 lg:group-hover/cell:opacity-100 text-emerald-500 bg-emerald-50 p-1 rounded-md transition-opacity"><Plus size={12} /></button>
                                     </div>
-                                  ) : <span className="text-gray-300 group-hover:text-slate-400 transition-colors">-</span>}
-                                  <button className="absolute top-1 right-1 opacity-0 lg:group-hover/cell:opacity-100 text-emerald-500 bg-emerald-50 p-1 rounded-md transition-opacity"><Plus size={12} /></button>
-                                </div>
                               </td>
 
                               <td className="p-2">
                                 <div onClick={() => { setActiveStudentId(student.id); handleOpenModal(student, 'catatan'); }} className="min-h-[60px] flex flex-col items-center justify-center border border-transparent hover:border-gray-200 rounded-xl cursor-pointer relative group/cell transition-colors active:bg-gray-50">
                                   {!isCatatanEmpty ? (
                                     <span className={`text-xs text-center ${getStatusColor(valC)}`}>{String(valC)}</span>
-                                  ) : lastRec && lastRec[k.c] !== '-' ? (
-                                    <div className="grayscale italic scale-90 origin-center opacity-30">
+                                  ) : hasGhostCatatan ? (
+                                    <div className="grayscale italic scale-90 origin-center opacity-30" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>
                                       <span className="text-[10px] text-gray-400">{String(lastRec[k.c])}</span>
                                     </div>
                                   ) : <span className="text-gray-300 group-hover:text-slate-400 transition-colors">-</span>}
@@ -1125,7 +1131,7 @@ const HomeView = ({
                       const valM = record?.[k.m] || '-';
                       const valC = record?.[k.c] || '-';
 
-                      const lastRec = window._lastWeekData?.[student.id];
+                      const lastRec = window._lastDayData?.[student.id];
                       const isTahsinEmpty = valT === '-' && valH === '-' && valTNilai === '-';
                       const isTahfidzEmpty = valF === '-' && valAF === '-' && valFNilai === '-';
                       const isMurojaahEmpty = valM === '-';
@@ -1159,33 +1165,28 @@ const HomeView = ({
                             {/* Tahsin */}
                             <div onClick={() => handleOpenModal(student, 'tahsin')} className="p-3 bg-blue-50/30 border border-blue-100 rounded-2xl flex flex-col items-center justify-center min-h-[90px] text-center active:scale-95 transition-all">
                               <div className="flex items-center gap-1 mb-1.5 text-blue-500 font-black uppercase text-[8px] tracking-widest"><BookOpen size={12} /> Tahsin</div>
-                              {!isTahsinEmpty ? renderTahsinCard(valT, valH, student.id, activeDate, valTNilai, valTSNilai) :
-                                (lastRec && lastRec[k.t] !== '-' ? <div className="opacity-30 grayscale scale-90">{renderTahsinCard(lastRec[k.t], lastRec[k.h], student.id, 'ghost', lastRec[k.tNilai], lastRec[k.tsNilai])}</div> : <span className="text-gray-300">-</span>)
+                              {!isTahsinEmpty ? renderTahsinCard(valT, valH, student.id, activeDate, valTNilai, valTSNilai) : (lastRec && lastRec[k.t] !== '-' ? <div className="opacity-30 grayscale scale-90" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>{renderTahsinCard(lastRec[k.t], lastRec[k.h], student.id, 'ghost', lastRec[k.tNilai], lastRec[k.tsNilai])}</div> : <span className="text-gray-300">-</span>)
                               }
                             </div>
 
                             {/* Tahfidz */}
                             <div onClick={() => handleOpenModal(student, 'tahfidz')} className="p-3 bg-purple-50/30 border border-purple-100 rounded-2xl flex flex-col items-center justify-center min-h-[90px] text-center active:scale-95 transition-all">
                               <div className="flex items-center gap-1 mb-1.5 text-purple-500 font-black uppercase text-[8px] tracking-widest"><Mic size={12} /> Tahfidz</div>
-                              {!isTahfidzEmpty ? renderTahfidzCard(valF, valAF, student.id, activeDate, valFNilai) :
-                                (lastRec && lastRec[k.f] !== '-' ? <div className="opacity-30 grayscale scale-90">{renderTahfidzCard(lastRec[k.f], lastRec[k.af], student.id, 'ghost', lastRec[k.fNilai])}</div> : <span className="text-gray-300">-</span>)
+                              {!isTahfidzEmpty ? renderTahfidzCard(valF, valAF, student.id, activeDate, valFNilai) : (lastRec && lastRec[k.f] !== '-' ? <div className="opacity-30 grayscale scale-90" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>{renderTahfidzCard(lastRec[k.f], lastRec[k.af], student.id, 'ghost', lastRec[k.fNilai])}</div> : <span className="text-gray-300">-</span>)
                               }
                             </div>
 
                             {/* Murojaah */}
                             <div onClick={() => handleOpenModal(student, 'murojaah')} className="p-3 bg-emerald-50/30 border border-emerald-100 rounded-2xl flex flex-col items-center justify-center min-h-[90px] text-center active:scale-95 transition-all">
                               <div className="flex items-center gap-1 mb-1.5 text-emerald-500 font-black uppercase text-[8px] tracking-widest"><Repeat size={12} /> Murojaah</div>
-                              {!isMurojaahEmpty ? renderMurojaahCard(valM, student.id, activeDate) :
-                                (lastRec && lastRec[k.m] !== '-' ? <div className="opacity-30 grayscale scale-90">{renderMurojaahCard(lastRec[k.m], student.id, 'ghost')}</div> : <span className="text-gray-300">-</span>)
+                              {!isMurojaahEmpty ? renderMurojaahCard(valM, student.id, activeDate) : (lastRec && lastRec[k.m] !== '-' ? <div className="opacity-30 grayscale scale-90" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>{renderMurojaahCard(lastRec[k.m], student.id, 'ghost')}</div> : <span className="text-gray-300">-</span>)
                               }
                             </div>
 
                             {/* Catatan */}
                             <div onClick={() => handleOpenModal(student, 'catatan')} className="p-3 bg-orange-50/30 border border-orange-100 rounded-2xl flex flex-col items-center justify-center min-h-[90px] text-center active:scale-95 transition-all relative">
                               <div className="flex items-center gap-1 mb-1.5 text-orange-500 font-black uppercase text-[8px] tracking-widest"><FileText size={12} /> Catatan</div>
-                              {!isCatatanEmpty ? (
-                                <span className={`text-[10px] leading-tight ${getStatusColor(valC)}`}>{String(valC)}</span>
-                              ) : (lastRec && lastRec[k.c] !== '-' ? <span className="text-[10px] text-gray-300 italic line-clamp-2">{String(lastRec[k.c])}</span> : <span className="text-gray-300">-</span>)}
+                              {!isCatatanEmpty ? (<span className={`text-[10px] leading-tight ${getStatusColor(valC)}`}>{String(valC)}</span>) : (lastRec && lastRec[k.c] !== '-' ? <span className="text-[10px] text-gray-300 italic line-clamp-2" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>{String(lastRec[k.c])}</span> : <span className="text-gray-300">-</span>)}
 
                               {!isCatatanEmpty && (
                                 <button

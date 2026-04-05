@@ -471,28 +471,37 @@ const MainApp = ({ currentUser, onLogout }) => {
     let initialDataForModal = {};
     let studentToProcess = student; // The student whose data we are primarily interested in
 
+    const findLastRecord = (s) => {
+      const activeDateObj = new Date(activeDate);
+      const recordedDates = Object.keys(s.records || {})
+        .map(d => new Date(d))
+        .filter(d => d < activeDateObj) // Only dates before the active date
+        .sort((a, b) => b - a); // Sort descending
+
+      for (const d of recordedDates) {
+        const dStr = formatDateObj(d);
+        const rec = s.records[dStr];
+        if (rec && ((rec[k.t] && rec[k.t] !== '-') || (rec[k.f] && rec[k.f] !== '-') || (rec[k.m] && rec[k.m] !== '-'))) {
+          return { record: rec, date: dStr }; // Found it
+        }
+      }
+      return null; // Not found
+    };
+
     // Logic for 'Lanjutkan Data Terakhir' button (bulk_last)
     if (mode === 'bulk_last') { // This is for the button, not individual cells
       setModalMode('full_bulk'); // UI will be bulk
-      const prevMon = new Date(weekStart);
-      prevMon.setDate(prevMon.getDate() - 7);
-      const prevWeekDates = Array.from({ length: 5 }).map((_, i) => {
-        const d = new Date(prevMon); d.setDate(d.getDate() + i); return formatDateObj(d);
-      }).reverse(); // From Friday to Monday
 
       // Find the first student with last week's data as a template for bulk
       for (const s of filteredStudents) {
-        for (const dStr of prevWeekDates) {
-          const rec = s.records?.[dStr];
-          if (rec && (rec[k.t] !== '-' || rec[k.f] !== '-' || rec[k.m] !== '-')) {
-            initialDataForModal = rec;
-            showToast(`Menyalin data terakhir ${s.name.split(' ')[0]} (${formatShortDate(new Date(dStr))})`);
-            break;
-          }
+        const lastData = findLastRecord(s);
+        if (lastData) {
+          initialDataForModal = lastData.record;
+          showToast(`Menyalin data terakhir ${s.name.split(' ')[0]} (${formatShortDate(new Date(lastData.date))})`);
+          break;
         }
-        if (Object.keys(initialDataForModal).length > 0) break;
       }
-      if (Object.keys(initialDataForModal).length === 0) showToast("Tidak ditemukan data pekan lalu.");
+      if (Object.keys(initialDataForModal).length === 0) showToast("Tidak ditemukan data sebelumnya.");
       setEditingId(null); // No specific student is being edited, it's a bulk operation
       setSelectedStudents(filteredStudents.map(s => s.id)); // Select all for bulk
 
@@ -500,22 +509,13 @@ const MainApp = ({ currentUser, onLogout }) => {
       setModalMode('full_edit'); // UI will be single student edit
       setEditingId(studentToProcess.id);
       setSelectedStudents([studentToProcess.id]);
-
-      const prevMon = new Date(weekStart);
-      prevMon.setDate(prevMon.getDate() - 7);
-      const prevWeekDates = Array.from({ length: 5 }).map((_, i) => {
-        const d = new Date(prevMon); d.setDate(d.getDate() + i); return formatDateObj(d);
-      }).reverse();
-
-      for (const dStr of prevWeekDates) {
-        const rec = studentToProcess.records?.[dStr];
-        if (rec && (rec[k.t] !== '-' || rec[k.f] !== '-' || rec[k.m] !== '-')) {
-          initialDataForModal = rec;
-          showToast(`Mengisi dari data terakhir ${studentToProcess.name.split(' ')[0]} (${formatShortDate(new Date(dStr))})`);
-          break;
-        }
+      const lastData = findLastRecord(studentToProcess);
+      if (lastData) {
+        initialDataForModal = lastData.record;
+        showToast(`Mengisi dari data terakhir ${studentToProcess.name.split(' ')[0]} (${formatShortDate(new Date(lastData.date))})`);
+      } else {
+        showToast("Tidak ditemukan data sebelumnya untuk siswa ini.");
       }
-      if (Object.keys(initialDataForModal).length === 0) showToast("Tidak ditemukan data pekan lalu untuk siswa ini.");
 
     } else if (studentToProcess) { // Regular single student edit/input
       initialDataForModal = studentToProcess.records[activeDate] || {};
