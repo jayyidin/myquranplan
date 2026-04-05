@@ -1039,32 +1039,28 @@ const HomeView = ({
                                 <div onClick={() => { setActiveStudentId(student.id); handleOpenModal(student, 'tahfidz'); }} className="min-h-[60px] flex flex-col items-center justify-center border border-transparent hover:border-gray-200 rounded-xl cursor-pointer relative group/cell transition-colors active:bg-gray-50">
                                   {!isTahfidzEmpty ? (
                                     renderTahfidzCard(valF, valAF, student?.id, activeDate, valFNilai)
-                                  ) : lastRec && lastRec[k.f] !== '-' ? (
-                                    <div className="grayscale scale-90 origin-center transition-opacity group-hover/cell:opacity-60 opacity-25">
-                                      <div className="text-[9px] font-black text-purple-400 uppercase tracking-tighter mb-0.5">Pekan Lalu</div>
-                                      <div className="grayscale scale-90 origin-center transition-opacity group-hover/cell:opacity-60 opacity-25" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>
-                                        <div className="text-[9px] font-black text-purple-400 uppercase tracking-tighter mb-0.5">Hari Sebelumnya</div>
-                                        {renderTahfidzCard(lastRec[k.f], lastRec[k.af], student?.id, 'ghost', lastRec[k.fNilai])}
-                                      </div>
-                                      ) : <span className="text-gray-300 group-hover:text-slate-400 transition-colors">-</span>}
-                                      <button className="absolute top-1 right-1 opacity-0 lg:group-hover/cell:opacity-100 text-purple-500 bg-purple-50 p-1 rounded-md transition-opacity"><Plus size={12} /></button>
+                                  ) : hasGhostTahfidz ? (
+                                    <div className="grayscale scale-90 origin-center transition-opacity group-hover/cell:opacity-60 opacity-25" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>
+                                      <div className="text-[9px] font-black text-purple-400 uppercase tracking-tighter mb-0.5">Hari Sebelumnya</div>
+                                      {renderTahfidzCard(lastRec[k.f], lastRec[k.af], student?.id, 'ghost', lastRec[k.fNilai])}
                                     </div>
+                                  ) : <span className="text-gray-300 group-hover:text-slate-400 transition-colors">-</span>}
+                                  <button className="absolute top-1 right-1 opacity-0 lg:group-hover/cell:opacity-100 text-purple-500 bg-purple-50 p-1 rounded-md transition-opacity"><Plus size={12} /></button>
+                                </div>
                               </td>
 
                               <td className="p-2">
                                 <div onClick={() => { setActiveStudentId(student.id); handleOpenModal(student, 'murojaah'); }} className="min-h-[60px] flex flex-col items-center justify-center border border-transparent hover:border-gray-200 rounded-xl cursor-pointer relative group/cell transition-colors active:bg-gray-50">
                                   {!isMurojaahEmpty ? (
                                     renderMurojaahCard(valM, student?.id, activeDate)
-                                  ) : lastRec && lastRec[k.m] !== '-' ? (
-                                    <div className="grayscale scale-90 origin-center transition-opacity group-hover/cell:opacity-60 opacity-25">
-                                      <div className="text-[9px] font-black text-emerald-400 uppercase tracking-tighter mb-0.5">Pekan Lalu</div>
-                                      <div className="grayscale scale-90 origin-center transition-opacity group-hover/cell:opacity-60 opacity-25" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>
-                                        <div className="text-[9px] font-black text-emerald-400 uppercase tracking-tighter mb-0.5">Hari Sebelumnya</div>
-                                        {renderMurojaahCard(lastRec[k.m], student?.id, 'ghost')}
-                                      </div>
-                                      ) : <span className="text-gray-300 group-hover:text-slate-400 transition-colors">-</span>}
-                                      <button className="absolute top-1 right-1 opacity-0 lg:group-hover/cell:opacity-100 text-emerald-500 bg-emerald-50 p-1 rounded-md transition-opacity"><Plus size={12} /></button>
+                                  ) : hasGhostMurojaah ? (
+                                    <div className="grayscale scale-90 origin-center transition-opacity group-hover/cell:opacity-60 opacity-25" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>
+                                      <div className="text-[9px] font-black text-emerald-400 uppercase tracking-tighter mb-0.5">Hari Sebelumnya</div>
+                                      {renderMurojaahCard(lastRec[k.m], student?.id, 'ghost')}
                                     </div>
+                                  ) : <span className="text-gray-300 group-hover:text-slate-400 transition-colors">-</span>}
+                                  <button className="absolute top-1 right-1 opacity-0 lg:group-hover/cell:opacity-100 text-emerald-500 bg-emerald-50 p-1 rounded-md transition-opacity"><Plus size={12} /></button>
+                                </div>
                               </td>
 
                               <td className="p-2">
