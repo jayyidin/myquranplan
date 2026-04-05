@@ -639,7 +639,7 @@ const MainApp = ({ currentUser, onLogout }) => {
   if (!isDbReady) return (<div className="min-h-screen flex flex-col items-center justify-center bg-[#F8F9FA]"><Loader2 size={48} className="animate-spin text-[#00e676] mb-4" /></div>);
 
   return (
-    <div className="h-screen bg-slate-50 text-gray-800 font-sans flex flex-col overflow-hidden transition-all duration-500">
+    <div className="h-screen h-[100dvh] bg-slate-50 text-gray-800 font-sans flex flex-col overflow-hidden transition-all duration-500">
       {/* Header */}
       <header className="bg-white border-gray-100 shrink-0 z-[60] w-full shadow-sm print:hidden border-b sticky top-0 transition-all duration-500">
         <div className="max-w-7xl mx-auto px-3 md:px-6 h-14 sm:h-28 flex items-center justify-between">

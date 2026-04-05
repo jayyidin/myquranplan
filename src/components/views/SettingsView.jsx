@@ -18,13 +18,16 @@ const SettingsView = ({
   const [studentSearch, setStudentSearch] = useState('');
   const [editingAccount, setEditingAccount] = useState(null);
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(20);
   const [bulkData, setBulkData] = useState('');
 
   const processBulkImport = () => {
-    const rows = bulkData.split('\n').filter(row => row.trim() !== '');
+    // Mendukung line endings Windows (\r\n) dan Unix (\n)
+    const rows = bulkData.split(/\r?\n/).filter(row => row.trim() !== '');
     const parsed = rows.map(row => {
-      const parts = row.split(',').map(p => p.trim());
-      return { name: parts[0], kelas: parts[1] || '', halaqoh: parts[2] || '' };
+      // Mendukung pemisah koma atau TAB (saat copy langsung dari Excel)
+      const parts = row.split(/[,\t]/).map(p => p.trim());
+      return { name: parts[0], kelas: parts[1] || 'N/A', halaqoh: parts[2] || 'Unassigned' };
     }).filter(s => s.name);
     
     if (parsed.length === 0) {
@@ -57,15 +60,20 @@ const SettingsView = ({
   const myHalaqohs = isSuperAdmin ? [] : (guruKey ? (guruHalaqohData[guruKey] || []) : []);
 
   const filteredStudentsMaster = (students || []).filter(s => {
-    if (!isSuperAdmin && !myHalaqohs.includes(s.halaqoh)) return false;
+    // Perbaikan: Gunakan pembandingan case-insensitive agar data tidak hilang karena perbedaan huruf kapital
+    if (!isSuperAdmin && !myHalaqohs.some(h => h.trim().toLowerCase() === (s?.halaqoh || "").trim().toLowerCase())) {
+      return false;
+    }
     const nameMatch = (s?.name || '').toLowerCase().includes((studentSearch || '').toLowerCase());
     const halaqohMatch = (s?.halaqoh || '').toLowerCase().includes((studentSearch || '').toLowerCase());
     return nameMatch || halaqohMatch;
-  }).slice(0, 10);
+  });
+
+  const displayedStudents = filteredStudentsMaster.slice(0, visibleCount);
 
   return (
-    <div className="flex-1 h-full overflow-y-auto bg-[#F8F9FA] custom-scrollbar min-h-0">
-      <div className="max-w-6xl mx-auto px-4 py-8 sm:px-6 md:px-8 pb-32">
+    <div className="flex-1 w-full h-full overflow-y-auto bg-[#F8F9FA] custom-scrollbar min-h-0" style={{ WebkitOverflowScrolling: 'touch' }}>
+      <div className="max-w-6xl mx-auto px-4 py-6 sm:py-8 md:px-8 pb-32">
         
         {/* HEADER SECTION */}
         <div className="mb-10">
@@ -333,8 +341,8 @@ const SettingsView = ({
               <div className="w-2 h-6 bg-purple-500 rounded-full"></div>
               <h2 className="text-sm font-black text-slate-400 uppercase tracking-[0.2em]">{isSuperAdmin ? 'Pusat Data Siswa' : 'Data Siswa Saya'}</h2>
             </div>
-            <div className="bg-slate-900 rounded-[2.5rem] p-8 text-white shadow-2xl shadow-purple-900/20">
-              <div className="flex flex-col md:flex-row items-center gap-6 mb-8">
+            <div className="bg-slate-900 rounded-[2rem] sm:rounded-[2.5rem] p-5 sm:p-8 text-white shadow-2xl shadow-purple-900/20">
+              <div className="flex flex-col md:flex-row items-center gap-5 sm:gap-6 mb-6 sm:mb-8">
                 <div className="w-16 h-16 rounded-[1.5rem] bg-purple-500/20 text-purple-400 flex items-center justify-center shrink-0">
                   <Database size={32} />
                 </div>
@@ -382,7 +390,7 @@ const SettingsView = ({
               )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {filteredStudentsMaster.map(s => (
+                {displayedStudents.map(s => (
                   <div key={s.id} className="bg-white/5 border border-white/10 rounded-3xl p-4 sm:p-5 flex items-center justify-between transition-all hover:bg-white/10 group gap-4">
                     <div className="min-w-0 flex-1"> 
                       <p className="font-black text-white text-sm sm:text-base leading-tight mb-1 truncate">{s.name}</p>
@@ -396,12 +404,24 @@ const SettingsView = ({
                     </div>
                   </div>
                 ))}
-                {studentSearch && filteredStudentsMaster.length === 0 && (
+                {studentSearch && displayedStudents.length === 0 && (
                   <div className="col-span-2 py-10 text-center text-slate-500 font-bold italic">
                     Data siswa tidak ditemukan di database.
                   </div>
                 )}
               </div>
+
+              {/* Tombol Load More untuk Scroll Data Siswa */}
+              {visibleCount < filteredStudentsMaster.length && (
+                <div className="mt-6 flex justify-center">
+                  <button 
+                    onClick={() => setVisibleCount(prev => prev + 20)}
+                    className="px-8 py-3 bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 rounded-2xl text-xs font-black uppercase tracking-widest transition-all active:scale-95"
+                  >
+                    Muat {filteredStudentsMaster.length - visibleCount} Siswa Lainnya
+                  </button>
+                </div>
+              )}
             </div>
           </section>
 

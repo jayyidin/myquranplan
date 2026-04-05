@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, Users, Edit3, Trash2, Share2, Plus, X, Calendar, ChevronLeft, ChevronRight, BookOpen, Mic, Repeat, Printer, Check, Download, FileText, History, Link } from 'lucide-react';
+import { Tooltip } from 'react-tooltip';
 import { formatShortDate, getInitials, formatPeriode, formatPrintData } from '../../utils/helpers';
 
 const HomeView = ({ 
@@ -225,20 +226,38 @@ const HomeView = ({
   // Kunci data untuk Kartu Laporan selalu menggunakan Target (Lesson Plan)
   const k = { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan' };
 
+  const getDateStatus = (dateStr) => {
+    if (filteredStudents.length === 0) return { status: 'none', count: 0 };
+    const filledCount = filteredStudents.filter(s => {
+      const r = s.records?.[dateStr];
+      return r && (
+        (r[k.t] && r[k.t] !== '-') || (r[k.f] && r[k.f] !== '-') || 
+        (r[k.m] && r[k.m] !== '-') || (r[k.c] && r[k.c] !== '-')
+      );
+    }).length;
+    
+    if (filledCount === 0) return { status: 'none', count: 0 };
+    const status = filledCount === filteredStudents.length ? 'full' : 'partial';
+    return { status, count: filledCount };
+  };
+
   // Helper untuk me-render tabel cetak (Tabel Keseluruhan/Kelas)
   const renderPrintTable = (datesToRender, pageNum, totalPages) => {
-    const isFull = datesToRender.length === 3;
-    const tableWidth = isFull ? '100%' : '73%';
-    const wNo = isFull ? '4%' : '5.48%';
-    const wNama = isFull ? '15%' : '20.55%';
-    const wDay = isFull ? '27%' : '36.98%';
+    const isThreeDays = datesToRender.length === 3;
+    // Agar lebar kolom No, Nama, dan Hari tetap konsisten antara Hal 1 dan Hal 2,
+    // kita kecilkan lebar total tabel pada Hal 2 (2 hari) menjadi ±73% dan dipusatkan.
+    const tableWidth = isThreeDays ? '100%' : '73%'; 
+    const wNo = isThreeDays ? '4%' : '5.48%'; // 4% dari total halaman
+    const wNama = isThreeDays ? '15%' : '20.55%'; // 15% dari total halaman
+    const wDay = isThreeDays ? '27%' : '36.98%'; // 27% dari total halaman
 
     return (
-      <div className="w-full h-screen p-8 flex flex-col justify-between bg-white text-black break-after-page" style={{ pageBreakAfter: pageNum < totalPages ? 'always' : 'auto' }}>
+      <div className="w-full min-h-screen p-10 flex flex-col justify-between bg-white text-black break-after-page" style={{ breakAfter: 'page', pageBreakAfter: pageNum < totalPages ? 'always' : 'auto' }}>
         <div>
-          {/* HEADER CETAK */}
-          <div className="flex items-center gap-5 mb-8">
-            <div className="w-16 h-16 bg-white rounded-xl shadow-sm flex items-center justify-center overflow-hidden border border-gray-100 shrink-0">
+          {/* MODERN HEADER CETAK (Gaya Screenshot) */}
+          <div className="flex items-center justify-between mb-10 bg-[#f2fdf5] p-6 rounded-[2rem] border border-green-100">
+            <div className="flex items-center gap-6">
+              <div className="w-20 h-20 bg-white rounded-2xl shadow-sm flex items-center justify-center overflow-hidden border border-green-50 shrink-0">
               {institutionLogo && institutionLogo !== 'logo.png' ? (
                 <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain p-2" />
               ) : (
@@ -246,16 +265,23 @@ const HomeView = ({
               )}
             </div>
             <div>
-              <h1 className="text-3xl font-black text-gray-900 leading-tight">
-                {homeTab === 'lesson_plan' ? "Lesson Plan Al-Qur'an" : "Jurnal Harian Al-Qur'an"}
-              </h1>
-              <p className="text-gray-500 font-bold italic text-sm mt-1">SDIT Al-Fityan School Bogor</p>
+                <h1 className="text-2xl font-black text-gray-900 leading-tight">
+                  {homeTab === 'lesson_plan' ? "Lesson Plan Al-Qur'an" : "Jurnal Harian Al-Qur'an"}
+                </h1>
+                <p className="text-[#00e676] font-extrabold text-sm italic tracking-wide">SDIT Al-Fityan School Bogor</p>
+              </div>
+            </div>
+            <div className="text-right hidden sm:block">
+               <div className="bg-white px-4 py-2 rounded-2xl border border-green-100 inline-block shadow-sm">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Status Laporan</p>
+                  <p className="text-sm font-black text-green-600 uppercase">Terverifikasi Sistem</p>
+               </div>
             </div>
           </div>
 
-          {/* INFO BOX CETAK */}
-          <div className="flex w-full mb-6 border-b-2 border-gray-200 pb-4">
-            <div className="flex-1 border-l-4 border-[#00b050] pl-3">
+          {/* INFO BOX CETAK - MODERN STYLE */}
+          <div className="grid grid-cols-4 gap-4 w-full mb-8 bg-gray-50/50 p-4 rounded-[1.5rem] border border-gray-100">
+            <div className="flex-1 border-l-4 border-[#00e676] pl-3">
               <p className="text-[9px] font-black text-gray-400 tracking-widest uppercase">Bulan</p>
               <p className="text-sm font-extrabold text-gray-800">{getBulanTahun(weekStart)}</p>
             </div>
@@ -273,17 +299,26 @@ const HomeView = ({
             </div>
           </div>
 
+          {/* SUB-HEADER HALAMAN */}
+          {pageNum > 1 && (
+            <div className="flex items-center gap-2 mb-4">
+               <div className="h-px flex-1 bg-gray-100"></div>
+               <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] italic px-4 bg-white">Halaman {pageNum}: Lanjutan Kamis & Jumat</span>
+               <div className="h-px flex-1 bg-gray-100"></div>
+            </div>
+          )}
+
           {/* TABEL DATA CETAK */}
-          <div className="w-full flex justify-center">
+          <div className="w-full flex justify-center overflow-hidden rounded-[1.5rem] border border-gray-100 shadow-sm">
             <table className="border-collapse border border-green-200 table-fixed mx-auto" style={{ width: tableWidth }}>
-              <thead>
+              <thead className="bg-gray-50">
                 <tr>
-                  <th rowSpan={2} className="border border-green-200 p-2 text-[10px] font-black text-gray-700 text-center uppercase bg-white align-middle" style={{ width: wNo }}>No</th>
-                  <th rowSpan={2} className="border border-green-200 p-2 text-[10px] font-black text-gray-700 text-center uppercase bg-white align-middle" style={{ width: wNama }}>Nama Siswa</th>
+                  <th rowSpan={2} className="border border-green-200 p-3 text-[10px] font-black text-gray-500 text-center uppercase align-middle bg-gray-50" style={{ width: wNo }}>No</th>
+                  <th rowSpan={2} className="border border-green-200 p-3 text-[10px] font-black text-gray-500 text-center uppercase align-middle bg-gray-50" style={{ width: wNama }}>Nama Siswa</th>
                   {datesToRender.map((dateObj, idx) => (
-                    <th key={`head-day-${idx}`} colSpan={3} className="border border-green-200 p-2 text-center text-gray-800 font-bold bg-white" style={{ width: wDay }}>
-                      <div className="text-sm">{getDayName(dateObj)}</div>
-                      <div className="text-[9px] font-normal text-gray-500">{dateObj && typeof dateObj.getDate === 'function' ? `${dateObj.getDate()} ${getBulanTahun(dateObj).split(' ')[0]} ${dateObj.getFullYear()}` : '-'}</div>
+                    <th key={`head-day-${idx}`} colSpan={3} className="border border-green-200 p-3 text-center bg-gray-50" style={{ width: wDay }}>
+                      <div className="text-[11px] font-black text-green-700 uppercase tracking-widest">{getDayName(dateObj)}</div>
+                      <div className="text-[9px] font-bold text-gray-400 mt-0.5">{dateObj && typeof dateObj.getDate === 'function' ? `${dateObj.getDate()} ${getBulanTahun(dateObj).split(' ')[0]} ${dateObj.getFullYear()}` : '-'}</div>
                     </th>
                   ))}
                 </tr>
@@ -308,7 +343,7 @@ const HomeView = ({
                         <td rowSpan={2} className="border border-green-200 p-2 text-center text-xs font-bold text-gray-600 align-top bg-white">{idx + 1}</td>
                         <td rowSpan={2} className="border border-green-200 p-2 align-top bg-white">
                           <div className="flex items-center gap-2">
-                            {student?.photo ? (
+                            {student?.photo && student.photo !== '' ? (
                               <img src={student.photo} alt={student?.name} className="w-6 h-6 rounded-full object-cover border border-green-100 shrink-0" />
                             ) : (
                               <div className="w-6 h-6 rounded-full bg-green-50 border border-green-100 text-green-700 flex items-center justify-center text-[9px] font-black shrink-0">{initials}</div>
@@ -388,17 +423,27 @@ const HomeView = ({
     <>
       <style type="text/css" media="print">
         {`
-          @page { size: ${shareStudent ? 'portrait' : 'landscape'}; margin: ${shareStudent ? '0mm' : '5mm'}; }
+          @page { size: ${shareStudent ? 'portrait' : 'landscape'}; margin: 0; }
           body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; background: white; }
-          .break-after-page { page-break-after: always; }
+          .break-after-page { page-break-after: always; break-after: page; }
           ::-webkit-scrollbar { display: none; }
         `}
       </style>
 
       {/* ===== TAMPILAN HIDDEN PRINT (KHUSUS KERTAS TABEL KELAS) ===== */}
-      <div className={`${shareStudent ? 'hidden' : 'hidden print:block'} w-full bg-white text-black m-0 p-0 absolute top-0 left-0 z-[9999]`}>
-         {renderPrintTable(weekDates.slice(0, 3), 1, 2)} {/* Halaman 1: Senin - Rabu */}
-         {renderPrintTable(weekDates.slice(3, 5), 2, 2)} {/* Halaman 2: Kamis - Jumat */}
+      <div className={`${shareStudent ? 'hidden' : 'hidden print:block'} w-full bg-white text-black m-0 p-0 z-[9999]`}>
+        {(() => {
+          // Filter hanya hari Senin (1) sampai Jumat (5)
+          const workDays = weekDates.filter(d => d && d.getDay() !== 0 && d.getDay() !== 6);
+          return (
+            <>
+              {/* Halaman 1: Senin, Selasa, Rabu */}
+              {workDays.length >= 1 && renderPrintTable(workDays.slice(0, 3), 1, workDays.length > 3 ? 2 : 1)}
+              {/* Halaman 2: Kamis, Jumat */}
+              {workDays.length > 3 && renderPrintTable(workDays.slice(3, 5), 2, 2)}
+            </>
+          );
+        })()}
       </div>
 
       {/* ===== MODAL SHARE LAPORAN INDIVIDU ===== */}
@@ -562,9 +607,9 @@ const HomeView = ({
       <div className="print:hidden w-full h-full flex flex-col transition-colors duration-500 bg-slate-50 text-slate-900 overflow-hidden">
         
         {/* BLOK 1: HEADER HALAMAN (SHRINK-0 = SELALU TERKUNCI DI ATAS, TIDAK IKUT SCROLL) */}
-        <div className="bg-white border-gray-200 shrink-0 z-40 border-b px-4 sm:px-6 md:px-8 py-2 sm:py-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-2 sm:gap-4 transition-all">
+        <div className="bg-white border-gray-200 shrink-0 z-40 border-b px-4 sm:px-6 md:px-8 py-2 sm:py-3 flex flex-col md:flex-row justify-between items-start md:items-center gap-2 sm:gap-4 transition-all">
           <div className="w-full md:w-auto flex items-center gap-1.5 sm:gap-3">
-            <div className="hidden sm:flex w-24 md:w-40 h-24 md:h-40 items-center justify-center shrink-0">
+            <div className="hidden sm:flex w-16 md:w-20 h-16 md:h-20 items-center justify-center shrink-0">
               {institutionLogo && institutionLogo !== 'logo.png' && institutionLogo !== '' ? (
                 <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain" />
               ) : (
@@ -572,10 +617,10 @@ const HomeView = ({
               )}
             </div>
             <div>
-            <h1 className="text-sm sm:text-3xl md:text-4xl font-black mb-0.5 sm:mb-1 leading-tight text-[#1a202c]">
+            <h1 className="text-base sm:text-xl md:text-2xl font-bold mb-0.5 sm:mb-1 text-slate-700">
               {homeTab === 'lesson_plan' ? "Lesson Plan Al-Qur'an" : "Jurnal Harian Al-Qur'an"}
             </h1>
-            <div className="flex flex-wrap sm:flex-row sm:items-center gap-x-3 gap-y-1 text-gray-500 font-medium text-[9px] sm:text-sm mt-0.5 sm:mt-2">
+            <div className="flex flex-wrap sm:flex-row sm:items-center gap-x-3 gap-y-1 text-gray-500 font-medium text-[9px] sm:text-xs mt-0.5 sm:mt-1">
               <span className="flex items-center gap-1.5">
                 Halaqoh: <strong className="text-green-700 bg-green-50 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md border border-green-100">{String(activeHalaqoh || '-')}</strong>
               </span>
@@ -597,8 +642,8 @@ const HomeView = ({
         </div>
         
         {/* BLOK 2: KONTEN UTAMA - AREA SCROLL */}
-        <div className="flex-1 overflow-y-auto w-full relative custom-scrollbar bg-slate-50 p-4 sm:p-6 md:p-8 transition-colors duration-500">
-          <div className="flex flex-col gap-6 w-full mx-auto">
+        <div className="flex-1 overflow-y-auto w-full relative custom-scrollbar bg-slate-50 p-4 sm:p-6 md:p-8 transition-colors duration-500" style={{ WebkitOverflowScrolling: 'touch' }}>
+          <div className="flex flex-col gap-6 w-full mx-auto pb-32 md:pb-8">
             
             {/* TOMBOL TAB & NAVIGASI */}
             <div className="flex flex-col sm:flex-row rounded-2xl p-1.5 gap-1.5 shadow-inner transition-colors bg-slate-100/80">
@@ -620,10 +665,20 @@ const HomeView = ({
                 const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
                 const dayName = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][dateObj.getDay()];
                 if (dateObj.getDay() === 0 || dateObj.getDay() === 6) return null; 
+                const { status: dateStatus, count: filledCount } = getDateStatus(dateStr);
                 return ( // Removed dark mode styles
-                    <button key={dateStr} onClick={() => setActiveDate(dateStr)} className={`flex-1 flex flex-col shrink-0 min-w-[80px] sm:min-w-[90px] items-center justify-center p-3 rounded-2xl border transition-all snap-center ${activeDate === dateStr ? 'bg-[#00e676] border-[#00e676] text-white shadow-md transform scale-[1.03]' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+                    <button key={dateStr} onClick={() => setActiveDate(dateStr)} className={`flex-1 flex flex-col shrink-0 min-w-[80px] sm:min-w-[90px] items-center justify-center p-3 rounded-2xl border transition-all snap-center relative ${activeDate === dateStr ? 'bg-[#00e676] border-[#00e676] text-white shadow-md transform scale-[1.03]' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
                       <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest mb-0.5">{dayName}</span>
                       <span className="text-xs md:text-base font-black">{dateObj.getDate()} {['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'][dateObj.getMonth()]}</span>
+                      {dateStatus !== 'none' && (
+                        <div 
+                          data-tooltip-id="home-date-tooltip"
+                          data-tooltip-content={`${filledCount} dari ${filteredStudents.length} siswa terisi`}
+                          className={`absolute top-1.5 right-1.5 ${activeDate === dateStr ? 'text-white' : dateStatus === 'full' ? 'text-green-500' : 'text-amber-500'}`}
+                        >
+                          <Check size={12} strokeWidth={4} />
+                        </div>
+                      )}
                     </button>
                 );
               })}
@@ -878,7 +933,7 @@ const HomeView = ({
                   </div>
 
                   {/* TAMPILAN MOBILE (CARD VIEW) - SOLUSI UNTUK DATA TIDAK TERLIHAT DI HP */}
-                  <div className={`md:hidden flex flex-col divide-y divide-gray-100 transition-all duration-500 ${isLoading ? 'blur-[1.5px] opacity-60 pointer-events-none' : ''}`}>
+                  <div className={`md:hidden flex flex-col divide-y divide-gray-100 transition-all duration-500 ${isLoading ? 'blur-[1.5px] opacity-60' : ''}`}>
                     {filteredStudents.slice(0, visibleCount).map((student, index) => {
                       const record = student?.records?.[activeDate] || {};
                       const valT = record?.[k.t] || '-';
@@ -1014,6 +1069,12 @@ const HomeView = ({
             &copy; {new Date().getFullYear()} <strong className="text-gray-700">Juman Jayyidin</strong>. All rights reserved.
           </p> 
         </footer>
+
+        <Tooltip 
+          id="home-date-tooltip" 
+          place="top" 
+          className="!bg-slate-900 !text-white !rounded-xl !px-3 !py-2 !text-[10px] !font-bold !opacity-100 !shadow-2xl z-[100]" 
+        />
       </div>
     </>
   );

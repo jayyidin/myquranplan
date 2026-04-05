@@ -1,9 +1,10 @@
 import React from 'react';
-import { Printer, FileText, Calendar, Users, Award } from 'lucide-react';
-import { formatShortDate } from '../../utils/helpers';
+import { Printer, FileText, Calendar, Users, Award, ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import { Tooltip } from 'react-tooltip';
+import { formatShortDate, formatPrintData, formatPeriode } from '../../utils/helpers';
 
 const ReportView = ({ 
-  activeHalaqoh, activeGuru, activeDate, weekDates, filteredStudents, institutionLogo
+  activeHalaqoh, activeGuru, activeDate, setActiveDate, weekDates, changeWeek, filteredStudents, institutionLogo
 }) => {
   
   const handlePrint = () => {
@@ -13,24 +14,19 @@ const ReportView = ({
   // Pastikan filteredStudents selalu berupa array agar tidak error .length atau .map
   const students = Array.isArray(filteredStudents) ? filteredStudents : [];
 
-  // Helper untuk memformat data progres (Tahsin/Tahfidz/Murojaah)
-  const formatProgress = (mainVal, listVal, detailVal) => {
-    // Jika ada data list (format array dari JurnalModal)
-    if (listVal && Array.isArray(listVal) && listVal.length > 0) {
-      return listVal.map(item => {
-        if (!item) return null;
-        const surahName = (item.surat && typeof item.surat === 'string')
-          ? (item.surat.includes('.') ? item.surat.split('. ')[1] : item.surat) 
-          : (item.surat || '');
-        const ayatRange = item.ayatStart && item.ayatEnd ? ` (${item.ayatStart}-${item.ayatEnd})` : '';
-        return `${surahName}${ayatRange}`;
-      }).filter(Boolean).join(', ');
-    }
+  const getDateStatus = (dateStr) => {
+    if (students.length === 0) return { status: 'none', count: 0 };
+    const filledCount = students.filter(s => {
+      const r = s.records?.[dateStr];
+      return r && (
+        (r.tahsin && r.tahsin !== '-') || (r.tahfidz && r.tahfidz !== '-') || 
+        (r.murojaah && r.murojaah !== '-') || (r.catatan && r.catatan !== '-')
+      );
+    }).length;
     
-    // Jika hanya ada data string biasa
-    if (!mainVal || mainVal === '-' || typeof mainVal !== 'string') return '-';
-    const detail = detailVal && detailVal !== '-' ? ` (${detailVal})` : '';
-    return `${mainVal}${detail}`;
+    if (filledCount === 0) return { status: 'none', count: 0 };
+    const status = filledCount === students.length ? 'full' : 'partial';
+    return { status, count: filledCount };
   };
 
   const getStatus = (student) => {
@@ -54,9 +50,9 @@ const ReportView = ({
     <div className="max-w-5xl mx-auto pb-24 md:pb-8">
       
       {/* Area Kontrol & Navigasi */}
-      <div className="z-50 bg-gray-100/80 border-gray-200 backdrop-blur-xl -mx-4 sm:-mx-6 md:-mx-8 px-4 sm:px-6 md:px-8 py-4 mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 print:hidden border-b shadow-sm transition-all duration-500 text-slate-800">
+      <div className="z-50 bg-gray-100/80 border-gray-200 backdrop-blur-xl -mx-4 sm:-mx-6 md:-mx-8 px-4 sm:px-6 md:px-8 py-2 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 print:hidden border-b shadow-sm transition-all duration-500 text-slate-800">
         <div>
-          <h1 className="text-3xl font-black tracking-tight">Laporan Halaqoh</h1>
+          <h1 className="text-xl font-bold text-slate-800">Laporan Halaqoh</h1>
           <p className="font-medium text-slate-500">Pratinjau laporan harian untuk wali santri & arsip.</p>
         </div>
         <button 
@@ -68,12 +64,46 @@ const ReportView = ({
         </button>
       </div>
 
+      {/* NAVIGASI TANGGAL & MINGGU (Sinkron dengan HomeView) */}
+      <div className="flex flex-col gap-4 mb-8 print:hidden">
+        <div className="flex items-center justify-between px-3 py-3 sm:px-4 rounded-2xl border shadow-sm w-full gap-2 bg-white border-gray-200/80">
+          <button onClick={() => changeWeek(-7)} className="p-2 sm:px-3 sm:py-2 rounded-lg flex items-center gap-1 font-bold text-xs sm:text-sm transition-colors bg-gray-50 text-gray-500 hover:bg-green-50 hover:text-green-600"><ChevronLeft size={16}/><span className="hidden sm:inline">Sebelumnya</span></button>
+          <div className="font-black text-xs sm:text-sm md:text-base text-center flex-1 sm:flex-none text-gray-700"><Calendar size={14} className="inline text-green-500 mr-1 sm:mr-2 align-text-bottom"/> {formatPeriode(weekDates[0], weekDates[weekDates.length - 1] || weekDates[0])}</div>
+          <button onClick={() => changeWeek(7)} className="p-2 sm:px-3 sm:py-2 bg-gray-50 hover:bg-green-50 text-gray-500 hover:text-green-600 rounded-lg flex items-center gap-1 font-bold text-xs sm:text-sm transition-colors"><span className="hidden sm:inline">Selanjutnya</span><ChevronRight size={16}/></button>
+        </div>
+
+        <div className="flex gap-2 overflow-x-auto custom-scrollbar pb-2 w-full snap-x">
+          {weekDates.map((dateObj) => {
+            if (!dateObj || typeof dateObj.getDay !== 'function') return null;
+            const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
+            const dayName = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][dateObj.getDay()];
+            if (dateObj.getDay() === 0 || dateObj.getDay() === 6) return null; 
+            const { status: dateStatus, count: filledCount } = getDateStatus(dateStr);
+            return (
+                <button key={dateStr} onClick={() => setActiveDate(dateStr)} className={`flex-1 flex flex-col shrink-0 min-w-[80px] sm:min-w-[90px] items-center justify-center p-3 rounded-2xl border transition-all snap-center relative ${activeDate === dateStr ? 'bg-[#00e676] border-[#00e676] text-white shadow-md transform scale-[1.03]' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+                  <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest mb-0.5">{dayName}</span>
+                  <span className="text-xs md:text-base font-black">{dateObj.getDate()} {['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'][dateObj.getMonth()]}</span>
+                  {dateStatus !== 'none' && (
+                    <div 
+                      data-tooltip-id="date-tooltip"
+                      data-tooltip-content={`${filledCount} dari ${students.length} siswa terisi`}
+                      className={`absolute top-1.5 right-1.5 ${activeDate === dateStr ? 'text-white' : dateStatus === 'full' ? 'text-green-500' : 'text-amber-500'}`}
+                    >
+                      <Check size={12} strokeWidth={4} />
+                    </div>
+                  )}
+                </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Kertas Laporan (Bagian ini yang akan dicetak) */}
       <div className="max-w-5xl mx-auto bg-white rounded-3xl md:rounded-[2rem] shadow-2xl shadow-slate-200/50 border border-gray-100 p-5 sm:p-8 md:p-12 print:shadow-none print:border-none print:p-0 print:m-0 transition-colors">
         
         {/* Kop Laporan / Header Cetak */}
-        <div className="flex flex-col sm:flex-row items-center border-b-4 border-slate-900 pb-6 mb-8 gap-4 sm:gap-0 transition-colors">
-          <div className="w-24 h-24 shrink-0 sm:mr-6 bg-slate-50 rounded-2xl flex items-center justify-center overflow-hidden border border-slate-100 transition-colors">
+        <div className="flex flex-col sm:flex-row items-center border-b-2 border-slate-900 pb-4 mb-6 gap-4 sm:gap-0 transition-colors">
+          <div className="w-16 h-16 shrink-0 sm:mr-6 bg-slate-50 rounded-2xl flex items-center justify-center overflow-hidden border border-slate-100 transition-colors">
             {institutionLogo && institutionLogo !== 'logo.png' ? (
               <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain p-2" />
             ) : (
@@ -81,7 +111,7 @@ const ReportView = ({
             )}
           </div>
           <div className="flex-1 text-center sm:text-left">
-            <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 uppercase tracking-tight leading-tight mb-2 transition-colors">Laporan Progres Qur'an</h2>
+            <h2 className="text-lg sm:text-xl font-bold text-slate-800 uppercase tracking-wide mb-1 transition-colors">Laporan Progres Qur'an</h2>
             <div className="grid grid-cols-1 xs:grid-cols-2 gap-x-4 gap-y-1 max-w-md mx-auto sm:mx-0 text-slate-800 transition-colors">
                <p className="text-slate-500 text-sm font-bold uppercase tracking-wider">Halaqoh</p>
                <p className="text-xs sm:text-sm font-black text-left">: {activeHalaqoh || '-'}</p>
@@ -141,11 +171,10 @@ const ReportView = ({
                 const studentRecords = student?.records || {};
                 const record = studentRecords[activeDate] || {};
                 
-                // Perbaikan parameter formatProgress: 
-                // Gunakan record.murojaah sebagai mainVal jika murojaah disimpan sebagai string
-                const displayTahsin = formatProgress(record.tahsin || record.jurnalTahsin, record.tahsinSuratList, record.halAyatTahsin || record.jurnalHalAyatTahsin);
-                const displayTahfidz = formatProgress(record.tahfidz || record.jurnalTahfidz, record.tahfidzSuratList, record.ayatTahfidz || record.jurnalAyatTahfidz);
-                const displayMurojaah = formatProgress(record.murojaah || record.jurnalMurojaah, null, null);
+                // Gunakan helper formatPrintData agar konsisten dengan tampilan di Beranda
+                const displayTahsin = formatPrintData(record.tahsin, record.halAyatTahsin, record.tahsinNilai, record.tahsinSuratNilai);
+                const displayTahfidz = formatPrintData(record.tahfidz, record.ayatTahfidz, null, record.tahfidzNilai);
+                const displayMurojaah = formatPrintData(record.murojaah, '-', null, null);
 
                 const status = getStatus(student);
 
@@ -190,6 +219,12 @@ const ReportView = ({
           <p className="text-[8px] text-slate-300 font-bold uppercase tracking-[0.2em]">Laporan digenerate otomatis melalui MyQuranPlan pada {new Date().toLocaleString('id-ID')}</p>
         </div>
       </div>
+
+      <Tooltip 
+        id="date-tooltip" 
+        place="top" 
+        className="!bg-slate-800 !text-white !rounded-xl !px-3 !py-2 !text-[10px] !font-bold !opacity-100 !shadow-xl z-[100]" 
+      />
     </div>
   );
 };
