@@ -1031,7 +1031,11 @@ const HomeView = ({
                                       {renderTahsinCard(lastRec[k.t], lastRec[k.h], student?.id, 'ghost', lastRec[k.tNilai], lastRec[k.tsNilai])}
                                     </div>
                                   ) : <span className="text-gray-300 group-hover:text-slate-400 transition-colors">-</span>}
-                                  <button className="absolute top-1 right-1 opacity-0 lg:group-hover/cell:opacity-100 text-blue-500 bg-blue-50 p-1 rounded-md transition-opacity"><Plus size={12} /></button>
+                                  {!isTahsinEmpty ? (
+                                    <button onClick={(e) => handleRemoveData(e, student?.id, activeDate, 'tahsin_all')} className="absolute right-1 top-1 text-red-500 opacity-0 lg:group-hover/cell:opacity-100 transition-opacity"><X size={12} /></button>
+                                  ) : (
+                                    <button className="absolute top-1 right-1 opacity-0 lg:group-hover/cell:opacity-100 text-blue-500 bg-blue-50 p-1 rounded-md transition-opacity"><Plus size={12} /></button>
+                                  )}
                                 </div>
                               </td>
 
@@ -1045,7 +1049,11 @@ const HomeView = ({
                                       {renderTahfidzCard(lastRec[k.f], lastRec[k.af], student?.id, 'ghost', lastRec[k.fNilai])}
                                     </div>
                                   ) : <span className="text-gray-300 group-hover:text-slate-400 transition-colors">-</span>}
-                                  <button className="absolute top-1 right-1 opacity-0 lg:group-hover/cell:opacity-100 text-purple-500 bg-purple-50 p-1 rounded-md transition-opacity"><Plus size={12} /></button>
+                                  {!isTahfidzEmpty ? (
+                                    <button onClick={(e) => handleRemoveData(e, student?.id, activeDate, 'tahfidz_all')} className="absolute right-1 top-1 text-red-500 opacity-0 lg:group-hover/cell:opacity-100 transition-opacity"><X size={12} /></button>
+                                  ) : (
+                                    <button className="absolute top-1 right-1 opacity-0 lg:group-hover/cell:opacity-100 text-purple-500 bg-purple-50 p-1 rounded-md transition-opacity"><Plus size={12} /></button>
+                                  )}
                                 </div>
                               </td>
 
@@ -1059,7 +1067,11 @@ const HomeView = ({
                                       {renderMurojaahCard(lastRec[k.m], student?.id, 'ghost')}
                                     </div>
                                   ) : <span className="text-gray-300 group-hover:text-slate-400 transition-colors">-</span>}
-                                  <button className="absolute top-1 right-1 opacity-0 lg:group-hover/cell:opacity-100 text-emerald-500 bg-emerald-50 p-1 rounded-md transition-opacity"><Plus size={12} /></button>
+                                  {!isMurojaahEmpty ? (
+                                    <button onClick={(e) => handleRemoveData(e, student?.id, activeDate, 'murojaah_all')} className="absolute right-1 top-1 text-red-500 opacity-0 lg:group-hover/cell:opacity-100 transition-opacity"><X size={12} /></button>
+                                  ) : (
+                                    <button className="absolute top-1 right-1 opacity-0 lg:group-hover/cell:opacity-100 text-emerald-500 bg-emerald-50 p-1 rounded-md transition-opacity"><Plus size={12} /></button>
+                                  )}
                                 </div>
                               </td>
 
@@ -1159,24 +1171,39 @@ const HomeView = ({
                           {/* Grid Data - Menampilkan data secara vertikal agar terbaca di HP */}
                           <div className="grid grid-cols-2 gap-2">
                             {/* Tahsin */}
-                            <div onClick={() => handleOpenModal(student, 'tahsin')} className="p-3 bg-blue-50/30 border border-blue-100 rounded-2xl flex flex-col items-center justify-center min-h-[90px] text-center active:scale-95 transition-all">
+                            <div onClick={() => handleOpenModal(student, 'tahsin')} className="p-3 bg-blue-50/30 border border-blue-100 rounded-2xl flex flex-col items-center justify-center min-h-[90px] text-center active:scale-95 transition-all relative">
                               <div className="flex items-center gap-1 mb-1.5 text-blue-500 font-black uppercase text-[8px] tracking-widest"><BookOpen size={12} /> Tahsin</div>
                               {!isTahsinEmpty ? renderTahsinCard(valT, valH, student.id, activeDate, valTNilai, valTSNilai) : (lastRec && lastRec[k.t] !== '-' ? <div className="opacity-30 grayscale scale-90" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>{renderTahsinCard(lastRec[k.t], lastRec[k.h], student.id, 'ghost', lastRec[k.tNilai], lastRec[k.tsNilai])}</div> : <span className="text-gray-300">-</span>)
                               }
+                              {!isTahsinEmpty && (
+                                <button onClick={(e) => { e.stopPropagation(); handleRemoveData(e, student.id, activeDate, 'tahsin_all'); }} className="absolute top-1 right-1 p-1 bg-red-50 text-red-500 rounded-lg">
+                                  <X size={10} />
+                                </button>
+                              )}
                             </div>
 
                             {/* Tahfidz */}
-                            <div onClick={() => handleOpenModal(student, 'tahfidz')} className="p-3 bg-purple-50/30 border border-purple-100 rounded-2xl flex flex-col items-center justify-center min-h-[90px] text-center active:scale-95 transition-all">
+                            <div onClick={() => handleOpenModal(student, 'tahfidz')} className="p-3 bg-purple-50/30 border border-purple-100 rounded-2xl flex flex-col items-center justify-center min-h-[90px] text-center active:scale-95 transition-all relative">
                               <div className="flex items-center gap-1 mb-1.5 text-purple-500 font-black uppercase text-[8px] tracking-widest"><Mic size={12} /> Tahfidz</div>
                               {!isTahfidzEmpty ? renderTahfidzCard(valF, valAF, student.id, activeDate, valFNilai) : (lastRec && lastRec[k.f] !== '-' ? <div className="opacity-30 grayscale scale-90" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>{renderTahfidzCard(lastRec[k.f], lastRec[k.af], student.id, 'ghost', lastRec[k.fNilai])}</div> : <span className="text-gray-300">-</span>)
                               }
+                              {!isTahfidzEmpty && (
+                                <button onClick={(e) => { e.stopPropagation(); handleRemoveData(e, student.id, activeDate, 'tahfidz_all'); }} className="absolute top-1 right-1 p-1 bg-red-50 text-red-500 rounded-lg">
+                                  <X size={10} />
+                                </button>
+                              )}
                             </div>
 
                             {/* Murojaah */}
-                            <div onClick={() => handleOpenModal(student, 'murojaah')} className="p-3 bg-emerald-50/30 border border-emerald-100 rounded-2xl flex flex-col items-center justify-center min-h-[90px] text-center active:scale-95 transition-all">
+                            <div onClick={() => handleOpenModal(student, 'murojaah')} className="p-3 bg-emerald-50/30 border border-emerald-100 rounded-2xl flex flex-col items-center justify-center min-h-[90px] text-center active:scale-95 transition-all relative">
                               <div className="flex items-center gap-1 mb-1.5 text-emerald-500 font-black uppercase text-[8px] tracking-widest"><Repeat size={12} /> Murojaah</div>
                               {!isMurojaahEmpty ? renderMurojaahCard(valM, student.id, activeDate) : (lastRec && lastRec[k.m] !== '-' ? <div className="opacity-30 grayscale scale-90" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>{renderMurojaahCard(lastRec[k.m], student.id, 'ghost')}</div> : <span className="text-gray-300">-</span>)
                               }
+                              {!isMurojaahEmpty && (
+                                <button onClick={(e) => { e.stopPropagation(); handleRemoveData(e, student.id, activeDate, 'murojaah_all'); }} className="absolute top-1 right-1 p-1 bg-red-50 text-red-500 rounded-lg">
+                                  <X size={10} />
+                                </button>
+                              )}
                             </div>
 
                             {/* Catatan */}

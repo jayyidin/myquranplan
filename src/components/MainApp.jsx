@@ -319,6 +319,8 @@ const MainApp = ({ currentUser, onLogout }) => {
 
       if (type === 'catatan') { rec[k.c] = '-'; }
       else if (type === 'tahsin_all') { rec[k.t] = '-'; rec[k.h] = '-'; rec[k.tNilai] = '-'; rec[k.tsNilai] = '-'; }
+      else if (type === 'tahfidz_all') { rec[k.f] = '-'; rec[k.af] = '-'; rec[k.fNilai] = '-'; }
+      else if (type === 'murojaah_all') { rec[k.m] = '-'; }
       else if (type === 'tahsin_surat') {
         let tList = rec[k.t].split(',').map(s => s.trim()); let aList = rec[k.h] !== '-' ? (rec[k.h] || '').split(',').map(s => s.trim()) : []; let nList = rec[k.tsNilai] !== '-' ? (rec[k.tsNilai] || '').split(',').map(s => s.trim()) : [];
         tList.splice(subIndex, 1);
