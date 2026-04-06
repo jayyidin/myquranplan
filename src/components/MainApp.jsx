@@ -32,6 +32,7 @@ const MainApp = ({ currentUser, onLogout }) => {
   const [guruHalaqohData, setGuruHalaqohData] = useState({});
   const guruList = Object.keys(guruHalaqohData);
   const [kelasList, setKelasList] = useState([]);
+  const [institutionName, setInstitutionName] = useState('Nama Sekolah Anda');
   const [institutionLogo, setInstitutionLogo] = useState('logo.png');
   const [appUsers, setAppUsers] = useState([]);
 
@@ -79,6 +80,7 @@ const MainApp = ({ currentUser, onLogout }) => {
         const data = docSnap.data();
         if (data.guruHalaqohData) setGuruHalaqohData(data.guruHalaqohData);
         if (data.kelasList) setKelasList(data.kelasList);
+        if (data.institutionName) setInstitutionName(data.institutionName);
         if (data.institutionLogo) setInstitutionLogo(data.institutionLogo);
       }
     });
@@ -661,201 +663,207 @@ const MainApp = ({ currentUser, onLogout }) => {
         <div className="max-w-7xl mx-auto px-3 md:px-6 h-14 sm:h-28 flex items-center justify-between">
           <div className="flex items-center gap-1.5 font-bold text-xl sm:text-3xl text-green-600">
             <div className="w-8 h-8 sm:w-24 sm:h-24 flex items-center justify-center shrink-0 transition-transform hover:scale-105">
-              {institutionLogo && institutionLogo !== 'logo.png' ? (
-                <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain" />
-              ) : (
+              <div className="flex items-center gap-1.5 sm:gap-4 font-bold text-xl sm:text-3xl text-green-600">
+                <div className="w-10 h-10 sm:w-16 sm:h-16 flex items-center justify-center shrink-0 transition-transform hover:scale-105">
+                  {institutionLogo && institutionLogo !== 'logo.png' ? (
+                    <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain" />
+                  ) : (
                 <BookOpen className="w-6 h-6 sm:w-14 sm:h-14 text-[#0f4c5c]" />
-              )}
-            </div>
-            <div className="flex flex-col items-start">
-              <span className="font-arabic tracking-tight leading-tight transition-all">MyQuranPlan</span>
-              <div className="h-0.5 w-full bg-gradient-to-r from-transparent via-amber-500 to-transparent opacity-80 -mt-1 sm:-mt-2"></div>
-            </div>
-          </div>
-          <nav className="hidden md:flex items-center gap-6 font-bold text-sm text-gray-500">
-            <button onClick={() => setCurrentView('home')} className={`relative pb-1 group transition-colors ${currentView === 'home' ? 'text-green-600' : 'hover:text-green-600'}`}>
-              Beranda
-              <span className={`absolute bottom-0 left-0 h-0.5 transition-all duration-300 ${currentView === 'home' ? 'w-full' : 'w-0 group-hover:w-full'} bg-green-600`}></span>
-            </button>
-            <button onClick={() => setCurrentView('siswa')} className={`relative pb-1 group transition-colors ${currentView === 'siswa' ? 'text-green-600' : 'hover:text-green-600'}`}>
-              Data Siswa
-              <span className={`absolute bottom-0 left-0 h-0.5 bg-green-600 transition-all duration-300 ${currentView === 'siswa' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
-            </button>
-            <button onClick={() => setCurrentView('laporan')} className={`relative pb-1 group transition-colors ${currentView === 'laporan' ? 'text-green-600' : 'hover:text-green-600'}`}>
-              Laporan
-              <span className={`absolute bottom-0 left-0 h-0.5 bg-green-600 transition-all duration-300 ${currentView === 'laporan' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
-            </button>
-            <button onClick={() => setCurrentView('pengaturan')} className={`relative pb-1 group transition-colors ${currentView === 'pengaturan' ? 'text-green-600' : 'hover:text-green-600'}`}>
-              Pengaturan
-              <span className={`absolute bottom-0 left-0 h-0.5 bg-green-600 transition-all duration-300 ${currentView === 'pengaturan' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
-            </button>
-          </nav>
-          <div className="flex items-center gap-3">
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-xl border">
-              <User size={14} className="text-gray-400" />
-              <span className="text-xs font-bold text-gray-600">{currentUser.name}</span>
-            </div>
-            <button onClick={onLogout} className="p-2 text-gray-400 hover:text-red-500 bg-gray-50 rounded-xl hidden md:block"><LogOut size={18} /></button>
-            <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 text-gray-600 bg-gray-50 rounded-lg"><Menu size={18} /></button>
-          </div>
-        </div>
-      </header>
-
-      {/* MOBILE MENU OVERLAY (Drawer untuk HP) */}
-      {mobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 z-[150] flex justify-end animate-in fade-in duration-300">
-          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)}></div>
-          <div className="relative w-72 h-full bg-white shadow-2xl flex flex-col p-6 animate-in slide-in-from-right duration-300">
-            <div className="flex justify-between items-center mb-8">
+                <BookOpen className="w-8 h-8 sm:w-12 sm:h-12 text-[#0f4c5c]" />
+                  )}
+                </div>
+                <div className="flex flex-col items-start">
+                  <span className="font-arabic tracking-tight leading-tight transition-all">MyQuranPlan</span>
+                  <div className="h-0.5 w-full bg-gradient-to-r from-transparent via-amber-500 to-transparent opacity-80 -mt-1 sm:-mt-2"></div>
+                  <span className="font-extrabold tracking-tight leading-tight transition-all text-slate-800 text-base sm:text-xl">{institutionName}</span>
+                  <span className="font-arabic text-green-600 text-sm sm:text-base -mt-1">MyQuranPlan</span>
+                </div>
+              </div>
+              <nav className="hidden md:flex items-center gap-6 font-bold text-sm text-gray-500">
+                <button onClick={() => setCurrentView('home')} className={`relative pb-1 group transition-colors ${currentView === 'home' ? 'text-green-600' : 'hover:text-green-600'}`}>
+                  Beranda
+                  <span className={`absolute bottom-0 left-0 h-0.5 transition-all duration-300 ${currentView === 'home' ? 'w-full' : 'w-0 group-hover:w-full'} bg-green-600`}></span>
+                </button>
+                <button onClick={() => setCurrentView('siswa')} className={`relative pb-1 group transition-colors ${currentView === 'siswa' ? 'text-green-600' : 'hover:text-green-600'}`}>
+                  Data Siswa
+                  <span className={`absolute bottom-0 left-0 h-0.5 bg-green-600 transition-all duration-300 ${currentView === 'siswa' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
+                </button>
+                <button onClick={() => setCurrentView('laporan')} className={`relative pb-1 group transition-colors ${currentView === 'laporan' ? 'text-green-600' : 'hover:text-green-600'}`}>
+                  Laporan
+                  <span className={`absolute bottom-0 left-0 h-0.5 bg-green-600 transition-all duration-300 ${currentView === 'laporan' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
+                </button>
+                <button onClick={() => setCurrentView('pengaturan')} className={`relative pb-1 group transition-colors ${currentView === 'pengaturan' ? 'text-green-600' : 'hover:text-green-600'}`}>
+                  Pengaturan
+                  <span className={`absolute bottom-0 left-0 h-0.5 bg-green-600 transition-all duration-300 ${currentView === 'pengaturan' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
+                </button>
+              </nav>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center text-green-600">
-                  <User size={20} />
+                <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-xl border">
+                  <User size={14} className="text-gray-400" />
+                  <span className="text-xs font-bold text-gray-600">{currentUser.name}</span>
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-sm font-black text-slate-800 leading-none">{currentUser.name}</span>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{currentUser.role}</span>
+                <button onClick={onLogout} className="p-2 text-gray-400 hover:text-red-500 bg-gray-50 rounded-xl hidden md:block"><LogOut size={18} /></button>
+                <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 text-gray-600 bg-gray-50 rounded-lg"><Menu size={18} /></button>
+              </div>
+            </div>
+          </header>
+
+          {/* MOBILE MENU OVERLAY (Drawer untuk HP) */}
+          {mobileMenuOpen && (
+            <div className="md:hidden fixed inset-0 z-[150] flex justify-end animate-in fade-in duration-300">
+              <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)}></div>
+              <div className="relative w-72 h-full bg-white shadow-2xl flex flex-col p-6 animate-in slide-in-from-right duration-300">
+                <div className="flex justify-between items-center mb-8">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center text-green-600">
+                      <User size={20} />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-black text-slate-800 leading-none">{currentUser.name}</span>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{currentUser.role}</span>
+                    </div>
+                  </div>
+                  <button onClick={() => setMobileMenuOpen(false)} className="p-2 bg-slate-50 text-slate-400 rounded-xl"><X size={20} /></button>
                 </div>
+
+                <div className="flex flex-col gap-2">
+                  <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest ml-4 mb-2">Navigasi Cepat</p>
+                  <button onClick={() => { setCurrentView('home'); setMobileMenuOpen(false); }} className={`flex items-center gap-3 p-4 rounded-2xl font-bold transition-all ${currentView === 'home' ? 'bg-green-50 text-green-600' : 'text-slate-600 hover:bg-slate-50'}`}><Home size={20} /> Beranda</button>
+                  <button onClick={() => { setCurrentView('siswa'); setMobileMenuOpen(false); }} className={`flex items-center gap-3 p-4 rounded-2xl font-bold transition-all ${currentView === 'siswa' ? 'bg-green-50 text-green-600' : 'text-slate-600 hover:bg-slate-50'}`}><Users size={20} /> Data Siswa</button>
+                  <button onClick={() => { setCurrentView('laporan'); setMobileMenuOpen(false); }} className={`flex items-center gap-3 p-4 rounded-2xl font-bold transition-all ${currentView === 'laporan' ? 'bg-green-50 text-green-600' : 'text-slate-600 hover:bg-slate-50'}`}><BarChart3 size={20} /> Laporan</button>
+                  <button onClick={() => { setCurrentView('pengaturan'); setMobileMenuOpen(false); }} className={`flex items-center gap-3 p-4 rounded-2xl font-bold transition-all ${currentView === 'pengaturan' ? 'bg-green-50 text-green-600' : 'text-slate-600 hover:bg-slate-50'}`}><Settings size={20} /> Pengaturan</button>
+                </div>
+
+                <button
+                  onClick={() => { onLogout(); setMobileMenuOpen(false); }}
+                  className="mt-auto flex items-center gap-3 p-4 bg-red-50 text-red-600 rounded-2xl font-black transition-all active:scale-95 shadow-sm border border-red-100"
+                >
+                  <LogOut size={20} /> Keluar Aplikasi
+                </button>
               </div>
-              <button onClick={() => setMobileMenuOpen(false)} className="p-2 bg-slate-50 text-slate-400 rounded-xl"><X size={20} /></button>
             </div>
+          )}
 
-            <div className="flex flex-col gap-2">
-              <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest ml-4 mb-2">Navigasi Cepat</p>
-              <button onClick={() => { setCurrentView('home'); setMobileMenuOpen(false); }} className={`flex items-center gap-3 p-4 rounded-2xl font-bold transition-all ${currentView === 'home' ? 'bg-green-50 text-green-600' : 'text-slate-600 hover:bg-slate-50'}`}><Home size={20} /> Beranda</button>
-              <button onClick={() => { setCurrentView('siswa'); setMobileMenuOpen(false); }} className={`flex items-center gap-3 p-4 rounded-2xl font-bold transition-all ${currentView === 'siswa' ? 'bg-green-50 text-green-600' : 'text-slate-600 hover:bg-slate-50'}`}><Users size={20} /> Data Siswa</button>
-              <button onClick={() => { setCurrentView('laporan'); setMobileMenuOpen(false); }} className={`flex items-center gap-3 p-4 rounded-2xl font-bold transition-all ${currentView === 'laporan' ? 'bg-green-50 text-green-600' : 'text-slate-600 hover:bg-slate-50'}`}><BarChart3 size={20} /> Laporan</button>
-              <button onClick={() => { setCurrentView('pengaturan'); setMobileMenuOpen(false); }} className={`flex items-center gap-3 p-4 rounded-2xl font-bold transition-all ${currentView === 'pengaturan' ? 'bg-green-50 text-green-600' : 'text-slate-600 hover:bg-slate-50'}`}><Settings size={20} /> Pengaturan</button>
-            </div>
-
-            <button
-              onClick={() => { onLogout(); setMobileMenuOpen(false); }}
-              className="mt-auto flex items-center gap-3 p-4 bg-red-50 text-red-600 rounded-2xl font-black transition-all active:scale-95 shadow-sm border border-red-100"
-            >
-              <LogOut size={20} /> Keluar Aplikasi
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Area Filter Halaqoh & Guru */}
-      {currentView !== 'pengaturan' && (
-        <div className="bg-white/95 border-gray-200 border-b px-3 md:px-6 py-1 flex justify-between items-center shrink-0 z-50 print:hidden h-11 shadow-sm transition-all duration-500 backdrop-blur-md sticky top-[56px] sm:top-[112px]">
-          <div className="flex items-center gap-2">
-            {isSuperAdmin ? (
-              <select value={activeGuru} onChange={(e) => setActiveGuru(e.target.value)} className="bg-gray-50 border rounded-lg p-1.5 text-xs font-bold w-[130px] md:w-auto outline-none focus:ring-2 focus:ring-green-500/20">
-                {guruList.map(g => <option key={g} value={g}>{g}</option>)}
-              </select>
-            ) : (
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg border border-blue-100 shadow-sm">
-                <User size={14} className="shrink-0" />
-                <span className="text-xs font-black truncate max-w-[120px] md:max-w-none">{currentUser.name}</span>
+          {/* Area Filter Halaqoh & Guru */}
+          {currentView !== 'pengaturan' && (
+            <div className="bg-white/95 border-gray-200 border-b px-3 md:px-6 py-1 flex justify-between items-center shrink-0 z-50 print:hidden h-11 shadow-sm transition-all duration-500 backdrop-blur-md sticky top-[56px] sm:top-[112px]">
+              <div className="flex items-center gap-2">
+                {isSuperAdmin ? (
+                  <select value={activeGuru} onChange={(e) => setActiveGuru(e.target.value)} className="bg-gray-50 border rounded-lg p-1.5 text-xs font-bold w-[130px] md:w-auto outline-none focus:ring-2 focus:ring-green-500/20">
+                    {guruList.map(g => <option key={g} value={g}>{g}</option>)}
+                  </select>
+                ) : (
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg border border-blue-100 shadow-sm">
+                    <User size={14} className="shrink-0" />
+                    <span className="text-xs font-black truncate max-w-[120px] md:max-w-none">{currentUser.name}</span>
+                  </div>
+                )}
               </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest hidden sm:inline">Kelompok:</span>
+                <select value={activeHalaqoh} onChange={(e) => setActiveHalaqoh(e.target.value)} className="bg-green-50 border border-green-200 text-green-800 rounded-lg p-1.5 text-xs font-bold w-[130px] md:w-auto outline-none focus:ring-2 focus:ring-green-500/20">
+                  {(guruHalaqohData[activeGuru] || []).map(h => <option key={h} value={h}>{h}</option>)}
+                </select>
+              </div>
+            </div>
+          )}
+
+          {/* Main Content Area */}
+          <main className="flex-1 w-full max-w-7xl mx-auto overflow-hidden relative flex flex-col min-h-0 transition-colors duration-500">
+            {currentView === 'home' && (
+              <HomeView
+                activeHalaqoh={activeHalaqoh}
+                activeGuru={activeGuru}
+                homeTab={homeTab}
+                setHomeTab={setHomeTab}
+                weekStart={weekStart}
+                changeWeek={changeWeek}
+                activeDate={activeDate}
+                setActiveDate={setActiveDate}
+                weekDates={weekDates}
+                filteredStudents={filteredStudents}
+                handleOpenModal={handleOpenModal}
+                requestClearRecord={requestClearRecord}
+                setSharingStudent={setSharingStudent}
+                handleRemoveData={handleRemoveData}
+                getStatusColor={getStatusColor}
+                institutionLogo={institutionLogo}
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                studentsInHalaqohCount={studentsInHalaqoh.length}
+                isLoading={isLoading}
+              />
             )}
-          </div>
+            {currentView === 'siswa' && (
+              <StudentView
+                activeHalaqoh={activeHalaqoh} filteredStudents={filteredStudents}
+                openAddStudentModal={() => setIsAddStudentModalOpen(true)}
+                openEditStudentModal={(s) => { setEditStudentData({ id: s.id, name: s.name, kelas: s.kelas, halaqoh: s.halaqoh, photo: s.photo || null }); setIsEditStudentModalOpen(true); }}
+                requestDeleteStudent={requestDeleteStudent} isSuperAdmin={isSuperAdmin}
+              />
+            )}
+            {currentView === 'laporan' && (
+              <ReportView
+                activeHalaqoh={activeHalaqoh}
+                activeGuru={activeGuru}
+                activeDate={activeDate}
+                weekDates={weekDates}
+                filteredStudents={filteredStudents}
+                institutionLogo={institutionLogo}
+              />
+            )}
+            {currentView === 'pengaturan' && (
+              <SettingsView
+                isSuperAdmin={isSuperAdmin} appUsers={appUsers}
+                handleApproveUser={handleApproveUser} handleRejectUser={handleRejectUser} handleUpdateUserAccount={handleUpdateUserAccount}
+                institutionLogo={institutionLogo} handleInstitutionLogoUpload={handleInstitutionLogoUpload} setInstitutionLogo={setInstitutionLogo} updateMasterDataCloud={updateMasterDataCloud} showToast={showToast}
+                institutionName={institutionName} institutionLogo={institutionLogo} handleInstitutionLogoUpload={handleInstitutionLogoUpload} setInstitutionName={setInstitutionName} updateMasterDataCloud={updateMasterDataCloud} showToast={showToast}
+                kelasList={kelasList} newKelasName={newKelasName} setNewKelasName={setNewKelasName} handleAddKelas={handleAddKelas} handleDeleteKelas={handleDeleteKelas}
+                newGuruName={newGuruName} setNewGuruName={setNewGuruName} handleAddGuru={handleAddGuru} guruList={isSuperAdmin ? guruList : [currentUser.name]}
+                selectedGuruForHalaqoh={selectedGuruForHalaqoh} setSelectedGuruForHalaqoh={setSelectedGuruForHalaqoh} newHalaqohName={newHalaqohName} setNewHalaqohName={setNewHalaqohName} handleAddHalaqoh={handleAddHalaqoh}
+                currentUser={currentUser} guruHalaqohData={guruHalaqohData} editingGuru={editingGuru} setEditingGuru={setEditingGuru} handleSaveEditGuru={handleSaveEditGuru} requestDeleteGuru={requestDeleteGuru}
+                editingHalaqoh={editingHalaqoh} setEditingHalaqoh={setEditingHalaqoh} handleSaveEditHalaqoh={handleSaveEditHalaqoh} requestDeleteHalaqoh={requestDeleteHalaqoh}
+                students={students} openEditStudentModal={(s) => { setEditStudentData({ id: s.id, name: s.name, kelas: s.kelas, halaqoh: s.halaqoh, photo: s.photo || null }); setIsEditStudentModalOpen(true); }}
+                requestDeleteStudent={requestDeleteStudent} handleBulkSaveStudents={handleBulkSaveStudents}
+              />
+            )}
+          </main>
 
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest hidden sm:inline">Kelompok:</span>
-            <select value={activeHalaqoh} onChange={(e) => setActiveHalaqoh(e.target.value)} className="bg-green-50 border border-green-200 text-green-800 rounded-lg p-1.5 text-xs font-bold w-[130px] md:w-auto outline-none focus:ring-2 focus:ring-green-500/20">
-              {(guruHalaqohData[activeGuru] || []).map(h => <option key={h} value={h}>{h}</option>)}
-            </select>
-          </div>
+          {/* RENDER MODALS */}
+          <AddStudentModal
+            isOpen={isAddStudentModalOpen} onClose={() => setIsAddStudentModalOpen(false)} isSuperAdmin={isSuperAdmin} addStudentMode={addStudentMode} setAddStudentMode={setAddStudentMode}
+            masterSearchQuery={masterSearchQuery} setMasterSearchQuery={setMasterSearchQuery} students={students} activeHalaqoh={activeHalaqoh} handleAssignFromMaster={handleAssignFromMaster} newStudent={newStudent} setNewStudent={setNewStudent} handlePhotoUpload={handlePhotoUpload} kelasList={kelasList} handleSaveNewStudent={handleSaveNewStudent} getInitials={getInitials}
+            guruHalaqohData={getFilteredHalaqohDataForEdit()}
+          />
+          <EditStudentModal
+            isOpen={isEditStudentModalOpen}
+            onClose={() => setIsEditStudentModalOpen(false)}
+            editStudentData={editStudentData}
+            setEditStudentData={setEditStudentData}
+            handlePhotoUpload={handlePhotoUpload}
+            kelasList={kelasList}
+            handleUpdateStudent={handleUpdateStudent}
+            guruHalaqohData={getFilteredHalaqohDataForEdit()}
+            isSuperAdmin={isSuperAdmin}
+            currentUser={currentUser}
+          />
+
+          {/* MODAL JURNAL */}
+          <JurnalModal
+            isOpen={isModalOpen} onClose={handleCloseModal} modalMode={modalMode} getModalTitle={getModalTitle} lessonPlans={lessonPlans} handlePlanChange={handlePlanChange} handleToggleArray={handleToggleArray} handleAddSurat={handleAddSurat} handleRemoveSurat={handleRemoveSurat} handleSuratChange={handleSuratChange} activeDropdown={activeDropdown} setActiveDropdown={setActiveDropdown} tahsinCategories={tahsinCategories} ghoribList={ghoribList} tajwidList={tajwidList} surahList={surahList} getAyatOptions={getAyatOptions} homeTab={homeTab} handleSave={handleSave} editingId={editingId} selectedStudents={selectedStudents} filteredStudents={filteredStudents} toggleStudent={toggleStudent}
+          />
+
+          {toastMessage && (<div className="fixed top-4 md:top-20 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-4 py-2 rounded-xl shadow-2xl z-[9999] font-bold text-xs md:text-sm animate-bounce">{toastMessage}</div>)}
+
+          <nav className="md:hidden fixed bottom-0 w-full bg-white border-t border-gray-100 flex justify-around items-center h-[70px] z-40 print:hidden">
+            <button onClick={() => setCurrentView('home')} className={`flex flex-col items-center gap-1 ${currentView === 'home' ? 'text-green-600' : 'text-gray-400'}`}><Home size={20} /><span className="text-[9px] font-bold">Beranda</span></button>
+            <button onClick={() => setCurrentView('siswa')} className={`flex flex-col items-center gap-1 ${currentView === 'siswa' ? 'text-green-600' : 'text-gray-400'}`}><Users size={20} /><span className="text-[9px] font-bold">Siswa</span></button>
+            <button onClick={() => setCurrentView('laporan')} className={`flex flex-col items-center gap-1 ${currentView === 'laporan' ? 'text-green-600' : 'text-gray-400'}`}><BarChart3 size={20} /><span className="text-[9px] font-bold">Laporan</span></button>
+            <button onClick={() => setCurrentView('pengaturan')} className={`flex flex-col items-center gap-1 ${currentView === 'pengaturan' ? 'text-green-600' : 'text-gray-400'}`}><Settings size={20} /><span className="text-[9px] font-bold">Setelan</span></button>
+          </nav>
         </div>
-      )}
-
-      {/* Main Content Area */}
-      <main className="flex-1 w-full max-w-7xl mx-auto overflow-hidden relative flex flex-col min-h-0 transition-colors duration-500">
-        {currentView === 'home' && (
-          <HomeView
-            activeHalaqoh={activeHalaqoh}
-            activeGuru={activeGuru}
-            homeTab={homeTab}
-            setHomeTab={setHomeTab}
-            weekStart={weekStart}
-            changeWeek={changeWeek}
-            activeDate={activeDate}
-            setActiveDate={setActiveDate}
-            weekDates={weekDates}
-            filteredStudents={filteredStudents}
-            handleOpenModal={handleOpenModal}
-            requestClearRecord={requestClearRecord}
-            setSharingStudent={setSharingStudent}
-            handleRemoveData={handleRemoveData}
-            getStatusColor={getStatusColor}
-            institutionLogo={institutionLogo}
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            studentsInHalaqohCount={studentsInHalaqoh.length}
-            isLoading={isLoading}
-          />
-        )}
-        {currentView === 'siswa' && (
-          <StudentView
-            activeHalaqoh={activeHalaqoh} filteredStudents={filteredStudents}
-            openAddStudentModal={() => setIsAddStudentModalOpen(true)}
-            openEditStudentModal={(s) => { setEditStudentData({ id: s.id, name: s.name, kelas: s.kelas, halaqoh: s.halaqoh, photo: s.photo || null }); setIsEditStudentModalOpen(true); }}
-            requestDeleteStudent={requestDeleteStudent} isSuperAdmin={isSuperAdmin}
-          />
-        )}
-        {currentView === 'laporan' && (
-          <ReportView
-            activeHalaqoh={activeHalaqoh}
-            activeGuru={activeGuru}
-            activeDate={activeDate}
-            weekDates={weekDates}
-            filteredStudents={filteredStudents}
-            institutionLogo={institutionLogo}
-          />
-        )}
-        {currentView === 'pengaturan' && (
-          <SettingsView
-            isSuperAdmin={isSuperAdmin} appUsers={appUsers}
-            handleApproveUser={handleApproveUser} handleRejectUser={handleRejectUser} handleUpdateUserAccount={handleUpdateUserAccount}
-            institutionLogo={institutionLogo} handleInstitutionLogoUpload={handleInstitutionLogoUpload} setInstitutionLogo={setInstitutionLogo} updateMasterDataCloud={updateMasterDataCloud} showToast={showToast}
-            kelasList={kelasList} newKelasName={newKelasName} setNewKelasName={setNewKelasName} handleAddKelas={handleAddKelas} handleDeleteKelas={handleDeleteKelas}
-            newGuruName={newGuruName} setNewGuruName={setNewGuruName} handleAddGuru={handleAddGuru} guruList={isSuperAdmin ? guruList : [currentUser.name]}
-            selectedGuruForHalaqoh={selectedGuruForHalaqoh} setSelectedGuruForHalaqoh={setSelectedGuruForHalaqoh} newHalaqohName={newHalaqohName} setNewHalaqohName={setNewHalaqohName} handleAddHalaqoh={handleAddHalaqoh}
-            currentUser={currentUser} guruHalaqohData={guruHalaqohData} editingGuru={editingGuru} setEditingGuru={setEditingGuru} handleSaveEditGuru={handleSaveEditGuru} requestDeleteGuru={requestDeleteGuru}
-            editingHalaqoh={editingHalaqoh} setEditingHalaqoh={setEditingHalaqoh} handleSaveEditHalaqoh={handleSaveEditHalaqoh} requestDeleteHalaqoh={requestDeleteHalaqoh}
-            students={students} openEditStudentModal={(s) => { setEditStudentData({ id: s.id, name: s.name, kelas: s.kelas, halaqoh: s.halaqoh, photo: s.photo || null }); setIsEditStudentModalOpen(true); }}
-            requestDeleteStudent={requestDeleteStudent} handleBulkSaveStudents={handleBulkSaveStudents}
-          />
-        )}
-      </main>
-
-      {/* RENDER MODALS */}
-      <AddStudentModal
-        isOpen={isAddStudentModalOpen} onClose={() => setIsAddStudentModalOpen(false)} isSuperAdmin={isSuperAdmin} addStudentMode={addStudentMode} setAddStudentMode={setAddStudentMode}
-        masterSearchQuery={masterSearchQuery} setMasterSearchQuery={setMasterSearchQuery} students={students} activeHalaqoh={activeHalaqoh} handleAssignFromMaster={handleAssignFromMaster} newStudent={newStudent} setNewStudent={setNewStudent} handlePhotoUpload={handlePhotoUpload} kelasList={kelasList} handleSaveNewStudent={handleSaveNewStudent} getInitials={getInitials}
-        guruHalaqohData={getFilteredHalaqohDataForEdit()}
-      />
-      <EditStudentModal
-        isOpen={isEditStudentModalOpen}
-        onClose={() => setIsEditStudentModalOpen(false)}
-        editStudentData={editStudentData}
-        setEditStudentData={setEditStudentData}
-        handlePhotoUpload={handlePhotoUpload}
-        kelasList={kelasList}
-        handleUpdateStudent={handleUpdateStudent}
-        guruHalaqohData={getFilteredHalaqohDataForEdit()}
-        isSuperAdmin={isSuperAdmin}
-        currentUser={currentUser}
-      />
-
-      {/* MODAL JURNAL */}
-      <JurnalModal
-        isOpen={isModalOpen} onClose={handleCloseModal} modalMode={modalMode} getModalTitle={getModalTitle} lessonPlans={lessonPlans} handlePlanChange={handlePlanChange} handleToggleArray={handleToggleArray} handleAddSurat={handleAddSurat} handleRemoveSurat={handleRemoveSurat} handleSuratChange={handleSuratChange} activeDropdown={activeDropdown} setActiveDropdown={setActiveDropdown} tahsinCategories={tahsinCategories} ghoribList={ghoribList} tajwidList={tajwidList} surahList={surahList} getAyatOptions={getAyatOptions} homeTab={homeTab} handleSave={handleSave} editingId={editingId} selectedStudents={selectedStudents} filteredStudents={filteredStudents} toggleStudent={toggleStudent}
-      />
-
-      {toastMessage && (<div className="fixed top-4 md:top-20 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-4 py-2 rounded-xl shadow-2xl z-[9999] font-bold text-xs md:text-sm animate-bounce">{toastMessage}</div>)}
-
-      <nav className="md:hidden fixed bottom-0 w-full bg-white border-t border-gray-100 flex justify-around items-center h-[70px] z-40 print:hidden">
-        <button onClick={() => setCurrentView('home')} className={`flex flex-col items-center gap-1 ${currentView === 'home' ? 'text-green-600' : 'text-gray-400'}`}><Home size={20} /><span className="text-[9px] font-bold">Beranda</span></button>
-        <button onClick={() => setCurrentView('siswa')} className={`flex flex-col items-center gap-1 ${currentView === 'siswa' ? 'text-green-600' : 'text-gray-400'}`}><Users size={20} /><span className="text-[9px] font-bold">Siswa</span></button>
-        <button onClick={() => setCurrentView('laporan')} className={`flex flex-col items-center gap-1 ${currentView === 'laporan' ? 'text-green-600' : 'text-gray-400'}`}><BarChart3 size={20} /><span className="text-[9px] font-bold">Laporan</span></button>
-        <button onClick={() => setCurrentView('pengaturan')} className={`flex flex-col items-center gap-1 ${currentView === 'pengaturan' ? 'text-green-600' : 'text-gray-400'}`}><Settings size={20} /><span className="text-[9px] font-bold">Setelan</span></button>
-      </nav>
-    </div>
-  );
+        );
 };
 
-export default MainApp;
+        export default MainApp;
