@@ -348,8 +348,8 @@ const HomeView = ({
     ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan' }
     : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan' };
 
-  // Kunci data untuk Kartu Laporan (Share) selalu menggunakan data Target (Lesson Plan)
-  const k_share = { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan' };
+  // Kunci data untuk Kartu Laporan (Share) menggunakan Capaian (Jurnal)
+  const k_share = { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan' };
 
   const getDateStatus = (dateStr) => {
     if (filteredStudents.length === 0) return { status: 'none', count: 0 };
@@ -411,7 +411,7 @@ const HomeView = ({
               <p className="text-sm font-extrabold text-gray-800">{formatPeriode(weekDates[0], weekDates[weekDates.length - 1] || weekDates[0])}</p>
             </div>
             <div className="flex-1 border-l-4 border-[#00b050] pl-3">
-              <p className="text-[9px] font-black text-gray-400 tracking-widest uppercase">Pengajar</p>
+              <p className="text-[9px] font-black text-gray-400 tracking-widest uppercase">Ustadz/ah</p>
               <p className="text-sm font-extrabold text-gray-800">{String(activeGuru || '-')}</p>
             </div>
           </div>
@@ -749,7 +749,7 @@ const HomeView = ({
             <div className="bg-[#111827] p-5 sm:p-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-white">
               <div className="flex items-center gap-3 w-full sm:w-auto">
                 <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0"><Users size={14} className="text-gray-300" /></div>
-                <span className="text-xs sm:text-sm font-medium text-gray-400">Pengajar: <strong className="text-white block sm:inline">{String(activeGuru || '-')}</strong></span>
+                <span className="text-xs sm:text-sm font-medium text-gray-400">Ustadz/ah: <strong className="text-white block sm:inline">{String(activeGuru || '-')}</strong></span>
               </div>
               <div className="flex items-center gap-3 w-full sm:w-auto">
                 <div className="w-8 h-8 rounded-full bg-[#00e676]/20 flex items-center justify-center shrink-0"><Calendar size={14} className="text-[#00e676]" /></div>
@@ -787,7 +787,7 @@ const HomeView = ({
                 </span>
                 <span className="hidden md:inline text-gray-300">•</span>
                 <span className="flex items-center gap-1.5">
-                  Pengajar: <strong className="text-blue-700 bg-blue-50 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md border border-blue-100 transition-colors">{String(activeGuru || '-')}</strong>
+                  Ustadz/ah: <strong className="text-blue-700 bg-blue-50 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md border border-blue-100 transition-colors">{String(activeGuru || '-')}</strong>
                 </span>
               </div>
             </div>
@@ -1020,7 +1020,7 @@ const HomeView = ({
                                     </div>
                                   )}
                                   <div className="flex flex-col min-w-0">
-                                    <span className="font-extrabold text-[13px] sm:text-sm text-gray-800 truncate group-hover:text-slate-950 transition-colors">{String(student?.name || 'Unknown')}</span>
+                                    <span className={`font-extrabold text-gray-800 group-hover:text-slate-950 transition-colors ${(student?.name || '').length > 24 ? 'text-[10px] sm:text-[11px] leading-tight break-words whitespace-normal line-clamp-2' : (student?.name || '').length > 18 ? 'text-[11px] sm:text-xs leading-tight break-words whitespace-normal line-clamp-2' : 'text-[13px] sm:text-sm truncate'}`}>{String(student?.name || 'Unknown')}</span>
                                     <span className="text-[10px] text-gray-400 font-bold uppercase group-hover:text-slate-600 transition-colors">Kelas {String(student?.kelas || '-')}</span>
                                   </div>
                                 </div>
@@ -1162,7 +1162,7 @@ const HomeView = ({
                                 <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-700 flex items-center justify-center font-black text-xs border border-blue-100">{getInitials(student?.name)}</div>
                               )}
                               <div>
-                                <h4 className="font-extrabold text-gray-800 leading-tight">{student.name}</h4>
+                                <h4 className={`font-extrabold text-gray-800 leading-tight ${student.name.length > 24 ? 'text-[11px]' : student.name.length > 18 ? 'text-[13px]' : 'text-sm md:text-base'}`}>{student.name}</h4>
                                 <p className="text-[10px] text-gray-400 font-bold uppercase">Kelas {student.kelas}</p>
                               </div>
                             </div>

@@ -1,6 +1,5 @@
 import React from 'react';
-import { Printer, FileText, Calendar, Users, Award, ChevronLeft, ChevronRight, Check } from 'lucide-react';
-import { Tooltip } from 'react-tooltip';
+import { Printer, FileText, Calendar, Users, Award, ChevronLeft, ChevronRight, TrendingUp, Info } from 'lucide-react';
 import { formatShortDate, formatPrintData, formatPeriode, getStatusColor } from '../../utils/helpers';
 
 const ReportView = ({
@@ -15,29 +14,43 @@ const ReportView = ({
   const students = Array.isArray(filteredStudents) ? filteredStudents : [];
 
   const getDateStatus = (dateStr) => {
-    if (students.length === 0) return { status: 'none', count: 0 };
+    if (students.length === 0) return { count: 0 };
     const filledCount = students.filter(s => {
       const r = s.records?.[dateStr];
       return r && (
-        (r.tahsin && r.tahsin !== '-') || (r.tahfidz && r.tahfidz !== '-') ||
-        (r.murojaah && r.murojaah !== '-') || (r.catatan && r.catatan !== '-')
+        (r.jurnalTahsin && r.jurnalTahsin !== '-') || (r.jurnalTahfidz && r.jurnalTahfidz !== '-') ||
+        (r.jurnalMurojaah && r.jurnalMurojaah !== '-') || (r.jurnalCatatan && r.jurnalCatatan !== '-')
       );
     }).length;
-
-    if (filledCount === 0) return { status: 'none', count: 0 };
-    const status = filledCount === students.length ? 'full' : 'partial';
-    return { status, count: filledCount };
+    return { count: filledCount };
   };
 
+  // Cari hari terakhir yang memiliki data pada minggu ini
+  const getLatestFilledDateStr = () => {
+    if (!weekDates || weekDates.length === 0) return activeDate;
+    // Pindai dari akhir pekan (Jumat) mundur ke awal pekan (Senin)
+    for (let i = weekDates.length - 1; i >= 0; i--) {
+      const dateObj = weekDates[i];
+      if (!dateObj || typeof dateObj.getDay !== 'function') continue;
+      
+      const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
+      if (getDateStatus(dateStr).count > 0) return dateStr;
+    }
+    return activeDate; // fallback (kembali ke hari default) jika kosong semua
+  };
+
+  const reportDateStr = getLatestFilledDateStr();
+  const reportDateObj = new Date(reportDateStr);
+
   const getStatus = (student) => {
-    if (!student || !activeDate) return { status: 'Kosong', color: 'text-gray-400', bg: 'bg-gray-50' };
+    if (!student || !reportDateStr) return { status: 'Kosong', color: 'text-gray-400', bg: 'bg-gray-50' };
 
     const studentRecords = student?.records || {};
-    const record = studentRecords[activeDate];
+    const record = studentRecords[reportDateStr];
     if (!record || Object.keys(record).length === 0) return { status: 'Kosong', color: 'text-gray-400', bg: 'bg-gray-50' };
 
     // Ambil nilai tertinggi dari berbagai kemungkinan input
-    const tahsin = record.tahsinNilai || record.jurnalTahsinNilai || '';
+    const tahsin = record.jurnalTahsinNilai || '';
     const isGood = ['Lancar', 'A', 'B+', 'B', 'Sangat Baik'].some(v => String(tahsin).includes(v)) || parseInt(tahsin) > 80;
     const isRepeat = ['Ulang', 'C', 'Kurang'].some(v => String(tahsin).includes(v)) || (parseInt(tahsin) > 0 && parseInt(tahsin) <= 80);
 
@@ -47,203 +60,199 @@ const ReportView = ({
   };
 
   return (
-    <div className="max-w-5xl mx-auto pb-24 md:pb-8">
+    <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar bg-[#F8FAFC] relative" style={{ WebkitOverflowScrolling: 'touch' }}>
+      {/* Decorative Background */}
+      <div className="absolute top-0 left-0 w-full h-72 bg-gradient-to-b from-emerald-500/10 to-transparent pointer-events-none -z-10"></div>
 
-      {/* Area Kontrol & Navigasi */}
-      <div className="z-50 bg-gray-100/80 border-gray-200 backdrop-blur-xl -mx-4 sm:-mx-6 md:-mx-8 px-4 sm:px-6 md:px-8 py-2 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 print:hidden border-b shadow-sm transition-all duration-500 text-slate-800">
-        <div>
-          <h1 className="text-xl font-bold text-slate-800">Laporan Halaqoh</h1>
-          <p className="font-medium text-slate-500">Pratinjau laporan harian untuk wali santri & arsip.</p>
-        </div>
-        <button
-          onClick={handlePrint}
-          disabled={students.length === 0}
-          className="bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 px-6 rounded-2xl flex items-center gap-2.5 transition-all active:scale-95 disabled:opacity-50 shadow-xl shadow-slate-200"
-        >
-          <Printer size={18} /> Cetak Laporan
-        </button>
-      </div>
-
-      {/* NAVIGASI TANGGAL & MINGGU (Sinkron dengan HomeView) */}
-      <div className="flex flex-col gap-4 mb-8 print:hidden">
-        <div className="flex items-center justify-between px-3 py-3 sm:px-4 rounded-2xl border shadow-sm w-full gap-2 bg-white border-gray-200/80">
-          <button onClick={() => changeWeek(-7)} className="p-2 sm:px-3 sm:py-2 rounded-lg flex items-center gap-1 font-bold text-xs sm:text-sm transition-colors bg-gray-50 text-gray-500 hover:bg-green-50 hover:text-green-600"><ChevronLeft size={16} /><span className="hidden sm:inline">Sebelumnya</span></button>
-          <div className="font-black text-xs sm:text-sm md:text-base text-center flex-1 sm:flex-none text-gray-700"><Calendar size={14} className="inline text-green-500 mr-1 sm:mr-2 align-text-bottom" /> {formatPeriode(weekDates[0], weekDates[weekDates.length - 1] || weekDates[0])}</div>
-          <button onClick={() => changeWeek(7)} className="p-2 sm:px-3 sm:py-2 bg-gray-50 hover:bg-green-50 text-gray-500 hover:text-green-600 rounded-lg flex items-center gap-1 font-bold text-xs sm:text-sm transition-colors"><span className="hidden sm:inline">Selanjutnya</span><ChevronRight size={16} /></button>
-        </div>
-
-        <div className="flex gap-2 overflow-x-auto custom-scrollbar pb-2 w-full snap-x">
-          {weekDates.map((dateObj) => {
-            if (!dateObj || typeof dateObj.getDay !== 'function') return null;
-            const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
-            const dayName = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][dateObj.getDay()];
-            if (dateObj.getDay() === 0 || dateObj.getDay() === 6) return null;
-            const { status: dateStatus, count: filledCount } = getDateStatus(dateStr);
-            return (
-              <button key={dateStr} onClick={() => setActiveDate(dateStr)} className={`flex-1 flex flex-col shrink-0 min-w-[80px] sm:min-w-[90px] items-center justify-center p-3 rounded-2xl border transition-all snap-center relative ${activeDate === dateStr ? 'bg-[#00e676] border-[#00e676] text-white shadow-md transform scale-[1.03]' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
-                <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest mb-0.5">{dayName}</span>
-                <span className="text-xs md:text-base font-black">{dateObj.getDate()} {['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'][dateObj.getMonth()]}</span>
-                {dateStatus !== 'none' && (
-                  <div
-                    data-tooltip-id="date-tooltip"
-                    data-tooltip-content={`${filledCount} dari ${students.length} siswa terisi`}
-                    className={`absolute top-1.5 right-1.5 ${activeDate === dateStr ? 'text-white' : dateStatus === 'full' ? 'text-green-500' : 'text-amber-500'}`}
-                  >
-                    <Check size={12} strokeWidth={4} />
-                  </div>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Kertas Laporan (Bagian ini yang akan dicetak) */}
-      <div className="max-w-5xl mx-auto bg-white rounded-3xl md:rounded-[2rem] shadow-2xl shadow-slate-200/50 border border-gray-100 p-5 sm:p-8 md:p-12 print:shadow-none print:border-none print:p-0 print:m-0 transition-colors">
-
-        {/* Kop Laporan / Header Cetak */}
-        <div className="flex flex-col sm:flex-row items-center border-b-2 border-slate-900 pb-4 mb-6 gap-4 sm:gap-0 transition-colors">
-          <div className="w-16 h-16 shrink-0 sm:mr-6 bg-slate-50 rounded-2xl flex items-center justify-center overflow-hidden border border-slate-100 transition-colors">
-            {institutionLogo && institutionLogo !== 'logo.png' ? (
-              <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain p-2" />
-            ) : (
-              <div className="text-xl text-slate-300 font-black tracking-tighter">MQ<span className="text-green-500">.</span></div>
-            )}
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-8 py-6 sm:py-8 pb-32 md:pb-12">
+        
+        {/* HEADER AREA */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8 print:hidden">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-2 h-6 bg-emerald-500 rounded-full"></div>
+              <h2 className="text-sm font-black text-slate-400 uppercase tracking-[0.2em]">Rekapitulasi</h2>
+            </div>
+            <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">Laporan Halaqoh</h1>
+            <p className="text-slate-500 font-medium mt-1">Pratinjau dan cetak laporan harian Ananda untuk arsip dan wali santri.</p>
           </div>
-          <div className="flex-1 text-center sm:text-left">
-            <h2 className="text-lg sm:text-xl font-bold text-slate-800 uppercase tracking-wide mb-1 transition-colors">Laporan Progres Qur'an</h2>
-            <div className="grid grid-cols-1 xs:grid-cols-2 gap-x-4 gap-y-1 max-w-md mx-auto sm:mx-0 text-slate-800 transition-colors">
-              <p className="text-slate-500 text-sm font-bold uppercase tracking-wider">Halaqoh</p>
-              <p className="text-xs sm:text-sm font-black text-left">: {activeHalaqoh || '-'}</p>
-              <p className="text-slate-500 text-sm font-bold uppercase tracking-wider">Pengajar</p>
-              <p className="text-sm font-black">: {activeGuru || '-'}</p>
-              <p className="text-slate-500 text-sm font-bold uppercase tracking-wider">Tanggal</p>
-              <p className="text-sm font-black">: {activeDate ? formatShortDate(new Date(activeDate)) : '-'}</p>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handlePrint}
+              disabled={students.length === 0}
+              className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3 px-6 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 shadow-lg shadow-emerald-600/20"
+            >
+              <Printer size={20} /> Cetak Laporan PDF
+            </button>
+          </div>
+        </div>
+
+        {/* NAVIGASI & BANNER */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8 print:hidden">
+          <div className="lg:col-span-1 flex items-center justify-between px-4 py-3 sm:py-4 rounded-2xl border border-slate-200/60 bg-white/80 backdrop-blur-sm shadow-sm">
+            <button onClick={() => changeWeek(-7)} className="p-2 rounded-xl bg-slate-50 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 transition-colors"><ChevronLeft size={20} /></button>
+            <div className="flex flex-col items-center">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Periode</span>
+              <span className="text-xs sm:text-sm font-bold text-slate-700 flex items-center gap-1.5"><Calendar size={14} className="text-emerald-500"/> {formatPeriode(weekDates[0], weekDates[weekDates.length - 1] || weekDates[0])}</span>
+            </div>
+            <button onClick={() => changeWeek(7)} className="p-2 rounded-xl bg-slate-50 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 transition-colors"><ChevronRight size={20} /></button>
+          </div>
+          
+          <div className="lg:col-span-2 bg-blue-50/80 border border-blue-100/50 rounded-2xl p-4 flex items-start sm:items-center gap-3 shadow-sm">
+            <div className="bg-blue-100 text-blue-500 p-2 rounded-xl shrink-0 mt-0.5 sm:mt-0"><Info size={20} /></div>
+            <div>
+              <h4 className="text-sm font-black text-blue-900 leading-none mb-1">Mode Otomatis Aktif</h4>
+              <p className="text-xs sm:text-sm text-blue-700 font-medium leading-snug">Laporan ini menampilkan data dari hari terakhir yang diinput pekan ini: <strong className="font-black bg-white/50 px-1.5 py-0.5 rounded text-blue-800">{reportDateObj && !isNaN(reportDateObj.getTime()) ? `${['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][reportDateObj.getDay()]}, ${formatShortDate(reportDateObj)}` : '-'}</strong></p>
             </div>
           </div>
         </div>
 
-        {/* Statistik Ringkas */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10 print:break-inside-avoid transition-all">
-          <div className="bg-slate-50 p-5 rounded-3xl border border-slate-100 flex flex-col items-center text-center transition-colors">
-            <Users size={24} className="text-blue-500 mb-2" />
-            <span className="text-3xl font-black text-slate-900 leading-none">{students.length}</span>
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Siswa Terdaftar</span>
-          </div>
-          <div className="bg-green-50 p-5 rounded-3xl border border-green-100 flex flex-col items-center text-center transition-colors">
-            <Award size={24} className="text-green-500 mb-2" />
-            <span className="text-3xl font-black text-green-700 leading-none transition-colors">
-              {students.filter(s => getStatus(s)?.status === 'Lancar').length}
-            </span>
-            <span className="text-[10px] font-black text-green-600/70 uppercase tracking-widest mt-1 transition-colors">Lancar / Baik</span>
-          </div>
-          <div className="bg-rose-50 p-5 rounded-3xl border border-rose-100 flex flex-col items-center text-center transition-colors">
-            <FileText size={24} className="text-red-500 mb-2" />
-            <span className="text-3xl font-black text-rose-700 leading-none transition-colors">
-              {students.filter(s => getStatus(s)?.status === 'Perlu Ulang').length}
-            </span>
-            <span className="text-[10px] font-black text-rose-600/70 uppercase tracking-widest mt-1 transition-colors">Perlu Murojaah</span>
+        {/* KERTAS LAPORAN (PRINTABLE AREA) */}
+        <div className="bg-white rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 overflow-hidden print:shadow-none print:border-none print:rounded-none transition-colors relative">
+          
+          {/* Dekorasi Kertas Print */}
+          <div className="absolute top-0 left-0 w-full h-2 bg-slate-800 print:hidden"></div>
+
+          <div className="p-6 sm:p-8 md:p-12 print:p-0 print:m-0">
+            
+            {/* KOP LAPORAN */}
+            <div className="flex flex-col sm:flex-row items-center justify-between border-b-4 border-slate-800 pb-6 mb-8 gap-6 sm:gap-0">
+              <div className="flex items-center gap-5 w-full sm:w-auto text-center sm:text-left">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center shrink-0 p-2 overflow-hidden">
+                  {institutionLogo && institutionLogo !== 'logo.png' ? (
+                    <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain" />
+                  ) : (
+                    <BookOpen size={48} className="text-emerald-600" />
+                  )}
+                </div>
+                <div>
+                  <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight uppercase">Laporan Progres</h1>
+                  <h2 className="text-base sm:text-lg font-bold text-slate-500 uppercase tracking-widest mt-0.5">Program Al-Qur'an</h2>
+                </div>
+              </div>
+              
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 w-full sm:w-auto grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                <div className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Halaqoh</div>
+                <div className="font-black text-slate-800 text-right">{activeHalaqoh || '-'}</div>
+                <div className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Ustadz/ah</div>
+                <div className="font-black text-slate-800 text-right">{activeGuru || '-'}</div>
+                <div className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Tanggal</div>
+                <div className="font-black text-slate-800 text-right">{reportDateStr ? formatShortDate(new Date(reportDateStr)) : '-'}</div>
+              </div>
+            </div>
+
+            {/* STATISTIK RINGKAS */}
+            <div className="grid grid-cols-3 gap-3 sm:gap-6 mb-8 print:break-inside-avoid">
+              <div className="bg-blue-50/50 border border-blue-100 rounded-2xl p-4 sm:p-5 flex flex-col items-center text-center">
+                <Users size={24} className="text-blue-500 mb-2" />
+                <span className="text-2xl sm:text-3xl font-black text-blue-900 leading-none">{students.length}</span>
+                <span className="text-[9px] sm:text-[10px] font-black text-blue-600/70 uppercase tracking-widest mt-1.5">Total Siswa</span>
+              </div>
+              <div className="bg-emerald-50/50 border border-emerald-100 rounded-2xl p-4 sm:p-5 flex flex-col items-center text-center">
+                <Award size={24} className="text-emerald-500 mb-2" />
+                <span className="text-2xl sm:text-3xl font-black text-emerald-700 leading-none">
+                  {students.filter(s => getStatus(s)?.status === 'Lancar').length}
+                </span>
+                <span className="text-[9px] sm:text-[10px] font-black text-emerald-600/70 uppercase tracking-widest mt-1.5">Lancar / Baik</span>
+              </div>
+              <div className="bg-rose-50/50 border border-rose-100 rounded-2xl p-4 sm:p-5 flex flex-col items-center text-center">
+                <TrendingUp size={24} className="text-rose-500 mb-2" />
+                <span className="text-2xl sm:text-3xl font-black text-rose-700 leading-none">
+                  {students.filter(s => getStatus(s)?.status === 'Perlu Ulang').length}
+                </span>
+                <span className="text-[9px] sm:text-[10px] font-black text-rose-600/70 uppercase tracking-widest mt-1.5">Perlu Ulang</span>
+              </div>
+            </div>
+
+            {/* TABEL DATA */}
+            {students.length === 0 ? (
+              <div className="text-center py-20 bg-slate-50 rounded-3xl text-slate-400 font-bold border-2 border-dashed border-slate-200">
+                <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm"><FileText size={24} className="text-slate-300"/></div>
+                <p>Tidak ada data siswa untuk ditampilkan.</p>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-slate-200 overflow-hidden">
+                <table className="w-full text-left border-collapse print:text-[11px] bg-white">
+                  <thead>
+                    <tr className="bg-slate-800 text-white uppercase text-[10px] font-black tracking-widest">
+                      <th className="px-4 py-3.5 w-12 text-center border-r border-slate-700">No</th>
+                      <th className="px-4 py-3.5 border-r border-slate-700 min-w-[160px]">Identitas Siswa</th>
+                      <th className="px-4 py-3.5 border-r border-slate-700">Tahsin / Tilawah</th>
+                      <th className="px-4 py-3.5 border-r border-slate-700">Tahfidz / Hafalan</th>
+                      <th className="px-4 py-3.5 border-r border-slate-700">Murojaah</th>
+                      <th className="px-4 py-3.5 border-r border-slate-700">Catatan</th>
+                      <th className="px-4 py-3.5 text-center">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {students.map((student, index) => {
+                      if (!student) return null;
+
+                      const record = student?.records?.[reportDateStr] || {};
+                      const tahsin = record.jurnalTahsin || '-';
+                      const halAyatTahsin = record.jurnalHalAyatTahsin || '-';
+                      const tahsinNilai = record.jurnalTahsinNilai || '-';
+                      const tahsinSuratNilai = record.jurnalTahsinSuratNilai || '-';
+                      const tahfidz = record.jurnalTahfidz || '-';
+                      const ayatTahfidz = record.jurnalAyatTahfidz || '-';
+                      const tahfidzNilai = record.jurnalTahfidzNilai || '-';
+                      const murojaah = record.jurnalMurojaah || '-';
+                      const catatan = record.jurnalCatatan || '-';
+
+                      const displayTahsin = formatPrintData(tahsin, halAyatTahsin, tahsinNilai, tahsinSuratNilai);
+                      const displayTahfidz = formatPrintData(tahfidz, ayatTahfidz, null, tahfidzNilai);
+                      const displayMurojaah = formatPrintData(murojaah, '-', null, null);
+                      const displayCatatan = catatan && catatan !== '-' ? catatan : '-';
+
+                      const status = getStatus(student);
+
+                      return (
+                        <tr key={student.id} className="print:break-inside-avoid group hover:bg-slate-50 transition-colors">
+                          <td className="px-4 py-4 text-center text-slate-400 font-black border-r border-slate-100 bg-slate-50/30">{index + 1}</td>
+                          <td className="px-4 py-4 border-r border-slate-100">
+                            <div className={`font-black leading-tight text-slate-800 mb-0.5 ${(student?.name || '').length > 24 ? 'text-[9px] sm:text-[10px]' : (student?.name || '').length > 18 ? 'text-[10px] sm:text-[11px]' : 'text-xs sm:text-sm'}`}>{student?.name || 'Siswa'}</div>
+                            <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{student?.id ? String(student.id).substring(0, 8) : 'N/A'}</div>
+                          </td>
+                          <td className="px-4 py-4 text-xs font-bold text-blue-700 bg-blue-50/10 border-r border-slate-100 whitespace-pre-wrap leading-snug">{displayTahsin}</td>
+                          <td className="px-4 py-4 text-xs font-bold text-purple-700 bg-purple-50/10 border-r border-slate-100 whitespace-pre-wrap leading-snug">{displayTahfidz}</td>
+                          <td className="px-4 py-4 text-xs font-bold text-emerald-700 bg-emerald-50/10 border-r border-slate-100 whitespace-pre-wrap leading-snug">{displayMurojaah}</td>
+                          <td className={`px-4 py-4 text-xs font-bold border-r border-slate-100 whitespace-pre-wrap leading-snug ${getStatusColor(displayCatatan)}`}>{displayCatatan}</td>
+                          <td className="px-4 py-4 text-center">
+                            <div className={`inline-flex items-center justify-center px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest w-24 text-center border ${status?.bg ? status.bg.replace('bg-', 'border-').replace('50', '200') : 'border-gray-200'} ${status?.bg || 'bg-gray-50'} ${status?.color || 'text-gray-500'}`}>
+                              {status?.status || 'Kosong'}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* FOOTER TANDA TANGAN (Hanya muncul saat print) */}
+            <div className="hidden print:grid grid-cols-2 mt-24 gap-20">
+              <div className="text-center">
+                <p className="mb-24 text-xs font-bold text-slate-500 uppercase tracking-widest">Mengetahui,<br/>Koordinator Al-Qur'an</p>
+                <div className="w-56 mx-auto border-b-2 border-slate-400 border-dashed mb-1"></div>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">NIP. ...........................</p>
+              </div>
+              <div className="text-center">
+                <p className="mb-24 text-xs font-bold text-slate-500 uppercase tracking-widest">Bogor, ........................ 20....<br/>Pengajar Halaqoh</p>
+                <p className="font-black text-slate-900 border-b-2 border-slate-400 border-dashed w-56 mx-auto pb-1 uppercase">{activeGuru || '...........................'}</p>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Ustadz / Ustadzah</p>
+              </div>
+            </div>
+
+            {/* WATERMARK PRINT */}
+            <div className="hidden print:block fixed bottom-4 left-0 right-0 text-center">
+              <p className="text-[8px] text-slate-400 font-bold uppercase tracking-[0.2em]">Laporan digenerate otomatis melalui MyQuranPlan pada {new Date().toLocaleString('id-ID')}</p>
+            </div>
+            
           </div>
         </div>
 
-        {/* Tabel Laporan Utama */}
-        {students.length === 0 ? (
-          <div className="text-center py-24 bg-slate-50 rounded-[2rem] text-slate-400 font-bold border-2 border-dashed border-slate-200">
-            <p>Tidak ada data siswa untuk ditampilkan pada laporan ini.</p>
-          </div>
-        ) : (
-          <table className="w-full text-left border-collapse print:text-[11px] relative">
-            <thead className="sticky top-[100px] sm:top-[80px] z-20 print:static transition-all bg-slate-50/95 backdrop-blur-sm">
-              <tr className="uppercase text-[10px] font-black tracking-[0.15em] transition-colors text-slate-400 border-b-2 border-slate-200">
-                <th className="px-4 py-3 w-10 text-center">No</th>
-                <th className="px-4 py-3 min-w-[150px]">Identitas Siswa</th>
-                <th className="px-4 py-3">Tahsin / Tilawah</th>
-                <th className="px-4 py-3">Tahfidz / Hafalan</th>
-                <th className="px-4 py-3">Catatan</th>
-                <th className="px-4 py-3">Murojaah</th>
-                <th className="px-4 py-3 text-center">Status</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white">
-              {students.map((student, index) => {
-                // Pengaman jika ada elemen array yang null
-                if (!student) return null;
-
-                const studentRecords = student?.records || {};
-                const record = studentRecords[activeDate] || {};
-
-                // Prioritaskan data Jurnal (capaian), jika tidak ada, gunakan data Target (lesson plan)
-                const tahsin = (record.jurnalTahsin && record.jurnalTahsin !== '-') ? record.jurnalTahsin : record.tahsin;
-                const halAyatTahsin = (record.jurnalHalAyatTahsin && record.jurnalHalAyatTahsin !== '-') ? record.jurnalHalAyatTahsin : record.halAyatTahsin;
-                const tahsinNilai = (record.jurnalTahsinNilai && record.jurnalTahsinNilai !== '-') ? record.jurnalTahsinNilai : record.tahsinNilai;
-                const tahsinSuratNilai = (record.jurnalTahsinSuratNilai && record.jurnalTahsinSuratNilai !== '-') ? record.jurnalTahsinSuratNilai : record.tahsinSuratNilai;
-
-                const tahfidz = (record.jurnalTahfidz && record.jurnalTahfidz !== '-') ? record.jurnalTahfidz : record.tahfidz;
-                const ayatTahfidz = (record.jurnalAyatTahfidz && record.jurnalAyatTahfidz !== '-') ? record.jurnalAyatTahfidz : record.ayatTahfidz;
-                const tahfidzNilai = (record.jurnalTahfidzNilai && record.jurnalTahfidzNilai !== '-') ? record.jurnalTahfidzNilai : record.tahfidzNilai;
-
-                const murojaah = (record.jurnalMurojaah && record.jurnalMurojaah !== '-') ? record.jurnalMurojaah : record.murojaah;
-
-                const catatan = (record.jurnalCatatan && record.jurnalCatatan !== '-') ? record.jurnalCatatan : record.catatan;
-
-                // Gunakan helper formatPrintData agar konsisten dengan tampilan di Beranda
-                const displayTahsin = formatPrintData(tahsin, halAyatTahsin, tahsinNilai, tahsinSuratNilai);
-                const displayTahfidz = formatPrintData(tahfidz, ayatTahfidz, null, tahfidzNilai);
-                const displayMurojaah = formatPrintData(murojaah, '-', null, null);
-                const displayCatatan = catatan && catatan !== '-' ? catatan : '-';
-
-                const status = getStatus(student);
-
-                return (
-                  <tr key={student.id} className="print:break-inside-avoid group border-b border-slate-100 last:border-b-0 hover:bg-slate-50/50 transition-colors">
-                    <td className="px-4 py-4 text-center text-slate-400 font-bold">{index + 1}</td>
-                    <td className="px-4 py-4">
-                      <div className="font-black leading-tight text-slate-800">{student?.name || 'Siswa'}</div>
-                      <div className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">{student?.id ? String(student.id).substring(0, 8) : 'N/A'}</div>
-                    </td>
-                    <td className="px-4 py-4 font-medium text-sm text-slate-600">{displayTahsin}</td>
-                    <td className="px-4 py-4 font-medium text-sm text-slate-600">{displayTahfidz}</td>
-                    <td className={`px-4 py-4 font-medium text-sm ${getStatusColor(displayCatatan)}`}>
-                      {displayCatatan}
-                    </td>
-                    <td className="px-4 py-4 font-medium text-sm text-slate-600">{displayMurojaah}</td>
-                    <td className="px-4 py-4 text-center">
-                      <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${status?.bg || 'bg-gray-100'} ${status?.color || 'text-gray-500'}`}>
-                        {status?.status || 'Kosong'}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-
-        {/* Footer Tanda Tangan (Hanya muncul saat print) */}
-        <div className="hidden print:grid grid-cols-2 mt-20 gap-20 transition-all">
-          <div className="text-center">
-            <p className="mb-20 text-xs font-bold text-slate-500 uppercase tracking-widest">Koordinator Al-Qur'an</p>
-            <div className="w-48 mx-auto border-b-2 border-slate-900 mb-1"></div>
-            <p className="text-[10px] text-slate-400 font-bold uppercase">NIP. ...........................</p>
-          </div>
-          <div className="text-center">
-            <p className="mb-20 text-xs font-bold text-slate-500 uppercase tracking-widest">Pengajar Halaqoh</p>
-            <p className="font-black text-slate-900 border-b-2 border-slate-900 w-48 mx-auto pb-1 uppercase transition-colors">{activeGuru || '...........................'}</p>
-            <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">Ustadz / Ustadzah</p>
-          </div>
-        </div>
-
-        {/* Watermark/Footer kecil di setiap halaman print */}
-        <div className="hidden print:block fixed bottom-4 left-0 right-0 text-center">
-          <p className="text-[8px] text-slate-300 font-bold uppercase tracking-[0.2em]">Laporan digenerate otomatis melalui MyQuranPlan pada {new Date().toLocaleString('id-ID')}</p>
-        </div>
       </div>
-
-      <Tooltip
-        id="date-tooltip"
-        place="top"
-        className="!bg-slate-800 !text-white !rounded-xl !px-3 !py-2 !text-[10px] !font-bold !opacity-100 !shadow-xl z-[100]"
-      />
     </div>
   );
 };

@@ -1,9 +1,71 @@
 // File: src/components/views/StudentView.jsx
-import React from 'react';
-import { Users, Settings, Plus, Edit3, Trash2, Camera } from 'lucide-react';
+import React, { useState } from 'react';
+import { Users, Settings, Plus, Edit3, Trash2, Camera, GripVertical } from 'lucide-react';
 
-const StudentView = ({ activeHalaqoh, filteredStudents, openAddStudentModal, openEditStudentModal, requestDeleteStudent, isSuperAdmin, openCropModal, uploadingPhotoId, uploadProgress }) => {
+const StudentView = ({ activeHalaqoh, filteredStudents, openAddStudentModal, openEditStudentModal, requestDeleteStudent, isSuperAdmin, openCropModal, uploadingPhotoId, uploadProgress, onReorderStudents }) => {
+  const [dragId, setDragId] = useState(null);
+  const [dragOverId, setDragOverId] = useState(null);
+
+  const handleDragStart = (e, id) => {
+    setDragId(id);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", id);
+  };
+
+  const handleDragOver = (e, id) => {
+    e.preventDefault();
+    if (dragOverId !== id) setDragOverId(id);
+  };
+
+  const handleDrop = (e, targetId) => {
+    e.preventDefault();
+    if (!dragId || dragId === targetId) {
+      setDragId(null); setDragOverId(null);
+      return;
+    }
+    const draggedIdx = filteredStudents.findIndex(s => s.id === dragId);
+    const targetIdx = filteredStudents.findIndex(s => s.id === targetId);
+    if (draggedIdx !== -1 && targetIdx !== -1) {
+      const newList = [...filteredStudents];
+      const [draggedItem] = newList.splice(draggedIdx, 1);
+      newList.splice(targetIdx, 0, draggedItem);
+      if (onReorderStudents) onReorderStudents(newList);
+    }
+    setDragId(null); setDragOverId(null);
+  };
+
+  const handleDragEnd = () => { setDragId(null); setDragOverId(null); };
   
+  // --- EVENT HANDLER KHUSUS UNTUK HP (TOUCHSCREEN) ---
+  const handleTouchStart = (e, id) => {
+    setDragId(id);
+  };
+
+  const handleTouchMove = (e) => {
+    if (!dragId) return;
+    const touch = e.touches[0];
+    const target = document.elementFromPoint(touch.clientX, touch.clientY);
+    const card = target?.closest('[data-student-id]');
+    if (card) {
+      const hoverId = card.getAttribute('data-student-id');
+      if (hoverId !== dragOverId) setDragOverId(hoverId);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (dragId && dragOverId && dragId !== dragOverId) {
+      const draggedIdx = filteredStudents.findIndex(s => s.id === dragId);
+      const targetIdx = filteredStudents.findIndex(s => s.id === dragOverId);
+      if (draggedIdx !== -1 && targetIdx !== -1) {
+        const newList = [...filteredStudents];
+        const [draggedItem] = newList.splice(draggedIdx, 1);
+        newList.splice(targetIdx, 0, draggedItem);
+        if (onReorderStudents) onReorderStudents(newList);
+      }
+    }
+    setDragId(null); setDragOverId(null);
+  };
+
   // Fungsi lokal pembuat inisial nama
   const getInitials = (name) => name ? name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase() : '';
 
@@ -39,9 +101,28 @@ const StudentView = ({ activeHalaqoh, filteredStudents, openAddStudentModal, ope
           <button onClick={openAddStudentModal} className="text-xs text-green-600 bg-green-50 px-4 py-2 rounded-lg hover:bg-green-100 mt-2 font-bold">Tambahkan Siswa</button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
+        <div 
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6"
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
           {filteredStudents.map(student => (
-            <div key={student.id} className="bg-white p-4 md:p-6 min-h-[110px] md:min-h-[130px] rounded-2xl md:rounded-3xl shadow-sm border border-gray-100 flex items-start md:items-center justify-between hover:shadow-md transition-all group gap-3">
+            <div 
+              key={student.id} 
+              data-student-id={student.id}
+              draggable
+              onDragStart={(e) => handleDragStart(e, student.id)}
+              onDragOver={(e) => handleDragOver(e, student.id)}
+              onDrop={(e) => handleDrop(e, student.id)}
+              onDragEnd={handleDragEnd}
+              className={`bg-white p-4 md:p-6 min-h-[110px] md:min-h-[130px] rounded-2xl md:rounded-3xl shadow-sm border ${dragOverId === student.id ? 'border-green-500 scale-[1.02] shadow-lg' : 'border-gray-100'} flex items-start md:items-center justify-between hover:shadow-md transition-all group gap-3 cursor-grab active:cursor-grabbing ${dragId === student.id ? 'opacity-50 grayscale' : 'opacity-100'}`}
+            >
+              <div 
+                className="flex flex-col items-center justify-center shrink-0 text-gray-300 group-hover:text-gray-400 cursor-grab touch-none p-1.5 -ml-2"
+                onTouchStart={(e) => handleTouchStart(e, student.id)}
+              >
+                <GripVertical size={20} />
+              </div>
               <div className="flex items-center gap-3 md:gap-4 min-w-0 flex-1">
                 <div className={`w-[48px] h-[48px] md:w-[60px] md:h-[60px] rounded-full flex items-center justify-center font-black text-lg md:text-xl overflow-hidden relative shrink-0 border border-gray-100 group/avatar ${student.color || 'bg-blue-100 text-blue-600'}`}>
                   {student.photo ? (<img src={student.photo} alt="" className="w-full h-full object-cover" />) : (student.initial || getInitials(student.name))}
@@ -67,7 +148,7 @@ const StudentView = ({ activeHalaqoh, filteredStudents, openAddStudentModal, ope
                   )}
                 </div>
                 <div className="min-w-0 flex flex-col justify-center flex-1">
-                  <h3 className="font-extrabold text-gray-800 text-sm md:text-lg leading-tight mb-1.5 line-clamp-2 break-all whitespace-normal" title={student.name}>{student.name}</h3>
+                  <h3 className={`font-extrabold text-gray-800 leading-tight mb-1.5 line-clamp-2 whitespace-normal ${student.name.length > 24 ? 'text-xs md:text-sm' : student.name.length > 18 ? 'text-sm md:text-base' : 'text-sm md:text-lg'}`} title={student.name}>{student.name}</h3>
                   <div className="flex flex-wrap gap-1.5 md:gap-2">
                     <span className="inline-flex bg-blue-50 text-blue-600 text-[9px] md:text-[10px] font-black uppercase px-2 py-1 rounded-md tracking-wider border border-blue-100 shadow-sm max-w-full break-all whitespace-normal leading-snug">{student.kelas}</span>
                     <span className="inline-flex bg-gray-50 text-gray-600 text-[9px] md:text-[10px] font-black uppercase px-2 py-1 rounded-md tracking-wider border border-gray-200 shadow-sm max-w-full break-all whitespace-normal leading-snug">{student.halaqoh}</span>

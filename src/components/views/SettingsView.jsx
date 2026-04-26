@@ -13,13 +13,16 @@ const SettingsView = ({
   selectedGuruForHalaqoh, setSelectedGuruForHalaqoh, newHalaqohName, setNewHalaqohName, handleAddHalaqoh,
   currentUser, guruHalaqohData, editingGuru, setEditingGuru, handleSaveEditGuru, requestDeleteGuru,
   editingHalaqoh, setEditingHalaqoh, handleSaveEditHalaqoh, requestDeleteHalaqoh,
-  students, openEditStudentModal, requestDeleteStudent, handleBulkSaveStudents, onLogout
+  students, openEditStudentModal, requestDeleteStudent, requestBulkDeleteStudents, requestBulkEditStudents, handleBulkSaveStudents, onLogout
 }) => {
   const [studentSearch, setStudentSearch] = useState('');
   const [editingAccount, setEditingAccount] = useState(null);
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(20);
   const [bulkData, setBulkData] = useState('');
+  const [selectedStudentIds, setSelectedStudentIds] = useState([]);
+  const [isBulkEditOpen, setIsBulkEditOpen] = useState(false);
+  const [bulkEditData, setBulkEditData] = useState({ kelas: '', halaqoh: '' });
 
   const processBulkImport = () => {
     // Mendukung line endings Windows (\r\n) dan Unix (\n)
@@ -49,9 +52,43 @@ const SettingsView = ({
       name: editingAccount.name, 
       password: editingAccount.password, 
       role: editingAccount.role,
-      resetRequested: false 
+      resetrequested: false 
     });
     setEditingAccount(null);
+  };
+
+  const toggleSelectStudent = (id) => {
+    setSelectedStudentIds(prev => prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedStudentIds.length === displayedStudents.length && displayedStudents.length > 0) {
+      setSelectedStudentIds([]);
+    } else {
+      setSelectedStudentIds(displayedStudents.map(s => s.id));
+    }
+  };
+
+  const handleBulkDelete = () => {
+    requestBulkDeleteStudents(selectedStudentIds);
+    setSelectedStudentIds([]);
+    setIsBulkEditOpen(false);
+  };
+
+  const handleExecuteBulkEdit = () => {
+    const updates = {};
+    if (bulkEditData.kelas) updates.kelas = bulkEditData.kelas;
+    if (bulkEditData.halaqoh) updates.halaqoh = bulkEditData.halaqoh;
+
+    if (Object.keys(updates).length === 0) {
+      showToast('Pilih minimal kelas atau halaqoh baru.');
+      return;
+    }
+
+    requestBulkEditStudents(selectedStudentIds, updates);
+    setSelectedStudentIds([]);
+    setIsBulkEditOpen(false);
+    setBulkEditData({ kelas: '', halaqoh: '' });
   };
 
   // Cari key guru secara case-insensitive untuk mendapatkan daftar halaqoh saya
@@ -60,9 +97,16 @@ const SettingsView = ({
   const myHalaqohs = isSuperAdmin ? [] : (guruKey ? (guruHalaqohData[guruKey] || []) : []);
 
   const filteredStudentsMaster = (students || []).filter(s => {
-    // Perbaikan: Gunakan pembandingan case-insensitive agar data tidak hilang karena perbedaan huruf kapital
-    if (!isSuperAdmin && !myHalaqohs.some(h => h.trim().toLowerCase() === (s?.halaqoh || "").trim().toLowerCase())) {
-      return false;
+    if (isSuperAdmin) {
+      // BANK DATA: Jika siswa SUDAH masuk halaqoh, sembunyikan dari sini
+      const halaqoh = (s?.halaqoh || "").trim();
+      if (halaqoh !== '' && halaqoh.toLowerCase() !== 'unassigned') {
+        return false;
+      }
+    } else {
+      if (!myHalaqohs.some(h => h.trim().toLowerCase() === (s?.halaqoh || "").trim().toLowerCase())) {
+        return false;
+      }
     }
     const nameMatch = (s?.name || '').toLowerCase().includes((studentSearch || '').toLowerCase());
     const halaqohMatch = (s?.halaqoh || '').toLowerCase().includes((studentSearch || '').toLowerCase());
@@ -76,15 +120,17 @@ const SettingsView = ({
       <div className="max-w-6xl mx-auto px-4 py-6 sm:py-8 md:px-8 pb-32">
         
         {/* HEADER SECTION */}
-        <div className="mb-10">
-          <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight mb-2">
-            {isSuperAdmin ? 'Pengaturan Sistem' : 'Manajemen Halaqoh'}
-          </h1>
-          <p className="text-slate-500 font-medium">
-            {isSuperAdmin 
-              ? 'Konfigurasi identitas sekolah, hak akses guru, dan struktur database halaqoh.' 
-              : 'Kelola daftar kelompok halaqoh yang berada di bawah bimbingan Anda.'} 
-          </p>
+        <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight mb-2">
+              {isSuperAdmin ? 'Pengaturan Sistem' : 'Manajemen Halaqoh'}
+            </h1>
+            <p className="text-slate-500 font-medium">
+              {isSuperAdmin 
+                ? 'Konfigurasi identitas sekolah, hak akses guru, dan struktur database halaqoh.' 
+                : 'Kelola daftar kelompok halaqoh yang berada di bawah bimbingan Anda.'} 
+            </p>
+          </div>
         </div>
 
         <div className="space-y-8">
@@ -235,7 +281,7 @@ const SettingsView = ({
                               <div className="min-w-0">
                                 <p className="font-black text-sm truncate">
                                   {user.name}
-                                  {user.resetRequested && <span className="ml-2 text-[8px] bg-red-500 text-white px-1.5 py-0.5 rounded font-black animate-pulse">RESET</span>}
+                                  {user.resetrequested && <span className="ml-2 text-[8px] bg-red-500 text-white px-1.5 py-0.5 rounded font-black animate-pulse">RESET</span>}
                                 </p>
                                 <p className="text-[10px] font-bold text-slate-400 uppercase">@{user.username} • {user.role}</p>
                               </div>
@@ -374,7 +420,7 @@ const SettingsView = ({
           <section className="animate-in fade-in slide-in-from-bottom-4 duration-700">
             <div className="flex items-center gap-2 mb-4">
               <div className="w-2 h-6 bg-purple-500 rounded-full"></div>
-              <h2 className="text-sm font-black text-slate-400 uppercase tracking-[0.2em]">{isSuperAdmin ? 'Pusat Data Siswa' : 'Data Siswa Saya'}</h2>
+              <h2 className="text-sm font-black text-slate-400 uppercase tracking-[0.2em]">{isSuperAdmin ? 'Bank Data Siswa' : 'Data Siswa Saya'}</h2>
             </div>
             <div className="bg-slate-900 rounded-[2rem] sm:rounded-[2.5rem] p-5 sm:p-8 text-white shadow-2xl shadow-purple-900/20">
               <div className="flex flex-col md:flex-row items-center gap-5 sm:gap-6 mb-6 sm:mb-8">
@@ -382,8 +428,8 @@ const SettingsView = ({
                   <Database size={32} />
                 </div>
                 <div className="flex-1 text-center md:text-left min-w-0">
-                  <h3 className="text-xl font-black mb-1 truncate">{isSuperAdmin ? 'Pencarian Siswa Global' : 'Cari Siswa Anda'}</h3>
-                  <p className="text-slate-400 text-sm font-medium line-clamp-2">{isSuperAdmin ? 'Temukan dan kelola data siswa di seluruh kelompok halaqoh dalam satu pintu.' : 'Temukan data siswa di seluruh kelompok halaqoh binaan Anda.'}</p>
+                  <h3 className="text-xl font-black mb-1 truncate">{isSuperAdmin ? 'Bank Data (Belum Masuk Halaqoh)' : 'Cari Siswa Anda'}</h3>
+                  <p className="text-slate-400 text-sm font-medium line-clamp-2">{isSuperAdmin ? 'Siswa yang telah dimasukkan ke halaqoh akan otomatis hilang dari daftar ini.' : 'Temukan data siswa di seluruh kelompok halaqoh binaan Anda.'}</p>
                 </div>
                 <div className="relative w-full md:w-80 flex gap-2">
                   <div className="relative flex-1">
@@ -424,14 +470,83 @@ const SettingsView = ({
                 </div>
               )}
 
+              {displayedStudents.length > 0 && (
+                <div className="flex flex-col gap-2 mb-4">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between bg-white/5 border border-white/10 p-3 rounded-2xl gap-3">
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <input 
+                        type="checkbox" 
+                        checked={selectedStudentIds.length === displayedStudents.length && displayedStudents.length > 0}
+                        onChange={toggleSelectAll}
+                        className="w-5 h-5 rounded border-white/20 bg-slate-800 text-purple-500 focus:ring-purple-500 focus:ring-offset-slate-900 cursor-pointer"
+                      />
+                      <span className="text-sm font-bold text-slate-300 group-hover:text-white transition-colors">Pilih Semua di Halaman Ini</span>
+                    </label>
+                    
+                    {selectedStudentIds.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <button 
+                          onClick={() => setIsBulkEditOpen(!isBulkEditOpen)}
+                          className="flex items-center gap-2 px-4 py-2 bg-blue-500/20 text-blue-400 hover:bg-blue-500 hover:text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all"
+                        >
+                          <Edit3 size={16} /> Edit Terpilih ({selectedStudentIds.length})
+                        </button>
+                        <button 
+                          onClick={handleBulkDelete}
+                          className="flex items-center gap-2 px-4 py-2 bg-red-500/20 text-red-500 hover:bg-red-500 hover:text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all"
+                        >
+                          <Trash2 size={16} /> Hapus Terpilih ({selectedStudentIds.length})
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {isBulkEditOpen && selectedStudentIds.length > 0 && (
+                    <div className="p-4 bg-white/5 border border-blue-500/30 rounded-2xl animate-in zoom-in-95 duration-200">
+                      <label className="block text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] mb-3">Pindah Kelas / Halaqoh Massal</label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                        <select
+                          value={bulkEditData.kelas}
+                          onChange={e => setBulkEditData({...bulkEditData, kelas: e.target.value})}
+                          className="w-full bg-slate-800 border-none rounded-xl p-3 text-sm font-bold text-white focus:ring-2 focus:ring-blue-500 outline-none appearance-none cursor-pointer"
+                        >
+                          <option value="">-- Jangan Ubah Kelas --</option>
+                          {kelasList.map(k => <option key={k} value={k}>Kelas {k}</option>)}
+                        </select>
+                        <select
+                          value={bulkEditData.halaqoh}
+                          onChange={e => setBulkEditData({...bulkEditData, halaqoh: e.target.value})}
+                          className="w-full bg-slate-800 border-none rounded-xl p-3 text-sm font-bold text-white focus:ring-2 focus:ring-blue-500 outline-none appearance-none cursor-pointer"
+                        >
+                          <option value="">-- Jangan Ubah Halaqoh --</option>
+                          {Array.from(new Set(Object.values(guruHalaqohData).flat())).map(h => <option key={h} value={h}>{h}</option>)}
+                        </select>
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <button onClick={() => setIsBulkEditOpen(false)} className="px-4 py-2 rounded-xl text-xs font-black uppercase text-slate-400 hover:text-white transition-colors">Batal</button>
+                        <button onClick={handleExecuteBulkEdit} className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-blue-900/20 active:scale-95 transition-all">Simpan Perubahan</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {displayedStudents.map(s => (
-                  <div key={s.id} className="bg-white/5 border border-white/10 rounded-3xl p-4 sm:p-5 flex items-center justify-between transition-all hover:bg-white/10 group gap-4">
-                    <div className="min-w-0 flex-1"> 
-                      <p className="font-black text-white text-sm sm:text-base leading-tight mb-1 truncate">{s.name}</p>
-                      <p className="text-[9px] sm:text-[10px] font-black text-purple-400 uppercase tracking-widest truncate">
-                        Halaqoh: <span className="text-white">{s.halaqoh || 'Unassigned'}</span> • {s.kelas || 'N/A'}
-                      </p>
+                  <div key={s.id} className={`bg-white/5 border ${selectedStudentIds.includes(s.id) ? 'border-purple-500/50 bg-purple-500/10' : 'border-white/10'} rounded-3xl p-4 sm:p-5 flex items-center justify-between transition-all hover:bg-white/10 group gap-4`}>
+                    <div className="min-w-0 flex-1 flex items-center gap-3 sm:gap-4">
+                      <input 
+                        type="checkbox" 
+                        checked={selectedStudentIds.includes(s.id)}
+                        onChange={() => toggleSelectStudent(s.id)}
+                        className="w-5 h-5 rounded border-white/20 bg-slate-800 text-purple-500 focus:ring-purple-500 focus:ring-offset-slate-900 cursor-pointer shrink-0"
+                      />
+                      <div className="min-w-0 flex-1"> 
+                        <p className={`font-black text-white leading-tight mb-1 ${s.name.length > 24 ? 'text-xs sm:text-sm whitespace-normal line-clamp-2' : s.name.length > 18 ? 'text-sm sm:text-[15px] whitespace-normal line-clamp-2' : 'text-sm sm:text-base truncate'}`}>{s.name}</p>
+                        <p className="text-[9px] sm:text-[10px] font-black text-purple-400 uppercase tracking-widest truncate">
+                          Halaqoh: <span className="text-white">{s.halaqoh || 'Unassigned'}</span> • {s.kelas || 'N/A'}
+                        </p>
+                      </div>
                     </div>
                     <div className="flex gap-1.5 sm:gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0">
                       <button onClick={() => openEditStudentModal(s)} className="p-2 sm:p-3 bg-white/10 hover:bg-white/20 text-white rounded-xl sm:rounded-2xl transition-all"><Edit3 size={16}/></button>

@@ -19,7 +19,7 @@
 ### 🛠 Fitur Teknis
 *   **Dark Mode**: Dukungan penuh mode gelap untuk kenyamanan mata.
 *   **Export Laporan**: Unduh laporan progres dalam format Gambar (PNG) atau PDF/Cetak.
-*   **Real-time Database**: Sinkronisasi data instan menggunakan Firebase Firestore.
+*   **Real-time Database**: Sinkronisasi data instan menggunakan Supabase (PostgreSQL).
 *   **Mobile Friendly**: Antarmuka responsif yang nyaman digunakan di smartphone maupun komputer.
 
 ## 🚀 Teknologi yang Digunakan
@@ -27,8 +27,8 @@
 *   **Frontend**: React.js + Vite
 *   **Styling**: Tailwind CSS
 *   **Icons**: Lucide React
-*   **Backend/Database**: Firebase Firestore
-*   **Deployment**: Kompatibel dengan Vercel, Netlify, atau Firebase Hosting.
+*   **Backend/Database**: Supabase (PostgreSQL, Storage, & Realtime)
+*   **Deployment**: Kompatibel dengan Vercel, Netlify, atau layanan hosting statis lainnya.
 
 ## 📦 Cara Instalasi
 
@@ -43,8 +43,8 @@
     npm install
     ```
 
-3.  **Konfigurasi Firebase**
-    Buka file `src/config/firebase.js` dan sesuaikan `firebaseConfig` dengan kredensial proyek Firebase Anda.
+3.  **Konfigurasi Supabase**
+    Buat file `.env` di folder utama (root) proyek, lalu masukkan `VITE_SUPABASE_URL` dan `VITE_SUPABASE_ANON_KEY` sesuai dengan kredensial proyek Anda.
 
 4.  **Jalankan Aplikasi**
     ```bash
@@ -61,7 +61,7 @@
 
 ## 🔐 Keamanan & Privasi
 
-Aplikasi ini menggunakan ID unik Firestore yang dienkripsi dalam URL parameter untuk fitur *share* publik, memastikan data santri tetap aman namun mudah diakses oleh pihak yang berwenang (orang tua).
+Aplikasi ini menggunakan ID unik (UUID) Supabase yang dienkripsi dalam URL parameter untuk fitur *share* publik, memastikan data santri tetap aman namun mudah diakses oleh pihak yang berwenang (orang tua).
 
 ---
 

@@ -60,7 +60,9 @@ const TabelProgresDenganPencarian = ({ students = [], onOpenModal }) => {
                                     className="group border-b border-gray-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
                                 >
                                     <td className="p-3 text-left sticky left-0 bg-white dark:bg-slate-900/70 group-hover:bg-slate-50 dark:group-hover:bg-slate-800/50 z-10 font-semibold text-slate-700 dark:text-slate-200">
-                                        {student.name}
+                                        <div className={`leading-tight ${student.name.length > 24 ? 'text-[10px] sm:text-xs whitespace-normal line-clamp-2' : student.name.length > 18 ? 'text-xs sm:text-sm whitespace-normal line-clamp-2' : 'text-sm'}`}>
+                                            {student.name}
+                                        </div>
                                     </td>
                                     {/* Tombol ini akan memicu fungsi onOpenModal yang di-pass dari parent */}
                                     <td className="p-3"><button onClick={() => onOpenModal(student, 'tahsin')} className="text-emerald-600 dark:text-emerald-400 hover:underline text-sm font-medium">Input</button></td>

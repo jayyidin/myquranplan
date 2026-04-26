@@ -1,12 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, User, Menu, Home, Users, BarChart3, Settings, LogOut, Loader2, Edit3, Mic, Repeat, FileText, X } from 'lucide-react';
-import { collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc, addDoc } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
-import imageCompression from 'browser-image-compression';
-import { storage } from '../config/firebase';
+import { BookOpen, User, Menu, Home, Users, BarChart3, Settings, LogOut, Loader2, Edit3, Mic, Repeat, FileText, X, AlertTriangle } from 'lucide-react';
 
 // Imports
-import { db, appId } from '../config/firebase';
+import { supabase } from './supabase';
 import { surahList, tahsinCategories, ghoribList, tajwidList } from '../data/constants';
 import { getMonday, formatDateObj, formatShortDate, getStatusColor } from '../utils/helpers';
 
@@ -49,6 +45,9 @@ const MainApp = ({ currentUser, onLogout }) => {
 
   const [toastMessage, setToastMessage] = useState(null);
 
+  // -- STATE KONFIRMASI HAPUS --
+  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, message: '', onConfirm: null });
+
   // -- STATE PENGATURAN --
   const [newGuruName, setNewGuruName] = useState('');
   const [newHalaqohName, setNewHalaqohName] = useState('');
@@ -84,33 +83,95 @@ const MainApp = ({ currentUser, onLogout }) => {
 
   // -- EFEK INIT --
   useEffect(() => {
-    const unsubMaster = onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'master'), (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        if (data.guruHalaqohData) setGuruHalaqohData(data.guruHalaqohData);
-        if (data.kelasList) setKelasList(data.kelasList);
-        if (data.institutionName) setInstitutionName(data.institutionName);
-        if (data.institutionLogo) setInstitutionLogo(data.institutionLogo);
+    // Fungsi untuk mengambil data awal dari Supabase
+    async function fetchInitialData() {
+      // 1. Ambil data pengaturan
+      const { data: settingsData, error: settingsError } = await supabase
+        .from('settings')
+        .select('*')
+        .limit(1)
+        .maybeSingle();
+
+      if (settingsError) console.error('Error Settings:', settingsError);
+      if (settingsData) {
+        setGuruHalaqohData(settingsData.guruhalaqohdata || settingsData.guruHalaqohData || {});
+        setKelasList(settingsData.kelaslist || settingsData.kelasList || []);
+        setInstitutionName(settingsData.institutionname || settingsData.institutionName || 'Nama Sekolah Anda');
+        setInstitutionLogo(settingsData.institutionlogo || settingsData.institutionLogo || 'logo.png');
       }
-    });
 
-    const unsubStudents = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'students'), (snapshot) => {
-      const loadedStudents = [];
-      snapshot.forEach(doc => { loadedStudents.push({ ...doc.data(), id: doc.id }); });
-      setStudents(loadedStudents);
+      // 2. Ambil data siswa
+      const { data: studentsData, error: studentsError } = await supabase
+        .from('students')
+        .select('*');
+      if (studentsError) console.error('Error Students:', studentsError);
+
+      if (studentsData) {
+        // Filter nama ganda secara global dan bersihkan otomatis di database
+        const uniqueStudentsMap = new Map();
+        const duplicateIdsToDelete = [];
+        const studentsToUpdateMap = new Map();
+
+        studentsData.forEach(s => {
+          const nameKey = (s?.name || '').trim().toLowerCase();
+          if (!uniqueStudentsMap.has(nameKey)) {
+             uniqueStudentsMap.set(nameKey, s);
+          } else {
+             const existing = uniqueStudentsMap.get(nameKey);
+             // Gabungkan riwayat catatan (records) agar progres lama tidak hilang
+             const mergedRecords = { ...(existing.records || {}), ...(s.records || {}) };
+             
+             if (!existing.halaqoh && s.halaqoh) {
+                duplicateIdsToDelete.push(existing.id);
+                const keptStudent = { ...s, records: mergedRecords };
+                uniqueStudentsMap.set(nameKey, keptStudent);
+                studentsToUpdateMap.set(keptStudent.id, keptStudent);
+             } else {
+                duplicateIdsToDelete.push(s.id);
+                const keptStudent = { ...existing, records: mergedRecords };
+                uniqueStudentsMap.set(nameKey, keptStudent);
+                studentsToUpdateMap.set(keptStudent.id, keptStudent);
+             }
+          }
+        });
+        
+        // Urutkan berdasarkan kolom sort_order secara lokal agar aman
+        setStudents(Array.from(uniqueStudentsMap.values()).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)));
+
+        // Eksekusi pembersihan duplikat di latar belakang
+        if (duplicateIdsToDelete.length > 0) {
+          supabase.from('students').delete().in('id', duplicateIdsToDelete).then();
+          studentsToUpdateMap.forEach(student => {
+             supabase.from('students').update({ records: student.records }).eq('id', student.id).then();
+          });
+        }
+      }
+
+      // 3. Ambil data pengguna (jika superadmin)
+      if (isSuperAdmin) {
+        const { data: usersData, error: usersError } = await supabase
+          .from('app_users')
+          .select('*');
+        if (usersData) setAppUsers(usersData);
+      }
+
       setIsDbReady(true);
-    });
-
-    let unsubUsers = () => { };
-    if (isSuperAdmin) {
-      unsubUsers = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'app_users'), (snap) => {
-        const usersList = [];
-        snap.forEach(d => usersList.push({ id: d.id, ...d.data() }));
-        setAppUsers(usersList);
-      });
     }
 
-    return () => { unsubMaster(); unsubStudents(); unsubUsers(); };
+    fetchInitialData();
+
+    // Setup listener real-time untuk tabel siswa
+    const studentsSubscription = supabase.channel('public:students')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, payload => {
+        console.log('Perubahan data siswa terdeteksi!', payload);
+        fetchInitialData(); // Cara paling sederhana: ambil ulang semua data jika ada perubahan
+      })
+      .subscribe();
+
+    // Cleanup subscription saat komponen di-unmount
+    return () => {
+      supabase.removeChannel(studentsSubscription);
+    };
   }, [isSuperAdmin]);
 
   // Efek Loading saat ganti filter halaqoh, tanggal, atau tab
@@ -156,7 +217,20 @@ const MainApp = ({ currentUser, onLogout }) => {
 
   // -- FUNGSI UTILITY --
   const showToast = (msg) => { setToastMessage(msg); setTimeout(() => setToastMessage(null), 4000); };
-  const updateMasterDataCloud = async (updates) => { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'master'), updates); };
+  const updateMasterDataCloud = async (updates) => {
+    // Format ulang ke lowercase untuk PostgreSQL (Supabase)
+    const mappedUpdates = {};
+    if (updates.guruHalaqohData !== undefined) mappedUpdates.guruhalaqohdata = updates.guruHalaqohData;
+    if (updates.kelasList !== undefined) mappedUpdates.kelaslist = updates.kelasList;
+    if (updates.institutionName !== undefined) mappedUpdates.institutionname = updates.institutionName;
+    if (updates.institutionLogo !== undefined) mappedUpdates.institutionlogo = updates.institutionLogo;
+
+    const { error } = await supabase
+      .from('settings')
+      .update(Object.keys(mappedUpdates).length > 0 ? mappedUpdates : updates)
+      .eq('id', 1); // Update baris tunggal di tabel settings
+    if (error) showToast('Gagal update pengaturan.');
+  };
   const changeWeek = (offset) => {
     const newWeekStart = new Date(weekStart);
     newWeekStart.setDate(newWeekStart.getDate() + offset);
@@ -172,50 +246,71 @@ const MainApp = ({ currentUser, onLogout }) => {
     }
   };
   const getInitials = (name) => name ? name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase() : '';
+  const dataURLtoBlob = (dataurl) => {
+    if (!dataurl || !dataurl.includes(',')) return null;
+    const arr = dataurl.split(',');
+    const mimeMatch = arr[0].match(/:(.*?);/);
+    if (!mimeMatch) return null;
+    const mime = mimeMatch[1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
+  };
 
   // Filter siswa yang sangat ketat: Jika bukan SuperAdmin, hanya tampilkan siswa yang ada di halaqoh guru tersebut
   const filteredStudents = students.filter(s => {
+    // Dengan RLS, 'students' sudah berisi data yang diizinkan untuk user.
+    // Kita hanya perlu filter berdasarkan UI (halaqoh aktif dan pencarian).
     const isSearchMatch = (s?.name || '').toLowerCase().includes((searchQuery || '').toLowerCase());
-    const isInActiveHalaqoh = s?.halaqoh && activeHalaqoh && String(s.halaqoh).trim() === String(activeHalaqoh).trim();
+    const isInActiveHalaqoh = !activeHalaqoh || (s?.halaqoh && String(s.halaqoh).trim() === String(activeHalaqoh).trim());
 
     if (!isSuperAdmin) {
       const searchName = currentUser?.name?.trim().toLowerCase() || "";
       const guruKey = Object.keys(guruHalaqohData).find(k => k.trim().toLowerCase() === searchName);
       const myHalaqohs = guruKey ? (guruHalaqohData[guruKey] || []) : [];
 
-      return isInActiveHalaqoh && myHalaqohs.includes(activeHalaqoh) && isSearchMatch;
+      return isInActiveHalaqoh && (myHalaqohs.includes(activeHalaqoh) || !activeHalaqoh) && isSearchMatch;
     }
     return isInActiveHalaqoh && isSearchMatch;
   });
 
   // Hitung jumlah siswa di halaqoh aktif (sebelum difilter oleh pencarian) untuk placeholder
   const studentsInHalaqoh = students.filter(s => {
-    const isInActiveHalaqoh = s?.halaqoh && activeHalaqoh && String(s.halaqoh).trim() === String(activeHalaqoh).trim();
+    // Logika ini juga disederhanakan karena RLS sudah bekerja.
+    const isInActiveHalaqoh = !activeHalaqoh || (s?.halaqoh && String(s.halaqoh).trim() === String(activeHalaqoh).trim());
 
     if (!isSuperAdmin) {
       const searchName = currentUser?.name?.trim().toLowerCase() || "";
       const guruKey = Object.keys(guruHalaqohData).find(k => k.trim().toLowerCase() === searchName);
       const myHalaqohs = guruKey ? (guruHalaqohData[guruKey] || []) : [];
 
-      return isInActiveHalaqoh && myHalaqohs.includes(activeHalaqoh);
+      return isInActiveHalaqoh && (myHalaqohs.includes(activeHalaqoh) || !activeHalaqoh);
     }
     return isInActiveHalaqoh;
   });
 
   // -- FUNGSI PENGATURAN (SETTINGS) --
   const handleApproveUser = async (user) => {
-    try {
-      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'app_users', user.id), { status: 'active' });
-      showToast(`Akun ${user.name} berhasil disetujui!`);
-    } catch (error) {
+    const { error } = await supabase
+      .from('app_users')
+      .update({ status: 'active' })
+      .eq('id', user.id);
+
+    if (error) {
       showToast('Gagal menyetujui akun.');
+    } else {
+      showToast(`Akun ${user.name} berhasil disetujui!`);
     }
   };
 
   const handleRejectUser = async (userId) => {
     if (window.confirm('Yakin ingin menolak dan menghapus pendaftaran guru ini?')) {
       try {
-        await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'app_users', userId));
+        await supabase.from('app_users').delete().eq('id', userId);
         showToast('Pendaftaran ditolak & dihapus.');
       } catch (error) {
         showToast('Gagal menolak pendaftaran.');
@@ -225,7 +320,7 @@ const MainApp = ({ currentUser, onLogout }) => {
 
   const handleUpdateUserAccount = async (userId, updatedData) => {
     try {
-      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'app_users', userId), updatedData);
+      await supabase.from('app_users').update(updatedData).eq('id', userId);
       showToast('Akun berhasil diperbarui!');
     } catch (error) {
       showToast('Gagal update akun.');
@@ -233,15 +328,44 @@ const MainApp = ({ currentUser, onLogout }) => {
   };
 
   const handleBulkSaveStudents = async (studentList) => {
-    try {
-      const promises = studentList.map(s =>
-        addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'students'), {
-          name: s.name, kelas: s.kelas || '', halaqoh: s.halaqoh || '', initial: getInitials(s.name), records: {}
-        })
-      );
-      await Promise.all(promises);
-      showToast(`${studentList.length} siswa berhasil diimpor!`);
-    } catch (err) { showToast('Gagal mengimpor data.'); }
+    // Mencegah duplikasi nama ganda (Kalau ada yang sama maka jadi 1)
+    const existingNames = new Set(students.map(s => s.name.trim().toLowerCase()));
+    const uniqueInput = [];
+    const seenNames = new Set();
+
+    for (const s of studentList) {
+      const normalizedName = s.name.trim().toLowerCase();
+      if (!seenNames.has(normalizedName) && !existingNames.has(normalizedName)) {
+        seenNames.add(normalizedName);
+        uniqueInput.push(s);
+      }
+    }
+
+    if (uniqueInput.length === 0) {
+      showToast('Semua siswa sudah ada di sistem (duplikat diabaikan).');
+      return;
+    }
+
+    let currentMaxSort = students.length > 0 ? Math.max(...students.map(s => s.sort_order || 0)) : 0;
+    const studentsToInsert = uniqueInput.map(s => {
+      currentMaxSort++;
+      return {
+        name: s.name,
+        kelas: s.kelas || '',
+        halaqoh: s.halaqoh || '',
+        initial: getInitials(s.name),
+        records: {},
+        sort_order: currentMaxSort
+      };
+    });
+    
+    const { data, error } = await supabase.from('students').insert(studentsToInsert).select();
+    if (error) { showToast('Gagal mengimpor data.'); } else {
+      if (data) {
+         setStudents(prev => [...prev, ...data]);
+      }
+      showToast(`${uniqueInput.length} siswa berhasil diimpor!`);
+    }
   };
 
   const handleInstitutionLogoUpload = (e) => {
@@ -333,9 +457,8 @@ const MainApp = ({ currentUser, onLogout }) => {
   // -- FUNGSI HAPUS & KOSONGKAN DATA (Tabel) --
   const handleRemoveData = async (e, studentId, dateStr, type, subIndex = null) => {
     e.preventDefault(); e.stopPropagation();
-    try {
+    // ... (Logika internal untuk memodifikasi objek 'rec' tetap sama)
       const student = students.find(s => s.id === studentId); if (!student) return;
-      const studentRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', studentId);
       const rec = student.records[dateStr] ? { ...student.records[dateStr] } : {};
       const k = homeTab === 'lesson_plan' ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan' } : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan' };
 
@@ -369,61 +492,181 @@ const MainApp = ({ currentUser, onLogout }) => {
         rec[k.fNilai] = tList.length > 0 && rec[k.fNilai] !== '-' ? nList.join(', ') : '-';
         if (rec[k.f] === '-') { rec[k.af] = '-'; rec[k.fNilai] = '-'; }
       }
-      await updateDoc(studentRef, { records: { ...student.records, [dateStr]: rec } });
-    } catch (err) { showToast('Gagal menghapus data.'); }
+    // Setelah logika di atas, simpan kembali ke Supabase
+    const updatedRecords = { ...student.records, [dateStr]: rec };
+    const { error } = await supabase
+      .from('students')
+      .update({ records: updatedRecords })
+      .eq('id', studentId);
+
+    if (error) showToast('Gagal menghapus data.');
   };
 
-  const requestClearRecord = (e, studentId, dateStr) => {
+  const requestClearRecord = async (e, studentId, dateStr) => {
     e.preventDefault(); e.stopPropagation();
     if (window.confirm('Yakin ingin mengosongkan data pada tanggal ini?')) {
       const student = students.find(s => s.id === studentId); if (!student) return;
-      const studentRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', studentId);
       const k = homeTab === 'lesson_plan' ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan' } : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan' };
       const newRecords = { ...student.records };
       const dayRec = newRecords[dateStr] ? { ...newRecords[dateStr] } : {};
       dayRec[k.t] = '-'; dayRec[k.h] = '-'; dayRec[k.tNilai] = '-'; dayRec[k.tsNilai] = '-'; dayRec[k.f] = '-'; dayRec[k.af] = '-'; dayRec[k.fNilai] = '-'; dayRec[k.m] = '-'; dayRec[k.c] = '-';
       newRecords[dateStr] = dayRec;
-      updateDoc(studentRef, { records: newRecords });
-      showToast('Data dikosongkan!');
+
+      const { error } = await supabase.from('students').update({ records: newRecords }).eq('id', studentId);
+      if (error) { showToast('Gagal mengosongkan data.'); } else { showToast('Data dikosongkan!'); }
     }
   };
 
   const setSharingStudent = (student) => { showToast("Fitur Share Gambar akan segera diaktifkan."); };
 
   // -- FUNGSI SISWA --
-  const handleAssignFromMaster = async (student) => { try { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'students', student.id), { halaqoh: activeHalaqoh }); showToast(`${student.name} ditambahkan!`); } catch (err) { showToast('Gagal.'); } };
+  const handleAssignFromMaster = async (student) => {
+    const { error } = await supabase.from('students').update({ halaqoh: activeHalaqoh }).eq('id', student.id);
+    if (error) { showToast('Gagal.'); } else { showToast(`${student.name} ditambahkan!`); }
+  };
   const handleSaveNewStudent = async (e) => {
     e.preventDefault();
     try {
-      await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'students'), { ...newStudent, initial: getInitials(newStudent.name), records: {} });
+      const { photo, ...studentData } = newStudent;
+        
+        // Mencegah duplikasi nama
+        const normalizedName = studentData.name.trim().toLowerCase();
+        const isDuplicate = students.some(s => s.name.trim().toLowerCase() === normalizedName);
+        if (isDuplicate) {
+          showToast('Nama siswa sudah ada di bank data!');
+          return;
+        }
+
+      let photoUrl = null;
+
+      // 1. Jika ada foto, unggah dulu ke Supabase Storage
+      if (photo && photo.startsWith('data:image')) {
+        const imageBlob = dataURLtoBlob(photo);
+        if (imageBlob) {
+          photoUrl = await handleUploadStudentPhoto(null, imageBlob); // Dapatkan URL
+        }
+      }
+
+      // 2. Masukkan data siswa baru ke tabel, termasuk URL foto jika ada
+      const maxSortOrder = students.length > 0 ? Math.max(...students.map(s => s.sort_order || 0)) : 0;
+      const newStudentObj = {
+        ...studentData,
+        initial: getInitials(studentData.name),
+        photo: photoUrl,
+        records: {},
+        sort_order: maxSortOrder + 1
+      };
+
+      const { data, error } = await supabase.from('students').insert([newStudentObj]).select();
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        setStudents(prev => [...prev, data[0]]);
+      }
       setIsAddStudentModalOpen(false);
       showToast('Siswa ditambahkan!');
-    } catch (e) { showToast('Gagal menyimpan.'); }
+    } catch (e) { console.error("Gagal menyimpan siswa baru:", e); showToast('Gagal menyimpan.'); }
   };
   const handleUpdateStudent = async (e) => {
     e.preventDefault();
     try {
-      const { id, ...dataToUpdate } = editStudentData;
-      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'students', id), {
-        ...dataToUpdate,
-        initial: getInitials(dataToUpdate.name)
-      });
+      let { id, photo, ...studentData } = editStudentData;
+
+      // Jika foto adalah base64 baru, unggah dan ganti dengan URL
+      if (photo && photo.startsWith('data:image')) {
+        const imageBlob = dataURLtoBlob(photo);
+        if (imageBlob) {
+          photo = await handleUploadStudentPhoto(id, imageBlob); // photo sekarang berisi URL
+        }
+      }
+
+      const updatedData = { ...studentData, photo: photo, initial: getInitials(studentData.name) };
+      const { error } = await supabase.from('students').update(updatedData).eq('id', id);
+
+      if (error) throw error;
+
+      setStudents(prev => prev.map(s => s.id === id ? { ...s, ...updatedData } : s));
       setIsEditStudentModalOpen(false);
       showToast('Siswa diperbarui!');
-    } catch (e) { showToast('Gagal memperbarui.'); }
+    } catch (e) { console.error("Gagal memperbarui siswa:", e); showToast('Gagal memperbarui.'); }
   };
   const requestDeleteStudent = (student) => {
     if (isSuperAdmin) {
-      if (window.confirm('Yakin ingin menghapus siswa permanen dari sistem?')) {
-        deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'students', student.id));
-        showToast('Dihapus.');
-      }
+      setConfirmDialog({
+        isOpen: true,
+        message: `Yakin ingin menghapus "${student.name}" secara permanen dari sistem? Data tidak dapat dikembalikan!`,
+        onConfirm: () => {
+          supabase.from('students').delete().eq('id', student.id).then(() => showToast('Dihapus.'));
+        }
+      });
     } else {
-      if (window.confirm(`Yakin ingin mengeluarkan ${student.name} dari halaqoh ${activeHalaqoh}?`)) {
-        updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'students', student.id), { halaqoh: '' });
-        showToast('Siswa berhasil dikeluarkan.');
-      }
+      setConfirmDialog({
+        isOpen: true,
+        message: `Yakin ingin mengeluarkan "${student.name}" dari halaqoh ${activeHalaqoh}?`,
+        onConfirm: () => {
+          supabase.from('students').update({ halaqoh: '' }).eq('id', student.id).then(() => showToast('Siswa berhasil dikeluarkan.'));
+        }
+      });
     }
+  };
+
+  const requestBulkDeleteStudents = async (studentIds) => {
+    if (!studentIds || studentIds.length === 0) return;
+    if (isSuperAdmin) {
+      setConfirmDialog({
+        isOpen: true,
+        message: `Yakin ingin menghapus ${studentIds.length} siswa secara permanen dari sistem? Awas, tindakan ini tidak bisa dibatalkan!`,
+        onConfirm: () => {
+          supabase.from('students').delete().in('id', studentIds).then(() => {
+            setStudents(prev => prev.filter(s => !studentIds.includes(s.id)));
+            showToast(`${studentIds.length} siswa dihapus.`);
+          });
+        }
+      });
+    } else {
+      setConfirmDialog({
+        isOpen: true,
+        message: `Yakin ingin mengeluarkan ${studentIds.length} siswa dari halaqoh Anda?`,
+        onConfirm: () => {
+          supabase.from('students').update({ halaqoh: '' }).in('id', studentIds).then(() => {
+            setStudents(prev => prev.map(s => studentIds.includes(s.id) ? { ...s, halaqoh: '' } : s));
+            showToast(`${studentIds.length} siswa dikeluarkan.`);
+          });
+        }
+      });
+    }
+  };
+
+  const requestBulkEditStudents = async (studentIds, updates) => {
+    if (!studentIds || studentIds.length === 0) return;
+    try {
+      const { error } = await supabase.from('students').update(updates).in('id', studentIds);
+      if (error) throw error;
+      setStudents(prev => prev.map(s => studentIds.includes(s.id) ? { ...s, ...updates } : s));
+      showToast(`${studentIds.length} siswa berhasil diperbarui.`);
+    } catch (e) {
+      console.error(e);
+      showToast('Gagal memperbarui siswa secara massal.');
+    }
+  };
+
+  const handleReorderStudents = (reorderedList) => {
+    // Beri index urutan baru berdasarkan posisi mereka di array
+    const updates = reorderedList.map((s, index) => ({ ...s, sort_order: index }));
+    
+    // Update state React secara instan
+    setStudents(prev => {
+      const newStudents = [...prev];
+      updates.forEach(updated => {
+        const idx = newStudents.findIndex(s => s.id === updated.id);
+        if (idx !== -1) newStudents[idx] = updated;
+      });
+      return newStudents.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+    });
+
+    // Simpan ke Supabase di latar belakang
+    updates.forEach(s => { supabase.from('students').update({ sort_order: s.sort_order }).eq('id', s.id).then(); });
   };
 
   const handlePhotoUpload = (e, isEdit = false) => {
@@ -470,10 +713,20 @@ const MainApp = ({ currentUser, onLogout }) => {
     }
   };
 
-  const handleCroppedImage = (croppedImageBlob) => {
+  const handleCroppedImage = async (croppedImageBlob) => {
     if (croppedImageBlob && studentIdForCrop) {
       // Panggil fungsi unggah yang sudah ada dengan gambar hasil crop
-      handleUploadStudentPhoto(studentIdForCrop, croppedImageBlob);
+      const photoUrl = await handleUploadStudentPhoto(studentIdForCrop, croppedImageBlob);
+      
+      if (photoUrl) {
+        const { error } = await supabase.from('students').update({ photo: photoUrl }).eq('id', studentIdForCrop);
+        if (error) {
+          showToast('Gagal menyimpan foto ke profil.');
+        } else {
+          setStudents(prev => prev.map(s => s.id === studentIdForCrop ? { ...s, photo: photoUrl } : s));
+          showToast('Foto berhasil diperbarui!');
+        }
+      }
     }
     // Reset state setelah memulai unggahan
     setIsCropModalOpen(false);
@@ -482,48 +735,35 @@ const MainApp = ({ currentUser, onLogout }) => {
   };
 
   const handleUploadStudentPhoto = async (studentId, file) => {
-    if (!file || !studentId) return;
+    if (!file) return null;
 
     setUploadingPhotoId(studentId);
     setUploadProgress(0);
-    showToast('Mempersiapkan foto...', 'loading');
-
-    const options = {
-      maxSizeMB: 0.5,
-      maxWidthOrHeight: 1024,
-      useWebWorker: true,
-    };
 
     try {
-      const compressedFile = await imageCompression(file, options);
-      const storageRef = ref(storage, `student_photos/${studentId}/${Date.now()}_${compressedFile.name || 'photo.jpg'}`);
-      const uploadTask = uploadBytesResumable(storageRef, compressedFile);
+      // Nama file unik untuk menghindari cache
+      const fileName = `${studentId || 'new'}/${Date.now()}_photo.jpg`;
 
-      uploadTask.on('state_changed',
-        (snapshot) => {
-          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          setUploadProgress(progress);
-        },
-        (error) => {
-          console.error("Gagal mengunggah foto profil:", error);
-          showToast('Gagal mengunggah foto.', 'error');
-          setUploadingPhotoId(null);
-          setUploadProgress(0);
-        },
-        () => {
-          getDownloadURL(uploadTask.snapshot.ref).then(async (downloadURL) => {
-            const studentDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', studentId);
-            await updateDoc(studentDocRef, { photo: downloadURL });
-            showToast('Foto profil berhasil diperbarui!', 'success');
-            setUploadingPhotoId(null);
-            setUploadProgress(0);
-          });
-        }
-      );
+      // Unggah file ke Supabase Storage
+      const { data, error } = await supabase.storage
+        .from('student_photos') // Nama bucket Anda
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: true, // Timpa file jika ada dengan nama yang sama
+        });
+
+      if (error) throw error;
+
+      // Dapatkan URL publik dari file yang baru diunggah
+      const { data: { publicUrl } } = supabase.storage.from('student_photos').getPublicUrl(fileName);
+
+      setUploadingPhotoId(null);
+      return `${publicUrl}?t=${Date.now()}`; // Tambahkan antrean waktu agar browser memuat foto baru (Bypass Cache)
     } catch (error) {
-      console.error("Gagal mengompres foto:", error);
+      console.error("Gagal mengunggah foto:", error);
       showToast('Gagal memproses foto.', 'error');
       setUploadingPhotoId(null);
+      return null;
     }
   };
   // Fungsi untuk memfilter daftar halaqoh berdasarkan role user
@@ -712,9 +952,8 @@ const MainApp = ({ currentUser, onLogout }) => {
     const k = homeTab === 'lesson_plan' ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan' } : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan' };
 
     try {
-      const batchPromises = students.map(student => {
+      const updates = students.reduce((acc, student) => {
         if (selectedStudents.includes(student.id)) {
-          const studentRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', student.id);
           const existingRecord = student.records[plan.tanggal] || {}; let finalRecord = { ...existingRecord };
           for (let key of Object.values(k)) if (!finalRecord[key]) finalRecord[key] = '-';
 
@@ -755,11 +994,18 @@ const MainApp = ({ currentUser, onLogout }) => {
             finalRecord[k.m] = modalMurojaah;
             finalRecord[k.c] = modalCatatan;
           }
-          return updateDoc(studentRef, { records: { ...student.records, [plan.tanggal]: finalRecord } });
+          acc.push({
+            ...student, // Bawa semua data siswa yang ada
+            records: { ...student.records, [plan.tanggal]: finalRecord }
+          });
         }
-        return Promise.resolve();
-      });
-      await Promise.all(batchPromises);
+        return acc;
+      }, []);
+
+      // Lakukan operasi 'upsert' di Supabase
+      const { error } = await supabase.from('students').upsert(updates);
+      if (error) throw error;
+
       handleCloseModal(); showToast('Data berhasil disimpan!');
     } catch (e) { console.error(e); showToast('Gagal menyimpan.'); }
   };
@@ -810,6 +1056,21 @@ const MainApp = ({ currentUser, onLogout }) => {
 
   return (
     <div className="h-screen h-[100dvh] bg-slate-50 text-gray-800 font-sans flex flex-col overflow-hidden transition-all duration-500">
+      {/* CSS Khusus untuk Menyembunyikan Scrollbar Bawaan (Membuat UI lebih minimalis) */}
+      <style>
+        {`
+          /* Chrome, Safari, Edge, Opera */
+          .custom-scrollbar::-webkit-scrollbar {
+            display: none;
+          }
+          /* Firefox, IE */
+          .custom-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+          }
+        `}
+      </style>
+
       {/* Header */}
       <header className="bg-white border-b border-gray-100 shrink-0 z-[60] w-full shadow-sm print:hidden sticky top-0 transition-all duration-500">
         <div className="max-w-7xl mx-auto px-3 md:px-6 h-14 sm:h-28 flex items-center justify-between">
@@ -902,7 +1163,8 @@ const MainApp = ({ currentUser, onLogout }) => {
             <div className="bg-white/95 border-gray-200 border-b px-3 md:px-6 py-1 flex justify-between items-center shrink-0 z-50 print:hidden h-11 shadow-sm transition-all duration-500 backdrop-blur-md sticky top-[56px] sm:top-[112px]">
               <div className="flex items-center gap-2">
                 {isSuperAdmin ? (
-                  <select value={activeGuru} onChange={(e) => setActiveGuru(e.target.value)} className="bg-gray-50 border rounded-lg p-1.5 text-xs font-bold w-[130px] md:w-auto outline-none focus:ring-2 focus:ring-green-500/20">
+                  <select value={activeGuru} onChange={(e) => { setActiveGuru(e.target.value); setActiveHalaqoh(''); }} className="bg-gray-50 border rounded-lg p-1.5 text-xs font-bold w-[130px] md:w-auto outline-none focus:ring-2 focus:ring-green-500/20">
+                    <option value="">Semua Guru</option>
                     {guruList.map(g => <option key={g} value={g}>{g}</option>)}
                   </select>
                 ) : (
@@ -916,7 +1178,8 @@ const MainApp = ({ currentUser, onLogout }) => {
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest hidden sm:inline">Kelompok:</span>
                 <select value={activeHalaqoh} onChange={(e) => setActiveHalaqoh(e.target.value)} className="bg-green-50 border border-green-200 text-green-800 rounded-lg p-1.5 text-xs font-bold w-[130px] md:w-auto outline-none focus:ring-2 focus:ring-green-500/20">
-                  {(guruHalaqohData[activeGuru] || []).map(h => <option key={h} value={h}>{h}</option>)}
+                  <option value="">Semua Halaqoh</option>
+                  {(activeGuru ? (guruHalaqohData[activeGuru] || []) : Array.from(new Set(students.map(s => s.halaqoh).filter(Boolean)))).map(h => <option key={h} value={h}>{h}</option>)}
                 </select>
               </div>
             </div>
@@ -949,22 +1212,27 @@ const MainApp = ({ currentUser, onLogout }) => {
               />
             )}
             {currentView === 'siswa' && (
-              <StudentView
-                activeHalaqoh={activeHalaqoh} filteredStudents={filteredStudents}
-                openAddStudentModal={() => setIsAddStudentModalOpen(true)}
-                openEditStudentModal={(s) => { setEditStudentData({ id: s.id, name: s.name, kelas: s.kelas, halaqoh: s.halaqoh, photo: s.photo || null }); setIsEditStudentModalOpen(true); }}
-                requestDeleteStudent={requestDeleteStudent} isSuperAdmin={isSuperAdmin}
-                openCropModal={openCropModal}
-                uploadingPhotoId={uploadingPhotoId}
-                uploadProgress={uploadProgress}
-              />
+              <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar bg-slate-50">
+                <StudentView
+                  activeHalaqoh={activeHalaqoh} filteredStudents={filteredStudents}
+                  openAddStudentModal={() => setIsAddStudentModalOpen(true)}
+                  openEditStudentModal={(s) => { setEditStudentData({ id: s.id, name: s.name, kelas: s.kelas, halaqoh: s.halaqoh, photo: s.photo || null }); setIsEditStudentModalOpen(true); }}
+                  requestDeleteStudent={requestDeleteStudent} isSuperAdmin={isSuperAdmin}
+                  openCropModal={openCropModal}
+                  uploadingPhotoId={uploadingPhotoId}
+                  uploadProgress={uploadProgress}
+                  onReorderStudents={handleReorderStudents}
+                />
+              </div>
             )}
             {currentView === 'laporan' && (
               <ReportView
                 activeHalaqoh={activeHalaqoh}
                 activeGuru={activeGuru}
                 activeDate={activeDate}
+                setActiveDate={setActiveDate}
                 weekDates={weekDates}
+                changeWeek={changeWeek}
                 filteredStudents={filteredStudents}
                 institutionLogo={institutionLogo}
               />
@@ -980,7 +1248,7 @@ const MainApp = ({ currentUser, onLogout }) => {
                 currentUser={currentUser} guruHalaqohData={guruHalaqohData} editingGuru={editingGuru} setEditingGuru={setEditingGuru} handleSaveEditGuru={handleSaveEditGuru} requestDeleteGuru={requestDeleteGuru}
                 editingHalaqoh={editingHalaqoh} setEditingHalaqoh={setEditingHalaqoh} handleSaveEditHalaqoh={handleSaveEditHalaqoh} requestDeleteHalaqoh={requestDeleteHalaqoh}
                 students={students} openEditStudentModal={(s) => { setEditStudentData({ id: s.id, name: s.name, kelas: s.kelas, halaqoh: s.halaqoh, photo: s.photo || null }); setIsEditStudentModalOpen(true); }}
-                requestDeleteStudent={requestDeleteStudent} handleBulkSaveStudents={handleBulkSaveStudents} onLogout={onLogout}
+                requestDeleteStudent={requestDeleteStudent} requestBulkDeleteStudents={requestBulkDeleteStudents} requestBulkEditStudents={requestBulkEditStudents} handleBulkSaveStudents={handleBulkSaveStudents} onLogout={onLogout}
               />
             )}
           </main>
@@ -1016,6 +1284,28 @@ const MainApp = ({ currentUser, onLogout }) => {
             imageSrc={imageToCrop}
             onCropComplete={handleCroppedImage}
           />
+
+          {/* MODAL KONFIRMASI BERBAHAYA (CUSTOM CONFIRM) */}
+          {confirmDialog.isOpen && (
+            <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+              <div className="bg-white rounded-[2rem] shadow-2xl max-w-sm w-full overflow-hidden animate-in zoom-in-95 duration-300">
+                <div className="bg-gradient-to-b from-red-500 to-red-600 p-8 flex flex-col items-center justify-center text-center text-white relative overflow-hidden">
+                  <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+                  <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-black/10 rounded-full blur-2xl"></div>
+                  
+                  <div className="w-20 h-20 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center mb-5 shadow-inner border border-white/30">
+                    <AlertTriangle size={40} className="text-white drop-shadow-md" />
+                  </div>
+                  <h3 className="text-2xl font-black mb-2 tracking-tight drop-shadow-sm">PERINGATAN!</h3>
+                  <p className="text-red-50 text-sm font-medium leading-relaxed drop-shadow-sm">{confirmDialog.message}</p>
+                </div>
+                <div className="p-5 sm:p-6 bg-white flex gap-3">
+                  <button onClick={() => setConfirmDialog({ isOpen: false })} className="flex-1 py-3.5 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-xl font-bold transition-colors active:scale-95">Batal</button>
+                  <button onClick={() => { confirmDialog.onConfirm(); setConfirmDialog({ isOpen: false }); }} className="flex-1 py-3.5 bg-red-600 text-white hover:bg-red-700 rounded-xl font-black shadow-lg shadow-red-200 active:scale-95 transition-all border border-red-500">Ya, Lanjutkan!</button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {toastMessage && (<div className="fixed top-4 md:top-20 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-4 py-2 rounded-xl shadow-2xl z-[9999] font-bold text-xs md:text-sm animate-bounce">{toastMessage}</div>)}
 

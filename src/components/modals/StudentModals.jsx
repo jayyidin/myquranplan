@@ -81,7 +81,7 @@ export const AddStudentModal = ({
                   >
                     <option value="">Pilih Halaqoh...</option>
                     {Object.entries(guruHalaqohData || {}).map(([guru, halaqohs]) => (
-                        <optgroup key={guru} label={`Ustadz/ah ${guru}`}>
+                        <optgroup key={guru} label={guru}>
                           {Array.isArray(halaqohs) && halaqohs.length > 0 ? (
                             halaqohs.map(h => (
                               <option key={h} value={h}>{h}</option>
@@ -144,7 +144,7 @@ export const EditStudentModal = ({
                 >
                   <option value="">Pilih Halaqoh...</option>
                   {Object.entries(guruHalaqohData || {}).map(([guru, halaqohs]) => (
-                      <optgroup key={guru} label={`Ustadz/ah ${guru}`}>
+                      <optgroup key={guru} label={guru}>
                         {Array.isArray(halaqohs) && halaqohs.length > 0 ? (
                           halaqohs.map(h => (
                             <option key={h} value={h}>{h}</option>

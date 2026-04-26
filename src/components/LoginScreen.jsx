@@ -5,8 +5,7 @@ import {
   Eye, EyeOff, Loader2, ShieldAlert, CheckCircle2, HelpCircle, Download, Printer, Users,
   ChevronLeft, ChevronRight, Search, SearchCode, RotateCcw, LayoutGrid
 } from 'lucide-react';
-import { doc, getDoc, setDoc, updateDoc, onSnapshot, collection } from 'firebase/firestore';
-import { db, appId } from '../config/firebase';
+import { supabase } from './supabase';
 import { formatShortDate, getInitials, formatPeriode, formatPrintData, getMonday, formatDateObj } from '../utils/helpers';
 
 const LoginScreen = ({ onLogin }) => {
@@ -58,35 +57,59 @@ const LoginScreen = ({ onLogin }) => {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const shareId = params.get('share');
+    let isMounted = true;
 
-    const unsub = onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'master'), (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        if (data.institutionLogo) setInstitutionLogo(data.institutionLogo);
-        setGuruHalaqohMap(data.guruHalaqohData || {});
-        if (data.kelasList) setKelasList(data.kelasList);
+    const fetchSettings = async () => {
+      const { data } = await supabase.from('settings').select('*').limit(1).maybeSingle();
+      if (data && isMounted) {
+        if (data.institutionlogo || data.institutionLogo) setInstitutionLogo(data.institutionlogo || data.institutionLogo);
+        setGuruHalaqohMap(data.guruhalaqohdata || data.guruHalaqohData || {});
+        if (data.kelaslist || data.kelasList) setKelasList(data.kelaslist || data.kelasList);
         
         if (shareId && !publicStudent) {
-           fetchPublicData(shareId, data.guruHalaqohData || {});
+           fetchPublicData(shareId, data.guruhalaqohdata || data.guruHalaqohData || {});
         }
       }
-    });
-    return () => unsub();
+    };
+
+    fetchSettings();
+
+    const sub = supabase.channel('public:settings_login')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, fetchSettings)
+      .subscribe();
+      
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(sub);
+    };
   }, []);
 
   // Ambil semua daftar siswa jika masuk ke Portal Orang Tua
   useEffect(() => {
+    let isMounted = true;
+    let sub;
+
     if (isParentPortal && allStudents.length === 0) {
       setIsPublicLoading(true);
-      const unsubStudents = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'students'), (snap) => {
-        const list = [];
-        snap.forEach(d => list.push({ id: d.id, ...d.data() }));
-        // Sort berdasarkan nama
-        setAllStudents(list.sort((a, b) => a.name.localeCompare(b.name)));
-        setIsPublicLoading(false);
-      });
-      return () => unsubStudents();
+      
+      const fetchStudents = async () => {
+        const { data } = await supabase.from('students').select('*');
+        if (data && isMounted) {
+          setAllStudents(data.sort((a, b) => a.name.localeCompare(b.name)));
+        }
+        if (isMounted) setIsPublicLoading(false);
+      };
+      
+      fetchStudents();
+      
+      sub = supabase.channel('public:students_login')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, fetchStudents)
+        .subscribe();
     }
+    return () => {
+      isMounted = false;
+      if (sub) supabase.removeChannel(sub);
+    };
   }, [isParentPortal]);
 
   const handleSelectStudent = (student) => {
@@ -106,10 +129,9 @@ const LoginScreen = ({ onLogin }) => {
   const fetchPublicData = async (studentId, guruData) => {
     setIsPublicLoading(true);
     try {
-      const studentSnap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'students', studentId));
-      if (studentSnap.exists()) {
-        const sData = studentSnap.data();
-        setPublicStudent({ id: studentSnap.id, ...sData });
+      const { data: sData } = await supabase.from('students').select('*').eq('id', studentId).maybeSingle();
+      if (sData) {
+        setPublicStudent(sData);
         
         // Cari guru berdasarkan halaqoh
         for (const [guru, halaqohs] of Object.entries(guruData)) {
@@ -147,20 +169,19 @@ const LoginScreen = ({ onLogin }) => {
          }
          
          const cleanName = fullName.trim();
-         const userRef = doc(db, 'artifacts', appId, 'public', 'data', 'app_users', normalizedUsername);
-         const userSnap = await getDoc(userRef);
+         const { data: userSnap } = await supabase.from('app_users').select('*').eq('username', normalizedUsername).maybeSingle();
          
-         if (userSnap.exists()) {
+         if (userSnap) {
             setError('Username sudah terdaftar! Gunakan yang lain.');
          } else {
             // Mendaftar dengan status: pending
-            await setDoc(userRef, { 
+            await supabase.from('app_users').insert([{ 
                username: normalizedUsername, 
                password, 
                name: cleanName, 
                role: 'guru', 
                status: 'pending'
-            });
+            }]);
             
             setSuccessMsg('Pendaftaran berhasil! Akun Anda sedang menunggu persetujuan dari Admin Utama.');
             setIsRegistering(false);
@@ -177,12 +198,10 @@ const LoginScreen = ({ onLogin }) => {
            return;
          }
          
-         // Cek User di Firestore
-         const userRef = doc(db, 'artifacts', appId, 'public', 'data', 'app_users', normalizedUsername);
-         const userSnap = await getDoc(userRef);
+         // Cek User di Supabase
+         const { data: userData } = await supabase.from('app_users').select('*').eq('username', normalizedUsername).maybeSingle();
          
-         if (userSnap.exists()) {
-            const userData = userSnap.data();
+         if (userData) {
             if (userData.password === password) {
                if (userData.role !== 'superadmin' && userData.status !== 'active') {
                    setError('Akun Anda belum disetujui oleh Admin. Harap tunggu atau hubungi Admin.');
@@ -211,11 +230,10 @@ const LoginScreen = ({ onLogin }) => {
     const normalizedUsername = username.toLowerCase().trim();
 
     try {
-      const userRef = doc(db, 'artifacts', appId, 'public', 'data', 'app_users', normalizedUsername);
-      const userSnap = await getDoc(userRef);
+      const { data: userSnap } = await supabase.from('app_users').select('*').eq('username', normalizedUsername).maybeSingle();
 
-      if (userSnap.exists()) {
-        await updateDoc(userRef, { resetRequested: true });
+      if (userSnap) {
+        await supabase.from('app_users').update({ resetrequested: true }).eq('username', normalizedUsername);
         setSuccessMsg('Permintaan reset password terkirim! Silakan hubungi Admin Utama.');
         setIsForgotPassword(false);
         setUsername('');
@@ -251,7 +269,7 @@ const LoginScreen = ({ onLogin }) => {
   if (publicStudent) {
     const weekStart = publicWeekStart;
     const weekDates = Array.from({length: 5}).map((_, i) => { const d = new Date(weekStart); d.setDate(d.getDate() + i); return d; });
-    const k = { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan' };
+    const k = { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan' };
 
     // Mengambil seluruh tanggal yang memiliki rekaman untuk mode cetak riwayat lengkap
     const allDates = Object.keys(publicStudent.records || {})
@@ -292,7 +310,7 @@ const LoginScreen = ({ onLogin }) => {
                   {publicStudent.photo ? <img src={publicStudent.photo} className="w-full h-full object-cover" /> : <span>{getInitials(publicStudent.name)}</span>}
                </div>
                <div>
-                  <h2 className="text-2xl sm:text-3xl font-black text-gray-800 mb-2">{publicStudent.name}</h2>
+                  <h2 className={`font-black text-gray-800 mb-2 ${publicStudent.name.length > 24 ? 'text-lg sm:text-xl' : publicStudent.name.length > 18 ? 'text-xl sm:text-2xl' : 'text-2xl sm:text-3xl'}`}>{publicStudent.name}</h2>
                   <div className="flex flex-wrap gap-2">
                      <span className="bg-[#e6fbf0] text-green-800 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">Kelas {publicStudent.kelas || '-'}</span>
                      <span className="bg-[#e6fbf0] text-green-800 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">Kelompok {publicStudent.halaqoh || '-'}</span>
@@ -384,7 +402,7 @@ const LoginScreen = ({ onLogin }) => {
             <div className="bg-[#111827] p-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-white">
                <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"><Users size={14} /></div>
-                  <span className="text-xs font-medium text-gray-400">Pengajar: <strong className="text-white block sm:inline">{publicTeacher || '-'}</strong></span>
+                  <span className="text-xs font-medium text-gray-400">Ustadz/ah: <strong className="text-white block sm:inline">{publicTeacher || '-'}</strong></span>
                </div> 
                <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-[#00e676]/20 flex items-center justify-center"><Calendar size={14} className="text-[#00e676]" /></div>
@@ -560,7 +578,7 @@ const LoginScreen = ({ onLogin }) => {
                               {s.photo ? <img src={s.photo} className="w-full h-full object-cover" /> : getInitials(s.name)}
                            </div>
                            <div> 
-                              <p className="font-black text-slate-800 group-hover:text-emerald-700 transition-colors">{s.name}</p>
+                              <p className={`font-black text-slate-800 group-hover:text-emerald-700 transition-colors ${s.name.length > 24 ? 'text-xs sm:text-sm whitespace-normal line-clamp-2 leading-tight' : s.name.length > 18 ? 'text-sm sm:text-[15px] whitespace-normal line-clamp-2 leading-tight' : 'text-base truncate'}`}>{s.name}</p>
                               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Kelas {s.kelas || '-'} • {s.halaqoh || '-'}</p>
                            </div>
                         </div>
