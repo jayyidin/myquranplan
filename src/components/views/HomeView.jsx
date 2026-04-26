@@ -865,39 +865,41 @@ const HomeView = ({
             </div>
 
             {/* KOTAK PENCARIAN SISWA */}
-            {!isSearchVisible && !searchQuery ? (
-              <div className="flex justify-end -mt-2 sm:-mt-1 mb-1 z-10">
-                <button
-                  onClick={() => setIsSearchVisible(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200/80 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 hover:border-emerald-200 transition-all shadow-sm text-[10px] sm:text-xs font-bold"
-                  title="Pencarian Siswa"
-                >
-                  <Search size={14} /> Cari Siswa
-                </button>
-              </div>
-            ) : (
-              <div className="relative animate-in slide-in-from-top-2 fade-in duration-200">
-                <Search
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-                  size={18}
-                />
-                <input
-                  autoFocus
-                  type="text"
-                  placeholder={activeHalaqoh ? `Cari nama siswa... (${studentsInHalaqohCount} siswa)` : 'Pilih halaqoh terlebih dahulu'}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  disabled={!activeHalaqoh}
-                  className="w-full bg-white border border-gray-200/80 rounded-xl pl-10 pr-10 py-2.5 sm:py-3 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 text-sm font-bold text-slate-700 transition-all shadow-sm disabled:bg-slate-50 disabled:cursor-not-allowed"
-                />
-                <button
-                  onClick={() => { setIsSearchVisible(false); setSearchQuery(''); }}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-            )}
+            <div className="sticky md:relative -top-3 sm:-top-4 md:top-auto z-40 bg-slate-50/95 md:bg-transparent backdrop-blur-md md:backdrop-blur-none -mx-3 px-3 sm:-mx-4 sm:px-4 md:mx-0 md:px-0 py-2 md:py-0 mb-2 md:mb-0 border-b border-gray-200/60 md:border-none shadow-[0_4px_15px_-10px_rgba(0,0,0,0.05)] md:shadow-none transition-all">
+              {!isSearchVisible && !searchQuery ? (
+                <div className="flex justify-end md:-mt-1 md:mb-1 z-10">
+                  <button
+                    onClick={() => setIsSearchVisible(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200/80 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 hover:border-emerald-200 transition-all shadow-sm text-[10px] sm:text-xs font-bold"
+                    title="Pencarian Siswa"
+                  >
+                    <Search size={14} /> Cari Siswa
+                  </button>
+                </div>
+              ) : (
+                <div className="relative animate-in slide-in-from-top-2 fade-in duration-200">
+                  <Search
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                    size={18}
+                  />
+                  <input
+                    autoFocus
+                    type="text"
+                    placeholder={activeHalaqoh ? `Cari nama siswa... (${studentsInHalaqohCount} siswa)` : 'Pilih halaqoh terlebih dahulu'}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    disabled={!activeHalaqoh}
+                    className="w-full bg-white border border-gray-200/80 rounded-xl pl-10 pr-10 py-2.5 sm:py-3 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 text-sm font-bold text-slate-700 transition-all shadow-sm disabled:bg-slate-50 disabled:cursor-not-allowed"
+                  />
+                  <button
+                    onClick={() => { setIsSearchVisible(false); setSearchQuery(''); }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              )}
+            </div>
 
             {/* LOGIKA PENCARIAN DATA HARI SEBELUMNYA UNTUK DISPLAY BAYANGAN */}
             {(() => {

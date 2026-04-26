@@ -95,7 +95,7 @@ const StudentView = ({ activeHalaqoh, filteredStudents, openAddStudentModal, ope
 
       {/* KOTAK PENCARIAN SISWA */}
       {activeHalaqoh && (
-        <div className="mb-6">
+        <div className="sticky -top-4 sm:-top-6 md:-top-8 z-30 bg-slate-50/95 backdrop-blur-md -mx-4 px-4 sm:-mx-6 sm:px-6 md:-mx-8 md:px-8 py-2 sm:py-3 mb-4 sm:mb-6 border-b border-gray-200/60 shadow-[0_4px_15px_-10px_rgba(0,0,0,0.05)] transition-all">
           {!isSearchVisible && !searchQuery ? (
             <div className="flex justify-end gap-2 z-10">
               <button
