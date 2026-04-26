@@ -1,5 +1,5 @@
-import React from 'react';
-import { X, BookOpen, Mic, Repeat, FileText, Plus, ChevronDown } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { X, BookOpen, Mic, Repeat, FileText, Plus, ChevronDown, Search, Check } from 'lucide-react';
 import SurahSelector from '../SurahSelector';
 import AyatSelector from '../AyatSelector';
 import { Tooltip } from 'react-tooltip';
@@ -11,9 +11,18 @@ export const JurnalModal = ({
   homeTab, handleSave, editingId, selectedStudents,
   filteredStudents, toggleStudent
 }) => {
-  if (!isOpen) return null;
+  const [searchQuery, setSearchQuery] = useState('');
 
   const gradeOptions = ['A', 'B+', 'B', 'B-', 'C'];
+
+  // Filter siswa berdasarkan pencarian lokal di dalam modal
+  const displayStudents = useMemo(() => {
+    if (!searchQuery.trim()) return filteredStudents;
+    return filteredStudents.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  }, [filteredStudents, searchQuery]);
+
+  // Pastikan Early Return berada SETELAH semua fungsi React Hooks dipanggil
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-[500] print-hidden flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity">
@@ -29,37 +38,49 @@ export const JurnalModal = ({
         <div className="p-4 sm:p-6 flex-1 flex flex-col gap-4 overflow-y-auto custom-scrollbar bg-gray-50 pb-24 sm:pb-6">
           
           {/* Bagian Pilih Siswa - Selalu Tampil untuk memungkinkan input massal dari form manapun */}
-          <div className="bg-white p-4 rounded-3xl shadow-sm border border-gray-100 shrink-0">
-            <div className="flex justify-between items-center mb-3">
+          <div className="bg-white p-4 sm:p-5 rounded-3xl shadow-sm border border-gray-100 shrink-0 flex flex-col gap-3 transition-all">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2.5">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
                   {editingId ? 'Terapkan Juga Ke Siswa Lain' : `Pilih Siswa (${selectedStudents.length}/${filteredStudents.length})`}
                 </label>
-                <button type="button" onClick={() => toggleStudent('ALL')} className="text-[10px] text-blue-600 font-bold bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors">
-                  {filteredStudents.length === selectedStudents.length ? 'Batal Semua' : 'Pilih Semua'}
-                </button>
+                <div className="flex items-center gap-2">
+                  <div className="relative w-full sm:w-48">
+                    <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Cari siswa..."
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                      className="w-full pl-8 pr-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-gray-700"
+                    />
+                  </div>
+                  <button type="button" onClick={() => toggleStudent('ALL')} className="shrink-0 text-[10px] text-blue-600 font-bold bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors border border-blue-100">
+                    {filteredStudents.length === selectedStudents.length ? 'Batal Semua' : 'Pilih Semua'}
+                  </button>
+                </div>
             </div>
-            <div className="flex overflow-x-auto gap-2 pb-1 custom-scrollbar">
-                {filteredStudents.map(s => {
-                  const nameLength = s.name.length;
-                  let fontSizeClass = 'text-xs'; // Ukuran font default
-                  if (nameLength > 22) {
-                    fontSizeClass = 'text-[9px] leading-tight'; // Ukuran sangat kecil untuk nama yang sangat panjang
-                  } else if (nameLength > 15) {
-                    fontSizeClass = 'text-[10px] leading-tight'; // Ukuran kecil untuk nama panjang
-                  }
+            <div className="flex flex-wrap gap-2 max-h-[140px] sm:max-h-[160px] overflow-y-auto custom-scrollbar p-1 -mx-1">
+                {displayStudents.map(s => {
+                  const isSelected = selectedStudents.includes(s.id);
+                  const isEditing = s.id === editingId;
 
                   return (
                     <button 
                       key={s.id} 
+                      type="button"
                       onClick={() => toggleStudent(s.id)} 
-                      className={`shrink-0 px-4 py-2 rounded-xl font-bold border transition-all whitespace-nowrap ${fontSizeClass} ${selectedStudents.includes(s.id) ? (s.id === editingId ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-[#00e676]/10 border-[#00e676] text-green-700') : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                      className={`relative flex items-center justify-center gap-1.5 shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${isSelected ? (isEditing ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-[#00e676]/10 border-[#00e676] text-green-700 shadow-sm') : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300'}`}
                       data-tooltip-id="student-tooltip"
                       data-tooltip-content={s.name}
                     >
-                        {s.name}
+                        {isSelected && !isEditing && <Check size={12} strokeWidth={3} className="shrink-0" />}
+                        <span className="truncate max-w-[110px] sm:max-w-[140px]">{s.name}</span>
                     </button>
                   );
                 })}
+                {displayStudents.length === 0 && (
+                  <div className="w-full text-center text-xs text-gray-400 py-3 italic font-medium">Siswa tidak ditemukan.</div>
+                )}
             </div>
           </div>
 

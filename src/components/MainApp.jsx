@@ -842,7 +842,7 @@ const MainApp = ({ currentUser, onLogout }) => {
       setModalMode('full_bulk'); // UI will be bulk
 
       // Find the first student with last week's data as a template for bulk
-      for (const s of filteredStudents) {
+      for (const s of studentsInHalaqoh) {
         const lastData = findLastRecord(s);
         if (lastData) {
           initialDataForModal = lastData.record;
@@ -852,7 +852,7 @@ const MainApp = ({ currentUser, onLogout }) => {
       }
       if (Object.keys(initialDataForModal).length === 0) showToast("Tidak ditemukan data sebelumnya.");
       setEditingId(null); // No specific student is being edited, it's a bulk operation
-      setSelectedStudents(filteredStudents.map(s => s.id)); // Select all for bulk
+      setSelectedStudents(studentsInHalaqoh.map(s => s.id)); // Select all for bulk
 
     } else if (mode === 'prefill_last_week_single_student' && studentToProcess) {
       setModalMode('full_edit'); // UI will be single student edit
@@ -872,7 +872,7 @@ const MainApp = ({ currentUser, onLogout }) => {
       setSelectedStudents([studentToProcess.id]);
     } else { // Regular full_bulk (empty)
       setEditingId(null);
-      setSelectedStudents(filteredStudents.map(s => s.id)); // Default to all selected for empty bulk
+      setSelectedStudents(studentsInHalaqoh.map(s => s.id)); // Default to all selected for empty bulk
     }
 
     if (Object.keys(initialDataForModal).length > 0 || studentToProcess || mode === 'full_bulk') { // Only open if there's data or it's a new bulk
@@ -918,7 +918,7 @@ const MainApp = ({ currentUser, onLogout }) => {
   };
 
   const handleCloseModal = () => { setIsModalOpen(false); setEditingId(null); setActiveDropdown(null); setModalMode('full_bulk'); };
-  const toggleStudent = (id) => { if (id === 'ALL') { setSelectedStudents(filteredStudents.length === selectedStudents.length ? [] : filteredStudents.map(s => s.id)) } else { setSelectedStudents(prev => prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]); } };
+  const toggleStudent = (id) => { if (id === 'ALL') { setSelectedStudents(studentsInHalaqoh.length === selectedStudents.length ? [] : studentsInHalaqoh.map(s => s.id)) } else { setSelectedStudents(prev => prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]); } };
 
   const handlePlanChange = (id, field, value) => { setLessonPlans(plans => plans.map(p => { if (p.id === id) { let u = { ...p, [field]: value }; if (field === 'tahsinKategori') { u.tahsinHalaman = []; u.tahsinBaris = []; u.tahsinMateri = []; u.tahsinSuratList = [emptySurat()]; } return u; } return p; })); };
   const handleToggleArray = (planId, field, value) => { setLessonPlans(plans => plans.map(p => { if (p.id === planId) { const arr = p[field] || []; let newArr = arr.includes(value) ? arr.filter(x => x !== value) : [...arr, value]; if (field === 'tahsinBaris' || field === 'tahsinHalaman') newArr.sort((a, b) => Number(a) - Number(b)); return { ...p, [field]: newArr }; } return p; })); };
@@ -1302,7 +1302,7 @@ const MainApp = ({ currentUser, onLogout }) => {
 
           {/* MODAL JURNAL */}
           <JurnalModal
-            isOpen={isModalOpen} onClose={handleCloseModal} modalMode={modalMode} getModalTitle={getModalTitle} lessonPlans={lessonPlans} handlePlanChange={handlePlanChange} handleToggleArray={handleToggleArray} handleAddSurat={handleAddSurat} handleRemoveSurat={handleRemoveSurat} handleSuratChange={handleSuratChange} activeDropdown={activeDropdown} setActiveDropdown={setActiveDropdown} tahsinCategories={tahsinCategories} ghoribList={ghoribList} tajwidList={tajwidList} surahList={surahList} homeTab={homeTab} handleSave={handleSave} editingId={editingId} selectedStudents={selectedStudents} filteredStudents={filteredStudents} toggleStudent={toggleStudent}
+            isOpen={isModalOpen} onClose={handleCloseModal} modalMode={modalMode} getModalTitle={getModalTitle} lessonPlans={lessonPlans} handlePlanChange={handlePlanChange} handleToggleArray={handleToggleArray} handleAddSurat={handleAddSurat} handleRemoveSurat={handleRemoveSurat} handleSuratChange={handleSuratChange} activeDropdown={activeDropdown} setActiveDropdown={setActiveDropdown} tahsinCategories={tahsinCategories} ghoribList={ghoribList} tajwidList={tajwidList} surahList={surahList} homeTab={homeTab} handleSave={handleSave} editingId={editingId} selectedStudents={selectedStudents} filteredStudents={studentsInHalaqoh} toggleStudent={toggleStudent}
           />
 
           {/* MODAL CROP GAMBAR */}
