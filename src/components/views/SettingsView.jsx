@@ -7,7 +7,7 @@ import {
 
 const SettingsView = ({ 
   isSuperAdmin, appUsers, handleApproveUser, handleRejectUser, handleUpdateUserAccount,
-  institutionLogo, handleInstitutionLogoUpload, setInstitutionLogo, updateMasterDataCloud, showToast,
+  institutionName, setInstitutionName, institutionLogo, handleInstitutionLogoUpload, setInstitutionLogo, updateMasterDataCloud, showToast,
   kelasList, newKelasName, setNewKelasName, handleAddKelas, handleDeleteKelas,
   newGuruName, setNewGuruName, handleAddGuru, guruList, 
   selectedGuruForHalaqoh, setSelectedGuruForHalaqoh, newHalaqohName, setNewHalaqohName, handleAddHalaqoh,
@@ -124,25 +124,41 @@ const SettingsView = ({
                   <div className="w-2 h-6 bg-blue-500 rounded-full"></div>
                   <h2 className="text-sm font-black text-slate-400 uppercase tracking-[0.2em]">Identitas Laporan</h2>
                 </div>
-                <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-6 flex flex-col sm:flex-row items-center gap-6">
-                  <div className="w-32 h-32 bg-slate-50 border-2 border-dashed border-slate-200 rounded-[2rem] flex items-center justify-center relative group overflow-hidden shrink-0">
-                    {institutionLogo && institutionLogo !== 'logo.png' ? (
-                      <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain p-4 transition-transform group-hover:scale-90" />
-                    ) : (
-                      <ImageIcon size={32} className="text-slate-300" />
-                    )}
-                    <label className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white cursor-pointer text-center p-2">
-                      <Camera size={20} className="mb-1" />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Ganti Logo</span>
-                      <input type="file" accept="image/*" className="hidden" onChange={handleInstitutionLogoUpload} /> 
-                    </label>
+                <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-6 space-y-6">
+                  {/* Logo Part */}
+                  <div className="flex flex-col sm:flex-row items-center gap-6">
+                    <div className="w-32 h-32 bg-slate-50 border-2 border-dashed border-slate-200 rounded-[2rem] flex items-center justify-center relative group overflow-hidden shrink-0">
+                      {institutionLogo && institutionLogo !== 'logo.png' ? (
+                        <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain p-4 transition-transform group-hover:scale-90" />
+                      ) : (
+                        <ImageIcon size={32} className="text-slate-300" />
+                      )}
+                      <label className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white cursor-pointer text-center p-2">
+                        <Camera size={20} className="mb-1" />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Ganti Logo</span>
+                        <input type="file" accept="image/*" className="hidden" onChange={handleInstitutionLogoUpload} /> 
+                      </label>
+                    </div>
+                    <div className="flex-1 text-center sm:text-left">
+                      <h3 className="font-black text-lg mb-1">Logo Lembaga</h3>
+                      <p className="text-xs text-slate-500 font-medium leading-relaxed mb-4">Gunakan logo transparan (PNG) untuk hasil cetak laporan yang maksimal.</p>
+                      {institutionLogo !== 'logo.png' && (
+                        <button onClick={() => { setInstitutionLogo('logo.png'); updateMasterDataCloud({ institutionLogo: 'logo.png' }); showToast('Logo direset.'); }} className="text-[10px] font-black text-red-500 uppercase tracking-widest hover:text-red-700 transition-colors">Reset ke Default</button>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex-1 text-center sm:text-left">
-                    <h3 className="font-black text-lg mb-1">Logo Lembaga</h3>
-                    <p className="text-xs text-slate-500 font-medium leading-relaxed mb-4">Gunakan logo transparan (PNG) untuk hasil cetak laporan yang maksimal.</p>
-                    {institutionLogo !== 'logo.png' && (
-                      <button onClick={() => { setInstitutionLogo('logo.png'); updateMasterDataCloud({ institutionLogo: 'logo.png' }); showToast('Logo direset.'); }} className="text-[10px] font-black text-red-500 uppercase tracking-widest hover:text-red-700 transition-colors">Reset ke Default</button>
-                    )}
+                  {/* Institution Name Part */}
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Nama Lembaga</label>
+                    <div className="flex gap-2">
+                      <input 
+                        type="text" 
+                        value={institutionName} 
+                        onChange={e => setInstitutionName(e.target.value)} 
+                        className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
+                      />
+                      <button onClick={() => { updateMasterDataCloud({ institutionName }); showToast('Nama lembaga disimpan!'); }} className="bg-blue-500 hover:bg-blue-600 text-white p-3 rounded-2xl shadow-lg shadow-blue-100 transition-all"><Save size={20}/></button>
+                    </div>
                   </div>
                 </div>
               </section>
@@ -266,6 +282,9 @@ const SettingsView = ({
                   {/* List Content */}
                   <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[500px] overflow-y-auto custom-scrollbar">
                     {guruList.map(guru => {
+                      // Find the correct key in guruHalaqohData case-insensitively to display the halaqoh list correctly.
+                      const guruDataKey = Object.keys(guruHalaqohData).find(k => k.trim().toLowerCase() === guru.trim().toLowerCase());
+                      const halaqohsForGuru = guruDataKey ? guruHalaqohData[guruDataKey] : [];
                       const linkedUser = appUsers.find(u => u.name?.trim() === guru.trim());
                       return (
                         <div key={guru} className="bg-slate-50/50 border border-slate-100 rounded-3xl p-5 transition-all hover:bg-white hover:shadow-xl hover:shadow-slate-200/50 group/card">
@@ -291,15 +310,17 @@ const SettingsView = ({
                                   </h4>
                                   {linkedUser && <p className="text-[10px] font-bold text-indigo-400 ml-8">@{linkedUser.username}</p>}
                                 </div>
-                                <div className="flex gap-1 opacity-0 group-hover/card:opacity-100 transition-opacity">
-                                  <button onClick={() => setEditingGuru({oldName: guru, newName: guru})} className="p-1.5 text-slate-400 hover:text-indigo-600 transition-colors"><Edit3 size={14}/></button>
-                                  <button onClick={() => requestDeleteGuru(guru)} className="p-1.5 text-slate-400 hover:text-red-500 transition-colors"><Trash2 size={14}/></button>
-                                </div>
+                                {isSuperAdmin && (
+                                  <div className="flex gap-1 opacity-0 group-hover/card:opacity-100 transition-opacity">
+                                    <button onClick={() => setEditingGuru({oldName: guru, newName: guru})} className="p-1.5 text-slate-400 hover:text-indigo-600 transition-colors"><Edit3 size={14}/></button>
+                                    <button onClick={() => requestDeleteGuru(guru)} className="p-1.5 text-slate-400 hover:text-red-500 transition-colors"><Trash2 size={14}/></button>
+                                  </div>
+                                )}
                               </>
                             )}
                           </div>
                           <div className="flex flex-wrap gap-2">
-                            {(guruHalaqohData[guru] || []).map(halaqoh => (
+                            {(halaqohsForGuru || []).map(halaqoh => (
                               <React.Fragment key={halaqoh}>
                                 {editingHalaqoh?.oldName === halaqoh && editingHalaqoh?.guruName === guru ? (
                                   <div className="bg-indigo-50 border border-indigo-200 p-1 rounded-xl flex items-center gap-1 shadow-sm animate-in zoom-in-95 duration-200">
@@ -317,14 +338,16 @@ const SettingsView = ({
                                   <div className="bg-white border border-slate-200 pl-3 pr-1.5 py-1.5 rounded-xl text-[11px] font-bold text-slate-600 flex items-center gap-2 transition-all hover:border-emerald-300 hover:text-emerald-700">
                                     <span>{halaqoh}</span>
                                     <div className="flex items-center gap-0.5 border-l border-slate-100 pl-1.5 ml-0.5">
-                                      <button onClick={() => setEditingHalaqoh({guruName: guru, oldName: halaqoh, newName: halaqoh})} className="p-1 text-slate-300 hover:text-blue-500 transition-colors"><Edit3 size={10}/></button>
+                                      {isSuperAdmin && (
+                                        <button onClick={() => setEditingHalaqoh({guruName: guru, oldName: halaqoh, newName: halaqoh})} className="p-1 text-slate-300 hover:text-blue-500 transition-colors"><Edit3 size={10}/></button>
+                                      )}
                                       <button onClick={() => requestDeleteHalaqoh(guru, halaqoh)} className="p-1 text-slate-300 hover:text-red-500 transition-colors"><X size={10}/></button>
                                     </div>
                                   </div>
                                 )}
                               </React.Fragment>
                             ))} 
-                            {(!guruHalaqohData[guru] || guruHalaqohData[guru].length === 0) && <p className="text-[10px] text-slate-300 italic font-bold">Belum ada kelompok.</p>}
+                            {(!halaqohsForGuru || halaqohsForGuru.length === 0) && <p className="text-[10px] text-slate-300 italic font-bold">Belum ada kelompok.</p>}
                           </div>
                         </div>
                       );

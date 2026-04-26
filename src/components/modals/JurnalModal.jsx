@@ -1,5 +1,7 @@
 import React from 'react';
 import { X, BookOpen, Mic, Repeat, FileText, Plus, ChevronDown, History } from 'lucide-react';
+import SurahSelector from '../views/SurahSelector';
+import { Tooltip } from 'react-tooltip';
 
 export const JurnalModal = ({
   isOpen, onClose, modalMode, getModalTitle, lessonPlans, handlePlanChange,
@@ -14,6 +16,7 @@ export const JurnalModal = ({
 
   return (
     <div className="fixed inset-0 z-[500] print-hidden flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity">
+      <Tooltip id="student-tooltip" place="top" style={{ fontSize: '12px', padding: '4px 10px', borderRadius: '8px' }} />
       <div className="bg-gray-50 w-full sm:max-w-2xl rounded-t-[24px] sm:rounded-3xl shadow-2xl h-[90vh] sm:h-auto sm:max-h-[90vh] flex flex-col overflow-hidden animate-[slideUp_0.3s_ease-out] sm:animate-in sm:zoom-in-95">
         
         {/* Header Modal */}
@@ -35,11 +38,27 @@ export const JurnalModal = ({
                 </button>
             </div>
             <div className="flex overflow-x-auto gap-2 pb-1 custom-scrollbar">
-                {filteredStudents.map(s => (
-                  <button key={s.id} onClick={() => toggleStudent(s.id)} className={`shrink-0 px-3 py-2 rounded-xl text-xs font-bold border transition-all ${selectedStudents.includes(s.id) ? (s.id === editingId ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-[#00e676]/10 border-[#00e676] text-green-700') : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
-                      {s.name.split(' ')[0]}
-                  </button>
-                ))}
+                {filteredStudents.map(s => {
+                  const nameLength = s.name.length;
+                  let fontSizeClass = 'text-xs'; // Ukuran font default
+                  if (nameLength > 22) {
+                    fontSizeClass = 'text-[9px] leading-tight'; // Ukuran sangat kecil untuk nama yang sangat panjang
+                  } else if (nameLength > 15) {
+                    fontSizeClass = 'text-[10px] leading-tight'; // Ukuran kecil untuk nama panjang
+                  }
+
+                  return (
+                    <button 
+                      key={s.id} 
+                      onClick={() => toggleStudent(s.id)} 
+                      className={`shrink-0 px-4 py-2 rounded-xl font-bold border transition-all whitespace-nowrap ${fontSizeClass} ${selectedStudents.includes(s.id) ? (s.id === editingId ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-[#00e676]/10 border-[#00e676] text-green-700') : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                      data-tooltip-id="student-tooltip"
+                      data-tooltip-content={s.name}
+                    >
+                        {s.name}
+                    </button>
+                  );
+                })}
             </div>
           </div>
 
@@ -137,10 +156,12 @@ export const JurnalModal = ({
                               
                               {plan.tahsinSuratList.map((item, idx) => (
                                 <div key={item.id} className="bg-blue-50/50 border border-blue-100 p-3 rounded-2xl flex flex-col gap-3 relative">
-                                    <select value={item.surat} onChange={e => handleSuratChange(plan.id, 'tahsinSuratList', item.id, 'surat', e.target.value)} className="w-full bg-white border border-blue-200 rounded-xl px-3 py-2.5 text-sm font-bold text-gray-800 outline-none focus:ring-2 focus:ring-blue-500">
-                                      <option value="">Pilih Surat...</option>
-                                      {surahList.map(s => <option key={s.no} value={s.no + '. ' + s.name}>{s.no}. {s.name}</option>)}
-                                    </select>
+                                    <SurahSelector
+                                      value={item.surat}
+                                      onChange={value => handleSuratChange(plan.id, 'tahsinSuratList', item.id, 'surat', value)}
+                                      surahList={surahList}
+                                      className="w-full bg-white border border-blue-200 rounded-xl px-3 py-2.5 text-sm font-bold text-gray-800 outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
                                     
                                     <div className="flex flex-col sm:flex-row items-center gap-2">
                                       <div className="flex items-center gap-2 flex-1 w-full">
@@ -192,10 +213,12 @@ export const JurnalModal = ({
                     <div className="flex flex-col gap-3">
                         {plan.tahfidzSuratList.map((item, idx) => (
                           <div key={item.id} className="bg-purple-50/50 border border-purple-100 p-3 rounded-2xl flex flex-col gap-3 relative">
-                              <select value={item.surat} onChange={e => handleSuratChange(plan.id, 'tahfidzSuratList', item.id, 'surat', e.target.value)} className="w-full bg-white border border-purple-200 rounded-xl px-3 py-2.5 text-sm font-bold text-gray-800 outline-none focus:ring-2 focus:ring-purple-500">
-                                <option value="">Pilih Surat...</option>
-                                {surahList.map(s => <option key={s.no} value={s.no + '. ' + s.name}>{s.no}. {s.name}</option>)}
-                              </select>
+                              <SurahSelector
+                                value={item.surat}
+                                onChange={value => handleSuratChange(plan.id, 'tahfidzSuratList', item.id, 'surat', value)}
+                                surahList={surahList}
+                                className="w-full bg-white border border-purple-200 rounded-xl px-3 py-2.5 text-sm font-bold text-gray-800 outline-none focus:ring-2 focus:ring-purple-500"
+                              />
                               <div className="flex flex-col sm:flex-row items-center gap-2">
                                 <div className="flex items-center gap-2 flex-1 w-full">
                                     <select value={item.ayatStart} onChange={e => handleSuratChange(plan.id, 'tahfidzSuratList', item.id, 'ayatStart', e.target.value)} disabled={!item.surat} className="flex-1 bg-white border border-purple-200 rounded-xl px-2 py-2.5 text-sm font-bold text-gray-800 disabled:bg-gray-100 disabled:border-gray-200 outline-none focus:ring-2 focus:ring-purple-500">
@@ -241,10 +264,12 @@ export const JurnalModal = ({
                     <div className="flex flex-col gap-3">
                         {plan.murojaah.map((item, idx) => (
                           <div key={item.id} className="bg-emerald-50/50 border border-emerald-100 p-3 rounded-2xl flex flex-col gap-3 relative">
-                              <select value={item.surat} onChange={e => handleSuratChange(plan.id, 'murojaah', item.id, 'surat', e.target.value)} className="w-full bg-white border border-emerald-200 rounded-xl px-3 py-2.5 text-sm font-bold text-gray-800 outline-none focus:ring-2 focus:ring-emerald-500">
-                                <option value="">Pilih Surat...</option>
-                                {surahList.map(s => <option key={s.no} value={s.no + '. ' + s.name}>{s.no}. {s.name}</option>)}
-                              </select>
+                              <SurahSelector
+                                value={item.surat}
+                                onChange={value => handleSuratChange(plan.id, 'murojaah', item.id, 'surat', value)}
+                                surahList={surahList}
+                                className="w-full bg-white border border-emerald-200 rounded-xl px-3 py-2.5 text-sm font-bold text-gray-800 outline-none focus:ring-2 focus:ring-emerald-500"
+                              />
                               <div className="flex items-center gap-2">
                                 <select value={item.ayatStart} onChange={e => handleSuratChange(plan.id, 'murojaah', item.id, 'ayatStart', e.target.value)} disabled={!item.surat} className="flex-1 bg-white border border-emerald-200 rounded-xl px-2 py-2.5 text-sm font-bold text-gray-800 disabled:bg-gray-100 disabled:border-gray-200 outline-none focus:ring-2 focus:ring-emerald-500">
                                     <option value="">Awal</option>

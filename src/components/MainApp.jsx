@@ -659,54 +659,55 @@ const MainApp = ({ currentUser, onLogout }) => {
   return (
     <div className="h-screen h-[100dvh] bg-slate-50 text-gray-800 font-sans flex flex-col overflow-hidden transition-all duration-500">
       {/* Header */}
-      <header className="bg-white border-gray-100 shrink-0 z-[60] w-full shadow-sm print:hidden border-b sticky top-0 transition-all duration-500">
+      <header className="bg-white border-b border-gray-100 shrink-0 z-[60] w-full shadow-sm print:hidden sticky top-0 transition-all duration-500">
         <div className="max-w-7xl mx-auto px-3 md:px-6 h-14 sm:h-28 flex items-center justify-between">
-          <div className="flex items-center gap-1.5 font-bold text-xl sm:text-3xl text-green-600">
-            <div className="w-8 h-8 sm:w-24 sm:h-24 flex items-center justify-center shrink-0 transition-transform hover:scale-105">
-              <div className="flex items-center gap-1.5 sm:gap-4 font-bold text-xl sm:text-3xl text-green-600">
-                <div className="w-10 h-10 sm:w-16 sm:h-16 flex items-center justify-center shrink-0 transition-transform hover:scale-105">
-                  {institutionLogo && institutionLogo !== 'logo.png' ? (
-                    <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain" />
-                  ) : (
-                <BookOpen className="w-6 h-6 sm:w-14 sm:h-14 text-[#0f4c5c]" />
+          {/* Left: Logo & Title */}
+          <div className="flex items-center gap-1.5 sm:gap-4">
+            <div className="w-10 h-10 sm:w-16 sm:h-16 flex items-center justify-center shrink-0 transition-transform hover:scale-105">
+              {institutionLogo && institutionLogo !== 'logo.png' ? (
+                <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain" />
+              ) : (
                 <BookOpen className="w-8 h-8 sm:w-12 sm:h-12 text-[#0f4c5c]" />
-                  )}
-                </div>
-                <div className="flex flex-col items-start">
-                  <span className="font-arabic tracking-tight leading-tight transition-all">MyQuranPlan</span>
-                  <div className="h-0.5 w-full bg-gradient-to-r from-transparent via-amber-500 to-transparent opacity-80 -mt-1 sm:-mt-2"></div>
-                  <span className="font-extrabold tracking-tight leading-tight transition-all text-slate-800 text-base sm:text-xl">{institutionName}</span>
-                  <span className="font-arabic text-green-600 text-sm sm:text-base -mt-1">MyQuranPlan</span>
-                </div>
-              </div>
-              <nav className="hidden md:flex items-center gap-6 font-bold text-sm text-gray-500">
-                <button onClick={() => setCurrentView('home')} className={`relative pb-1 group transition-colors ${currentView === 'home' ? 'text-green-600' : 'hover:text-green-600'}`}>
-                  Beranda
-                  <span className={`absolute bottom-0 left-0 h-0.5 transition-all duration-300 ${currentView === 'home' ? 'w-full' : 'w-0 group-hover:w-full'} bg-green-600`}></span>
-                </button>
-                <button onClick={() => setCurrentView('siswa')} className={`relative pb-1 group transition-colors ${currentView === 'siswa' ? 'text-green-600' : 'hover:text-green-600'}`}>
-                  Data Siswa
-                  <span className={`absolute bottom-0 left-0 h-0.5 bg-green-600 transition-all duration-300 ${currentView === 'siswa' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
-                </button>
-                <button onClick={() => setCurrentView('laporan')} className={`relative pb-1 group transition-colors ${currentView === 'laporan' ? 'text-green-600' : 'hover:text-green-600'}`}>
-                  Laporan
-                  <span className={`absolute bottom-0 left-0 h-0.5 bg-green-600 transition-all duration-300 ${currentView === 'laporan' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
-                </button>
-                <button onClick={() => setCurrentView('pengaturan')} className={`relative pb-1 group transition-colors ${currentView === 'pengaturan' ? 'text-green-600' : 'hover:text-green-600'}`}>
-                  Pengaturan
-                  <span className={`absolute bottom-0 left-0 h-0.5 bg-green-600 transition-all duration-300 ${currentView === 'pengaturan' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
-                </button>
-              </nav>
-              <div className="flex items-center gap-3">
-                <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-xl border">
-                  <User size={14} className="text-gray-400" />
-                  <span className="text-xs font-bold text-gray-600">{currentUser.name}</span>
-                </div>
-                <button onClick={onLogout} className="p-2 text-gray-400 hover:text-red-500 bg-gray-50 rounded-xl hidden md:block"><LogOut size={18} /></button>
-                <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 text-gray-600 bg-gray-50 rounded-lg"><Menu size={18} /></button>
-              </div>
+              )}
             </div>
-          </header>
+            <div className="flex flex-col items-start">
+              <span className="font-arabic tracking-tight leading-tight transition-all text-xl sm:text-3xl text-green-600">MyQuranPlan</span>
+              <div className="h-0.5 w-full bg-gradient-to-r from-transparent via-amber-500 to-transparent opacity-80 -mt-1 sm:-mt-2"></div>
+              <span className="font-extrabold tracking-tight leading-tight transition-all text-slate-800 text-base sm:text-xl">{institutionName}</span>
+            </div>
+          </div>
+
+          {/* Center: Nav */}
+          <nav className="hidden md:flex items-center gap-6 font-bold text-sm text-gray-500">
+            <button onClick={() => setCurrentView('home')} className={`relative pb-1 group transition-colors ${currentView === 'home' ? 'text-green-600' : 'hover:text-green-600'}`}>
+              Beranda
+              <span className={`absolute bottom-0 left-0 h-0.5 transition-all duration-300 ${currentView === 'home' ? 'w-full' : 'w-0 group-hover:w-full'} bg-green-600`}></span>
+            </button>
+            <button onClick={() => setCurrentView('siswa')} className={`relative pb-1 group transition-colors ${currentView === 'siswa' ? 'text-green-600' : 'hover:text-green-600'}`}>
+              Data Siswa
+              <span className={`absolute bottom-0 left-0 h-0.5 bg-green-600 transition-all duration-300 ${currentView === 'siswa' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
+            </button>
+            <button onClick={() => setCurrentView('laporan')} className={`relative pb-1 group transition-colors ${currentView === 'laporan' ? 'text-green-600' : 'hover:text-green-600'}`}>
+              Laporan
+              <span className={`absolute bottom-0 left-0 h-0.5 bg-green-600 transition-all duration-300 ${currentView === 'laporan' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
+            </button>
+            <button onClick={() => setCurrentView('pengaturan')} className={`relative pb-1 group transition-colors ${currentView === 'pengaturan' ? 'text-green-600' : 'hover:text-green-600'}`}>
+              Pengaturan
+              <span className={`absolute bottom-0 left-0 h-0.5 bg-green-600 transition-all duration-300 ${currentView === 'pengaturan' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
+            </button>
+          </nav>
+
+          {/* Right: User actions */}
+          <div className="flex items-center gap-3">
+            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-xl border">
+              <User size={14} className="text-gray-400" />
+              <span className="text-xs font-bold text-gray-600">{currentUser.name}</span>
+            </div>
+            <button onClick={onLogout} className="p-2 text-gray-400 hover:text-red-500 bg-gray-50 rounded-xl hidden md:block"><LogOut size={18} /></button>
+            <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 text-gray-600 bg-gray-50 rounded-lg"><Menu size={18} /></button>
+          </div>
+        </div>
+      </header>
 
           {/* MOBILE MENU OVERLAY (Drawer untuk HP) */}
           {mobileMenuOpen && (
@@ -817,15 +818,14 @@ const MainApp = ({ currentUser, onLogout }) => {
               <SettingsView
                 isSuperAdmin={isSuperAdmin} appUsers={appUsers}
                 handleApproveUser={handleApproveUser} handleRejectUser={handleRejectUser} handleUpdateUserAccount={handleUpdateUserAccount}
-                institutionLogo={institutionLogo} handleInstitutionLogoUpload={handleInstitutionLogoUpload} setInstitutionLogo={setInstitutionLogo} updateMasterDataCloud={updateMasterDataCloud} showToast={showToast}
-                institutionName={institutionName} institutionLogo={institutionLogo} handleInstitutionLogoUpload={handleInstitutionLogoUpload} setInstitutionName={setInstitutionName} updateMasterDataCloud={updateMasterDataCloud} showToast={showToast}
+                institutionName={institutionName} setInstitutionName={setInstitutionName} institutionLogo={institutionLogo} handleInstitutionLogoUpload={handleInstitutionLogoUpload} setInstitutionLogo={setInstitutionLogo} updateMasterDataCloud={updateMasterDataCloud} showToast={showToast}
                 kelasList={kelasList} newKelasName={newKelasName} setNewKelasName={setNewKelasName} handleAddKelas={handleAddKelas} handleDeleteKelas={handleDeleteKelas}
                 newGuruName={newGuruName} setNewGuruName={setNewGuruName} handleAddGuru={handleAddGuru} guruList={isSuperAdmin ? guruList : [currentUser.name]}
                 selectedGuruForHalaqoh={selectedGuruForHalaqoh} setSelectedGuruForHalaqoh={setSelectedGuruForHalaqoh} newHalaqohName={newHalaqohName} setNewHalaqohName={setNewHalaqohName} handleAddHalaqoh={handleAddHalaqoh}
                 currentUser={currentUser} guruHalaqohData={guruHalaqohData} editingGuru={editingGuru} setEditingGuru={setEditingGuru} handleSaveEditGuru={handleSaveEditGuru} requestDeleteGuru={requestDeleteGuru}
                 editingHalaqoh={editingHalaqoh} setEditingHalaqoh={setEditingHalaqoh} handleSaveEditHalaqoh={handleSaveEditHalaqoh} requestDeleteHalaqoh={requestDeleteHalaqoh}
                 students={students} openEditStudentModal={(s) => { setEditStudentData({ id: s.id, name: s.name, kelas: s.kelas, halaqoh: s.halaqoh, photo: s.photo || null }); setIsEditStudentModalOpen(true); }}
-                requestDeleteStudent={requestDeleteStudent} handleBulkSaveStudents={handleBulkSaveStudents}
+                requestDeleteStudent={requestDeleteStudent} handleBulkSaveStudents={handleBulkSaveStudents} onLogout={onLogout}
               />
             )}
           </main>
