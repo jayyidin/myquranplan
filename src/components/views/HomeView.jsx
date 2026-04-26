@@ -343,8 +343,13 @@ const HomeView = ({
     try { return `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`; } catch (e) { return ''; }
   };
 
-  // Kunci data untuk Kartu Laporan selalu menggunakan Target (Lesson Plan)
-  const k = { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan' };
+  // Kunci data dinamis berdasarkan tab yang aktif (Target vs Capaian)
+  const k = homeTab === 'lesson_plan'
+    ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan' }
+    : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan' };
+
+  // Kunci data untuk Kartu Laporan (Share) selalu menggunakan data Target (Lesson Plan)
+  const k_share = { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan' };
 
   const getDateStatus = (dateStr) => {
     if (filteredStudents.length === 0) return { status: 'none', count: 0 };
@@ -686,10 +691,10 @@ const HomeView = ({
                 const displayDate = `${dateObj.getDate()} ${['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'][dateObj.getMonth()]} ${dateObj.getFullYear()}`;
 
                 const rec = shareStudent?.records?.[dateStr] || {};
-                const valM = formatPrintData(rec?.[k.m], '-', null, null);
-                const valT = formatPrintData(rec?.[k.t], rec?.[k.h], rec?.[k.tNilai], rec?.[k.tsNilai]);
-                const valF = formatPrintData(rec?.[k.f], rec?.[k.af], null, rec?.[k.fNilai]);
-                const valC = rec?.[k.c] && rec?.[k.c] !== '-' ? String(rec[k.c]) : '-';
+                const valM = formatPrintData(rec?.[k_share.m], '-', null, null);
+                const valT = formatPrintData(rec?.[k_share.t], rec?.[k_share.h], rec?.[k_share.tNilai], rec?.[k_share.tsNilai]);
+                const valF = formatPrintData(rec?.[k_share.f], rec?.[k_share.af], null, rec?.[k_share.fNilai]);
+                const valC = rec?.[k_share.c] && rec?.[k_share.c] !== '-' ? String(rec[k_share.c]) : '-';
 
                 return (
                   <div key={dateStr} className="bg-white border border-gray-100 rounded-[24px] p-5 shadow-[0_2px_10px_rgba(0,0,0,0.02)] print:break-inside-avoid">

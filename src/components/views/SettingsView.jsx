@@ -1,13 +1,13 @@
 // File: src/components/views/SettingsView.jsx
 import React, { useState } from 'react';
 import { 
-  UserCheck, CheckCircle2, X, ImageIcon, Camera, 
+  UserCheck, CheckCircle2, X, ImageIcon, Camera,
   GraduationCap, Plus, User, Edit3, Trash2, Save, Users, Search, ShieldCheck, Database, LayoutGrid, LogOut
 } from 'lucide-react';
 
 const SettingsView = ({ 
   isSuperAdmin, appUsers, handleApproveUser, handleRejectUser, handleUpdateUserAccount,
-  institutionName, setInstitutionName, institutionLogo, handleInstitutionLogoUpload, setInstitutionLogo, updateMasterDataCloud, showToast,
+  institutionName, setInstitutionName, institutionLogo, handleInstitutionLogoUpload, setInstitutionLogo, updateMasterDataCloud, showToast, isUploadingLogo, logoUploadProgress,
   kelasList, newKelasName, setNewKelasName, handleAddKelas, handleDeleteKelas,
   newGuruName, setNewGuruName, handleAddGuru, guruList, 
   selectedGuruForHalaqoh, setSelectedGuruForHalaqoh, newHalaqohName, setNewHalaqohName, handleAddHalaqoh,
@@ -128,16 +128,28 @@ const SettingsView = ({
                   {/* Logo Part */}
                   <div className="flex flex-col sm:flex-row items-center gap-6">
                     <div className="w-32 h-32 bg-slate-50 border-2 border-dashed border-slate-200 rounded-[2rem] flex items-center justify-center relative group overflow-hidden shrink-0">
-                      {institutionLogo && institutionLogo !== 'logo.png' ? (
+                      {isUploadingLogo ? (
+                        <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm flex flex-col items-center justify-center text-white cursor-wait p-4">
+                          <div className="w-full bg-white/20 rounded-full h-2 mb-2">
+                            <div 
+                              className="bg-white h-2 rounded-full transition-all duration-300" 
+                              style={{ width: `${logoUploadProgress}%` }}
+                            ></div>
+                          </div>
+                          <span className="text-xs font-black uppercase tracking-widest">{Math.round(logoUploadProgress)}%</span>
+                        </div>
+                      ) : institutionLogo && institutionLogo !== 'logo.png' ? (
                         <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain p-4 transition-transform group-hover:scale-90" />
                       ) : (
                         <ImageIcon size={32} className="text-slate-300" />
                       )}
-                      <label className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white cursor-pointer text-center p-2">
-                        <Camera size={20} className="mb-1" />
-                        <span className="text-[10px] font-black uppercase tracking-widest">Ganti Logo</span>
-                        <input type="file" accept="image/*" className="hidden" onChange={handleInstitutionLogoUpload} /> 
-                      </label>
+                      {!isUploadingLogo && (
+                        <label className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white cursor-pointer text-center p-2">
+                          <Camera size={20} className="mb-1" />
+                          <span className="text-[10px] font-black uppercase tracking-widest">Ganti Logo</span>
+                          <input type="file" accept="image/*" className="hidden" onChange={handleInstitutionLogoUpload} /> 
+                        </label>
+                      )}
                     </div>
                     <div className="flex-1 text-center sm:text-left">
                       <h3 className="font-black text-lg mb-1">Logo Lembaga</h3>

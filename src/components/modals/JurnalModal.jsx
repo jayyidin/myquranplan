@@ -1,13 +1,14 @@
 import React from 'react';
-import { X, BookOpen, Mic, Repeat, FileText, Plus, ChevronDown, History } from 'lucide-react';
-import SurahSelector from '../views/SurahSelector';
+import { X, BookOpen, Mic, Repeat, FileText, Plus, ChevronDown } from 'lucide-react';
+import SurahSelector from '../SurahSelector';
+import AyatSelector from '../AyatSelector';
 import { Tooltip } from 'react-tooltip';
 
 export const JurnalModal = ({
   isOpen, onClose, modalMode, getModalTitle, lessonPlans, handlePlanChange,
   handleToggleArray, handleAddSurat, handleRemoveSurat, handleSuratChange,
-  activeDropdown, setActiveDropdown, tahsinCategories, ghoribList, tajwidList,
-  surahList, getAyatOptions, homeTab, handleSave, editingId, selectedStudents,
+  activeDropdown, setActiveDropdown, tahsinCategories, ghoribList, tajwidList, surahList,
+  homeTab, handleSave, editingId, selectedStudents,
   filteredStudents, toggleStudent
 }) => {
   if (!isOpen) return null;
@@ -165,15 +166,27 @@ export const JurnalModal = ({
                                     
                                     <div className="flex flex-col sm:flex-row items-center gap-2">
                                       <div className="flex items-center gap-2 flex-1 w-full">
-                                          <select value={item.ayatStart} onChange={e => handleSuratChange(plan.id, 'tahsinSuratList', item.id, 'ayatStart', e.target.value)} disabled={!item.surat} className="flex-1 bg-white border border-blue-200 rounded-xl px-2 py-2.5 text-sm font-bold text-gray-800 disabled:bg-gray-100 disabled:border-gray-200 outline-none focus:ring-2 focus:ring-blue-500">
-                                            <option value="">Awal</option>
-                                            {getAyatOptions(item.surat).map(a => <option key={a} value={a}>{a}</option>)}
-                                          </select>
+                                          <AyatSelector
+                                            surahName={item.surat}
+                                            surahList={surahList}
+                                            value={item.ayatStart}
+                                            onChange={value => handleSuratChange(plan.id, 'tahsinSuratList', item.id, 'ayatStart', value)}
+                                            maxAyat={item.ayatEnd}
+                                            placeholder="Awal"
+                                            className="w-full bg-white border border-blue-200 rounded-xl px-3 py-2.5 text-sm font-bold text-gray-800 disabled:bg-gray-100 disabled:border-gray-200 outline-none focus:ring-2 focus:ring-blue-500"
+                                            disabled={!item.surat}
+                                          />
                                           <span className="text-gray-400 font-bold">-</span>
-                                          <select value={item.ayatEnd} onChange={e => handleSuratChange(plan.id, 'tahsinSuratList', item.id, 'ayatEnd', e.target.value)} disabled={!item.surat} className="flex-1 bg-white border border-blue-200 rounded-xl px-2 py-2.5 text-sm font-bold text-gray-800 disabled:bg-gray-100 disabled:border-gray-200 outline-none focus:ring-2 focus:ring-blue-500">
-                                            <option value="">Akhir</option>
-                                            {getAyatOptions(item.surat).map(a => <option key={a} value={a}>{a}</option>)}
-                                          </select>
+                                          <AyatSelector
+                                            surahName={item.surat}
+                                            surahList={surahList}
+                                            value={item.ayatEnd}
+                                            onChange={value => handleSuratChange(plan.id, 'tahsinSuratList', item.id, 'ayatEnd', value)}
+                                            minAyat={item.ayatStart}
+                                            placeholder="Akhir"
+                                            className="w-full bg-white border border-blue-200 rounded-xl px-3 py-2.5 text-sm font-bold text-gray-800 disabled:bg-gray-100 disabled:border-gray-200 outline-none focus:ring-2 focus:ring-blue-500"
+                                            disabled={!item.surat}
+                                          />
                                       </div>
                                       
                                       {/* Input Nilai Spesifik per Surat (Hanya Muncul di Tab Jurnal) */}
@@ -221,15 +234,27 @@ export const JurnalModal = ({
                               />
                               <div className="flex flex-col sm:flex-row items-center gap-2">
                                 <div className="flex items-center gap-2 flex-1 w-full">
-                                    <select value={item.ayatStart} onChange={e => handleSuratChange(plan.id, 'tahfidzSuratList', item.id, 'ayatStart', e.target.value)} disabled={!item.surat} className="flex-1 bg-white border border-purple-200 rounded-xl px-2 py-2.5 text-sm font-bold text-gray-800 disabled:bg-gray-100 disabled:border-gray-200 outline-none focus:ring-2 focus:ring-purple-500">
-                                      <option value="">Awal</option>
-                                      {getAyatOptions(item.surat).map(a => <option key={a} value={a}>{a}</option>)}
-                                    </select>
+                                    <AyatSelector
+                                      surahName={item.surat}
+                                      surahList={surahList}
+                                      value={item.ayatStart}
+                                      onChange={value => handleSuratChange(plan.id, 'tahfidzSuratList', item.id, 'ayatStart', value)}
+                                      maxAyat={item.ayatEnd}
+                                      placeholder="Awal"
+                                      className="w-full bg-white border border-purple-200 rounded-xl px-3 py-2.5 text-sm font-bold text-gray-800 disabled:bg-gray-100 disabled:border-gray-200 outline-none focus:ring-2 focus:ring-purple-500"
+                                      disabled={!item.surat}
+                                    />
                                     <span className="text-gray-400 font-bold">-</span>
-                                    <select value={item.ayatEnd} onChange={e => handleSuratChange(plan.id, 'tahfidzSuratList', item.id, 'ayatEnd', e.target.value)} disabled={!item.surat} className="flex-1 bg-white border border-purple-200 rounded-xl px-2 py-2.5 text-sm font-bold text-gray-800 disabled:bg-gray-100 disabled:border-gray-200 outline-none focus:ring-2 focus:ring-purple-500">
-                                      <option value="">Akhir</option>
-                                      {getAyatOptions(item.surat).map(a => <option key={a} value={a}>{a}</option>)}
-                                    </select>
+                                    <AyatSelector
+                                      surahName={item.surat}
+                                      surahList={surahList}
+                                      value={item.ayatEnd}
+                                      onChange={value => handleSuratChange(plan.id, 'tahfidzSuratList', item.id, 'ayatEnd', value)}
+                                      minAyat={item.ayatStart}
+                                      placeholder="Akhir"
+                                      className="w-full bg-white border border-purple-200 rounded-xl px-3 py-2.5 text-sm font-bold text-gray-800 disabled:bg-gray-100 disabled:border-gray-200 outline-none focus:ring-2 focus:ring-purple-500"
+                                      disabled={!item.surat}
+                                    />
                                 </div>
                                 
                                 {/* Pilihan Nilai Tahfidz */}
@@ -271,15 +296,27 @@ export const JurnalModal = ({
                                 className="w-full bg-white border border-emerald-200 rounded-xl px-3 py-2.5 text-sm font-bold text-gray-800 outline-none focus:ring-2 focus:ring-emerald-500"
                               />
                               <div className="flex items-center gap-2">
-                                <select value={item.ayatStart} onChange={e => handleSuratChange(plan.id, 'murojaah', item.id, 'ayatStart', e.target.value)} disabled={!item.surat} className="flex-1 bg-white border border-emerald-200 rounded-xl px-2 py-2.5 text-sm font-bold text-gray-800 disabled:bg-gray-100 disabled:border-gray-200 outline-none focus:ring-2 focus:ring-emerald-500">
-                                    <option value="">Awal</option>
-                                    {getAyatOptions(item.surat).map(a => <option key={a} value={a}>{a}</option>)}
-                                </select>
+                                <AyatSelector
+                                  surahName={item.surat}
+                                  surahList={surahList}
+                                  value={item.ayatStart}
+                                  onChange={value => handleSuratChange(plan.id, 'murojaah', item.id, 'ayatStart', value)}
+                                  maxAyat={item.ayatEnd}
+                                  placeholder="Awal"
+                                  className="w-full bg-white border border-emerald-200 rounded-xl px-3 py-2.5 text-sm font-bold text-gray-800 disabled:bg-gray-100 disabled:border-gray-200 outline-none focus:ring-2 focus:ring-emerald-500"
+                                  disabled={!item.surat}
+                                />
                                 <span className="text-gray-400 font-bold">-</span>
-                                <select value={item.ayatEnd} onChange={e => handleSuratChange(plan.id, 'murojaah', item.id, 'ayatEnd', e.target.value)} disabled={!item.surat} className="flex-1 bg-white border border-emerald-200 rounded-xl px-2 py-2.5 text-sm font-bold text-gray-800 disabled:bg-gray-100 disabled:border-gray-200 outline-none focus:ring-2 focus:ring-emerald-500">
-                                    <option value="">Akhir</option>
-                                    {getAyatOptions(item.surat).map(a => <option key={a} value={a}>{a}</option>)}
-                                </select>
+                                <AyatSelector
+                                  surahName={item.surat}
+                                  surahList={surahList}
+                                  value={item.ayatEnd}
+                                  onChange={value => handleSuratChange(plan.id, 'murojaah', item.id, 'ayatEnd', value)}
+                                  minAyat={item.ayatStart}
+                                  placeholder="Akhir"
+                                  className="w-full bg-white border border-emerald-200 rounded-xl px-3 py-2.5 text-sm font-bold text-gray-800 disabled:bg-gray-100 disabled:border-gray-200 outline-none focus:ring-2 focus:ring-emerald-500"
+                                  disabled={!item.surat}
+                                />
                               </div>
                               {idx > 0 && <button type="button" onClick={() => handleRemoveSurat(plan.id, 'murojaah', item.id)} className="absolute -top-2 -right-2 bg-red-100 text-red-500 rounded-full p-1.5 shadow-sm hover:bg-red-500 hover:text-white transition-colors"><X size={14} strokeWidth={3}/></button>}
                           </div>

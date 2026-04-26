@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { BookOpen, User, Menu, Home, Users, BarChart3, Settings, LogOut, Loader2, Edit3, Mic, Repeat, FileText, X } from 'lucide-react';
 import { collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc, addDoc } from 'firebase/firestore';
+import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import imageCompression from 'browser-image-compression';
+import { storage } from '../config/firebase';
 
 // Imports
 import { db, appId } from '../config/firebase';
@@ -16,10 +19,9 @@ import SettingsView from './views/SettingsView';
 // Modals
 import { AddStudentModal, EditStudentModal } from './modals/StudentModals';
 import { JurnalModal } from './modals/JurnalModal';
+import ImageCropModal from './modals/ImageCropModal';
 
 const MainApp = ({ currentUser, onLogout }) => {
-  if (!currentUser) return null;
-
   const isSuperAdmin = currentUser?.role === 'superadmin';
 
   // -- STATE UTAMA --
@@ -27,7 +29,7 @@ const MainApp = ({ currentUser, onLogout }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [currentView, setCurrentView] = useState('home');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [homeTab, setHomeTab] = useState('lesson_plan');
+  const [homeTab, setHomeTab] = useState('jurnal');
 
   const [guruHalaqohData, setGuruHalaqohData] = useState({});
   const guruList = Object.keys(guruHalaqohData);
@@ -41,8 +43,8 @@ const MainApp = ({ currentUser, onLogout }) => {
   const [students, setStudents] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const [weekStart, setWeekStart] = useState(getMonday(new Date()));
-  const [activeDate, setActiveDate] = useState(formatDateObj(getMonday(new Date())));
+  const [weekStart, setWeekStart] = useState(getMonday(new Date())); // Tetap mulai dari Senin
+  const [activeDate, setActiveDate] = useState(formatDateObj(new Date())); // Tapi tanggal aktif adalah hari ini
   const weekDates = Array.from({ length: 5 }).map((_, i) => { const d = new Date(weekStart); d.setDate(d.getDate() + i); return d; });
 
   const [toastMessage, setToastMessage] = useState(null);
@@ -72,6 +74,13 @@ const MainApp = ({ currentUser, onLogout }) => {
 
   const emptySurat = () => ({ id: Date.now() + Math.random(), surat: '', ayatStart: '', ayatEnd: '', nilai: '' });
   const [lessonPlans, setLessonPlans] = useState([{ id: 1, tanggal: '', murojaah: [emptySurat()], tahsinKategori: '', tahsinSuratList: [emptySurat()], tahsinHalaman: [], tahsinBaris: [], tahsinMateri: [], tahsinHalamanTg: [], tahfidzSuratList: [emptySurat()], lainLain: '', tahsinNilai: '' }]);
+
+  // -- STATE UNGGAH FOTO & CROP --
+  const [isCropModalOpen, setIsCropModalOpen] = useState(false);
+  const [imageToCrop, setImageToCrop] = useState(null);
+  const [studentIdForCrop, setStudentIdForCrop] = useState(null);
+  const [uploadingPhotoId, setUploadingPhotoId] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   // -- EFEK INIT --
   useEffect(() => {
@@ -148,7 +157,20 @@ const MainApp = ({ currentUser, onLogout }) => {
   // -- FUNGSI UTILITY --
   const showToast = (msg) => { setToastMessage(msg); setTimeout(() => setToastMessage(null), 4000); };
   const updateMasterDataCloud = async (updates) => { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'master'), updates); };
-  const changeWeek = (offset) => { const n = new Date(weekStart); n.setDate(n.getDate() + offset); setWeekStart(n); setActiveDate(formatDateObj(n)); };
+  const changeWeek = (offset) => {
+    const newWeekStart = new Date(weekStart);
+    newWeekStart.setDate(newWeekStart.getDate() + offset);
+    setWeekStart(newWeekStart);
+
+    const today = new Date();
+    const isCurrentWeek = getMonday(today).getTime() === getMonday(newWeekStart).getTime();
+
+    if (homeTab === 'jurnal' && isCurrentWeek) {
+      setActiveDate(formatDateObj(today));
+    } else {
+      setActiveDate(formatDateObj(newWeekStart));
+    }
+  };
   const getInitials = (name) => name ? name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase() : '';
 
   // Filter siswa yang sangat ketat: Jika bukan SuperAdmin, hanya tampilkan siswa yang ada di halaqoh guru tersebut
@@ -437,6 +459,73 @@ const MainApp = ({ currentUser, onLogout }) => {
     }
   };
 
+  // -- FUNGSI CROP & UPLOAD FOTO --
+  const openCropModal = (file, studentId) => {
+    if (file && studentId) {
+      setStudentIdForCrop(studentId);
+      const reader = new FileReader();
+      reader.addEventListener('load', () => setImageToCrop(reader.result?.toString() || ''));
+      reader.readAsDataURL(file);
+      setIsCropModalOpen(true);
+    }
+  };
+
+  const handleCroppedImage = (croppedImageBlob) => {
+    if (croppedImageBlob && studentIdForCrop) {
+      // Panggil fungsi unggah yang sudah ada dengan gambar hasil crop
+      handleUploadStudentPhoto(studentIdForCrop, croppedImageBlob);
+    }
+    // Reset state setelah memulai unggahan
+    setIsCropModalOpen(false);
+    setImageToCrop(null);
+    setStudentIdForCrop(null);
+  };
+
+  const handleUploadStudentPhoto = async (studentId, file) => {
+    if (!file || !studentId) return;
+
+    setUploadingPhotoId(studentId);
+    setUploadProgress(0);
+    showToast('Mempersiapkan foto...', 'loading');
+
+    const options = {
+      maxSizeMB: 0.5,
+      maxWidthOrHeight: 1024,
+      useWebWorker: true,
+    };
+
+    try {
+      const compressedFile = await imageCompression(file, options);
+      const storageRef = ref(storage, `student_photos/${studentId}/${Date.now()}_${compressedFile.name || 'photo.jpg'}`);
+      const uploadTask = uploadBytesResumable(storageRef, compressedFile);
+
+      uploadTask.on('state_changed',
+        (snapshot) => {
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          setUploadProgress(progress);
+        },
+        (error) => {
+          console.error("Gagal mengunggah foto profil:", error);
+          showToast('Gagal mengunggah foto.', 'error');
+          setUploadingPhotoId(null);
+          setUploadProgress(0);
+        },
+        () => {
+          getDownloadURL(uploadTask.snapshot.ref).then(async (downloadURL) => {
+            const studentDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', studentId);
+            await updateDoc(studentDocRef, { photo: downloadURL });
+            showToast('Foto profil berhasil diperbarui!', 'success');
+            setUploadingPhotoId(null);
+            setUploadProgress(0);
+          });
+        }
+      );
+    } catch (error) {
+      console.error("Gagal mengompres foto:", error);
+      showToast('Gagal memproses foto.', 'error');
+      setUploadingPhotoId(null);
+    }
+  };
   // Fungsi untuk memfilter daftar halaqoh berdasarkan role user
   function getFilteredHalaqohDataForEdit() {
     if (isSuperAdmin) return guruHalaqohData;
@@ -531,8 +620,19 @@ const MainApp = ({ currentUser, onLogout }) => {
     }
 
     if (Object.keys(initialDataForModal).length > 0 || studentToProcess || mode === 'full_bulk') { // Only open if there's data or it's a new bulk
-      const dayData = initialDataForModal;
-      let tKategori = '', tSurat = dayData[k.t] || '', tHalaman = [], tBaris = [], tMateri = [], tHalamanTg = [], rawTahsinAyat = dayData[k.h] || '', tahsinAyatOnly = rawTahsinAyat;
+      // FIX: Create a 'clean' data object for the modal.
+      // This ensures that only data relevant to the current tab (Target or Jurnal) is used,
+      // preventing data from the other tab from "leaking" into the modal.
+      const cleanData = {};
+      if (studentToProcess || mode.includes('last')) {
+        Object.values(k).forEach(keyName => {
+          if (initialDataForModal[keyName]) {
+            cleanData[keyName] = initialDataForModal[keyName];
+          }
+        });
+      }
+
+      let tKategori = '', tSurat = cleanData[k.t] || '', tHalaman = [], tBaris = [], tMateri = [], tHalamanTg = [], rawTahsinAyat = cleanData[k.h] || '', tahsinAyatOnly = rawTahsinAyat;
       if (tSurat === '-') tSurat = '';
       if (rawTahsinAyat === '-') { rawTahsinAyat = ''; tahsinAyatOnly = ''; }
 
@@ -553,7 +653,7 @@ const MainApp = ({ currentUser, onLogout }) => {
       } else if (tSurat && tSurat !== '-') tKategori = 'Al-Qur\'an';
 
       setLessonPlans([{
-        id: Date.now(), tanggal: activeDate, murojaah: parseMurojaahList(dayData[k.m]), tahsinKategori: tKategori, tahsinSuratList: parseSuratAyatList(tSurat, tahsinAyatOnly, dayData[k.tsNilai]), tahsinHalaman: tHalaman, tahsinBaris: tBaris, tahsinMateri: tMateri, tahsinHalamanTg: tHalamanTg, tahfidzSuratList: parseSuratAyatList(dayData[k.f], dayData[k.af], dayData[k.fNilai]), lainLain: dayData[k.c] && dayData[k.c] !== '-' ? dayData[k.c] : '', tahsinNilai: dayData[k.tNilai] && dayData[k.tNilai] !== '-' ? dayData[k.tNilai] : ''
+        id: Date.now(), tanggal: activeDate, murojaah: parseMurojaahList(cleanData[k.m]), tahsinKategori: tKategori, tahsinSuratList: parseSuratAyatList(tSurat, tahsinAyatOnly, cleanData[k.tsNilai]), tahsinHalaman: tHalaman, tahsinBaris: tBaris, tahsinMateri: tMateri, tahsinHalamanTg: tHalamanTg, tahfidzSuratList: parseSuratAyatList(cleanData[k.f], cleanData[k.af], cleanData[k.fNilai]), lainLain: cleanData[k.c] && cleanData[k.c] !== '-' ? cleanData[k.c] : '', tahsinNilai: cleanData[k.tNilai] && cleanData[k.tNilai] !== '-' ? cleanData[k.tNilai] : ''
       }]);
       setIsModalOpen(true); // Open modal only if there's data or it's a new bulk
     } else {
@@ -568,8 +668,28 @@ const MainApp = ({ currentUser, onLogout }) => {
   const handleToggleArray = (planId, field, value) => { setLessonPlans(plans => plans.map(p => { if (p.id === planId) { const arr = p[field] || []; let newArr = arr.includes(value) ? arr.filter(x => x !== value) : [...arr, value]; if (field === 'tahsinBaris' || field === 'tahsinHalaman') newArr.sort((a, b) => Number(a) - Number(b)); return { ...p, [field]: newArr }; } return p; })); };
   const handleAddSurat = (planId, listName) => setLessonPlans(plans => plans.map(p => p.id === planId ? { ...p, [listName]: [...p[listName], emptySurat()] } : p));
   const handleRemoveSurat = (planId, listName, suratId) => setLessonPlans(plans => plans.map(p => p.id === planId ? { ...p, [listName]: p[listName].filter(m => m.id !== suratId) } : p));
-  const handleSuratChange = (planId, listName, suratId, field, value) => setLessonPlans(plans => plans.map(p => p.id === planId ? { ...p, [listName]: p[listName].map(m => m.id === suratId ? { ...m, [field]: value } : m) } : p));
-  const getAyatOptions = (suratString) => { if (!suratString) return []; const match = surahList.find(s => (s.no + '. ' + s.name) === suratString); return match ? Array.from({ length: match.ayat }, (_, i) => String(i + 1)) : []; };
+  const handleSuratChange = (planId, listName, suratId, field, value) => {
+    setLessonPlans(plans => plans.map(p => {
+      if (p.id !== planId) return p;
+
+      const newList = p[listName].map(m => {
+        if (m.id !== suratId) return m;
+
+        const updated = { ...m, [field]: value };
+        // Jika surat diganti, reset ayat awal dan akhir
+        if (field === 'surat') {
+          updated.ayatStart = '';
+          updated.ayatEnd = '';
+        }
+        // Jika ayat awal diubah, dan ayat akhir jadi tidak valid (lebih kecil), reset ayat akhir
+        if (field === 'ayatStart' && updated.ayatEnd && value && Number(value) > Number(updated.ayatEnd)) {
+          updated.ayatEnd = '';
+        }
+        return updated;
+      });
+      return { ...p, [listName]: newList };
+    }));
+  };
   const getAyatRangeOrDefault = (surat, start, end) => start && end ? start + '-' + end : start || end || (surahList.find(s => s.no + '. ' + s.name === surat) ? '1-' + surahList.find(s => s.no + '. ' + s.name === surat).ayat : 'Semua Ayat');
 
   const handleSave = async () => {
@@ -654,6 +774,38 @@ const MainApp = ({ currentUser, onLogout }) => {
     return <><Edit3 size={20} className="text-[#00e676]" /> {prefix} Hafalan{nameSuffix}</>;
   };
 
+  const handleTabChange = (tab) => {
+    const today = new Date();
+    const day = today.getDay();
+    const isWeekend = day === 0 || day === 6;
+
+    if (tab === 'jurnal') {
+      if (isWeekend) {
+        // Jika weekend, buka Senin minggu depan untuk entri baru
+        const nextWeekDate = new Date(today);
+        nextWeekDate.setDate(nextWeekDate.getDate() + 7);
+        const nextMonday = getMonday(nextWeekDate);
+        setWeekStart(nextMonday);
+        setActiveDate(formatDateObj(nextMonday));
+      } else {
+        // Jika hari kerja, buka hari ini di minggu ini
+        setWeekStart(getMonday(today));
+        setActiveDate(formatDateObj(today));
+      }
+    } else { // lesson_plan
+      let targetDate = new Date(today);
+      // Jika weekend, targetkan pekan depan untuk perencanaan
+      if (isWeekend) {
+        targetDate.setDate(targetDate.getDate() + 7);
+      }
+      const targetMonday = getMonday(targetDate);
+      setWeekStart(targetMonday);
+      setActiveDate(formatDateObj(targetMonday));
+    }
+    setHomeTab(tab);
+  };
+
+  if (!currentUser) return null;
   if (!isDbReady) return (<div className="min-h-screen flex flex-col items-center justify-center bg-[#F8F9FA]"><Loader2 size={48} className="animate-spin text-[#00e676] mb-4" /></div>);
 
   return (
@@ -777,7 +929,7 @@ const MainApp = ({ currentUser, onLogout }) => {
                 activeHalaqoh={activeHalaqoh}
                 activeGuru={activeGuru}
                 homeTab={homeTab}
-                setHomeTab={setHomeTab}
+                setHomeTab={handleTabChange}
                 weekStart={weekStart}
                 changeWeek={changeWeek}
                 activeDate={activeDate}
@@ -802,6 +954,9 @@ const MainApp = ({ currentUser, onLogout }) => {
                 openAddStudentModal={() => setIsAddStudentModalOpen(true)}
                 openEditStudentModal={(s) => { setEditStudentData({ id: s.id, name: s.name, kelas: s.kelas, halaqoh: s.halaqoh, photo: s.photo || null }); setIsEditStudentModalOpen(true); }}
                 requestDeleteStudent={requestDeleteStudent} isSuperAdmin={isSuperAdmin}
+                openCropModal={openCropModal}
+                uploadingPhotoId={uploadingPhotoId}
+                uploadProgress={uploadProgress}
               />
             )}
             {currentView === 'laporan' && (
@@ -851,7 +1006,15 @@ const MainApp = ({ currentUser, onLogout }) => {
 
           {/* MODAL JURNAL */}
           <JurnalModal
-            isOpen={isModalOpen} onClose={handleCloseModal} modalMode={modalMode} getModalTitle={getModalTitle} lessonPlans={lessonPlans} handlePlanChange={handlePlanChange} handleToggleArray={handleToggleArray} handleAddSurat={handleAddSurat} handleRemoveSurat={handleRemoveSurat} handleSuratChange={handleSuratChange} activeDropdown={activeDropdown} setActiveDropdown={setActiveDropdown} tahsinCategories={tahsinCategories} ghoribList={ghoribList} tajwidList={tajwidList} surahList={surahList} getAyatOptions={getAyatOptions} homeTab={homeTab} handleSave={handleSave} editingId={editingId} selectedStudents={selectedStudents} filteredStudents={filteredStudents} toggleStudent={toggleStudent}
+            isOpen={isModalOpen} onClose={handleCloseModal} modalMode={modalMode} getModalTitle={getModalTitle} lessonPlans={lessonPlans} handlePlanChange={handlePlanChange} handleToggleArray={handleToggleArray} handleAddSurat={handleAddSurat} handleRemoveSurat={handleRemoveSurat} handleSuratChange={handleSuratChange} activeDropdown={activeDropdown} setActiveDropdown={setActiveDropdown} tahsinCategories={tahsinCategories} ghoribList={ghoribList} tajwidList={tajwidList} surahList={surahList} homeTab={homeTab} handleSave={handleSave} editingId={editingId} selectedStudents={selectedStudents} filteredStudents={filteredStudents} toggleStudent={toggleStudent}
+          />
+
+          {/* MODAL CROP GAMBAR */}
+          <ImageCropModal
+            isOpen={isCropModalOpen}
+            onClose={() => setIsCropModalOpen(false)}
+            imageSrc={imageToCrop}
+            onCropComplete={handleCroppedImage}
           />
 
           {toastMessage && (<div className="fixed top-4 md:top-20 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-4 py-2 rounded-xl shadow-2xl z-[9999] font-bold text-xs md:text-sm animate-bounce">{toastMessage}</div>)}
