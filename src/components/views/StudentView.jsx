@@ -1,8 +1,10 @@
 // File: src/components/views/StudentView.jsx
 import React, { useState } from 'react';
-import { Users, Settings, Plus, Edit3, Trash2, Camera, GripVertical } from 'lucide-react';
+import { Users, Settings, Plus, Edit3, Trash2, Camera, GripVertical, Search, X, ChevronUp, ChevronDown } from 'lucide-react';
 
-const StudentView = ({ activeHalaqoh, filteredStudents, openAddStudentModal, openEditStudentModal, requestDeleteStudent, isSuperAdmin, openCropModal, uploadingPhotoId, uploadProgress, onReorderStudents }) => {
+const StudentView = ({ activeHalaqoh, filteredStudents, openAddStudentModal, openEditStudentModal, requestDeleteStudent, isSuperAdmin, openCropModal, uploadingPhotoId, uploadProgress, onReorderStudents, searchQuery, setSearchQuery }) => {
+  const [isSearchVisible, setIsSearchVisible] = useState(false);
+  const [isHeaderVisible, setIsHeaderVisible] = useState(window.innerWidth >= 768);
   const [dragId, setDragId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
 
@@ -79,15 +81,73 @@ const StudentView = ({ activeHalaqoh, filteredStudents, openAddStudentModal, ope
 
   return (
     <div className="p-4 sm:p-6 md:p-8">
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-200 pb-4 md:pb-6">
-        <div>
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-[#1a202c] tracking-tight mb-1.5 md:mb-2">Data Siswa</h1>
-          <p className="text-gray-500 font-medium text-xs sm:text-sm md:text-base">Kelola profil dan daftar siswa untuk halaqoh <strong className="text-green-600 bg-green-50 px-2 py-0.5 rounded">{activeHalaqoh || '-'}</strong>.</p>
+      {isHeaderVisible && (
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-200 pb-4 md:pb-6 animate-in slide-in-from-top-2 fade-in duration-300">
+          <div>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-[#1a202c] tracking-tight mb-1.5 md:mb-2">Data Siswa</h1>
+            <p className="text-gray-500 font-medium text-xs sm:text-sm md:text-base">Kelola profil dan daftar siswa untuk halaqoh <strong className="text-green-600 bg-green-50 px-2 py-0.5 rounded">{activeHalaqoh || '-'}</strong>.</p>
+          </div>
+          <button onClick={openAddStudentModal} disabled={!activeHalaqoh} className="flex items-center justify-center gap-1.5 md:gap-2 bg-[#00e676] hover:bg-green-500 text-white px-4 py-2 md:px-5 md:py-2.5 rounded-xl font-bold transition-colors text-xs md:text-sm shadow-md shadow-green-200 disabled:opacity-50 disabled:cursor-not-allowed mt-2 sm:mt-0">
+            <Plus size={16} strokeWidth={3} className="md:w-5 md:h-5"/> Tambah Siswa Baru
+          </button>
         </div>
-        <button onClick={openAddStudentModal} disabled={!activeHalaqoh} className="flex items-center justify-center gap-1.5 md:gap-2 bg-[#00e676] hover:bg-green-500 text-white px-4 py-2 md:px-5 md:py-2.5 rounded-xl font-bold transition-colors text-xs md:text-sm shadow-md shadow-green-200 disabled:opacity-50 disabled:cursor-not-allowed">
-          <Plus size={16} strokeWidth={3} className="md:w-5 md:h-5"/> Tambah Siswa Baru
-        </button>
-      </div>
+      )}
+
+      {/* KOTAK PENCARIAN SISWA */}
+      {activeHalaqoh && (
+        <div className="mb-6">
+          {!isSearchVisible && !searchQuery ? (
+            <div className="flex justify-end gap-2 z-10">
+              <button
+                onClick={() => setIsHeaderVisible(!isHeaderVisible)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200/80 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 hover:border-emerald-200 transition-all shadow-sm text-[10px] sm:text-xs font-bold"
+                title={isHeaderVisible ? "Sembunyikan Judul" : "Tampilkan Judul"}
+              >
+                {isHeaderVisible ? <ChevronUp size={14} /> : <ChevronDown size={14} />} 
+                <span className="hidden sm:inline">{isHeaderVisible ? 'Sembunyikan Judul' : 'Tampilkan Judul'}</span>
+                <span className="sm:hidden">{isHeaderVisible ? 'Tutup Judul' : 'Buka Judul'}</span>
+              </button>
+              <button
+                onClick={() => setIsSearchVisible(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200/80 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 hover:border-emerald-200 transition-all shadow-sm text-[10px] sm:text-xs font-bold"
+                title="Pencarian Siswa"
+              >
+                <Search size={14} /> Cari Siswa
+              </button>
+            </div>
+          ) : (
+            <div className="relative animate-in slide-in-from-top-2 fade-in duration-200">
+              <Search
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                size={18}
+              />
+              <input
+                autoFocus
+                type="text"
+                placeholder="Cari nama siswa..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-white border border-gray-200/80 rounded-xl pl-10 pr-[80px] py-2.5 sm:py-3 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 text-sm font-bold text-slate-700 transition-all shadow-sm"
+              />
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                <button
+                  onClick={() => setIsHeaderVisible(!isHeaderVisible)}
+                  className="text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 p-1.5 rounded-lg transition-colors"
+                  title={isHeaderVisible ? "Sembunyikan Judul" : "Tampilkan Judul"}
+                >
+                  {isHeaderVisible ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </button>
+                <button
+                  onClick={() => { setIsSearchVisible(false); setSearchQuery(''); }}
+                  className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {!activeHalaqoh ? (
         <div className="text-center py-16 md:py-20 text-gray-400 font-bold bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center gap-3 px-4">
@@ -97,8 +157,8 @@ const StudentView = ({ activeHalaqoh, filteredStudents, openAddStudentModal, ope
       ) : filteredStudents.length === 0 ? (
         <div className="text-center py-16 md:py-20 text-gray-400 font-bold bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center gap-3 px-4">
           <Users size={36} className="text-gray-300 md:w-10 md:h-10"/>
-          <p className="text-sm md:text-base">Belum ada data siswa di {activeHalaqoh}.</p>
-          <button onClick={openAddStudentModal} className="text-xs text-green-600 bg-green-50 px-4 py-2 rounded-lg hover:bg-green-100 mt-2 font-bold">Tambahkan Siswa</button>
+          <p className="text-sm md:text-base">{searchQuery ? `Siswa dengan nama "${searchQuery}" tidak ditemukan.` : `Belum ada data siswa di ${activeHalaqoh}.`}</p>
+          {!searchQuery && <button onClick={openAddStudentModal} className="text-xs text-green-600 bg-green-50 px-4 py-2 rounded-lg hover:bg-green-100 mt-2 font-bold">Tambahkan Siswa</button>}
         </div>
       ) : (
         <div 

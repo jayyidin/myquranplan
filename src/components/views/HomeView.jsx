@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Users, Edit3, Trash2, Share2, Plus, X, Calendar, ChevronLeft, ChevronRight, BookOpen, Mic, Repeat, Printer, Check, Download, FileText, History, Link, Search, ImageDown } from 'lucide-react';
+import { Settings, Users, Edit3, Trash2, Share2, Plus, X, Calendar, ChevronLeft, ChevronRight, BookOpen, Mic, Repeat, Printer, Check, Download, FileText, History, Link, Search, ImageDown, ChevronUp, ChevronDown } from 'lucide-react';
 import { Tooltip } from 'react-tooltip';
 import { formatShortDate, getInitials, formatPeriode, formatPrintData } from '../../utils/helpers';
 
@@ -18,6 +18,8 @@ const HomeView = ({
   const [activeStudentId, setActiveStudentId] = useState(null);
   const [isClassReportVisible, setIsClassReportVisible] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isSearchVisible, setIsSearchVisible] = useState(false);
+  const [isHeaderVisible, setIsHeaderVisible] = useState(window.innerWidth >= 768);
 
   // State untuk Lazy Loading di Mobile
   const [visibleCount, setVisibleCount] = useState(10);
@@ -768,59 +770,76 @@ const HomeView = ({
       <div className="print:hidden w-full h-full flex flex-col transition-colors duration-500 bg-slate-50 text-slate-900 overflow-hidden">
 
         {/* BLOK 1: HEADER HALAMAN (SHRINK-0 = SELALU TERKUNCI DI ATAS, TIDAK IKUT SCROLL) */}
-        <div className="bg-white border-gray-200 shrink-0 z-40 border-b px-4 sm:px-6 md:px-8 py-2 sm:py-3 flex flex-col md:flex-row justify-between items-start md:items-center gap-2 sm:gap-4 transition-all">
-          <div className="w-full md:w-auto flex items-center gap-1.5 sm:gap-3">
-            <div className="hidden sm:flex w-16 md:w-20 h-16 md:h-20 items-center justify-center shrink-0">
-              {institutionLogo && institutionLogo !== 'logo.png' && institutionLogo !== '' ? (
-                <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain" />
-              ) : (
-                <BookOpen size={80} className="text-green-600" />
-              )}
-            </div>
-            <div>
-              <h1 className="text-base sm:text-xl md:text-2xl font-bold mb-0.5 sm:mb-1 text-slate-700">
-                {homeTab === 'lesson_plan' ? "Lesson Plan Al-Qur'an" : "Jurnal Harian Al-Qur'an"}
-              </h1>
-              <div className="flex flex-wrap sm:flex-row sm:items-center gap-x-3 gap-y-1 text-gray-500 font-medium text-[9px] sm:text-xs mt-0.5 sm:mt-1">
-                <span className="flex items-center gap-1.5">
-                  Halaqoh: <strong className="text-green-700 bg-green-50 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md border border-green-100">{String(activeHalaqoh || '-')}</strong>
-                </span>
-                <span className="hidden md:inline text-gray-300">•</span>
-                <span className="flex items-center gap-1.5">
-                  Ustadz/ah: <strong className="text-blue-700 bg-blue-50 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md border border-blue-100 transition-colors">{String(activeGuru || '-')}</strong>
-                </span>
+        {isHeaderVisible && (
+          <div className="bg-white border-gray-200 shrink-0 z-40 border-b px-4 sm:px-6 md:px-8 py-2 sm:py-3 flex flex-col md:flex-row justify-between items-start md:items-center gap-2 sm:gap-4 transition-all animate-in slide-in-from-top-2 fade-in duration-300">
+            <div className="w-full md:w-auto flex items-center gap-1.5 sm:gap-3">
+              <div className="hidden sm:flex w-16 md:w-20 h-16 md:h-20 items-center justify-center shrink-0">
+                {institutionLogo && institutionLogo !== 'logo.png' && institutionLogo !== '' ? (
+                  <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain" />
+                ) : (
+                  <BookOpen size={80} className="text-green-600" />
+                )}
+              </div>
+              <div>
+                <h1 className="text-base sm:text-xl md:text-2xl font-bold mb-0.5 sm:mb-1 text-slate-700">
+                  {homeTab === 'lesson_plan' ? "Lesson Plan Al-Qur'an" : "Jurnal Harian Al-Qur'an"}
+                </h1>
+                <div className="flex flex-wrap sm:flex-row sm:items-center gap-x-3 gap-y-1 text-gray-500 font-medium text-[9px] sm:text-xs mt-0.5 sm:mt-1">
+                  <span className="flex items-center gap-1.5">
+                    Halaqoh: <strong className="text-green-700 bg-green-50 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md border border-green-100">{String(activeHalaqoh || '-')}</strong>
+                  </span>
+                  <span className="hidden md:inline text-gray-300">•</span>
+                  <span className="flex items-center gap-1.5">
+                    Ustadz/ah: <strong className="text-blue-700 bg-blue-50 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md border border-blue-100 transition-colors">{String(activeGuru || '-')}</strong>
+                  </span>
+                </div>
               </div>
             </div>
+            <div className="flex w-full md:w-auto gap-2 shrink-0 mt-1 sm:mt-0 transition-all">
+              <button onClick={() => handleOpenModal(null, 'full_bulk', homeTab)} disabled={!activeHalaqoh} className="flex-1 md:flex-none border-2 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 font-black text-xs sm:text-sm transition-all bg-white text-slate-700 border-slate-200 hover:bg-gray-50 disabled:opacity-50">
+                <Edit3 size={16} className="text-[#00e676]" /> <span className="inline">Input Massal</span>
+              </button>
+              <button onClick={() => setIsClassReportVisible(true)} disabled={!activeHalaqoh || filteredStudents.length === 0} className="flex-1 md:flex-none px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 font-black text-xs sm:text-sm transition-all shadow-lg border-2 bg-gray-800 text-white border-gray-900 hover:bg-gray-700 disabled:opacity-50">
+                <Printer size={18} /> <span className="inline">Laporan Kelas</span>
+              </button>
+            </div>
           </div>
-          <div className="flex w-full md:w-auto gap-2 shrink-0 mt-1 sm:mt-0 transition-all">
-            <button onClick={() => handleOpenModal(null, 'full_bulk')} disabled={!activeHalaqoh} className="flex-1 md:flex-none border-2 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 font-black text-xs sm:text-sm transition-all bg-white text-slate-700 border-slate-200 hover:bg-gray-50 disabled:opacity-50">
-              <Edit3 size={16} className="text-[#00e676]" /> <span className="inline">Input Massal</span>
-            </button>
-            <button onClick={() => setIsClassReportVisible(true)} disabled={!activeHalaqoh || filteredStudents.length === 0} className="flex-1 md:flex-none px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 font-black text-xs sm:text-sm transition-all shadow-lg border-2 bg-gray-800 text-white border-gray-900 hover:bg-gray-700 disabled:opacity-50">
-              <Printer size={18} /> <span className="inline">Laporan Kelas</span>
-            </button>
-          </div>
-        </div>
+        )}
 
         {/* BLOK 2: KONTEN UTAMA - AREA SCROLL */}
-        <div className="flex-1 overflow-y-auto w-full relative custom-scrollbar bg-slate-50 p-4 sm:p-6 md:p-8 transition-colors duration-500" style={{ WebkitOverflowScrolling: 'touch' }}>
-          <div className="flex flex-col gap-6 w-full mx-auto pb-32 md:pb-8">
+        <div className="flex-1 overflow-y-auto w-full relative custom-scrollbar bg-slate-50 p-3 sm:p-4 md:p-6 transition-colors duration-500" style={{ WebkitOverflowScrolling: 'touch' }}>
+          <div className="flex flex-col gap-3 sm:gap-4 w-full mx-auto pb-32 md:pb-8">
 
             {/* TOMBOL TAB & NAVIGASI */}
-            <div className="flex flex-col sm:flex-row rounded-2xl p-1.5 gap-1.5 shadow-inner transition-colors bg-slate-100/80">
-              <button onClick={() => setHomeTab('lesson_plan')} className={`flex-1 px-4 py-3 sm:py-2.5 font-black text-sm rounded-xl transition-all duration-300 min-w-fit ${homeTab === 'lesson_plan' ? 'bg-white text-green-600 shadow-md border border-gray-200/50' : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'}`}>Target (Lesson Plan)</button>
-              <button onClick={() => setHomeTab('jurnal')} className={`flex-1 px-4 py-3 sm:py-2.5 font-black text-sm rounded-xl transition-all duration-300 min-w-fit ${homeTab === 'jurnal' ? 'bg-white text-blue-600 shadow-md border border-gray-200/50' : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'}`}>Capaian (Jurnal)</button>
+            <div className="flex flex-row rounded-xl sm:rounded-2xl p-1 gap-1 shadow-inner transition-colors bg-slate-100/80">
+              <button onClick={() => setHomeTab('lesson_plan')} className={`flex-1 flex items-center justify-center gap-1.5 px-2 sm:px-4 py-1.5 sm:py-2 font-black text-xs sm:text-sm rounded-lg sm:rounded-xl transition-all duration-300 min-w-fit ${homeTab === 'lesson_plan' ? 'bg-green-500 text-white shadow-md border border-green-600' : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'}`}>
+                {homeTab === 'lesson_plan' && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse shrink-0"></span>}
+                <span className="sm:hidden">Lesson Plan</span>
+                <span className="hidden sm:inline">Target (Lesson Plan)</span>
+              </button>
+              <button onClick={() => setHomeTab('jurnal')} className={`flex-1 flex items-center justify-center gap-1.5 px-2 sm:px-4 py-1.5 sm:py-2 font-black text-xs sm:text-sm rounded-lg sm:rounded-xl transition-all duration-300 min-w-fit ${homeTab === 'jurnal' ? 'bg-blue-500 text-white shadow-md border border-blue-600' : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'}`}>
+                {homeTab === 'jurnal' && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse shrink-0"></span>}
+                <span className="sm:hidden">Jurnal</span>
+                <span className="hidden sm:inline">Capaian (Jurnal)</span>
+              </button>
+              <button 
+                onClick={() => setIsHeaderVisible(!isHeaderVisible)}
+                className="flex items-center justify-center px-2 py-1.5 sm:py-2 bg-white text-slate-500 hover:text-emerald-600 rounded-lg sm:rounded-xl shadow-sm border border-gray-200/50 transition-all"
+                title={isHeaderVisible ? "Sembunyikan Header Atas" : "Tampilkan Header Atas"}
+              >
+                {isHeaderVisible ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+              </button>
             </div>
 
             {/* NAVIGASI TANGGAL & MINGGU */}
-            <div className="flex items-center justify-between px-3 py-3 sm:px-4 rounded-2xl border shadow-sm w-full gap-2 transition-all duration-500 bg-white border-gray-200/80">
-              <button onClick={() => changeWeek(-7)} className="p-2 sm:px-3 sm:py-2 rounded-lg flex items-center gap-1 font-bold text-xs sm:text-sm transition-colors bg-gray-50 text-gray-500 hover:bg-green-50 hover:text-green-600"><ChevronLeft size={16} /><span className="hidden sm:inline">Sebelumnya</span></button>
+            <div className="flex items-center justify-between px-2 py-1.5 sm:px-3 sm:py-2 rounded-xl border shadow-sm w-full gap-2 transition-all duration-500 bg-white border-gray-200/80">
+              <button onClick={() => changeWeek(-7)} className="p-1.5 sm:px-3 sm:py-1.5 rounded-md flex items-center gap-1 font-bold text-xs sm:text-sm transition-colors bg-gray-50 text-gray-500 hover:bg-green-50 hover:text-green-600"><ChevronLeft size={16} /><span className="hidden sm:inline">Sebelumnya</span></button>
               <div className="font-black text-xs sm:text-sm md:text-base text-center flex-1 sm:flex-none text-gray-700 transition-colors"><Calendar size={14} className="inline text-green-500 mr-1 sm:mr-2 align-text-bottom" /> {formatPeriode(weekDates[0], weekDates[weekDates.length - 1] || weekDates[0])}</div>
-              <button onClick={() => changeWeek(7)} className="p-2 sm:px-3 sm:py-2 bg-gray-50 hover:bg-green-50 text-gray-500 hover:text-green-600 rounded-lg flex items-center gap-1 font-bold text-xs sm:text-sm transition-colors"><span className="hidden sm:inline">Selanjutnya</span><ChevronRight size={16} /></button>
+              <button onClick={() => changeWeek(7)} className="p-1.5 sm:px-3 sm:py-1.5 bg-gray-50 hover:bg-green-50 text-gray-500 hover:text-green-600 rounded-md flex items-center gap-1 font-bold text-xs sm:text-sm transition-colors"><span className="hidden sm:inline">Selanjutnya</span><ChevronRight size={16} /></button>
             </div>
 
             {/* HORIZONTAL DATE NAV (SNAP SCROLLING) */}
-            <div className="flex gap-2 overflow-x-auto custom-scrollbar pb-2 w-full snap-x">
+            <div className="flex gap-1.5 overflow-x-auto custom-scrollbar pb-1 w-full snap-x">
               {weekDates.map((dateObj) => {
                 if (!dateObj || typeof dateObj.getDay !== 'function') return null;
                 const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
@@ -828,7 +847,7 @@ const HomeView = ({
                 if (dateObj.getDay() === 0 || dateObj.getDay() === 6) return null;
                 const { status: dateStatus, count: filledCount } = getDateStatus(dateStr);
                 return ( // Removed dark mode styles
-                  <button key={dateStr} onClick={() => setActiveDate(dateStr)} className={`flex-1 flex flex-col shrink-0 min-w-[80px] sm:min-w-[90px] items-center justify-center p-3 rounded-2xl border transition-all snap-center relative ${activeDate === dateStr ? 'bg-[#00e676] border-[#00e676] text-white shadow-md transform scale-[1.03]' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+                  <button key={dateStr} onClick={() => setActiveDate(dateStr)} className={`flex-1 flex flex-col shrink-0 min-w-[70px] sm:min-w-[80px] items-center justify-center p-2 rounded-xl border transition-all snap-center relative ${activeDate === dateStr ? 'bg-[#00e676] border-[#00e676] text-white shadow-md transform scale-[1.03]' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
                     <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest mb-0.5">{dayName}</span>
                     <span className="text-xs md:text-base font-black">{dateObj.getDate()} {['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'][dateObj.getMonth()]}</span>
                     {dateStatus !== 'none' && (
@@ -846,20 +865,39 @@ const HomeView = ({
             </div>
 
             {/* KOTAK PENCARIAN SISWA */}
-            <div className="relative">
-              <Search
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-                size={20}
-              />
-              <input
-                type="text"
-                placeholder={activeHalaqoh ? `Cari nama siswa... (${studentsInHalaqohCount} siswa)` : 'Pilih halaqoh terlebih dahulu'}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                disabled={!activeHalaqoh}
-                className="w-full bg-white border border-gray-200/80 rounded-2xl pl-12 pr-4 py-4 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 text-sm font-bold text-slate-700 transition-all shadow-sm disabled:bg-slate-50 disabled:cursor-not-allowed"
-              />
-            </div>
+            {!isSearchVisible && !searchQuery ? (
+              <div className="flex justify-end -mt-2 sm:-mt-1 mb-1 z-10">
+                <button
+                  onClick={() => setIsSearchVisible(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200/80 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 hover:border-emerald-200 transition-all shadow-sm text-[10px] sm:text-xs font-bold"
+                  title="Pencarian Siswa"
+                >
+                  <Search size={14} /> Cari Siswa
+                </button>
+              </div>
+            ) : (
+              <div className="relative animate-in slide-in-from-top-2 fade-in duration-200">
+                <Search
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                  size={18}
+                />
+                <input
+                  autoFocus
+                  type="text"
+                  placeholder={activeHalaqoh ? `Cari nama siswa... (${studentsInHalaqohCount} siswa)` : 'Pilih halaqoh terlebih dahulu'}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  disabled={!activeHalaqoh}
+                  className="w-full bg-white border border-gray-200/80 rounded-xl pl-10 pr-10 py-2.5 sm:py-3 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 text-sm font-bold text-slate-700 transition-all shadow-sm disabled:bg-slate-50 disabled:cursor-not-allowed"
+                />
+                <button
+                  onClick={() => { setIsSearchVisible(false); setSearchQuery(''); }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            )}
 
             {/* LOGIKA PENCARIAN DATA HARI SEBELUMNYA UNTUK DISPLAY BAYANGAN */}
             {(() => {
@@ -947,22 +985,22 @@ const HomeView = ({
                           <th className="p-2.5 sm:p-3 text-center sticky left-0 top-0 z-40 w-[40px] sm:w-[50px] bg-[#f8fafc]">No</th>
                           <th className="p-2.5 sm:p-3 pl-2 text-left sticky left-[40px] sm:left-[50px] top-0 z-40 w-[140px] sm:w-[220px] shadow-[4px_0_12px_rgba(0,0,0,0.05)] border-r bg-[#f8fafc] border-gray-100">Nama Siswa</th>
                           <th className="p-2.5 sm:p-3 w-[200px] sticky top-0 z-30 transition-colors bg-[#f8fafc]">
-                            <div className="flex items-center justify-center gap-1.5 cursor-pointer hover:text-blue-600 transition-colors" onClick={() => handleOpenModal(null, 'tahsin')}>
+                            <div className="flex items-center justify-center gap-1.5 cursor-pointer hover:text-blue-600 transition-colors" onClick={() => handleOpenModal(null, 'tahsin', homeTab)}>
                               Tahsin
                             </div>
                           </th>
                           <th className="p-2.5 sm:p-3 w-[200px] sticky top-0 z-30 transition-colors bg-[#f8fafc]">
-                            <div className="flex items-center justify-center gap-1.5 cursor-pointer hover:text-purple-600 transition-colors" onClick={() => handleOpenModal(null, 'tahfidz')}>
+                            <div className="flex items-center justify-center gap-1.5 cursor-pointer hover:text-purple-600 transition-colors" onClick={() => handleOpenModal(null, 'tahfidz', homeTab)}>
                               Tahfidz
                             </div>
                           </th>
                           <th className="p-2.5 sm:p-3 w-[200px] sticky top-0 z-30 transition-colors bg-[#f8fafc]">
-                            <div className="flex items-center justify-center gap-1.5 cursor-pointer hover:text-emerald-600 transition-colors" onClick={() => handleOpenModal(null, 'murojaah')}>
+                            <div className="flex items-center justify-center gap-1.5 cursor-pointer hover:text-emerald-600 transition-colors" onClick={() => handleOpenModal(null, 'murojaah', homeTab)}>
                               Murojaah
                             </div>
                           </th>
                           <th className="p-2.5 sm:p-3 w-[200px] sticky top-0 z-30 transition-colors bg-[#f8fafc]">
-                            <div className="flex items-center justify-center gap-1.5 cursor-pointer hover:text-orange-600 transition-colors" onClick={() => handleOpenModal(null, 'catatan')}>
+                            <div className="flex items-center justify-center gap-1.5 cursor-pointer hover:text-orange-600 transition-colors" onClick={() => handleOpenModal(null, 'catatan', homeTab)}>
                               Catatan
                             </div>
                           </th>
@@ -1027,7 +1065,7 @@ const HomeView = ({
                               </td>
 
                               <td className="p-2">
-                                <div onClick={() => { setActiveStudentId(student.id); handleOpenModal(student, 'tahsin'); }} className="min-h-[60px] flex flex-col items-center justify-center border border-transparent hover:border-gray-200 rounded-xl cursor-pointer relative group/cell transition-colors active:bg-gray-50">
+                                <div onClick={() => { setActiveStudentId(student.id); handleOpenModal(student, 'tahsin', homeTab); }} className="min-h-[60px] flex flex-col items-center justify-center border border-transparent hover:border-gray-200 rounded-xl cursor-pointer relative group/cell transition-colors active:bg-gray-50">
                                   {!isTahsinEmpty ? (
                                     renderTahsinCard(valT, valH, student?.id, activeDate, valTNilai, valTSNilai)
                                   ) : hasGhostTahsin ? (
@@ -1037,7 +1075,7 @@ const HomeView = ({
                                     </div>
                                   ) : <span className="text-gray-300 group-hover:text-slate-400 transition-colors">-</span>}
                                   {!isTahsinEmpty ? (
-                                    <button onClick={(e) => handleRemoveData(e, student?.id, activeDate, 'tahsin_all')} className="absolute right-1 top-1 text-red-500 opacity-0 lg:group-hover/cell:opacity-100 transition-opacity"><X size={12} /></button>
+                                    <button onClick={(e) => handleRemoveData(e, student?.id, activeDate, 'tahsin_all', homeTab)} className="absolute right-1 top-1 text-red-500 opacity-0 lg:group-hover/cell:opacity-100 transition-opacity"><X size={12} /></button>
                                   ) : (
                                     <button className="absolute top-1 right-1 opacity-0 lg:group-hover/cell:opacity-100 text-blue-500 bg-blue-50 p-1 rounded-md transition-opacity"><Plus size={12} /></button>
                                   )}
@@ -1045,7 +1083,7 @@ const HomeView = ({
                               </td>
 
                               <td className="p-2">
-                                <div onClick={() => { setActiveStudentId(student.id); handleOpenModal(student, 'tahfidz'); }} className="min-h-[60px] flex flex-col items-center justify-center border border-transparent hover:border-gray-200 rounded-xl cursor-pointer relative group/cell transition-colors active:bg-gray-50">
+                                <div onClick={() => { setActiveStudentId(student.id); handleOpenModal(student, 'tahfidz', homeTab); }} className="min-h-[60px] flex flex-col items-center justify-center border border-transparent hover:border-gray-200 rounded-xl cursor-pointer relative group/cell transition-colors active:bg-gray-50">
                                   {!isTahfidzEmpty ? (
                                     renderTahfidzCard(valF, valAF, student?.id, activeDate, valFNilai)
                                   ) : hasGhostTahfidz ? (
@@ -1055,7 +1093,7 @@ const HomeView = ({
                                     </div>
                                   ) : <span className="text-gray-300 group-hover:text-slate-400 transition-colors">-</span>}
                                   {!isTahfidzEmpty ? (
-                                    <button onClick={(e) => handleRemoveData(e, student?.id, activeDate, 'tahfidz_all')} className="absolute right-1 top-1 text-red-500 opacity-0 lg:group-hover/cell:opacity-100 transition-opacity"><X size={12} /></button>
+                                    <button onClick={(e) => handleRemoveData(e, student?.id, activeDate, 'tahfidz_all', homeTab)} className="absolute right-1 top-1 text-red-500 opacity-0 lg:group-hover/cell:opacity-100 transition-opacity"><X size={12} /></button>
                                   ) : (
                                     <button className="absolute top-1 right-1 opacity-0 lg:group-hover/cell:opacity-100 text-purple-500 bg-purple-50 p-1 rounded-md transition-opacity"><Plus size={12} /></button>
                                   )}
@@ -1063,7 +1101,7 @@ const HomeView = ({
                               </td>
 
                               <td className="p-2">
-                                <div onClick={() => { setActiveStudentId(student.id); handleOpenModal(student, 'murojaah'); }} className="min-h-[60px] flex flex-col items-center justify-center border border-transparent hover:border-gray-200 rounded-xl cursor-pointer relative group/cell transition-colors active:bg-gray-50">
+                                <div onClick={() => { setActiveStudentId(student.id); handleOpenModal(student, 'murojaah', homeTab); }} className="min-h-[60px] flex flex-col items-center justify-center border border-transparent hover:border-gray-200 rounded-xl cursor-pointer relative group/cell transition-colors active:bg-gray-50">
                                   {!isMurojaahEmpty ? (
                                     renderMurojaahCard(valM, student?.id, activeDate)
                                   ) : hasGhostMurojaah ? (
@@ -1073,7 +1111,7 @@ const HomeView = ({
                                     </div>
                                   ) : <span className="text-gray-300 group-hover:text-slate-400 transition-colors">-</span>}
                                   {!isMurojaahEmpty ? (
-                                    <button onClick={(e) => handleRemoveData(e, student?.id, activeDate, 'murojaah_all')} className="absolute right-1 top-1 text-red-500 opacity-0 lg:group-hover/cell:opacity-100 transition-opacity"><X size={12} /></button>
+                                    <button onClick={(e) => handleRemoveData(e, student?.id, activeDate, 'murojaah_all', homeTab)} className="absolute right-1 top-1 text-red-500 opacity-0 lg:group-hover/cell:opacity-100 transition-opacity"><X size={12} /></button>
                                   ) : (
                                     <button className="absolute top-1 right-1 opacity-0 lg:group-hover/cell:opacity-100 text-emerald-500 bg-emerald-50 p-1 rounded-md transition-opacity"><Plus size={12} /></button>
                                   )}
@@ -1081,7 +1119,7 @@ const HomeView = ({
                               </td>
 
                               <td className="p-2">
-                                <div onClick={() => { setActiveStudentId(student.id); handleOpenModal(student, 'catatan'); }} className="min-h-[60px] flex flex-col items-center justify-center border border-transparent hover:border-gray-200 rounded-xl cursor-pointer relative group/cell transition-colors active:bg-gray-50">
+                                <div onClick={() => { setActiveStudentId(student.id); handleOpenModal(student, 'catatan', homeTab); }} className="min-h-[60px] flex flex-col items-center justify-center border border-transparent hover:border-gray-200 rounded-xl cursor-pointer relative group/cell transition-colors active:bg-gray-50">
                                   {!isCatatanEmpty ? (
                                     <span className={`text-xs text-center ${getStatusColor(valC)}`}>{String(valC)}</span>
                                   ) : hasGhostCatatan ? (
@@ -1090,7 +1128,7 @@ const HomeView = ({
                                     </div>
                                   ) : <span className="text-gray-300 group-hover:text-slate-400 transition-colors">-</span>}
                                   {valC !== '-' ? (
-                                    <button onClick={(e) => handleRemoveData(e, student?.id, activeDate, 'catatan')} className="absolute right-1 top-1 text-red-500 opacity-0 lg:group-hover/cell:opacity-100 transition-opacity"><X size={12} /></button>
+                                    <button onClick={(e) => handleRemoveData(e, student?.id, activeDate, 'catatan', homeTab)} className="absolute right-1 top-1 text-red-500 opacity-0 lg:group-hover/cell:opacity-100 transition-opacity"><X size={12} /></button>
                                   ) : (
                                     <button className="absolute top-1 right-1 opacity-0 lg:group-hover/cell:opacity-100 text-orange-500 bg-orange-50 p-1 rounded-md transition-opacity"><Plus size={12} /></button>
                                   )}
@@ -1100,7 +1138,7 @@ const HomeView = ({
                               <td className="p-2.5 sm:p-3 sticky right-0 z-10 transition-all border-l shadow-[-10px_0_15px_rgba(0,0,0,0.02)] bg-white border-gray-200 group-hover:bg-gray-50">
                                 <div className="flex items-center justify-center gap-0.5 sm:gap-1">
                                   <button
-                                    onClick={() => handleOpenModal(student, 'full_edit')}
+                                    onClick={() => handleOpenModal(student, 'full_edit', homeTab)}
                                     className="group/btn p-1.5 sm:p-2.5 text-slate-400 group-hover:text-slate-500 hover:text-green-600 hover:bg-green-50 rounded-xl sm:rounded-2xl transition-all"
                                     title="Edit Data"
                                   >
@@ -1115,7 +1153,7 @@ const HomeView = ({
                                   </button>
                                   <div className="w-px h-4 bg-gray-100 mx-0.5" />
                                   <button
-                                    onClick={(e) => requestClearRecord(e, student?.id, activeDate)}
+                                    onClick={(e) => requestClearRecord(e, student?.id, activeDate, homeTab)}
                                     className="group/btn p-1.5 sm:p-2.5 text-slate-400 group-hover:text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl sm:rounded-2xl transition-all"
                                     title="Kosongkan Data"
                                   >
@@ -1167,58 +1205,58 @@ const HomeView = ({
                               </div>
                             </div>
                             <div className="flex items-center gap-1">
-                              <button onClick={() => handleOpenModal(student, 'full_edit')} className="p-2 text-slate-400 bg-slate-50 rounded-xl" title="Edit"><Edit3 size={18} /></button>
+                              <button onClick={() => handleOpenModal(student, 'full_edit', homeTab)} className="p-2 text-slate-400 bg-slate-50 rounded-xl" title="Edit"><Edit3 size={18} /></button>
                               <button onClick={() => setShareStudent(student)} className="p-2 text-slate-400 bg-slate-50 rounded-xl" title="Share"><Share2 size={18} /></button>
-                              <button onClick={(e) => requestClearRecord(e, student?.id, activeDate)} className="p-2 text-slate-400 bg-slate-50 rounded-xl"><Trash2 size={18} /></button>
+                              <button onClick={(e) => requestClearRecord(e, student?.id, activeDate, homeTab)} className="p-2 text-slate-400 bg-slate-50 rounded-xl"><Trash2 size={18} /></button>
                             </div>
                           </div>
 
                           {/* Grid Data - Menampilkan data secara vertikal agar terbaca di HP */}
                           <div className="grid grid-cols-2 gap-2">
                             {/* Tahsin */}
-                            <div onClick={() => handleOpenModal(student, 'tahsin')} className="p-3 bg-blue-50/30 border border-blue-100 rounded-2xl flex flex-col items-center justify-center min-h-[90px] text-center active:scale-95 transition-all relative">
+                            <div onClick={() => handleOpenModal(student, 'tahsin', homeTab)} className="p-3 bg-blue-50/30 border border-blue-100 rounded-2xl flex flex-col items-center justify-center min-h-[90px] text-center active:scale-95 transition-all relative">
                               <div className="flex items-center gap-1 mb-1.5 text-blue-500 font-black uppercase text-[8px] tracking-widest"><BookOpen size={12} /> Tahsin</div>
                               {!isTahsinEmpty ? renderTahsinCard(valT, valH, student.id, activeDate, valTNilai, valTSNilai) : (lastRec && lastRec[k.t] !== '-' ? <div className="opacity-30 grayscale scale-90" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>{renderTahsinCard(lastRec[k.t], lastRec[k.h], student.id, 'ghost', lastRec[k.tNilai], lastRec[k.tsNilai])}</div> : <span className="text-gray-300">-</span>)
                               }
                               {!isTahsinEmpty && (
-                                <button onClick={(e) => { e.stopPropagation(); handleRemoveData(e, student.id, activeDate, 'tahsin_all'); }} className="absolute top-1 right-1 p-1 bg-red-50 text-red-500 rounded-lg">
+                                <button onClick={(e) => { e.stopPropagation(); handleRemoveData(e, student.id, activeDate, 'tahsin_all', homeTab); }} className="absolute top-1 right-1 p-1 bg-red-50 text-red-500 rounded-lg">
                                   <X size={10} />
                                 </button>
                               )}
                             </div>
 
                             {/* Tahfidz */}
-                            <div onClick={() => handleOpenModal(student, 'tahfidz')} className="p-3 bg-purple-50/30 border border-purple-100 rounded-2xl flex flex-col items-center justify-center min-h-[90px] text-center active:scale-95 transition-all relative">
+                            <div onClick={() => handleOpenModal(student, 'tahfidz', homeTab)} className="p-3 bg-purple-50/30 border border-purple-100 rounded-2xl flex flex-col items-center justify-center min-h-[90px] text-center active:scale-95 transition-all relative">
                               <div className="flex items-center gap-1 mb-1.5 text-purple-500 font-black uppercase text-[8px] tracking-widest"><Mic size={12} /> Tahfidz</div>
                               {!isTahfidzEmpty ? renderTahfidzCard(valF, valAF, student.id, activeDate, valFNilai) : (lastRec && lastRec[k.f] !== '-' ? <div className="opacity-30 grayscale scale-90" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>{renderTahfidzCard(lastRec[k.f], lastRec[k.af], student.id, 'ghost', lastRec[k.fNilai])}</div> : <span className="text-gray-300">-</span>)
                               }
                               {!isTahfidzEmpty && (
-                                <button onClick={(e) => { e.stopPropagation(); handleRemoveData(e, student.id, activeDate, 'tahfidz_all'); }} className="absolute top-1 right-1 p-1 bg-red-50 text-red-500 rounded-lg">
+                                <button onClick={(e) => { e.stopPropagation(); handleRemoveData(e, student.id, activeDate, 'tahfidz_all', homeTab); }} className="absolute top-1 right-1 p-1 bg-red-50 text-red-500 rounded-lg">
                                   <X size={10} />
                                 </button>
                               )}
                             </div>
 
                             {/* Murojaah */}
-                            <div onClick={() => handleOpenModal(student, 'murojaah')} className="p-3 bg-emerald-50/30 border border-emerald-100 rounded-2xl flex flex-col items-center justify-center min-h-[90px] text-center active:scale-95 transition-all relative">
+                            <div onClick={() => handleOpenModal(student, 'murojaah', homeTab)} className="p-3 bg-emerald-50/30 border border-emerald-100 rounded-2xl flex flex-col items-center justify-center min-h-[90px] text-center active:scale-95 transition-all relative">
                               <div className="flex items-center gap-1 mb-1.5 text-emerald-500 font-black uppercase text-[8px] tracking-widest"><Repeat size={12} /> Murojaah</div>
                               {!isMurojaahEmpty ? renderMurojaahCard(valM, student.id, activeDate) : (lastRec && lastRec[k.m] !== '-' ? <div className="opacity-30 grayscale scale-90" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>{renderMurojaahCard(lastRec[k.m], student.id, 'ghost')}</div> : <span className="text-gray-300">-</span>)
                               }
                               {!isMurojaahEmpty && (
-                                <button onClick={(e) => { e.stopPropagation(); handleRemoveData(e, student.id, activeDate, 'murojaah_all'); }} className="absolute top-1 right-1 p-1 bg-red-50 text-red-500 rounded-lg">
+                                <button onClick={(e) => { e.stopPropagation(); handleRemoveData(e, student.id, activeDate, 'murojaah_all', homeTab); }} className="absolute top-1 right-1 p-1 bg-red-50 text-red-500 rounded-lg">
                                   <X size={10} />
                                 </button>
                               )}
                             </div>
 
                             {/* Catatan */}
-                            <div onClick={() => handleOpenModal(student, 'catatan')} className="p-3 bg-orange-50/30 border border-orange-100 rounded-2xl flex flex-col items-center justify-center min-h-[90px] text-center active:scale-95 transition-all relative">
+                            <div onClick={() => handleOpenModal(student, 'catatan', homeTab)} className="p-3 bg-orange-50/30 border border-orange-100 rounded-2xl flex flex-col items-center justify-center min-h-[90px] text-center active:scale-95 transition-all relative">
                               <div className="flex items-center gap-1 mb-1.5 text-orange-500 font-black uppercase text-[8px] tracking-widest"><FileText size={12} /> Catatan</div>
                               {!isCatatanEmpty ? (<span className={`text-[10px] leading-tight ${getStatusColor(valC)}`}>{String(valC)}</span>) : (lastRec && lastRec[k.c] !== '-' ? <span className="text-[10px] text-gray-300 italic line-clamp-2" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>{String(lastRec[k.c])}</span> : <span className="text-gray-300">-</span>)}
 
                               {!isCatatanEmpty && (
                                 <button
-                                  onClick={(e) => { e.stopPropagation(); handleRemoveData(e, student.id, activeDate, 'catatan'); }}
+                                  onClick={(e) => { e.stopPropagation(); handleRemoveData(e, student.id, activeDate, 'catatan', homeTab); }}
                                   className="absolute top-1 right-1 p-1 bg-red-50 text-red-500 rounded-lg"
                                 >
                                   <X size={10} />

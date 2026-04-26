@@ -499,7 +499,11 @@ const MainApp = ({ currentUser, onLogout }) => {
       .update({ records: updatedRecords })
       .eq('id', studentId);
 
-    if (error) showToast('Gagal menghapus data.');
+    if (error) {
+      showToast('Gagal menghapus data.');
+    } else {
+      setStudents(prev => prev.map(s => s.id === studentId ? { ...s, records: updatedRecords } : s));
+    }
   };
 
   const requestClearRecord = async (e, studentId, dateStr) => {
@@ -513,7 +517,10 @@ const MainApp = ({ currentUser, onLogout }) => {
       newRecords[dateStr] = dayRec;
 
       const { error } = await supabase.from('students').update({ records: newRecords }).eq('id', studentId);
-      if (error) { showToast('Gagal mengosongkan data.'); } else { showToast('Data dikosongkan!'); }
+      if (error) { showToast('Gagal mengosongkan data.'); } else { 
+        setStudents(prev => prev.map(s => s.id === studentId ? { ...s, records: newRecords } : s));
+        showToast('Data dikosongkan!'); 
+      }
     }
   };
 
@@ -522,7 +529,10 @@ const MainApp = ({ currentUser, onLogout }) => {
   // -- FUNGSI SISWA --
   const handleAssignFromMaster = async (student) => {
     const { error } = await supabase.from('students').update({ halaqoh: activeHalaqoh }).eq('id', student.id);
-    if (error) { showToast('Gagal.'); } else { showToast(`${student.name} ditambahkan!`); }
+    if (error) { showToast('Gagal.'); } else { 
+      setStudents(prev => prev.map(s => s.id === student.id ? { ...s, halaqoh: activeHalaqoh } : s));
+      showToast(`${student.name} ditambahkan!`); 
+    }
   };
   const handleSaveNewStudent = async (e) => {
     e.preventDefault();
@@ -597,7 +607,10 @@ const MainApp = ({ currentUser, onLogout }) => {
         isOpen: true,
         message: `Yakin ingin menghapus "${student.name}" secara permanen dari sistem? Data tidak dapat dikembalikan!`,
         onConfirm: () => {
-          supabase.from('students').delete().eq('id', student.id).then(() => showToast('Dihapus.'));
+          supabase.from('students').delete().eq('id', student.id).then(() => {
+            setStudents(prev => prev.filter(s => s.id !== student.id));
+            showToast('Dihapus.');
+          });
         }
       });
     } else {
@@ -605,7 +618,10 @@ const MainApp = ({ currentUser, onLogout }) => {
         isOpen: true,
         message: `Yakin ingin mengeluarkan "${student.name}" dari halaqoh ${activeHalaqoh}?`,
         onConfirm: () => {
-          supabase.from('students').update({ halaqoh: '' }).eq('id', student.id).then(() => showToast('Siswa berhasil dikeluarkan.'));
+          supabase.from('students').update({ halaqoh: '' }).eq('id', student.id).then(() => {
+            setStudents(prev => prev.map(s => s.id === student.id ? { ...s, halaqoh: '' } : s));
+            showToast('Siswa berhasil dikeluarkan.');
+          });
         }
       });
     }
@@ -1006,6 +1022,16 @@ const MainApp = ({ currentUser, onLogout }) => {
       const { error } = await supabase.from('students').upsert(updates);
       if (error) throw error;
 
+      // Update state lokal seketika agar data langsung muncul tanpa perlu di-refresh
+      setStudents(prev => {
+        const newStudents = [...prev];
+        updates.forEach(updatedStudent => {
+          const idx = newStudents.findIndex(s => s.id === updatedStudent.id);
+          if (idx !== -1) newStudents[idx] = updatedStudent;
+        });
+        return newStudents;
+      });
+
       handleCloseModal(); showToast('Data berhasil disimpan!');
     } catch (e) { console.error(e); showToast('Gagal menyimpan.'); }
   };
@@ -1222,6 +1248,8 @@ const MainApp = ({ currentUser, onLogout }) => {
                   uploadingPhotoId={uploadingPhotoId}
                   uploadProgress={uploadProgress}
                   onReorderStudents={handleReorderStudents}
+                  searchQuery={searchQuery}
+                  setSearchQuery={setSearchQuery}
                 />
               </div>
             )}
