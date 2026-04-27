@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   BookOpen, UserPlus, GraduationCap, User, Lock, Calendar, Mic, Repeat, FileText,
   Eye, EyeOff, Loader2, ShieldAlert, CheckCircle2, HelpCircle, Download, Printer, Users,
-  ChevronLeft, ChevronRight, Search, SearchCode, RotateCcw, LayoutGrid
+  ChevronLeft, ChevronRight, Search, SearchCode, RotateCcw, LayoutGrid, X
 } from 'lucide-react';
 import { supabase } from './supabase';
 import { formatShortDate, getInitials, formatPeriode, formatPrintData, getMonday, formatDateObj } from '../utils/helpers';
@@ -286,78 +286,78 @@ const LoginScreen = ({ onLogin }) => {
 
     return ( // Public Student View
       <div className="min-h-screen bg-slate-100 text-gray-800 flex flex-col items-center p-0 md:p-6 overflow-y-auto transition-all duration-500">
-        <div className="fixed top-4 right-4 z-[100] flex gap-2 print:hidden">
-           <button onClick={handleDownloadImage} className="bg-emerald-500 text-white p-3 rounded-full shadow-lg hover:bg-emerald-600 transition-all"><Download size={20}/></button>
-           <button onClick={handlePrintAll} className="bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 transition-all" title="Unduh Riwayat Lengkap (PDF)"><FileText size={20}/></button>
-           <button onClick={() => window.print()} className="bg-slate-800 text-white p-3 rounded-full shadow-lg hover:bg-slate-900 transition-all"><Printer size={20}/></button>
-           <button onClick={() => setPublicStudent(null)} className="bg-white text-slate-500 p-3 rounded-full shadow-lg hover:bg-slate-100 transition-all"><BookOpen size={20}/></button>
+        <div className="fixed bottom-6 right-6 sm:top-6 sm:right-6 sm:bottom-auto z-[100] flex flex-col-reverse sm:flex-row gap-3 print:hidden">
+           <button onClick={handleDownloadImage} className="bg-emerald-500 text-white w-14 h-14 sm:w-auto sm:h-auto sm:px-5 sm:py-3 rounded-full sm:rounded-xl shadow-xl hover:bg-emerald-600 transition-all flex items-center justify-center gap-2" title="Unduh Gambar (JPG)">
+             <Download size={24} className="sm:w-[20px] sm:h-[20px]" /> <span className="hidden sm:inline text-sm font-bold">Unduh JPG</span>
+           </button>
+           <button onClick={handlePrintAll} className="bg-blue-600 text-white w-14 h-14 sm:w-auto sm:h-auto sm:px-5 sm:py-3 rounded-full sm:rounded-xl shadow-xl hover:bg-blue-700 transition-all flex items-center justify-center gap-2" title="Unduh Riwayat Lengkap">
+             <FileText size={24} className="sm:w-[20px] sm:h-[20px]" /> <span className="hidden sm:inline text-sm font-bold">Riwayat PDF</span>
+           </button>
+           <button onClick={() => window.print()} className="bg-slate-800 text-white w-14 h-14 sm:w-auto sm:h-auto sm:px-5 sm:py-3 rounded-full sm:rounded-xl shadow-xl hover:bg-slate-900 transition-all flex items-center justify-center gap-2 border border-slate-700" title="Cetak">
+             <Printer size={24} className="sm:w-[20px] sm:h-[20px]" /> <span className="hidden sm:inline text-sm font-bold">Cetak</span>
+           </button>
+           <button onClick={() => setPublicStudent(null)} className="bg-white text-slate-600 border border-slate-200 w-14 h-14 sm:w-auto sm:h-auto sm:p-3 rounded-full sm:rounded-xl shadow-xl hover:bg-slate-100 transition-all flex items-center justify-center gap-2 mb-2 sm:mb-0" title="Tutup">
+             <X size={24} className="sm:w-[20px] sm:h-[20px]" />
+           </button>
         </div>
 
-        <div className="w-full overflow-x-auto custom-scrollbar flex justify-start md:justify-center p-0 md:p-4 print:p-0 print:overflow-visible">
-          <div id="share-report-card" className="bg-white w-[800px] min-w-[800px] shrink-0 shadow-2xl relative my-auto print:shadow-none animate-in fade-in slide-in-from-bottom-4 duration-700 transition-colors rounded-none md:rounded-[32px]">
+        <div className="w-full flex justify-center p-0 sm:p-4 print:p-0">
+          <div id="share-report-card" className="bg-white w-full max-w-[800px] shrink-0 sm:shadow-2xl relative my-auto print:shadow-none print:w-[800px] print:min-w-[800px] print:max-w-none animate-in fade-in slide-in-from-bottom-4 duration-700 transition-colors rounded-none sm:rounded-[32px] overflow-hidden">
             {/* Header Laporan */}
-            <div className="bg-[#f2fdf5] p-8 border-b border-green-100 flex justify-between items-center transition-colors">
-               <div>
-                  <h1 className="text-3xl font-black text-[#111827] mb-1">{publicTab === 'lesson_plan' ? "Lesson Plan Al-Qur'an" : "Jurnal Harian Al-Qur'an"}</h1>
-                  <p className="text-[#00e676] font-bold text-sm italic">SDIT Al-Fityan School Bogor</p>
+            <div className="bg-[#f2fdf5] p-6 sm:p-8 border-b border-green-100 flex flex-col-reverse sm:flex-row justify-between items-center gap-4 transition-colors text-center sm:text-left">
+               <div className="w-full sm:w-auto">
+                  <h1 className="text-2xl sm:text-3xl font-black text-[#111827] mb-1 sm:mb-2">{publicTab === 'lesson_plan' ? "Lesson Plan Al-Qur'an" : "Jurnal Harian Al-Qur'an"}</h1>
+                  <p className="text-[#00e676] font-bold text-xs sm:text-sm italic">SDIT Al-Fityan School Bogor</p>
                </div>
-               <div className="w-32 h-32 flex items-center justify-center shrink-0">
-                  {institutionLogo ? <img src={institutionLogo} className="w-full h-full object-contain transition-all" /> : <BookOpen size={48} className="text-green-600" />}
+               <div className="w-20 h-20 sm:w-32 sm:h-32 flex items-center justify-center shrink-0">
+                  {institutionLogo ? <img src={institutionLogo} className="w-full h-full object-contain transition-all" /> : <BookOpen size={64} className="text-green-600 sm:w-16 sm:h-16" />}
                </div> 
             </div>
 
             {/* Info Siswa */}
-            <div className="p-8 flex flex-row justify-between items-center gap-5 border-b border-gray-50 transition-colors">
-               <div className="flex items-center gap-5 w-auto">
-               <div className="w-20 h-20 rounded-full bg-[#e6fbf0] border-4 border-[#00e676] text-[#00e676] flex items-center justify-center text-3xl font-black shrink-0 overflow-hidden">
+            <div className="p-6 sm:p-8 flex flex-col sm:flex-row justify-between items-center gap-6 border-b border-gray-50 transition-colors text-center sm:text-left">
+               <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-5 w-full sm:w-auto">
+               <div className="w-24 h-24 sm:w-20 sm:h-20 rounded-full bg-[#e6fbf0] border-4 border-[#00e676] text-[#00e676] flex items-center justify-center text-3xl font-black shrink-0 overflow-hidden shadow-inner">
                   {publicStudent.photo ? <img src={publicStudent.photo} className="w-full h-full object-cover" /> : <span>{getInitials(publicStudent.name)}</span>}
                </div>
                <div>
-                  <h2 className={`font-black text-gray-800 mb-2 ${publicStudent.name.length > 24 ? 'text-xl' : publicStudent.name.length > 18 ? 'text-2xl' : 'text-3xl'}`}>{publicStudent.name}</h2>
-                  <div className="flex flex-wrap gap-2">
-                     <span className="bg-[#e6fbf0] text-green-800 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest">Kelas {publicStudent.kelas || '-'}</span>
-                     <span className="bg-[#e6fbf0] text-green-800 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest">Kelompok {publicStudent.halaqoh || '-'}</span>
+                  <h2 className={`font-black text-gray-800 mb-2 sm:mb-3 ${publicStudent.name.length > 24 ? 'text-lg sm:text-xl' : publicStudent.name.length > 18 ? 'text-xl sm:text-2xl' : 'text-2xl sm:text-3xl'}`}>{publicStudent.name}</h2>
+                  <div className="flex flex-wrap justify-center sm:justify-start gap-2">
+                     <span className="bg-[#e6fbf0] text-green-800 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-widest">Kelas {publicStudent.kelas || '-'}</span>
+                     <span className="bg-[#e6fbf0] text-green-800 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-widest">Kelompok {publicStudent.halaqoh || '-'}</span>
                   </div>
                </div>
-               </div>
-
-               {/* QR CODE UNTUK LINK DIGITAL */}
-               <div className="flex flex-col items-center gap-1 shrink-0 transition-opacity">
-                  <div className="w-16 h-16 bg-white p-1 border border-gray-100 rounded-lg shadow-sm transition-all">
-                     <img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`${window.location.origin}${window.location.pathname}?share=${publicStudent?.id}`)}`} alt="QR Code" className="w-full h-full" crossOrigin="anonymous" /> 
-                  </div>
-                  <p className="text-[8px] font-black text-gray-400 uppercase tracking-tighter">Scan Laporan Digital</p>
                </div>
             </div>
 
             {/* Navigasi Arsip Mingguan */}
-            <div className="bg-white border-b border-gray-100 px-6 py-4 flex justify-between items-center print:hidden transition-colors">
-               <button onClick={() => changePublicWeek(-7)} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-emerald-500" title="Pekan Sebelumnya"><ChevronLeft size={24}/></button>
+            <div className="bg-white border-b border-gray-100 px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center print:hidden transition-colors">
+               <button onClick={() => changePublicWeek(-7)} className="p-2 sm:p-3 bg-slate-50 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-emerald-500" title="Pekan Sebelumnya"><ChevronLeft size={20} className="sm:w-6 sm:h-6"/></button>
                <div className="flex flex-col items-center text-slate-700">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Periode Laporan</span>
-                  <div className="flex items-center gap-2 text-sm font-black text-slate-700"><Calendar size={16} className="text-emerald-500"/> {formatPeriode(weekDates[0], weekDates[4])}</div>
+                  <span className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Periode Laporan</span>
+                  <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-black text-slate-700"><Calendar size={14} className="text-emerald-500 sm:w-4 sm:h-4"/> {formatPeriode(weekDates[0], weekDates[4])}</div>
                   
                   {/* Tombol Kembali ke Pekan Ini */}
                   {formatDateObj(weekStart) !== formatDateObj(getMonday(new Date())) && !isPrintingAll && (
                     <button 
                       onClick={() => setPublicWeekStart(getMonday(new Date()))}
-                      className="mt-1 text-[9px] font-bold text-emerald-600 hover:text-emerald-700 underline transition-colors animate-in fade-in slide-in-from-top-1 duration-300"
+                      className="mt-1 sm:mt-1.5 text-[9px] font-bold text-emerald-600 hover:text-emerald-700 underline transition-colors animate-in fade-in slide-in-from-top-1 duration-300"
                     >
                       Kembali ke Pekan Ini
                     </button>
                   )}
                </div> 
-               <button onClick={() => changePublicWeek(7)} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-emerald-500" title="Pekan Selanjutnya"><ChevronRight size={24}/></button>
+               <button onClick={() => changePublicWeek(7)} className="p-2 sm:p-3 bg-slate-50 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-emerald-500" title="Pekan Selanjutnya"><ChevronRight size={20} className="sm:w-6 sm:h-6"/></button>
             </div>
             
             {/* Tab Toggle untuk Target / Capaian */}
-            <div className="bg-slate-50 border-b border-gray-100 px-6 py-3 flex gap-2 print:hidden transition-colors">
-               <button onClick={() => setPublicTab('lesson_plan')} className={`flex-1 py-2 text-xs font-black rounded-xl transition-all ${publicTab === 'lesson_plan' ? 'bg-emerald-500 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-500 hover:bg-emerald-50'}`}>Target (Lesson Plan)</button>
-               <button onClick={() => setPublicTab('jurnal')} className={`flex-1 py-2 text-xs font-black rounded-xl transition-all ${publicTab === 'jurnal' ? 'bg-blue-500 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-500 hover:bg-blue-50'}`}>Capaian (Jurnal)</button>
+            <div className="bg-slate-50 border-b border-gray-100 px-4 sm:px-6 py-3 sm:py-4 flex gap-2 sm:gap-3 print:hidden transition-colors">
+               <button onClick={() => setPublicTab('lesson_plan')} className={`flex-1 py-2.5 sm:py-3 text-[10px] sm:text-xs font-black rounded-xl transition-all ${publicTab === 'lesson_plan' ? 'bg-emerald-500 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-500 hover:bg-emerald-50'}`}>Target (Lesson Plan)</button>
+               <button onClick={() => setPublicTab('jurnal')} className={`flex-1 py-2.5 sm:py-3 text-[10px] sm:text-xs font-black rounded-xl transition-all ${publicTab === 'jurnal' ? 'bg-blue-500 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-500 hover:bg-blue-50'}`}>Capaian (Jurnal)</button>
             </div>
 
             {/* Daftar Hari */}
-            <div className="p-8 flex flex-col gap-5 bg-gray-50/50">
+            <div className="p-4 sm:p-8 flex flex-col gap-4 sm:gap-5 bg-gray-50/50">
                {datesToDisplay.map((dateObj) => {
                   const dateStr = formatDateObj(dateObj);
                   const rec = publicStudent.records?.[dateStr] || {};
@@ -367,27 +367,27 @@ const LoginScreen = ({ onLogin }) => {
                   if (!hasData) return null;
                   
                   return (
-                    <div key={dateStr} className="bg-white border border-gray-100 rounded-[24px] p-5 shadow-sm print:break-inside-avoid transition-colors">
-                       <div className="flex justify-between items-center mb-4 border-b border-gray-50 pb-3">
-                          <span className="bg-[#00e676] text-white px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest"> {['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'][dateObj.getDay()]}</span>
-                          <span className="text-gray-400 dark:text-gray-400 font-bold italic text-sm">{formatShortDate(dateObj)}</span>
+                    <div key={dateStr} className="bg-white border border-gray-100 rounded-[20px] sm:rounded-[24px] p-4 sm:p-5 shadow-sm print:break-inside-avoid transition-colors">
+                       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 sm:gap-0 mb-4 sm:mb-5 border-b border-gray-50 pb-3 sm:pb-4">
+                          <span className="bg-[#00e676] text-white px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-widest w-max shadow-sm"> {['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'][dateObj.getDay()]}</span>
+                          <span className="text-gray-400 dark:text-gray-400 font-bold italic text-xs sm:text-sm">{formatShortDate(dateObj)}</span>
                        </div>
-                       <div className="grid grid-cols-2 gap-y-6 gap-x-4">
-                          <div>
-                             <div className="flex items-center gap-1.5 mb-1.5 text-blue-500"><BookOpen size={14} /><span className="text-[10px] font-black uppercase">Tahsin</span></div>
-                             <div className="text-sm font-bold text-gray-800 whitespace-pre-wrap">{formatPrintData(rec[k.t], rec[k.h], rec[k.tNilai], rec[k.tsNilai])}</div>
+                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 sm:gap-y-6 gap-x-4 sm:gap-x-6">
+                          <div className="bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent">
+                             <div className="flex items-center gap-1.5 mb-1.5 text-blue-500"><BookOpen size={14} /><span className="text-[10px] sm:text-xs font-black uppercase tracking-wider">Tahsin</span></div>
+                             <div className="text-xs sm:text-sm font-bold text-gray-800 whitespace-pre-wrap leading-relaxed">{formatPrintData(rec[k.t], rec[k.h], rec[k.tNilai], rec[k.tsNilai])}</div>
                           </div>
-                          <div>
-                             <div className="flex items-center gap-1.5 mb-1.5 text-purple-500"><Mic size={14} /><span className="text-[10px] font-black uppercase">Tahfidz</span></div>
-                             <div className="text-sm font-bold text-gray-800 whitespace-pre-wrap">{formatPrintData(rec[k.f], rec[k.af], null, rec[k.fNilai])}</div>
+                          <div className="bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent">
+                             <div className="flex items-center gap-1.5 mb-1.5 text-purple-500"><Mic size={14} /><span className="text-[10px] sm:text-xs font-black uppercase tracking-wider">Tahfidz</span></div>
+                             <div className="text-xs sm:text-sm font-bold text-gray-800 whitespace-pre-wrap leading-relaxed">{formatPrintData(rec[k.f], rec[k.af], null, rec[k.fNilai])}</div>
                           </div>
-                          <div>
-                             <div className="flex items-center gap-1.5 mb-1.5 text-emerald-500"><Repeat size={14} /><span className="text-[10px] font-black uppercase">Murojaah</span></div>
-                             <div className="text-sm font-bold text-gray-800 whitespace-pre-wrap">{formatPrintData(rec[k.m], '-', null, null)}</div>
+                          <div className="bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent">
+                             <div className="flex items-center gap-1.5 mb-1.5 text-emerald-500"><Repeat size={14} /><span className="text-[10px] sm:text-xs font-black uppercase tracking-wider">Murojaah</span></div>
+                             <div className="text-xs sm:text-sm font-bold text-gray-800 whitespace-pre-wrap leading-relaxed">{formatPrintData(rec[k.m], '-', null, null)}</div>
                           </div>
-                          <div>
-                             <div className="flex items-center gap-1.5 mb-1.5 text-orange-500"><FileText size={14} /><span className="text-[10px] font-black uppercase">Catatan</span></div>
-                             <div className="text-sm font-bold text-gray-800 whitespace-pre-wrap">{rec[k.c] || '-'}</div>
+                          <div className="bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent">
+                             <div className="flex items-center gap-1.5 mb-1.5 text-orange-500"><FileText size={14} /><span className="text-[10px] sm:text-xs font-black uppercase tracking-wider">Catatan</span></div>
+                             <div className="text-xs sm:text-sm font-bold text-gray-800 whitespace-pre-wrap leading-relaxed">{rec[k.c] || '-'}</div>
                           </div>
                        </div>
                     </div>
@@ -408,14 +408,14 @@ const LoginScreen = ({ onLogin }) => {
             </div>
 
             {/* Footer Laporan */}
-            <div className="bg-[#111827] p-6 flex flex-row justify-between items-center gap-4 text-white">
-               <div className="flex items-center gap-3 w-auto">
+            <div className="bg-[#111827] p-5 sm:p-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-white text-center sm:text-left">
+               <div className="flex items-center justify-center sm:justify-start gap-3 w-full sm:w-auto">
                   <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"><Users size={14} /></div>
-                  <span className="text-sm font-medium text-gray-400">Ustadz/ah: <strong className="text-white inline">{publicTeacher || '-'}</strong></span>
+                  <span className="text-xs sm:text-sm font-medium text-gray-400">Ustadz/ah: <strong className="text-white inline ml-1">{publicTeacher || '-'}</strong></span>
                </div> 
-               <div className="flex items-center gap-3 w-auto">
+               <div className="flex items-center justify-center sm:justify-start gap-3 w-full sm:w-auto">
                   <div className="w-8 h-8 rounded-full bg-[#00e676]/20 flex items-center justify-center"><Calendar size={14} className="text-[#00e676]" /></div>
-                  <span className="text-sm font-medium text-gray-400">Periode: <strong className="text-white inline">{formatPeriode(weekDates[0], weekDates[4])}</strong></span>
+                  <span className="text-xs sm:text-sm font-medium text-gray-400">Periode: <strong className="text-white inline ml-1">{formatPeriode(weekDates[0], weekDates[4])}</strong></span>
                </div>
             </div>
           </div>

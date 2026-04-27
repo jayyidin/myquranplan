@@ -613,48 +613,48 @@ const HomeView = ({
         <div className="fixed inset-0 z-[99999] flex justify-center items-start md:items-center bg-slate-900/80 p-0 md:p-6 pb-32 md:pb-6 overflow-y-auto custom-scrollbar printable-area print:!static print:p-0 print:m-0 print:overflow-visible">
 
           {/* Tombol Aksi Web (Floating Bottom on Mobile) */}
-          <div className="fixed bottom-6 right-6 md:bottom-auto md:top-6 md:right-6 flex flex-col-reverse md:flex-row gap-3 z-[100000] print:hidden" data-html2canvas-ignore="true">
-            <button onClick={handleCopyShareLink} className="bg-blue-600 text-white px-5 py-3 md:py-2.5 rounded-2xl md:rounded-xl font-bold flex items-center justify-center gap-2 shadow-xl hover:bg-blue-700 transition-colors">
-              <Link size={18} /> <span className="inline">Salin Link Orang Tua</span>
+          <div className="fixed bottom-6 right-6 sm:bottom-auto sm:top-6 sm:right-6 flex flex-col-reverse sm:flex-row gap-3 z-[100000] print:hidden" data-html2canvas-ignore="true">
+            <button onClick={handleCopyShareLink} className="bg-blue-600 text-white w-14 h-14 sm:w-auto sm:h-auto sm:px-5 sm:py-2.5 rounded-full sm:rounded-xl font-bold flex items-center justify-center gap-2 shadow-xl hover:bg-blue-700 transition-colors" title="Salin Link Orang Tua">
+              <Link size={20} className="sm:w-[18px] sm:h-[18px]"/> <span className="hidden sm:inline">Salin Link Orang Tua</span>
             </button>
-            <button onClick={handleDownloadImage} disabled={isDownloading} className="bg-[#00e676] text-white px-5 py-3 md:py-2.5 rounded-2xl md:rounded-xl font-bold flex items-center justify-center gap-2 shadow-xl hover:bg-green-600 transition-colors disabled:opacity-50">
-              {isDownloading ? <span className="animate-spin text-sm">⏳</span> : <Download size={18} />}
-              <span className="inline">{isDownloading ? 'Memproses...' : 'Unduh (JPG)'}</span>
+            <button onClick={handleDownloadImage} disabled={isDownloading} className="bg-[#00e676] text-white w-14 h-14 sm:w-auto sm:h-auto sm:px-5 sm:py-2.5 rounded-full sm:rounded-xl font-bold flex items-center justify-center gap-2 shadow-xl hover:bg-green-600 transition-colors disabled:opacity-50" title="Unduh (JPG)">
+              {isDownloading ? <span className="animate-spin text-sm">⏳</span> : <Download size={20} className="sm:w-[18px] sm:h-[18px]"/>}
+              <span className="hidden sm:inline">{isDownloading ? 'Memproses...' : 'Unduh (JPG)'}</span>
             </button>
-            <button onClick={handleDownloadPdf} disabled={isDownloading} className="bg-white text-gray-800 px-5 py-3 md:py-2.5 rounded-2xl md:rounded-xl font-bold flex items-center justify-center gap-2 shadow-xl hover:bg-gray-50 transition-colors disabled:opacity-50">
-              {isDownloading ? <span className="animate-spin text-sm">⏳</span> : <Download size={18} />}
-              <span className="inline">{isDownloading ? 'Memproses...' : 'Download PDF'}</span>
+            <button onClick={handleDownloadPdf} disabled={isDownloading} className="bg-white text-gray-800 w-14 h-14 sm:w-auto sm:h-auto sm:px-5 sm:py-2.5 rounded-full sm:rounded-xl font-bold flex items-center justify-center gap-2 shadow-xl hover:bg-gray-50 transition-colors disabled:opacity-50 border border-slate-100" title="Download PDF">
+              {isDownloading ? <span className="animate-spin text-sm">⏳</span> : <FileText size={20} className="sm:w-[18px] sm:h-[18px]"/>}
+              <span className="hidden sm:inline">{isDownloading ? 'Memproses...' : 'Download PDF'}</span>
             </button>
-            <button onClick={() => setShareStudent(null)} className="bg-red-500 text-white w-14 h-14 md:w-11 md:h-11 flex items-center justify-center rounded-full md:rounded-xl shadow-xl hover:bg-red-600 transition-colors self-end md:self-auto mb-2 md:mb-0">
-              <X size={24} className="md:w-5 md:h-5" />
+            <button onClick={() => setShareStudent(null)} className="bg-slate-800 text-white w-14 h-14 sm:w-auto sm:h-auto sm:p-3 flex items-center justify-center rounded-full sm:rounded-xl shadow-xl hover:bg-slate-900 transition-colors mb-2 sm:mb-0" title="Tutup">
+              <X size={24} className="sm:w-[20px] sm:h-[20px]" />
             </button>
           </div>
 
           {/* KARTU LAPORAN INDIVIDU */}
-          <div className="w-full overflow-x-auto custom-scrollbar p-0 md:p-4 print:p-0 print:overflow-visible flex justify-start md:justify-center">
-            <div id="share-report-card" className="bg-white w-[800px] min-w-[800px] shrink-0 rounded-none md:rounded-[32px] overflow-hidden shadow-2xl relative my-auto print:shadow-none print:rounded-none">
+          <div className="w-full flex justify-center p-0 sm:p-4 print:p-0">
+            <div id="share-report-card" className="bg-white w-full max-w-[800px] print:w-[800px] print:min-w-[800px] print:max-w-none shrink-0 sm:shadow-2xl relative my-auto print:shadow-none rounded-none sm:rounded-[32px] overflow-hidden transition-colors">
 
             {/* HEADER LAPORAN */}
-            <div className="bg-[#f2fdf5] p-8 border-b border-green-100 flex justify-between items-center">
-              <div>
-                <h1 className="text-3xl font-black text-[#111827] mb-1">
+            <div className="bg-[#f2fdf5] p-6 sm:p-8 border-b border-green-100 flex flex-col-reverse sm:flex-row justify-between items-center gap-4 text-center sm:text-left">
+              <div className="w-full sm:w-auto">
+                <h1 className="text-2xl sm:text-3xl font-black text-[#111827] mb-1 sm:mb-2">
                   {homeTab === 'lesson_plan' ? "Lesson Plan Al-Qur'an" : "Jurnal Harian Al-Qur'an"}
                 </h1>
-                <p className="text-[#00e676] font-bold text-sm italic">SDIT Al-Fityan School Bogor</p>
+                <p className="text-[#00e676] font-bold text-xs sm:text-sm italic">SDIT Al-Fityan School Bogor</p>
               </div>
-              <div className="w-32 h-32 flex items-center justify-center shrink-0">
+              <div className="w-20 h-20 sm:w-32 sm:h-32 flex items-center justify-center shrink-0">
                 {institutionLogo && institutionLogo !== 'logo.png' ? (
                   <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain" />
                 ) : (
-                  <BookOpen size={64} className="text-green-600" />
+                  <BookOpen size={64} className="text-green-600 sm:w-16 sm:h-16" />
                 )}
               </div>
             </div>
 
             {/* INFO SISWA */}
-            <div className="p-8 flex flex-row justify-between items-center gap-5 border-b border-gray-50">
-              <div className="flex items-center gap-5 w-auto">
-                <div className="w-20 h-20 rounded-full bg-[#e6fbf0] border-4 border-[#00e676] text-[#00e676] flex items-center justify-center text-3xl font-black relative shrink-0">
+            <div className="p-6 sm:p-8 flex flex-col sm:flex-row justify-between items-center gap-6 border-b border-gray-50 text-center sm:text-left">
+              <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-5 w-full sm:w-auto">
+                <div className="w-24 h-24 sm:w-20 sm:h-20 rounded-full bg-[#e6fbf0] border-4 border-[#00e676] text-[#00e676] flex items-center justify-center text-3xl font-black relative shrink-0 shadow-inner">
                   {shareStudent?.photo ? (
                     <img src={shareStudent.photo} alt={shareStudent?.name || ''} className="w-full h-full rounded-full object-cover" />
                   ) : (
@@ -667,25 +667,17 @@ const HomeView = ({
                   </div>
                 </div>
                 <div>
-                  <h2 className="text-3xl font-black text-gray-800 mb-2">{String(shareStudent?.name || 'Siswa')}</h2>
-                  <div className="flex flex-wrap gap-2">
-                    <span className="bg-[#e6fbf0] text-green-800 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest">Kelas {String(shareStudent?.kelas || '-')}</span>
-                    <span className="bg-[#e6fbf0] text-green-800 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest">Kelompok {String(activeHalaqoh || '-')}</span>
+                  <h2 className={`font-black text-gray-800 mb-2 sm:mb-3 ${(shareStudent?.name || '').length > 24 ? 'text-lg sm:text-xl' : (shareStudent?.name || '').length > 18 ? 'text-xl sm:text-2xl' : 'text-2xl sm:text-3xl'}`}>{String(shareStudent?.name || 'Siswa')}</h2>
+                  <div className="flex flex-wrap justify-center sm:justify-start gap-2">
+                    <span className="bg-[#e6fbf0] text-green-800 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-widest">Kelas {String(shareStudent?.kelas || '-')}</span>
+                    <span className="bg-[#e6fbf0] text-green-800 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-widest">Kelompok {String(activeHalaqoh || '-')}</span>
                   </div>
                 </div>
-              </div>
-
-              {/* QR CODE UNTUK LINK DIGITAL */}
-              <div className="flex flex-col items-center gap-1 shrink-0">
-                <div className="w-16 h-16 bg-white p-1 border border-gray-100 rounded-lg shadow-sm">
-                  <img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`${window.location.origin}${window.location.pathname}?share=${shareStudent?.id}`)}`} alt="QR Code" className="w-full h-full" crossOrigin="anonymous" />
-                </div>
-                <p className="text-[8px] font-black text-gray-400 uppercase tracking-tighter">Scan Laporan Digital</p>
               </div>
             </div>
 
             {/* DAFTAR HARI / JURNAL SISWA */}
-            <div className="p-8 flex flex-col gap-5 bg-gray-50/50">
+            <div className="p-4 sm:p-8 flex flex-col gap-4 sm:gap-5 bg-gray-50/50">
               {weekDates.every((dateObj) => {
                 if (!dateObj || typeof dateObj.getDay !== 'function') return true;
                 if (dateObj.getDay() === 0 || dateObj.getDay() === 6) return true;
@@ -716,47 +708,35 @@ const HomeView = ({
                 const valC = rec?.[k.c] && rec?.[k.c] !== '-' ? String(rec[k.c]) : '-';
 
                 return (
-                  <div key={dateStr} className="bg-white border border-gray-100 rounded-[24px] p-5 shadow-[0_2px_10px_rgba(0,0,0,0.02)] print:break-inside-avoid">
-                    <div className="flex justify-between items-center mb-4 border-b border-gray-50 pb-3">
-                      <span className="bg-[#00e676] text-white px-4 py-1.5 rounded-full text-xs font-black tracking-widest uppercase shadow-sm">{dayName}</span>
-                      <span className="text-gray-400 font-bold italic text-sm">{displayDate}</span>
+                  <div key={dateStr} className="bg-white border border-gray-100 rounded-[20px] sm:rounded-[24px] p-4 sm:p-5 shadow-sm print:break-inside-avoid transition-colors">
+                    <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 sm:gap-0 mb-4 sm:mb-5 border-b border-gray-50 pb-3 sm:pb-4">
+                      <span className="bg-[#00e676] text-white px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-black tracking-widest uppercase shadow-sm w-max">{dayName}</span>
+                      <span className="text-gray-400 font-bold italic text-xs sm:text-sm">{displayDate}</span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-y-6 gap-x-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 sm:gap-y-6 gap-x-4 sm:gap-x-6">
                       {/* Info TAHSIN */}
-                      <div>
-                        <div className="flex items-center gap-1.5 mb-1.5 text-blue-500">
-                          <BookOpen size={14} />
-                          <span className="text-[10px] font-black tracking-widest uppercase">Tahsin</span>
-                        </div>
-                        <div className="text-sm font-bold text-gray-800 whitespace-pre-wrap">{valT}</div>
+                      <div className="bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent">
+                        <div className="flex items-center gap-1.5 mb-1.5 text-blue-500"><BookOpen size={14} /><span className="text-[10px] sm:text-xs font-black uppercase tracking-wider">Tahsin</span></div>
+                        <div className="text-xs sm:text-sm font-bold text-gray-800 whitespace-pre-wrap leading-relaxed">{valT}</div>
                       </div>
 
                       {/* Info TAHFIDZ */}
-                      <div>
-                        <div className="flex items-center gap-1.5 mb-1.5 text-purple-500">
-                          <Mic size={14} />
-                          <span className="text-[10px] font-black tracking-widest uppercase">Tahfidz</span>
-                        </div>
-                        <div className="text-sm font-bold text-gray-800 whitespace-pre-wrap">{valF}</div>
+                      <div className="bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent">
+                        <div className="flex items-center gap-1.5 mb-1.5 text-purple-500"><Mic size={14} /><span className="text-[10px] sm:text-xs font-black uppercase tracking-wider">Tahfidz</span></div>
+                        <div className="text-xs sm:text-sm font-bold text-gray-800 whitespace-pre-wrap leading-relaxed">{valF}</div>
                       </div>
 
                       {/* Info MUROJAAH */}
-                      <div>
-                        <div className="flex items-center gap-1.5 mb-1.5 text-emerald-500">
-                          <Repeat size={14} />
-                          <span className="text-[10px] font-black tracking-widest uppercase">Murojaah</span>
-                        </div>
-                        <div className="text-sm font-bold text-gray-800 whitespace-pre-wrap">{valM}</div>
+                      <div className="bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent">
+                        <div className="flex items-center gap-1.5 mb-1.5 text-emerald-500"><Repeat size={14} /><span className="text-[10px] sm:text-xs font-black uppercase tracking-wider">Murojaah</span></div>
+                        <div className="text-xs sm:text-sm font-bold text-gray-800 whitespace-pre-wrap leading-relaxed">{valM}</div>
                       </div>
 
                       {/* Info CATATAN */}
-                      <div>
-                        <div className="flex items-center gap-1.5 mb-1.5 text-orange-500">
-                          <FileText size={14} />
-                          <span className="text-[10px] font-black tracking-widest uppercase">Catatan</span>
-                        </div>
-                        <div className="text-sm font-bold text-gray-800 whitespace-pre-wrap">{valC}</div>
+                      <div className="bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent">
+                        <div className="flex items-center gap-1.5 mb-1.5 text-orange-500"><FileText size={14} /><span className="text-[10px] sm:text-xs font-black uppercase tracking-wider">Catatan</span></div>
+                        <div className="text-xs sm:text-sm font-bold text-gray-800 whitespace-pre-wrap leading-relaxed">{valC}</div>
                       </div>
                     </div>
                   </div>
@@ -765,14 +745,14 @@ const HomeView = ({
             </div>
 
             {/* FOOTER LAPORAN */}
-            <div className="bg-[#111827] p-6 flex flex-row justify-between items-center gap-4 text-white">
-              <div className="flex items-center gap-3 w-auto">
+            <div className="bg-[#111827] p-5 sm:p-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-white text-center sm:text-left">
+              <div className="flex items-center justify-center sm:justify-start gap-3 w-full sm:w-auto">
                 <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0"><Users size={14} className="text-gray-300" /></div>
-                <span className="text-sm font-medium text-gray-400">Ustadz/ah: <strong className="text-white inline">{String(activeGuru || '-')}</strong></span>
+                <span className="text-xs sm:text-sm font-medium text-gray-400">Ustadz/ah: <strong className="text-white inline ml-1">{String(activeGuru || '-')}</strong></span>
               </div>
-              <div className="flex items-center gap-3 w-auto">
+              <div className="flex items-center justify-center sm:justify-start gap-3 w-full sm:w-auto">
                 <div className="w-8 h-8 rounded-full bg-[#00e676]/20 flex items-center justify-center shrink-0"><Calendar size={14} className="text-[#00e676]" /></div>
-                <span className="text-sm font-medium text-gray-400">Periode: <strong className="text-white inline">{formatPeriode(weekDates[0], weekDates[weekDates.length - 1] || weekDates[0])}</strong></span>
+                <span className="text-xs sm:text-sm font-medium text-gray-400">Periode: <strong className="text-white inline ml-1">{formatPeriode(weekDates[0], weekDates[weekDates.length - 1] || weekDates[0])}</strong></span>
               </div>
             </div>
 
