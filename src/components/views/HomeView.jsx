@@ -41,7 +41,22 @@ const HomeView = ({
   };
 
 
-  // --- FUNGSI UNDUH GAMBAR (PNG) MODERN & FONT LOCKED ---
+  // Dipindahkan ke atas agar Linter tidak menampilkan error "no-use-before-define"
+  const getBulanTahun = (date) => {
+    try {
+      const d = new Date(date);
+      const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+      return `${months[d.getMonth()]} ${d.getFullYear()}`;
+    } catch (e) { return '-'; }
+  };
+  const getDayName = (dateObj) => {
+    try { return ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][dateObj.getDay()]; } catch (e) { return ''; }
+  };
+  const getDateString = (dateObj) => {
+    try { return `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`; } catch (e) { return ''; }
+  };
+
+  // --- FUNGSI UNDUH GAMBAR (JPG) MODERN & FONT LOCKED ---
   const handleDownloadImage = async () => {
     setIsDownloading(true);
     try {
@@ -59,9 +74,9 @@ const HomeView = ({
 
       const element = document.getElementById('share-report-card');
       if (element) {
-        const dataURL = await window.htmlToImage.toPng(element, {
-          quality: 1,
-          pixelRatio: 2,
+        const dataURL = await window.htmlToImage.toJpeg(element, {
+          quality: 0.85,
+          pixelRatio: 1.5,
           backgroundColor: '#ffffff',
           style: {
             transform: 'scale(1)',
@@ -73,7 +88,7 @@ const HomeView = ({
         const safeName = shareStudent?.name ? shareStudent.name.replace(/[^a-z0-9]/gi, '_').toLowerCase() : 'siswa';
         const safeDate = weekDates[0] ? getDateString(weekDates[0]) : 'mingguan';
 
-        link.download = `Laporan_${safeName}_${safeDate}.png`;
+        link.download = `Laporan_${safeName}_${safeDate}.jpg`;
         link.href = dataURL;
         link.click();
       }
@@ -85,7 +100,7 @@ const HomeView = ({
     }
   };
 
-  // --- FUNGSI UNDUH GAMBAR LAPORAN KELAS (PNG) ---
+  // --- FUNGSI UNDUH GAMBAR LAPORAN KELAS (JPG) ---
   const handleDownloadClassReportImage = async (pageId, pageNum) => {
     setIsDownloading(true);
     try {
@@ -103,10 +118,11 @@ const HomeView = ({
 
       const element = document.getElementById(pageId);
       if (element) {
-        const dataURL = await window.htmlToImage.toPng(element, { quality: 1, pixelRatio: 1.5, backgroundColor: '#ffffff' });
+        const dataURL = await window.htmlToImage.toJpeg(element, { quality: 0.85, pixelRatio: 1.5, backgroundColor: '#ffffff' });
         const link = document.createElement('a');
-        const safeHalaqoh = activeHalaqoh.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-        link.download = `Laporan_Halaqoh_${safeHalaqoh}_${getDateString(weekDates[0])}_Hal${pageNum}.png`;
+        // Menghindari crash jika activeHalaqoh bernilai null/undefined
+        const safeHalaqoh = String(activeHalaqoh || 'Kelas').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        link.download = `Laporan_Halaqoh_${safeHalaqoh}_${getDateString(weekDates[0])}_Hal${pageNum}.jpg`;
         link.href = dataURL;
         link.click();
       }
@@ -143,7 +159,7 @@ const HomeView = ({
       const { jsPDF } = window.jspdf;
       const element = document.getElementById('share-report-card');
       if (element) {
-        const imgData = await window.htmlToImage.toPng(element, { quality: 1, pixelRatio: 2, backgroundColor: '#ffffff' });
+        const imgData = await window.htmlToImage.toJpeg(element, { quality: 0.85, pixelRatio: 1.5, backgroundColor: '#ffffff' });
         const pdf = new jsPDF('p', 'mm', 'a4'); // portrait
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = pdf.internal.pageSize.getHeight();
@@ -157,7 +173,7 @@ const HomeView = ({
         const finalImgHeight = imgHeight * ratio;
         const imgX = (pdfWidth - finalImgWidth) / 2;
         const imgY = 0;
-        pdf.addImage(imgData, 'PNG', imgX, imgY, finalImgWidth, finalImgHeight);
+        pdf.addImage(imgData, 'JPEG', imgX, imgY, finalImgWidth, finalImgHeight);
         const safeName = shareStudent?.name ? shareStudent.name.replace(/[^a-z0-9]/gi, '_').toLowerCase() : 'siswa';
         const safeDate = weekDates[0] ? getDateString(weekDates[0]) : 'mingguan';
         pdf.save(`Laporan_${safeName}_${safeDate}.pdf`);
@@ -184,18 +200,19 @@ const HomeView = ({
       const addPageToPdf = async (pageId) => {
         const element = document.getElementById(pageId);
         if (element) {
-          const imgData = await window.htmlToImage.toPng(element, { quality: 1, pixelRatio: 1.5, backgroundColor: '#ffffff' });
+          const imgData = await window.htmlToImage.toJpeg(element, { quality: 0.85, pixelRatio: 1.5, backgroundColor: '#ffffff' });
           const img = new Image(); img.src = imgData; await new Promise(r => img.onload = r);
           const ratio = Math.min(pdfWidth / img.width, pdfHeight / img.height);
           const w = img.width * ratio; const h = img.height * ratio;
           const x = (pdfWidth - w) / 2; const y = 0;
-          pdf.addImage(imgData, 'PNG', x, y, w, h);
+          pdf.addImage(imgData, 'JPEG', x, y, w, h);
         }
       };
       await addPageToPdf('class-report-page-1');
       const workDays = weekDates.filter(d => d && d.getDay() !== 0 && d.getDay() !== 6);
       if (workDays.length > 3) { pdf.addPage(); await addPageToPdf('class-report-page-2'); }
-      const safeHalaqoh = activeHalaqoh.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      // Menghindari crash jika activeHalaqoh bernilai null/undefined
+      const safeHalaqoh = String(activeHalaqoh || 'Kelas').replace(/[^a-z0-9]/gi, '_').toLowerCase();
       pdf.save(`Laporan_Halaqoh_${safeHalaqoh}_${getDateString(weekDates[0])}.pdf`);
     } catch (error) { console.error("Gagal mengunduh PDF laporan kelas:", error); alert("Maaf, terjadi kesalahan saat membuat PDF."); }
     finally { setIsDownloading(false); }
@@ -327,22 +344,6 @@ const HomeView = ({
     } catch (err) {
       return <span className="text-xs sm:text-sm text-gray-300 font-medium">-</span>;
     }
-  };
-
-  const getBulanTahun = (date) => {
-    try {
-      const d = new Date(date);
-      const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-      return `${months[d.getMonth()]} ${d.getFullYear()}`;
-    } catch (e) { return '-'; }
-  };
-
-  const getDayName = (dateObj) => {
-    try { return ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][dateObj.getDay()]; } catch (e) { return ''; }
-  };
-
-  const getDateString = (dateObj) => {
-    try { return `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`; } catch (e) { return ''; }
   };
 
   // Kunci data dinamis berdasarkan tab yang aktif (Target vs Capaian)
@@ -583,21 +584,23 @@ const HomeView = ({
                 </div>
 
                 {/* Konten Laporan */}
-                <div className="flex flex-col gap-8 items-center">
-                  {/* Halaman 1 */}
-                  <div className="w-full max-w-6xl transform scale-[0.9] md:scale-100 origin-top print:scale-100 print:shadow-none">
-                    <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
-                      {workDays.length >= 1 && renderPrintTable(workDays.slice(0, 3), 1, totalPages)}
-                    </div>
-                  </div>
-                  {/* Halaman 2 */}
-                  {totalPages > 1 && (
-                    <div className="w-full max-w-6xl transform scale-[0.9] md:scale-100 origin-top print:scale-100 print:shadow-none">
-                      <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
-                        {workDays.length > 3 && renderPrintTable(workDays.slice(3, 5), 2, totalPages)}
+                <div className="w-full overflow-x-auto custom-scrollbar flex justify-start md:justify-center p-0 md:p-4 print:p-0 print:overflow-visible">
+                  <div className="flex flex-col gap-8 items-center w-max shrink-0">
+                    {/* Halaman 1 */}
+                    <div className="w-[1000px] min-w-[1000px] shrink-0 print:w-full print:min-w-0 print:shadow-none">
+                      <div className="bg-white rounded-none md:rounded-2xl shadow-2xl overflow-hidden print:shadow-none print:rounded-none">
+                        {workDays.length >= 1 && renderPrintTable(workDays.slice(0, 3), 1, totalPages)}
                       </div>
                     </div>
-                  )}
+                    {/* Halaman 2 */}
+                    {totalPages > 1 && (
+                      <div className="w-[1000px] min-w-[1000px] shrink-0 print:w-full print:min-w-0 print:shadow-none">
+                        <div className="bg-white rounded-none md:rounded-2xl shadow-2xl overflow-hidden print:shadow-none print:rounded-none">
+                          {workDays.length > 3 && renderPrintTable(workDays.slice(3, 5), 2, totalPages)}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </>
             );
@@ -616,7 +619,7 @@ const HomeView = ({
             </button>
             <button onClick={handleDownloadImage} disabled={isDownloading} className="bg-[#00e676] text-white px-5 py-3 md:py-2.5 rounded-2xl md:rounded-xl font-bold flex items-center justify-center gap-2 shadow-xl hover:bg-green-600 transition-colors disabled:opacity-50">
               {isDownloading ? <span className="animate-spin text-sm">⏳</span> : <Download size={18} />}
-              <span className="inline">{isDownloading ? 'Memproses...' : 'Unduh (PNG)'}</span>
+              <span className="inline">{isDownloading ? 'Memproses...' : 'Unduh (JPG)'}</span>
             </button>
             <button onClick={handleDownloadPdf} disabled={isDownloading} className="bg-white text-gray-800 px-5 py-3 md:py-2.5 rounded-2xl md:rounded-xl font-bold flex items-center justify-center gap-2 shadow-xl hover:bg-gray-50 transition-colors disabled:opacity-50">
               {isDownloading ? <span className="animate-spin text-sm">⏳</span> : <Download size={18} />}
@@ -628,28 +631,29 @@ const HomeView = ({
           </div>
 
           {/* KARTU LAPORAN INDIVIDU */}
-          <div id="share-report-card" className="bg-white w-full max-w-[800px] rounded-none md:rounded-[32px] overflow-hidden shadow-2xl relative my-auto print:shadow-none print:rounded-none">
+          <div className="w-full overflow-x-auto custom-scrollbar p-0 md:p-4 print:p-0 print:overflow-visible flex justify-start md:justify-center">
+            <div id="share-report-card" className="bg-white w-[800px] min-w-[800px] shrink-0 rounded-none md:rounded-[32px] overflow-hidden shadow-2xl relative my-auto print:shadow-none print:rounded-none">
 
             {/* HEADER LAPORAN */}
-            <div className="bg-[#f2fdf5] p-6 sm:p-8 border-b border-green-100 flex justify-between items-center">
+            <div className="bg-[#f2fdf5] p-8 border-b border-green-100 flex justify-between items-center">
               <div>
-                <h1 className="text-2xl sm:text-3xl font-black text-[#111827] mb-1">
+                <h1 className="text-3xl font-black text-[#111827] mb-1">
                   {homeTab === 'lesson_plan' ? "Lesson Plan Al-Qur'an" : "Jurnal Harian Al-Qur'an"}
                 </h1>
                 <p className="text-[#00e676] font-bold text-sm italic">SDIT Al-Fityan School Bogor</p>
               </div>
-              <div className="w-24 h-24 sm:w-32 sm:h-32 flex items-center justify-center shrink-0">
+              <div className="w-32 h-32 flex items-center justify-center shrink-0">
                 {institutionLogo && institutionLogo !== 'logo.png' ? (
                   <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain" />
                 ) : (
-                  <BookOpen size={48} className="sm:w-16 sm:h-16 text-green-600" />
+                  <BookOpen size={64} className="text-green-600" />
                 )}
               </div>
             </div>
 
             {/* INFO SISWA */}
-            <div className="p-6 sm:p-8 flex flex-col sm:flex-row justify-between items-center gap-5 border-b border-gray-50">
-              <div className="flex items-center gap-5">
+            <div className="p-8 flex flex-row justify-between items-center gap-5 border-b border-gray-50">
+              <div className="flex items-center gap-5 w-auto">
                 <div className="w-20 h-20 rounded-full bg-[#e6fbf0] border-4 border-[#00e676] text-[#00e676] flex items-center justify-center text-3xl font-black relative shrink-0">
                   {shareStudent?.photo ? (
                     <img src={shareStudent.photo} alt={shareStudent?.name || ''} className="w-full h-full rounded-full object-cover" />
@@ -663,16 +667,16 @@ const HomeView = ({
                   </div>
                 </div>
                 <div>
-                  <h2 className="text-2xl sm:text-3xl font-black text-gray-800 mb-2">{String(shareStudent?.name || 'Siswa')}</h2>
+                  <h2 className="text-3xl font-black text-gray-800 mb-2">{String(shareStudent?.name || 'Siswa')}</h2>
                   <div className="flex flex-wrap gap-2">
-                    <span className="bg-[#e6fbf0] text-green-800 px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-widest">Kelas {String(shareStudent?.kelas || '-')}</span>
-                    <span className="bg-[#e6fbf0] text-green-800 px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-widest">Kelompok {String(activeHalaqoh || '-')}</span>
+                    <span className="bg-[#e6fbf0] text-green-800 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest">Kelas {String(shareStudent?.kelas || '-')}</span>
+                    <span className="bg-[#e6fbf0] text-green-800 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest">Kelompok {String(activeHalaqoh || '-')}</span>
                   </div>
                 </div>
               </div>
 
               {/* QR CODE UNTUK LINK DIGITAL */}
-              <div className="hidden sm:flex flex-col items-center gap-1 shrink-0 print:flex">
+              <div className="flex flex-col items-center gap-1 shrink-0">
                 <div className="w-16 h-16 bg-white p-1 border border-gray-100 rounded-lg shadow-sm">
                   <img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`${window.location.origin}${window.location.pathname}?share=${shareStudent?.id}`)}`} alt="QR Code" className="w-full h-full" crossOrigin="anonymous" />
                 </div>
@@ -681,7 +685,7 @@ const HomeView = ({
             </div>
 
             {/* DAFTAR HARI / JURNAL SISWA */}
-            <div className="p-6 sm:p-8 flex flex-col gap-5 bg-gray-50/50">
+            <div className="p-8 flex flex-col gap-5 bg-gray-50/50">
               {weekDates.every((dateObj) => {
                 if (!dateObj || typeof dateObj.getDay !== 'function') return true;
                 if (dateObj.getDay() === 0 || dateObj.getDay() === 6) return true;
@@ -714,11 +718,11 @@ const HomeView = ({
                 return (
                   <div key={dateStr} className="bg-white border border-gray-100 rounded-[24px] p-5 shadow-[0_2px_10px_rgba(0,0,0,0.02)] print:break-inside-avoid">
                     <div className="flex justify-between items-center mb-4 border-b border-gray-50 pb-3">
-                      <span className="bg-[#00e676] text-white px-4 py-1.5 rounded-full text-[10px] sm:text-xs font-black tracking-widest uppercase shadow-sm">{dayName}</span>
+                      <span className="bg-[#00e676] text-white px-4 py-1.5 rounded-full text-xs font-black tracking-widest uppercase shadow-sm">{dayName}</span>
                       <span className="text-gray-400 font-bold italic text-sm">{displayDate}</span>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-6 gap-x-4">
+                    <div className="grid grid-cols-2 gap-y-6 gap-x-4">
                       {/* Info TAHSIN */}
                       <div>
                         <div className="flex items-center gap-1.5 mb-1.5 text-blue-500">
@@ -761,17 +765,18 @@ const HomeView = ({
             </div>
 
             {/* FOOTER LAPORAN */}
-            <div className="bg-[#111827] p-5 sm:p-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-white">
-              <div className="flex items-center gap-3 w-full sm:w-auto">
+            <div className="bg-[#111827] p-6 flex flex-row justify-between items-center gap-4 text-white">
+              <div className="flex items-center gap-3 w-auto">
                 <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0"><Users size={14} className="text-gray-300" /></div>
-                <span className="text-xs sm:text-sm font-medium text-gray-400">Ustadz/ah: <strong className="text-white block sm:inline">{String(activeGuru || '-')}</strong></span>
+                <span className="text-sm font-medium text-gray-400">Ustadz/ah: <strong className="text-white inline">{String(activeGuru || '-')}</strong></span>
               </div>
-              <div className="flex items-center gap-3 w-full sm:w-auto">
+              <div className="flex items-center gap-3 w-auto">
                 <div className="w-8 h-8 rounded-full bg-[#00e676]/20 flex items-center justify-center shrink-0"><Calendar size={14} className="text-[#00e676]" /></div>
-                <span className="text-xs sm:text-sm font-medium text-gray-400">Periode: <strong className="text-white block sm:inline">{formatPeriode(weekDates[0], weekDates[weekDates.length - 1] || weekDates[0])}</strong></span>
+                <span className="text-sm font-medium text-gray-400">Periode: <strong className="text-white inline">{formatPeriode(weekDates[0], weekDates[weekDates.length - 1] || weekDates[0])}</strong></span>
               </div>
             </div>
 
+            </div>
           </div>
         </div>
       )}

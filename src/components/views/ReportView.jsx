@@ -115,17 +115,17 @@ const ReportView = ({
         </div>
 
         {/* KERTAS LAPORAN (PRINTABLE AREA) */}
-        <div className="bg-white rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 overflow-hidden print:shadow-none print:border-none print:rounded-none print:!m-0 print:!p-0 transition-colors relative">
+        <div className="bg-white rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 overflow-x-auto custom-scrollbar print:overflow-visible print:shadow-none print:border-none print:rounded-none print:!m-0 print:!p-0 transition-colors relative">
           
           {/* Dekorasi Kertas Print */}
           <div className="absolute top-0 left-0 w-full h-2 bg-slate-800 print:hidden"></div>
 
-          <div className="p-6 sm:p-8 md:p-12 print:p-0 print:m-0">
+          <div className="min-w-[1000px] p-6 sm:p-8 md:p-12 print:p-0 print:m-0">
             
             {/* KOP LAPORAN */}
-            <div className="flex flex-col sm:flex-row items-center justify-between border-b-4 border-emerald-600 pb-6 mb-8 gap-6 sm:gap-0">
-              <div className="flex items-center gap-5 w-full sm:w-auto text-center sm:text-left">
-                <div className="w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center shrink-0 overflow-hidden">
+            <div className="flex flex-row items-center justify-between border-b-4 border-emerald-600 pb-6 mb-8 gap-0">
+              <div className="flex items-center gap-5 w-auto text-left">
+                <div className="w-24 h-24 flex items-center justify-center shrink-0 overflow-hidden">
                   {institutionLogo && institutionLogo !== 'logo.png' ? (
                     <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain" />
                   ) : (
@@ -133,41 +133,41 @@ const ReportView = ({
                   )}
                 </div>
                 <div>
-                  <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight uppercase">Laporan Progres</h1>
-                  <h2 className="text-base sm:text-lg font-bold text-emerald-600 uppercase tracking-widest mt-0.5">Program Al-Qur'an</h2>
+                  <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase">Laporan Progres</h1>
+                  <h2 className="text-lg font-bold text-emerald-600 uppercase tracking-widest mt-0.5">Program Al-Qur'an</h2>
                 </div>
               </div>
               
-              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 w-full sm:w-auto grid grid-cols-2 gap-x-6 gap-y-2 text-sm print:bg-transparent print:border-none print:p-0">
-                <div className="text-slate-500 font-bold uppercase tracking-widest text-[10px] print:text-xs">Halaqoh</div>
-                <div className="font-black text-slate-800 text-right print:text-left print:text-sm">{activeHalaqoh || '-'}</div>
-                <div className="text-slate-500 font-bold uppercase tracking-widest text-[10px] print:text-xs">Ustadz/ah</div>
-                <div className="font-black text-slate-800 text-right print:text-left print:text-sm">{activeGuru || '-'}</div>
-                <div className="text-slate-500 font-bold uppercase tracking-widest text-[10px] print:text-xs">Tanggal</div>
-                <div className="font-black text-slate-800 text-right print:text-left print:text-sm">{reportDateStr ? formatShortDate(new Date(reportDateStr)) : '-'}</div>
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 w-auto grid grid-cols-2 gap-x-6 gap-y-2 text-sm print:bg-transparent print:border-none print:p-0">
+                <div className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">Halaqoh</div>
+                <div className="font-black text-slate-800 text-left">{activeHalaqoh || '-'}</div>
+                <div className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">Ustadz/ah</div>
+                <div className="font-black text-slate-800 text-left">{activeGuru || '-'}</div>
+                <div className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">Tanggal</div>
+                <div className="font-black text-slate-800 text-left">{reportDateStr ? formatShortDate(new Date(reportDateStr)) : '-'}</div>
               </div>
             </div>
 
             {/* STATISTIK RINGKAS */}
-            <div className="grid grid-cols-3 gap-3 sm:gap-6 mb-8 print:break-inside-avoid">
+            <div className="grid grid-cols-3 gap-6 mb-8 print:break-inside-avoid">
               <div className="bg-blue-50/50 border border-blue-200 rounded-2xl p-4 sm:p-5 flex flex-col items-center text-center print:bg-white print:border-slate-300">
                 <Users size={24} className="text-blue-500 mb-2 print:text-slate-600" />
-                <span className="text-2xl sm:text-3xl font-black text-blue-900 leading-none print:text-slate-800">{students.length}</span>
-                <span className="text-[9px] sm:text-[10px] font-black text-blue-600/70 uppercase tracking-widest mt-1.5 print:text-slate-500">Total Siswa</span>
+                <span className="text-3xl font-black text-blue-900 leading-none print:text-slate-800">{students.length}</span>
+                <span className="text-[10px] font-black text-blue-600/70 uppercase tracking-widest mt-1.5 print:text-slate-500">Total Siswa</span>
               </div>
               <div className="bg-emerald-50/50 border border-emerald-200 rounded-2xl p-4 sm:p-5 flex flex-col items-center text-center print:bg-white print:border-slate-300">
                 <Award size={24} className="text-emerald-500 mb-2 print:text-slate-600" />
-                <span className="text-2xl sm:text-3xl font-black text-emerald-700 leading-none print:text-slate-800">
+                <span className="text-3xl font-black text-emerald-700 leading-none print:text-slate-800">
                   {students.filter(s => getStatus(s)?.status === 'Lancar').length}
                 </span>
-                <span className="text-[9px] sm:text-[10px] font-black text-emerald-600/70 uppercase tracking-widest mt-1.5 print:text-slate-500">Lancar / Baik</span>
+                <span className="text-[10px] font-black text-emerald-600/70 uppercase tracking-widest mt-1.5 print:text-slate-500">Lancar / Baik</span>
               </div>
               <div className="bg-rose-50/50 border border-rose-200 rounded-2xl p-4 sm:p-5 flex flex-col items-center text-center print:bg-white print:border-slate-300">
                 <TrendingUp size={24} className="text-rose-500 mb-2 print:text-slate-600" />
-                <span className="text-2xl sm:text-3xl font-black text-rose-700 leading-none print:text-slate-800">
+                <span className="text-3xl font-black text-rose-700 leading-none print:text-slate-800">
                   {students.filter(s => getStatus(s)?.status === 'Perlu Ulang').length}
                 </span>
-                <span className="text-[9px] sm:text-[10px] font-black text-rose-600/70 uppercase tracking-widest mt-1.5 print:text-slate-500">Perlu Ulang</span>
+                <span className="text-[10px] font-black text-rose-600/70 uppercase tracking-widest mt-1.5 print:text-slate-500">Perlu Ulang</span>
               </div>
             </div>
 
@@ -217,13 +217,13 @@ const ReportView = ({
                         <tr key={student.id} className="print:break-inside-avoid group hover:bg-slate-50 transition-colors">
                       <td className="px-4 py-4 text-center text-slate-500 font-black border-r border-slate-200 bg-slate-50/30 print:bg-transparent print:border-slate-300">{index + 1}</td>
                       <td className="px-4 py-4 border-r border-slate-200 print:border-slate-300">
-                            <div className={`font-black leading-tight text-slate-800 mb-0.5 ${(student?.name || '').length > 24 ? 'text-[9px] sm:text-[10px]' : (student?.name || '').length > 18 ? 'text-[10px] sm:text-[11px]' : 'text-xs sm:text-sm'}`}>{student?.name || 'Siswa'}</div>
+                            <div className={`font-black leading-tight text-slate-800 mb-0.5 ${(student?.name || '').length > 24 ? 'text-[10px]' : (student?.name || '').length > 18 ? 'text-[11px]' : 'text-sm'}`}>{student?.name || 'Siswa'}</div>
                         <div className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">{student?.id ? String(student.id).substring(0, 8) : 'N/A'}</div>
                           </td>
-                      <td className="px-4 py-4 text-[11px] sm:text-xs font-bold text-blue-700 bg-blue-50/10 border-r border-slate-200 print:border-slate-300 print:bg-transparent whitespace-pre-wrap leading-snug">{displayTahsin}</td>
-                      <td className="px-4 py-4 text-[11px] sm:text-xs font-bold text-purple-700 bg-purple-50/10 border-r border-slate-200 print:border-slate-300 print:bg-transparent whitespace-pre-wrap leading-snug">{displayTahfidz}</td>
-                      <td className="px-4 py-4 text-[11px] sm:text-xs font-bold text-emerald-700 bg-emerald-50/10 border-r border-slate-200 print:border-slate-300 print:bg-transparent whitespace-pre-wrap leading-snug">{displayMurojaah}</td>
-                      <td className={`px-4 py-4 text-[11px] sm:text-xs font-bold border-r border-slate-200 print:border-slate-300 print:bg-transparent whitespace-pre-wrap leading-snug ${getStatusColor(displayCatatan)}`}>{displayCatatan}</td>
+                      <td className="px-4 py-4 text-xs font-bold text-blue-700 bg-blue-50/10 border-r border-slate-200 print:border-slate-300 print:bg-transparent whitespace-pre-wrap leading-snug">{displayTahsin}</td>
+                      <td className="px-4 py-4 text-xs font-bold text-purple-700 bg-purple-50/10 border-r border-slate-200 print:border-slate-300 print:bg-transparent whitespace-pre-wrap leading-snug">{displayTahfidz}</td>
+                      <td className="px-4 py-4 text-xs font-bold text-emerald-700 bg-emerald-50/10 border-r border-slate-200 print:border-slate-300 print:bg-transparent whitespace-pre-wrap leading-snug">{displayMurojaah}</td>
+                      <td className={`px-4 py-4 text-xs font-bold border-r border-slate-200 print:border-slate-300 print:bg-transparent whitespace-pre-wrap leading-snug ${getStatusColor(displayCatatan)}`}>{displayCatatan}</td>
                           <td className="px-4 py-4 text-center">
                         <div className={`inline-flex items-center justify-center px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest w-24 text-center border ${status?.bg ? status.bg.replace('bg-', 'border-').replace('50', '200') : 'border-gray-200'} ${status?.bg || 'bg-gray-50'} ${status?.color || 'text-gray-500'} print:bg-transparent print:border print:shadow-none print:border-slate-300 print:text-slate-700`}>
                               {status?.status || 'Kosong'}

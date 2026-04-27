@@ -258,9 +258,10 @@ const LoginScreen = ({ onLogin }) => {
         await new Promise((resolve) => script.onload = resolve);
       }
       const element = document.getElementById('share-report-card');
-      const dataURL = await window.htmlToImage.toPng(element, { quality: 1, pixelRatio: 2, backgroundColor: '#ffffff' });
+      const dataURL = await window.htmlToImage.toJpeg(element, { quality: 0.85, pixelRatio: 1.5, backgroundColor: '#ffffff' });
       const link = document.createElement('a');
-      link.download = `Laporan_${publicStudent.name.replace(/\s/g, '_')}.png`;
+      // Menghindari crash saat nama siswa tidak terbaca dengan benar
+      link.download = `Laporan_${(publicStudent?.name || 'Siswa').replace(/\s/g, '_')}.jpg`;
       link.href = dataURL;
       link.click();
     } catch (error) { alert("Gagal mengunduh gambar."); }
@@ -292,35 +293,36 @@ const LoginScreen = ({ onLogin }) => {
            <button onClick={() => setPublicStudent(null)} className="bg-white text-slate-500 p-3 rounded-full shadow-lg hover:bg-slate-100 transition-all"><BookOpen size={20}/></button>
         </div>
 
-        <div id="share-report-card" className="bg-white w-full max-w-[800px] shadow-2xl relative my-auto print:shadow-none animate-in fade-in slide-in-from-bottom-4 duration-700 transition-colors">
+        <div className="w-full overflow-x-auto custom-scrollbar flex justify-start md:justify-center p-0 md:p-4 print:p-0 print:overflow-visible">
+          <div id="share-report-card" className="bg-white w-[800px] min-w-[800px] shrink-0 shadow-2xl relative my-auto print:shadow-none animate-in fade-in slide-in-from-bottom-4 duration-700 transition-colors rounded-none md:rounded-[32px]">
             {/* Header Laporan */}
-            <div className="bg-[#f2fdf5] p-6 sm:p-8 border-b border-green-100 flex justify-between items-center transition-colors">
+            <div className="bg-[#f2fdf5] p-8 border-b border-green-100 flex justify-between items-center transition-colors">
                <div>
-                  <h1 className="text-2xl sm:text-3xl font-black text-[#111827] mb-1">{publicTab === 'lesson_plan' ? "Lesson Plan Al-Qur'an" : "Jurnal Harian Al-Qur'an"}</h1>
+                  <h1 className="text-3xl font-black text-[#111827] mb-1">{publicTab === 'lesson_plan' ? "Lesson Plan Al-Qur'an" : "Jurnal Harian Al-Qur'an"}</h1>
                   <p className="text-[#00e676] font-bold text-sm italic">SDIT Al-Fityan School Bogor</p>
                </div>
-               <div className="w-24 h-24 sm:w-32 sm:h-32 flex items-center justify-center shrink-0">
+               <div className="w-32 h-32 flex items-center justify-center shrink-0">
                   {institutionLogo ? <img src={institutionLogo} className="w-full h-full object-contain transition-all" /> : <BookOpen size={48} className="text-green-600" />}
                </div> 
             </div>
 
             {/* Info Siswa */}
-            <div className="p-6 sm:p-8 flex flex-col sm:flex-row justify-between items-center gap-5 border-b border-gray-50 transition-colors">
-               <div className="flex items-center gap-5">
+            <div className="p-8 flex flex-row justify-between items-center gap-5 border-b border-gray-50 transition-colors">
+               <div className="flex items-center gap-5 w-auto">
                <div className="w-20 h-20 rounded-full bg-[#e6fbf0] border-4 border-[#00e676] text-[#00e676] flex items-center justify-center text-3xl font-black shrink-0 overflow-hidden">
                   {publicStudent.photo ? <img src={publicStudent.photo} className="w-full h-full object-cover" /> : <span>{getInitials(publicStudent.name)}</span>}
                </div>
                <div>
-                  <h2 className={`font-black text-gray-800 mb-2 ${publicStudent.name.length > 24 ? 'text-lg sm:text-xl' : publicStudent.name.length > 18 ? 'text-xl sm:text-2xl' : 'text-2xl sm:text-3xl'}`}>{publicStudent.name}</h2>
+                  <h2 className={`font-black text-gray-800 mb-2 ${publicStudent.name.length > 24 ? 'text-xl' : publicStudent.name.length > 18 ? 'text-2xl' : 'text-3xl'}`}>{publicStudent.name}</h2>
                   <div className="flex flex-wrap gap-2">
-                     <span className="bg-[#e6fbf0] text-green-800 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">Kelas {publicStudent.kelas || '-'}</span>
-                     <span className="bg-[#e6fbf0] text-green-800 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">Kelompok {publicStudent.halaqoh || '-'}</span>
+                     <span className="bg-[#e6fbf0] text-green-800 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest">Kelas {publicStudent.kelas || '-'}</span>
+                     <span className="bg-[#e6fbf0] text-green-800 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest">Kelompok {publicStudent.halaqoh || '-'}</span>
                   </div>
                </div>
                </div>
 
                {/* QR CODE UNTUK LINK DIGITAL */}
-               <div className="hidden sm:flex flex-col items-center gap-1 shrink-0 print:flex transition-opacity">
+               <div className="flex flex-col items-center gap-1 shrink-0 transition-opacity">
                   <div className="w-16 h-16 bg-white p-1 border border-gray-100 rounded-lg shadow-sm transition-all">
                      <img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`${window.location.origin}${window.location.pathname}?share=${publicStudent?.id}`)}`} alt="QR Code" className="w-full h-full" crossOrigin="anonymous" /> 
                   </div>
@@ -355,7 +357,7 @@ const LoginScreen = ({ onLogin }) => {
             </div>
 
             {/* Daftar Hari */}
-            <div className="p-6 sm:p-8 flex flex-col gap-5 bg-gray-50/50">
+            <div className="p-8 flex flex-col gap-5 bg-gray-50/50">
                {datesToDisplay.map((dateObj) => {
                   const dateStr = formatDateObj(dateObj);
                   const rec = publicStudent.records?.[dateStr] || {};
@@ -367,10 +369,10 @@ const LoginScreen = ({ onLogin }) => {
                   return (
                     <div key={dateStr} className="bg-white border border-gray-100 rounded-[24px] p-5 shadow-sm print:break-inside-avoid transition-colors">
                        <div className="flex justify-between items-center mb-4 border-b border-gray-50 pb-3">
-                          <span className="bg-[#00e676] text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest"> {['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'][dateObj.getDay()]}</span>
+                          <span className="bg-[#00e676] text-white px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest"> {['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'][dateObj.getDay()]}</span>
                           <span className="text-gray-400 dark:text-gray-400 font-bold italic text-sm">{formatShortDate(dateObj)}</span>
                        </div>
-                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-6 gap-x-4">
+                       <div className="grid grid-cols-2 gap-y-6 gap-x-4">
                           <div>
                              <div className="flex items-center gap-1.5 mb-1.5 text-blue-500"><BookOpen size={14} /><span className="text-[10px] font-black uppercase">Tahsin</span></div>
                              <div className="text-sm font-bold text-gray-800 whitespace-pre-wrap">{formatPrintData(rec[k.t], rec[k.h], rec[k.tNilai], rec[k.tsNilai])}</div>
@@ -406,16 +408,17 @@ const LoginScreen = ({ onLogin }) => {
             </div>
 
             {/* Footer Laporan */}
-            <div className="bg-[#111827] p-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-white">
-               <div className="flex items-center gap-3">
+            <div className="bg-[#111827] p-6 flex flex-row justify-between items-center gap-4 text-white">
+               <div className="flex items-center gap-3 w-auto">
                   <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"><Users size={14} /></div>
-                  <span className="text-xs font-medium text-gray-400">Ustadz/ah: <strong className="text-white block sm:inline">{publicTeacher || '-'}</strong></span>
+                  <span className="text-sm font-medium text-gray-400">Ustadz/ah: <strong className="text-white inline">{publicTeacher || '-'}</strong></span>
                </div> 
-               <div className="flex items-center gap-3">
+               <div className="flex items-center gap-3 w-auto">
                   <div className="w-8 h-8 rounded-full bg-[#00e676]/20 flex items-center justify-center"><Calendar size={14} className="text-[#00e676]" /></div>
-                  <span className="text-xs font-medium text-gray-400">Periode: <strong className="text-white block sm:inline">{formatPeriode(weekDates[0], weekDates[4])}</strong></span>
+                  <span className="text-sm font-medium text-gray-400">Periode: <strong className="text-white inline">{formatPeriode(weekDates[0], weekDates[4])}</strong></span>
                </div>
             </div>
+          </div>
         </div>
         
         <div className="mt-8 mb-12 text-center flex flex-col items-center gap-2">
