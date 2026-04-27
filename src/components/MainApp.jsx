@@ -800,7 +800,10 @@ const MainApp = ({ currentUser, onLogout }) => {
     const nilais = (nilaiText || '').split(',').map(s => s.trim());
     const len = Math.max(surats.length, ayats.length, 1);
     const list = [];
-    for (let i = 0; i < len; i++) { list.push({ id: Date.now() + Math.random(), surat: surats[i] || '', ayatStart: (ayats[i] || '').split('-')[0] || '', ayatEnd: (ayats[i] || '').split('-')[1] || '', nilai: nilais[i] || '' }); }
+    for (let i = 0; i < len; i++) { 
+      const aParts = (ayats[i] || '').split('-');
+      list.push({ id: Date.now() + Math.random(), surat: surats[i] || '', ayatStart: aParts[0] || '', ayatEnd: aParts[1] || aParts[0] || '', nilai: nilais[i] || '' }); 
+    }
     return list.length ? list : [emptySurat()];
   };
 
@@ -808,7 +811,12 @@ const MainApp = ({ currentUser, onLogout }) => {
     if (!text || text === '-') return [emptySurat()];
     return text.split(',').map((item) => {
       let s = item.trim(), aStart = '', aEnd = ''; let match = s.match(/(.+?)\s*\((.*?)\)/) || s.match(/(.+?)\s+(\d+(?:-\d+)?)$/);
-      if (match) { s = match[1].trim(); aStart = match[2].split('-')[0] || ''; aEnd = match[2].split('-')[1] || ''; }
+      if (match) { 
+        s = match[1].trim(); 
+        const aParts = match[2].split('-');
+        aStart = aParts[0] || ''; 
+        aEnd = aParts[1] || aParts[0] || ''; 
+      }
       return { id: Date.now() + Math.random(), surat: s, ayatStart: aStart, ayatEnd: aEnd };
     });
   };
@@ -946,7 +954,7 @@ const MainApp = ({ currentUser, onLogout }) => {
       return { ...p, [listName]: newList };
     }));
   };
-  const getAyatRangeOrDefault = (surat, start, end) => start && end ? start + '-' + end : start || end || (surahList.find(s => s.no + '. ' + s.name === surat) ? '1-' + surahList.find(s => s.no + '. ' + s.name === surat).ayat : 'Semua Ayat');
+  const getAyatRangeOrDefault = (surat, start, end) => start && end ? (start === end ? start : start + '-' + end) : start || end || (surahList.find(s => s.no + '. ' + s.name === surat) ? '1-' + surahList.find(s => s.no + '. ' + s.name === surat).ayat : 'Semua Ayat');
 
   const handleSave = async () => {
     if (!editingId && selectedStudents.length === 0) { showToast('Pilih minimal 1 siswa!'); return; }
