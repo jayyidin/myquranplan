@@ -350,9 +350,6 @@ const HomeView = ({
     ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan' }
     : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan' };
 
-  // Kunci data untuk Kartu Laporan (Share) menggunakan Capaian (Jurnal)
-  const k_share = { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan' };
-
   const getDateStatus = (dateStr) => {
     if (filteredStudents.length === 0) return { status: 'none', count: 0 };
     const filledCount = filteredStudents.filter(s => {
@@ -637,7 +634,7 @@ const HomeView = ({
             <div className="bg-[#f2fdf5] p-6 sm:p-8 border-b border-green-100 flex justify-between items-center">
               <div>
                 <h1 className="text-2xl sm:text-3xl font-black text-[#111827] mb-1">
-                  Lesson Plan Al-Qur'an
+                  {homeTab === 'lesson_plan' ? "Lesson Plan Al-Qur'an" : "Jurnal Harian Al-Qur'an"}
                 </h1>
                 <p className="text-[#00e676] font-bold text-sm italic">SDIT Al-Fityan School Bogor</p>
               </div>
@@ -685,6 +682,18 @@ const HomeView = ({
 
             {/* DAFTAR HARI / JURNAL SISWA */}
             <div className="p-6 sm:p-8 flex flex-col gap-5 bg-gray-50/50">
+              {weekDates.every((dateObj) => {
+                if (!dateObj || typeof dateObj.getDay !== 'function') return true;
+                if (dateObj.getDay() === 0 || dateObj.getDay() === 6) return true;
+                const dateStr = getDateString(dateObj);
+                const rec = shareStudent?.records?.[dateStr] || {};
+                return !(rec?.[k.t] && rec?.[k.t] !== '-') && !(rec?.[k.f] && rec?.[k.f] !== '-') && !(rec?.[k.m] && rec?.[k.m] !== '-') && !(rec?.[k.c] && rec?.[k.c] !== '-');
+              }) && (
+                <div className="py-12 text-center flex flex-col items-center gap-3 opacity-40">
+                   <Calendar size={48} />
+                   <p className="font-bold">Belum ada data rekaman pada pekan ini.</p>
+                </div>
+              )}
               {weekDates.map((dateObj) => {
                 if (!dateObj || typeof dateObj.getDay !== 'function') return null;
                 if (dateObj.getDay() === 0 || dateObj.getDay() === 6) return null;
@@ -693,10 +702,14 @@ const HomeView = ({
                 const displayDate = `${dateObj.getDate()} ${['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'][dateObj.getMonth()]} ${dateObj.getFullYear()}`;
 
                 const rec = shareStudent?.records?.[dateStr] || {};
-                const valM = formatPrintData(rec?.[k_share.m], '-', null, null);
-                const valT = formatPrintData(rec?.[k_share.t], rec?.[k_share.h], rec?.[k_share.tNilai], rec?.[k_share.tsNilai]);
-                const valF = formatPrintData(rec?.[k_share.f], rec?.[k_share.af], null, rec?.[k_share.fNilai]);
-                const valC = rec?.[k_share.c] && rec?.[k_share.c] !== '-' ? String(rec[k_share.c]) : '-';
+                
+                const hasData = (rec?.[k.t] && rec?.[k.t] !== '-') || (rec?.[k.f] && rec?.[k.f] !== '-') || (rec?.[k.m] && rec?.[k.m] !== '-') || (rec?.[k.c] && rec?.[k.c] !== '-');
+                if (!hasData) return null;
+
+                const valM = formatPrintData(rec?.[k.m], '-', null, null);
+                const valT = formatPrintData(rec?.[k.t], rec?.[k.h], rec?.[k.tNilai], rec?.[k.tsNilai]);
+                const valF = formatPrintData(rec?.[k.f], rec?.[k.af], null, rec?.[k.fNilai]);
+                const valC = rec?.[k.c] && rec?.[k.c] !== '-' ? String(rec[k.c]) : '-';
 
                 return (
                   <div key={dateStr} className="bg-white border border-gray-100 rounded-[24px] p-5 shadow-[0_2px_10px_rgba(0,0,0,0.02)] print:break-inside-avoid">

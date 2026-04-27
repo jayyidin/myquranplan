@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { X, BookOpen, Mic, Repeat, FileText, Plus, ChevronDown, Search, Check } from 'lucide-react';
+import { X, BookOpen, Mic, Repeat, FileText, Plus, ChevronDown, Search, Check, Copy, ClipboardPaste } from 'lucide-react';
 import SurahSelector from '../SurahSelector';
 import AyatSelector from '../AyatSelector';
 import { Tooltip } from 'react-tooltip';
@@ -12,6 +12,7 @@ export const JurnalModal = ({
   filteredStudents, toggleStudent
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [copiedId, setCopiedId] = useState(null);
 
   const gradeOptions = ['A', 'B+', 'B', 'B-', 'C'];
 
@@ -26,7 +27,6 @@ export const JurnalModal = ({
 
   return (
     <div className="fixed inset-0 z-[500] print-hidden flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity">
-      <Tooltip id="student-tooltip" place="top" style={{ fontSize: '12px', padding: '4px 10px', borderRadius: '8px' }} />
       <div className="bg-gray-50 w-full sm:max-w-2xl rounded-t-[24px] sm:rounded-3xl shadow-2xl h-[90vh] sm:h-auto sm:max-h-[90vh] flex flex-col overflow-hidden animate-[slideUp_0.3s_ease-out] sm:animate-in sm:zoom-in-95">
         
         {/* Header Modal */}
@@ -70,8 +70,6 @@ export const JurnalModal = ({
                       type="button"
                       onClick={() => toggleStudent(s.id)} 
                       className={`relative flex items-center justify-center gap-1.5 shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${isSelected ? (isEditing ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-[#00e676]/10 border-[#00e676] text-green-700 shadow-sm') : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300'}`}
-                      data-tooltip-id="student-tooltip"
-                      data-tooltip-content={s.name}
                     >
                         {isSelected && !isEditing && <Check size={12} strokeWidth={3} className="shrink-0" />}
                         <span className="truncate max-w-[110px] sm:max-w-[140px]">{s.name}</span>
@@ -350,11 +348,43 @@ export const JurnalModal = ({
               {/* --- FORM CATATAN --- */}
               {['full_bulk', 'full_edit', 'catatan'].includes(modalMode) && (
                   <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
-                    <h3 className="font-black text-gray-800 text-sm mb-4 flex items-center gap-2"><FileText size={18} className="text-orange-500"/> {homeTab === 'lesson_plan' ? 'Catatan Target Guru' : 'Catatan Capaian / Nilai Jurnal'}</h3>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-black text-gray-800 text-sm flex items-center gap-2"><FileText size={18} className="text-orange-500"/> {homeTab === 'lesson_plan' ? 'Catatan Target Guru' : 'Catatan Capaian / Nilai Jurnal'}</h3>
+                      <div className="flex items-center gap-2">
+                        <button 
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              const text = await navigator.clipboard.readText();
+                              if (text) handlePlanChange(plan.id, 'lainLain', (plan.lainLain ? plan.lainLain + ' ' : '') + text);
+                            } catch (err) {
+                              alert('Gagal mengakses clipboard. Pastikan browser mengizinkan akses tempel.');
+                            }
+                          }} 
+                          className="flex items-center gap-1.5 text-[10px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 px-2.5 py-1.5 rounded-lg transition-colors border border-blue-100 shadow-sm"
+                          title="Tempel dari Clipboard"
+                        >
+                          <ClipboardPaste size={12} /> Tempel
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(plan.lainLain || '');
+                            setCopiedId(plan.id);
+                            setTimeout(() => setCopiedId(null), 2000);
+                          }} 
+                          className="flex items-center gap-1.5 text-[10px] font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 px-2.5 py-1.5 rounded-lg transition-colors border border-orange-100 shadow-sm"
+                          title="Salin Catatan"
+                        >
+                          {copiedId === plan.id ? <Check size={12} /> : <Copy size={12} />} 
+                          {copiedId === plan.id ? 'Tersalin' : 'Salin'}
+                        </button>
+                      </div>
+                    </div>
                     <textarea rows="3" placeholder="Ketikkan catatan khusus di sini..." value={plan.lainLain} onChange={e => handlePlanChange(plan.id, 'lainLain', e.target.value)} className="w-full bg-gray-50 border border-gray-200 focus:border-orange-400 rounded-2xl p-4 text-sm font-bold outline-none resize-none text-gray-800 transition-colors focus:ring-2 focus:ring-orange-400/20"></textarea>
                     
                     <div className="mt-3 flex overflow-x-auto gap-2 pb-2 custom-scrollbar">
-                        {['Sangat Baik', 'Lancar', 'Bagus', 'Perlu Murojaah', 'Kurang Lancar', 'Ulangi Besok'].map(note => (
+                        {['Sangat Baik', 'Lancar', 'Bagus', 'Perlu Murojaah', 'Kurang Lancar', 'Ulangi Besok', 'DRILL'].map(note => (
                           <button type="button" key={note} onClick={() => handlePlanChange(plan.id, 'lainLain', (plan.lainLain ? plan.lainLain + ', ' : '') + note)} className="shrink-0 bg-white border border-orange-200 text-orange-600 hover:bg-orange-50 px-3 py-2 rounded-xl text-[11px] font-black transition-colors shadow-sm">
                             + {note}
                           </button>

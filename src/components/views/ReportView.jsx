@@ -1,5 +1,5 @@
 import React from 'react';
-import { Printer, FileText, Calendar, Users, Award, ChevronLeft, ChevronRight, TrendingUp, Info } from 'lucide-react';
+import { Printer, FileText, Calendar, Users, Award, ChevronLeft, ChevronRight, TrendingUp, Info, BookOpen } from 'lucide-react';
 import { formatShortDate, formatPrintData, formatPeriode, getStatusColor } from '../../utils/helpers';
 
 const ReportView = ({
@@ -60,9 +60,16 @@ const ReportView = ({
   };
 
   return (
-    <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar bg-[#F8FAFC] relative" style={{ WebkitOverflowScrolling: 'touch' }}>
+    <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar bg-[#F8FAFC] relative print:bg-white print:overflow-visible" style={{ WebkitOverflowScrolling: 'touch' }}>
+      <style type="text/css" media="print">
+        {`
+          @page { size: A4 portrait; margin: 12mm; }
+          body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; background-color: white !important; }
+        `}
+      </style>
+
       {/* Decorative Background */}
-      <div className="absolute top-0 left-0 w-full h-72 bg-gradient-to-b from-emerald-500/10 to-transparent pointer-events-none -z-10"></div>
+      <div className="absolute top-0 left-0 w-full h-72 bg-gradient-to-b from-emerald-500/10 to-transparent pointer-events-none -z-10 print:hidden"></div>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-8 py-6 sm:py-8 pb-32 md:pb-12">
         
@@ -108,7 +115,7 @@ const ReportView = ({
         </div>
 
         {/* KERTAS LAPORAN (PRINTABLE AREA) */}
-        <div className="bg-white rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 overflow-hidden print:shadow-none print:border-none print:rounded-none transition-colors relative">
+        <div className="bg-white rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 overflow-hidden print:shadow-none print:border-none print:rounded-none print:!m-0 print:!p-0 transition-colors relative">
           
           {/* Dekorasi Kertas Print */}
           <div className="absolute top-0 left-0 w-full h-2 bg-slate-800 print:hidden"></div>
@@ -116,51 +123,51 @@ const ReportView = ({
           <div className="p-6 sm:p-8 md:p-12 print:p-0 print:m-0">
             
             {/* KOP LAPORAN */}
-            <div className="flex flex-col sm:flex-row items-center justify-between border-b-4 border-slate-800 pb-6 mb-8 gap-6 sm:gap-0">
+            <div className="flex flex-col sm:flex-row items-center justify-between border-b-4 border-emerald-600 pb-6 mb-8 gap-6 sm:gap-0">
               <div className="flex items-center gap-5 w-full sm:w-auto text-center sm:text-left">
-                <div className="w-20 h-20 sm:w-24 sm:h-24 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center shrink-0 p-2 overflow-hidden">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center shrink-0 overflow-hidden">
                   {institutionLogo && institutionLogo !== 'logo.png' ? (
                     <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain" />
                   ) : (
-                    <BookOpen size={48} className="text-emerald-600" />
+                    <BookOpen size={64} className="text-emerald-600" />
                   )}
                 </div>
                 <div>
                   <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight uppercase">Laporan Progres</h1>
-                  <h2 className="text-base sm:text-lg font-bold text-slate-500 uppercase tracking-widest mt-0.5">Program Al-Qur'an</h2>
+                  <h2 className="text-base sm:text-lg font-bold text-emerald-600 uppercase tracking-widest mt-0.5">Program Al-Qur'an</h2>
                 </div>
               </div>
               
-              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 w-full sm:w-auto grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-                <div className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Halaqoh</div>
-                <div className="font-black text-slate-800 text-right">{activeHalaqoh || '-'}</div>
-                <div className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Ustadz/ah</div>
-                <div className="font-black text-slate-800 text-right">{activeGuru || '-'}</div>
-                <div className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Tanggal</div>
-                <div className="font-black text-slate-800 text-right">{reportDateStr ? formatShortDate(new Date(reportDateStr)) : '-'}</div>
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 w-full sm:w-auto grid grid-cols-2 gap-x-6 gap-y-2 text-sm print:bg-transparent print:border-none print:p-0">
+                <div className="text-slate-500 font-bold uppercase tracking-widest text-[10px] print:text-xs">Halaqoh</div>
+                <div className="font-black text-slate-800 text-right print:text-left print:text-sm">{activeHalaqoh || '-'}</div>
+                <div className="text-slate-500 font-bold uppercase tracking-widest text-[10px] print:text-xs">Ustadz/ah</div>
+                <div className="font-black text-slate-800 text-right print:text-left print:text-sm">{activeGuru || '-'}</div>
+                <div className="text-slate-500 font-bold uppercase tracking-widest text-[10px] print:text-xs">Tanggal</div>
+                <div className="font-black text-slate-800 text-right print:text-left print:text-sm">{reportDateStr ? formatShortDate(new Date(reportDateStr)) : '-'}</div>
               </div>
             </div>
 
             {/* STATISTIK RINGKAS */}
             <div className="grid grid-cols-3 gap-3 sm:gap-6 mb-8 print:break-inside-avoid">
-              <div className="bg-blue-50/50 border border-blue-100 rounded-2xl p-4 sm:p-5 flex flex-col items-center text-center">
-                <Users size={24} className="text-blue-500 mb-2" />
-                <span className="text-2xl sm:text-3xl font-black text-blue-900 leading-none">{students.length}</span>
-                <span className="text-[9px] sm:text-[10px] font-black text-blue-600/70 uppercase tracking-widest mt-1.5">Total Siswa</span>
+              <div className="bg-blue-50/50 border border-blue-200 rounded-2xl p-4 sm:p-5 flex flex-col items-center text-center print:bg-white print:border-slate-300">
+                <Users size={24} className="text-blue-500 mb-2 print:text-slate-600" />
+                <span className="text-2xl sm:text-3xl font-black text-blue-900 leading-none print:text-slate-800">{students.length}</span>
+                <span className="text-[9px] sm:text-[10px] font-black text-blue-600/70 uppercase tracking-widest mt-1.5 print:text-slate-500">Total Siswa</span>
               </div>
-              <div className="bg-emerald-50/50 border border-emerald-100 rounded-2xl p-4 sm:p-5 flex flex-col items-center text-center">
-                <Award size={24} className="text-emerald-500 mb-2" />
-                <span className="text-2xl sm:text-3xl font-black text-emerald-700 leading-none">
+              <div className="bg-emerald-50/50 border border-emerald-200 rounded-2xl p-4 sm:p-5 flex flex-col items-center text-center print:bg-white print:border-slate-300">
+                <Award size={24} className="text-emerald-500 mb-2 print:text-slate-600" />
+                <span className="text-2xl sm:text-3xl font-black text-emerald-700 leading-none print:text-slate-800">
                   {students.filter(s => getStatus(s)?.status === 'Lancar').length}
                 </span>
-                <span className="text-[9px] sm:text-[10px] font-black text-emerald-600/70 uppercase tracking-widest mt-1.5">Lancar / Baik</span>
+                <span className="text-[9px] sm:text-[10px] font-black text-emerald-600/70 uppercase tracking-widest mt-1.5 print:text-slate-500">Lancar / Baik</span>
               </div>
-              <div className="bg-rose-50/50 border border-rose-100 rounded-2xl p-4 sm:p-5 flex flex-col items-center text-center">
-                <TrendingUp size={24} className="text-rose-500 mb-2" />
-                <span className="text-2xl sm:text-3xl font-black text-rose-700 leading-none">
+              <div className="bg-rose-50/50 border border-rose-200 rounded-2xl p-4 sm:p-5 flex flex-col items-center text-center print:bg-white print:border-slate-300">
+                <TrendingUp size={24} className="text-rose-500 mb-2 print:text-slate-600" />
+                <span className="text-2xl sm:text-3xl font-black text-rose-700 leading-none print:text-slate-800">
                   {students.filter(s => getStatus(s)?.status === 'Perlu Ulang').length}
                 </span>
-                <span className="text-[9px] sm:text-[10px] font-black text-rose-600/70 uppercase tracking-widest mt-1.5">Perlu Ulang</span>
+                <span className="text-[9px] sm:text-[10px] font-black text-rose-600/70 uppercase tracking-widest mt-1.5 print:text-slate-500">Perlu Ulang</span>
               </div>
             </div>
 
@@ -174,17 +181,17 @@ const ReportView = ({
               <div className="rounded-2xl border border-slate-200 overflow-hidden">
                 <table className="w-full text-left border-collapse print:text-[11px] bg-white">
                   <thead>
-                    <tr className="bg-slate-800 text-white uppercase text-[10px] font-black tracking-widest">
-                      <th className="px-4 py-3.5 w-12 text-center border-r border-slate-700">No</th>
-                      <th className="px-4 py-3.5 border-r border-slate-700 min-w-[160px]">Identitas Siswa</th>
-                      <th className="px-4 py-3.5 border-r border-slate-700">Tahsin / Tilawah</th>
-                      <th className="px-4 py-3.5 border-r border-slate-700">Tahfidz / Hafalan</th>
-                      <th className="px-4 py-3.5 border-r border-slate-700">Murojaah</th>
-                      <th className="px-4 py-3.5 border-r border-slate-700">Catatan</th>
-                      <th className="px-4 py-3.5 text-center">Status</th>
+                <tr className="bg-emerald-600 text-white uppercase text-[10px] font-black tracking-widest print:bg-emerald-600 print:text-white">
+                  <th className="px-4 py-3.5 w-12 text-center border-r border-emerald-500 print:border-emerald-700">No</th>
+                  <th className="px-4 py-3.5 border-r border-emerald-500 print:border-emerald-700 min-w-[160px]">Identitas Siswa</th>
+                  <th className="px-4 py-3.5 border-r border-emerald-500 print:border-emerald-700">Tahsin / Tilawah</th>
+                  <th className="px-4 py-3.5 border-r border-emerald-500 print:border-emerald-700">Tahfidz / Hafalan</th>
+                  <th className="px-4 py-3.5 border-r border-emerald-500 print:border-emerald-700">Murojaah</th>
+                  <th className="px-4 py-3.5 border-r border-emerald-500 print:border-emerald-700">Catatan</th>
+                  <th className="px-4 py-3.5 text-center print:border-emerald-700">Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-200 border-x border-b border-slate-200 print:border-slate-300 print:divide-slate-300">
                     {students.map((student, index) => {
                       if (!student) return null;
 
@@ -208,17 +215,17 @@ const ReportView = ({
 
                       return (
                         <tr key={student.id} className="print:break-inside-avoid group hover:bg-slate-50 transition-colors">
-                          <td className="px-4 py-4 text-center text-slate-400 font-black border-r border-slate-100 bg-slate-50/30">{index + 1}</td>
-                          <td className="px-4 py-4 border-r border-slate-100">
+                      <td className="px-4 py-4 text-center text-slate-500 font-black border-r border-slate-200 bg-slate-50/30 print:bg-transparent print:border-slate-300">{index + 1}</td>
+                      <td className="px-4 py-4 border-r border-slate-200 print:border-slate-300">
                             <div className={`font-black leading-tight text-slate-800 mb-0.5 ${(student?.name || '').length > 24 ? 'text-[9px] sm:text-[10px]' : (student?.name || '').length > 18 ? 'text-[10px] sm:text-[11px]' : 'text-xs sm:text-sm'}`}>{student?.name || 'Siswa'}</div>
-                            <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{student?.id ? String(student.id).substring(0, 8) : 'N/A'}</div>
+                        <div className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">{student?.id ? String(student.id).substring(0, 8) : 'N/A'}</div>
                           </td>
-                          <td className="px-4 py-4 text-xs font-bold text-blue-700 bg-blue-50/10 border-r border-slate-100 whitespace-pre-wrap leading-snug">{displayTahsin}</td>
-                          <td className="px-4 py-4 text-xs font-bold text-purple-700 bg-purple-50/10 border-r border-slate-100 whitespace-pre-wrap leading-snug">{displayTahfidz}</td>
-                          <td className="px-4 py-4 text-xs font-bold text-emerald-700 bg-emerald-50/10 border-r border-slate-100 whitespace-pre-wrap leading-snug">{displayMurojaah}</td>
-                          <td className={`px-4 py-4 text-xs font-bold border-r border-slate-100 whitespace-pre-wrap leading-snug ${getStatusColor(displayCatatan)}`}>{displayCatatan}</td>
+                      <td className="px-4 py-4 text-[11px] sm:text-xs font-bold text-blue-700 bg-blue-50/10 border-r border-slate-200 print:border-slate-300 print:bg-transparent whitespace-pre-wrap leading-snug">{displayTahsin}</td>
+                      <td className="px-4 py-4 text-[11px] sm:text-xs font-bold text-purple-700 bg-purple-50/10 border-r border-slate-200 print:border-slate-300 print:bg-transparent whitespace-pre-wrap leading-snug">{displayTahfidz}</td>
+                      <td className="px-4 py-4 text-[11px] sm:text-xs font-bold text-emerald-700 bg-emerald-50/10 border-r border-slate-200 print:border-slate-300 print:bg-transparent whitespace-pre-wrap leading-snug">{displayMurojaah}</td>
+                      <td className={`px-4 py-4 text-[11px] sm:text-xs font-bold border-r border-slate-200 print:border-slate-300 print:bg-transparent whitespace-pre-wrap leading-snug ${getStatusColor(displayCatatan)}`}>{displayCatatan}</td>
                           <td className="px-4 py-4 text-center">
-                            <div className={`inline-flex items-center justify-center px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest w-24 text-center border ${status?.bg ? status.bg.replace('bg-', 'border-').replace('50', '200') : 'border-gray-200'} ${status?.bg || 'bg-gray-50'} ${status?.color || 'text-gray-500'}`}>
+                        <div className={`inline-flex items-center justify-center px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest w-24 text-center border ${status?.bg ? status.bg.replace('bg-', 'border-').replace('50', '200') : 'border-gray-200'} ${status?.bg || 'bg-gray-50'} ${status?.color || 'text-gray-500'} print:bg-transparent print:border print:shadow-none print:border-slate-300 print:text-slate-700`}>
                               {status?.status || 'Kosong'}
                             </div>
                           </td>
@@ -231,16 +238,16 @@ const ReportView = ({
             )}
 
             {/* FOOTER TANDA TANGAN (Hanya muncul saat print) */}
-            <div className="hidden print:grid grid-cols-2 mt-24 gap-20">
+        <div className="hidden print:grid grid-cols-2 mt-16 gap-20">
               <div className="text-center">
-                <p className="mb-24 text-xs font-bold text-slate-500 uppercase tracking-widest">Mengetahui,<br/>Koordinator Al-Qur'an</p>
-                <div className="w-56 mx-auto border-b-2 border-slate-400 border-dashed mb-1"></div>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">NIP. ...........................</p>
+            <p className="mb-20 text-xs font-bold text-slate-600 uppercase tracking-widest">Mengetahui,<br/>Koordinator Al-Qur'an</p>
+            <div className="w-56 mx-auto border-b border-slate-800 mb-1"></div>
+            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">NIP. ...........................</p>
               </div>
               <div className="text-center">
-                <p className="mb-24 text-xs font-bold text-slate-500 uppercase tracking-widest">Bogor, ........................ 20....<br/>Pengajar Halaqoh</p>
-                <p className="font-black text-slate-900 border-b-2 border-slate-400 border-dashed w-56 mx-auto pb-1 uppercase">{activeGuru || '...........................'}</p>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Ustadz / Ustadzah</p>
+            <p className="mb-20 text-xs font-bold text-slate-600 uppercase tracking-widest">Bogor, ........................ 20....<br/>Pengajar Halaqoh</p>
+            <p className="font-black text-slate-900 border-b border-slate-800 w-56 mx-auto pb-1 uppercase">{activeGuru || '...........................'}</p>
+            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Ustadz / Ustadzah</p>
               </div>
             </div>
 

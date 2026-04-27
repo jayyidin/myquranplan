@@ -36,6 +36,7 @@ const LoginScreen = ({ onLogin }) => {
   const [publicTeacher, setPublicTeacher] = useState('');
   const [isPublicLoading, setIsPublicLoading] = useState(false);
   const [isPrintingAll, setIsPrintingAll] = useState(false);
+  const [publicTab, setPublicTab] = useState('jurnal');
 
   const handlePrintAll = () => {
     setIsPrintingAll(true);
@@ -269,13 +270,13 @@ const LoginScreen = ({ onLogin }) => {
   if (publicStudent) {
     const weekStart = publicWeekStart;
     const weekDates = Array.from({length: 5}).map((_, i) => { const d = new Date(weekStart); d.setDate(d.getDate() + i); return d; });
-    const k = { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan' };
+    const k = publicTab === 'lesson_plan' ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan' } : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan' };
 
     // Mengambil seluruh tanggal yang memiliki rekaman untuk mode cetak riwayat lengkap
     const allDates = Object.keys(publicStudent.records || {})
       .filter(dateStr => {
         const rec = publicStudent.records[dateStr];
-        return (rec[k.t] && rec[k.t] !== '-') || (rec[k.f] && rec[k.f] !== '-') || (rec[k.m] && rec[k.m] !== '-');
+        return (rec[k.t] && rec[k.t] !== '-') || (rec[k.f] && rec[k.f] !== '-') || (rec[k.m] && rec[k.m] !== '-') || (rec[k.c] && rec[k.c] !== '-');
       })
       .sort((a, b) => new Date(b) - new Date(a))
       .map(d => new Date(d));
@@ -295,7 +296,7 @@ const LoginScreen = ({ onLogin }) => {
             {/* Header Laporan */}
             <div className="bg-[#f2fdf5] p-6 sm:p-8 border-b border-green-100 flex justify-between items-center transition-colors">
                <div>
-                  <h1 className="text-2xl sm:text-3xl font-black text-[#111827] mb-1">Lesson Plan Al-Qur'an</h1>
+                  <h1 className="text-2xl sm:text-3xl font-black text-[#111827] mb-1">{publicTab === 'lesson_plan' ? "Lesson Plan Al-Qur'an" : "Jurnal Harian Al-Qur'an"}</h1>
                   <p className="text-[#00e676] font-bold text-sm italic">SDIT Al-Fityan School Bogor</p>
                </div>
                <div className="w-24 h-24 sm:w-32 sm:h-32 flex items-center justify-center shrink-0">
@@ -335,7 +336,7 @@ const LoginScreen = ({ onLogin }) => {
                   <div className="flex items-center gap-2 text-sm font-black text-slate-700"><Calendar size={16} className="text-emerald-500"/> {formatPeriode(weekDates[0], weekDates[4])}</div>
                   
                   {/* Tombol Kembali ke Pekan Ini */}
-                  {formatDateObj(weekStart) !== formatDateObj(getMonday(new Date())) && (
+                  {formatDateObj(weekStart) !== formatDateObj(getMonday(new Date())) && !isPrintingAll && (
                     <button 
                       onClick={() => setPublicWeekStart(getMonday(new Date()))}
                       className="mt-1 text-[9px] font-bold text-emerald-600 hover:text-emerald-700 underline transition-colors animate-in fade-in slide-in-from-top-1 duration-300"
@@ -346,6 +347,12 @@ const LoginScreen = ({ onLogin }) => {
                </div> 
                <button onClick={() => changePublicWeek(7)} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-emerald-500" title="Pekan Selanjutnya"><ChevronRight size={24}/></button>
             </div>
+            
+            {/* Tab Toggle untuk Target / Capaian */}
+            <div className="bg-slate-50 border-b border-gray-100 px-6 py-3 flex gap-2 print:hidden transition-colors">
+               <button onClick={() => setPublicTab('lesson_plan')} className={`flex-1 py-2 text-xs font-black rounded-xl transition-all ${publicTab === 'lesson_plan' ? 'bg-emerald-500 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-500 hover:bg-emerald-50'}`}>Target (Lesson Plan)</button>
+               <button onClick={() => setPublicTab('jurnal')} className={`flex-1 py-2 text-xs font-black rounded-xl transition-all ${publicTab === 'jurnal' ? 'bg-blue-500 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-500 hover:bg-blue-50'}`}>Capaian (Jurnal)</button>
+            </div>
 
             {/* Daftar Hari */}
             <div className="p-6 sm:p-8 flex flex-col gap-5 bg-gray-50/50">
@@ -354,7 +361,7 @@ const LoginScreen = ({ onLogin }) => {
                   const rec = publicStudent.records?.[dateStr] || {};
                   
                   // Cek apakah ada data di hari tersebut
-                  const hasData = rec[k.t] && rec[k.t] !== '-' || rec[k.f] && rec[k.f] !== '-' || rec[k.m] && rec[k.m] !== '-';
+                  const hasData = (rec[k.t] && rec[k.t] !== '-') || (rec[k.f] && rec[k.f] !== '-') || (rec[k.m] && rec[k.m] !== '-') || (rec[k.c] && rec[k.c] !== '-');
                   if (!hasData) return null;
                   
                   return (
@@ -389,7 +396,7 @@ const LoginScreen = ({ onLogin }) => {
                {datesToDisplay.every(d => { // Add dark mode styles to this empty state
                   const ds = formatDateObj(d); // Fix: Use formatDateObj(d) instead of d
                   const r = publicStudent.records?.[ds] || {};
-                  return !(r[k.t] && r[k.t] !== '-' || r[k.f] && r[k.f] !== '-' || r[k.m] && r[k.m] !== '-');
+                  return !((r[k.t] && r[k.t] !== '-') || (r[k.f] && r[k.f] !== '-') || (r[k.m] && r[k.m] !== '-') || (r[k.c] && r[k.c] !== '-'));
                }) && ( 
                   <div className="py-20 text-center flex flex-col items-center gap-3 opacity-40">
                      <Calendar size={48} />
@@ -483,7 +490,7 @@ const LoginScreen = ({ onLogin }) => {
                   <div className="h-0.5 w-32 bg-gradient-to-r from-transparent via-amber-500 to-transparent mb-2"></div>
                </div>
                <p className="text-slate-500 font-medium max-w-md leading-relaxed">
-                  Selamat datang di platform pemantauan hafalan Ananda. Silakan cari nama Ananda untuk melihat dan mengunduh target belajar (Lesson Plan) pekan ini. 
+                  Selamat datang di platform pemantauan hafalan Ananda. Silakan cari nama Ananda untuk melihat target (Lesson Plan) serta capaian harian (Jurnal).
                </p>
             </div>
 
