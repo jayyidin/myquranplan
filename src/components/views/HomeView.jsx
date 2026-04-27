@@ -610,7 +610,7 @@ const HomeView = ({
 
       {/* ===== MODAL SHARE LAPORAN INDIVIDU ===== */}
       {shareStudent && (
-        <div className="fixed inset-0 z-[99999] flex justify-center items-start md:items-center bg-slate-900/80 p-0 md:p-6 pb-32 md:pb-6 overflow-y-auto custom-scrollbar printable-area print:!static print:p-0 print:m-0 print:overflow-visible">
+        <div className="fixed inset-0 z-[99999] flex justify-center items-start bg-slate-900/80 p-0 md:p-6 pb-32 md:pb-6 overflow-y-auto custom-scrollbar printable-area print:!static print:p-0 print:m-0 print:overflow-visible">
 
           {/* Tombol Aksi Web (Floating Bottom on Mobile) */}
           <div className="fixed bottom-6 right-6 sm:bottom-auto sm:top-6 sm:right-6 flex flex-col-reverse sm:flex-row gap-3 z-[100000] print:hidden" data-html2canvas-ignore="true">
@@ -632,7 +632,7 @@ const HomeView = ({
 
           {/* KARTU LAPORAN INDIVIDU */}
           <div className="w-full flex justify-center p-0 sm:p-4 print:p-0">
-            <div id="share-report-card" className="bg-white w-full max-w-[800px] print:w-[800px] print:min-w-[800px] print:max-w-none shrink-0 sm:shadow-2xl relative my-auto print:shadow-none rounded-none sm:rounded-[32px] overflow-hidden transition-colors">
+            <div id="share-report-card" className="bg-white w-full max-w-[800px] print:w-[800px] print:min-w-[800px] print:max-w-none shrink-0 sm:shadow-2xl relative sm:my-8 print:shadow-none rounded-none sm:rounded-[32px] overflow-hidden transition-colors">
 
             {/* HEADER LAPORAN */}
             <div className="bg-[#f2fdf5] p-6 sm:p-8 border-b border-green-100 flex flex-col-reverse sm:flex-row justify-between items-center gap-4 text-center sm:text-left">
@@ -654,15 +654,15 @@ const HomeView = ({
             {/* INFO SISWA */}
             <div className="p-6 sm:p-8 flex flex-col sm:flex-row justify-between items-center gap-6 border-b border-gray-50 text-center sm:text-left">
               <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-5 w-full sm:w-auto">
-                <div className="w-24 h-24 sm:w-20 sm:h-20 rounded-full bg-[#e6fbf0] border-4 border-[#00e676] text-[#00e676] flex items-center justify-center text-3xl font-black relative shrink-0 shadow-inner">
+                <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full bg-[#e6fbf0] border-4 sm:border-[5px] border-[#00e676] text-[#00e676] flex items-center justify-center text-4xl sm:text-5xl font-black relative shrink-0 shadow-inner">
                   {shareStudent?.photo ? (
                     <img src={shareStudent.photo} alt={shareStudent?.name || ''} className="w-full h-full rounded-full object-cover" />
                   ) : (
                     <span>{getInitials(shareStudent?.name)}</span>
                   )}
-                  <div className="absolute bottom-0 right-0 bg-white rounded-full p-0.5 text-[#00e676] shadow-sm">
-                    <div className="w-5 h-5 bg-[#00e676] rounded-full flex items-center justify-center text-white">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  <div className="absolute bottom-0 right-0 sm:bottom-1 sm:right-1 bg-white rounded-full p-1 text-[#00e676] shadow-sm">
+                    <div className="w-6 h-6 sm:w-7 sm:h-7 bg-[#00e676] rounded-full flex items-center justify-center text-white">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                     </div>
                   </div>
                 </div>

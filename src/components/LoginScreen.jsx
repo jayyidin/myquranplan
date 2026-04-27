@@ -302,7 +302,7 @@ const LoginScreen = ({ onLogin }) => {
         </div>
 
         <div className="w-full flex justify-center p-0 sm:p-4 print:p-0">
-          <div id="share-report-card" className="bg-white w-full max-w-[800px] shrink-0 sm:shadow-2xl relative my-auto print:shadow-none print:w-[800px] print:min-w-[800px] print:max-w-none animate-in fade-in slide-in-from-bottom-4 duration-700 transition-colors rounded-none sm:rounded-[32px] overflow-hidden">
+          <div id="share-report-card" className="bg-white w-full max-w-[800px] shrink-0 sm:shadow-2xl relative sm:my-8 print:shadow-none print:w-[800px] print:min-w-[800px] print:max-w-none animate-in fade-in slide-in-from-bottom-4 duration-700 transition-colors rounded-none sm:rounded-[32px] overflow-hidden">
             {/* Header Laporan */}
             <div className="bg-[#f2fdf5] p-6 sm:p-8 border-b border-green-100 flex flex-col-reverse sm:flex-row justify-between items-center gap-4 transition-colors text-center sm:text-left">
                <div className="w-full sm:w-auto">
@@ -317,7 +317,7 @@ const LoginScreen = ({ onLogin }) => {
             {/* Info Siswa */}
             <div className="p-6 sm:p-8 flex flex-col sm:flex-row justify-between items-center gap-6 border-b border-gray-50 transition-colors text-center sm:text-left">
                <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-5 w-full sm:w-auto">
-               <div className="w-24 h-24 sm:w-20 sm:h-20 rounded-full bg-[#e6fbf0] border-4 border-[#00e676] text-[#00e676] flex items-center justify-center text-3xl font-black shrink-0 overflow-hidden shadow-inner">
+               <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full bg-[#e6fbf0] border-4 sm:border-[5px] border-[#00e676] text-[#00e676] flex items-center justify-center text-4xl sm:text-5xl font-black shrink-0 overflow-hidden shadow-inner">
                   {publicStudent.photo ? <img src={publicStudent.photo} className="w-full h-full object-cover" /> : <span>{getInitials(publicStudent.name)}</span>}
                </div>
                <div>
