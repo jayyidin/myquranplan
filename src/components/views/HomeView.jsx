@@ -372,9 +372,9 @@ const HomeView = ({
     // Agar lebar kolom No, Nama, dan Hari tetap konsisten antara Hal 1 dan Hal 2,
     // kita kecilkan lebar total tabel pada Hal 2 (2 hari) menjadi ±73% dan dipusatkan.
     const tableWidth = isThreeDays ? '100%' : '73%';
-    const wNo = isThreeDays ? '4%' : '5.48%'; // 4% dari total halaman
-    const wNama = isThreeDays ? '15%' : '20.55%'; // 15% dari total halaman
-    const wDay = isThreeDays ? '27%' : '36.98%'; // 27% dari total halaman
+    const wNo = isThreeDays ? '3%' : '4.1%'; // 3% dari total halaman
+    const wNama = isThreeDays ? '18%' : '24.6%'; // 18% dari total halaman
+    const wDay = isThreeDays ? '26.3%' : '35.6%'; // 26.3% dari total halaman
 
     return (
       <div id={`class-report-page-${pageNum}`} className="w-full min-h-screen p-10 flex flex-col justify-between bg-white text-black print-area" style={{ breakAfter: 'page', pageBreakAfter: pageNum < totalPages ? 'always' : 'auto' }}>
@@ -458,16 +458,16 @@ const HomeView = ({
                       {/* Data Row */}
                       <tr className="border-b border-slate-100">
                         <td rowSpan={2} className="p-1.5 text-center text-[10px] font-bold text-gray-600 align-top bg-white">{idx + 1}</td>
-                        <td rowSpan={2} className="p-1.5 align-top bg-white">
-                          <div className="flex items-center gap-2">
+                        <td rowSpan={2} className="p-2 align-top bg-white">
+                          <div className="flex items-center gap-2.5">
                             {student?.photo && student.photo !== '' ? (
-                              <img src={student.photo} alt={student?.name} className="w-5 h-5 rounded-full object-cover border border-green-100 shrink-0" />
+                              <img src={student.photo} alt={student?.name} className="w-9 h-9 rounded-full object-cover border-2 border-green-100 shrink-0 shadow-sm" />
                             ) : (
-                              <div className="w-5 h-5 rounded-full bg-green-50 border border-green-100 text-green-700 flex items-center justify-center text-[8px] font-black shrink-0">{initials}</div>
+                              <div className="w-9 h-9 rounded-full bg-green-50 border-2 border-green-100 text-green-700 flex items-center justify-center text-[11px] font-black shrink-0 shadow-sm">{initials}</div>
                             )}
-                            <div>
-                              <div className="text-[10px] font-black text-gray-800 leading-tight">{String(student?.name || 'Unknown')}</div>
-                              <div className="text-[7px] text-gray-400 font-bold uppercase mt-0.5">Kelas {String(student?.kelas || '-')}</div>
+                            <div className="flex flex-col justify-center">
+                              <div className="text-[11px] font-black text-gray-800 leading-tight">{String(student?.name || 'Unknown')}</div>
+                              <div className="text-[8px] text-gray-400 font-bold uppercase mt-1">Kelas {String(student?.kelas || '-')}</div>
                             </div>
                           </div>
                         </td>
