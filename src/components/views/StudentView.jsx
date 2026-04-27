@@ -1,12 +1,34 @@
 // File: src/components/views/StudentView.jsx
-import React, { useState } from 'react';
-import { Users, Settings, Plus, Edit3, Trash2, Camera, GripVertical, Search, X, ChevronUp, ChevronDown } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Users, Settings, Plus, Edit3, Trash2, Camera, GripVertical, Search, X, ChevronUp, ChevronDown, ArrowUp } from 'lucide-react';
 
 const StudentView = ({ activeHalaqoh, filteredStudents, openAddStudentModal, openEditStudentModal, requestDeleteStudent, isSuperAdmin, openCropModal, uploadingPhotoId, uploadProgress, onReorderStudents, searchQuery, setSearchQuery }) => {
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [isHeaderVisible, setIsHeaderVisible] = useState(window.innerWidth >= 768);
   const [dragId, setDragId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const containerRef = useRef(null);
+
+  // Mendeteksi guliran (scroll) dari kontainer luarnya
+  useEffect(() => {
+    const scrollContainer = containerRef.current?.closest('.overflow-y-auto');
+    if (!scrollContainer) return;
+
+    const handleScroll = () => {
+      setShowScrollTop(scrollContainer.scrollTop > 300);
+    };
+
+    scrollContainer.addEventListener('scroll', handleScroll);
+    return () => scrollContainer.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    const scrollContainer = containerRef.current?.closest('.overflow-y-auto');
+    if (scrollContainer) {
+      scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
 
   const handleDragStart = (e, id) => {
     setDragId(id);
@@ -80,12 +102,12 @@ const StudentView = ({ activeHalaqoh, filteredStudents, openAddStudentModal, ope
   };
 
   return (
-    <div className="p-4 sm:p-6 md:p-8">
+    <div className="p-4 sm:p-6 md:p-8" ref={containerRef}>
       {isHeaderVisible && (
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-200 pb-4 md:pb-6 animate-in slide-in-from-top-2 fade-in duration-300">
-          <div>
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-[#1a202c] tracking-tight mb-1.5 md:mb-2">Data Siswa</h1>
-            <p className="text-gray-500 font-medium text-xs sm:text-sm md:text-base">Kelola profil dan daftar siswa untuk halaqoh <strong className="text-green-600 bg-green-50 px-2 py-0.5 rounded">{activeHalaqoh || '-'}</strong>.</p>
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-3xl md:text-4xl font-black text-[#1a202c] tracking-tight mb-1.5 md:mb-2">Data Siswa</h1>
+            <p className="text-gray-500 font-medium text-xs sm:text-sm md:text-base break-words whitespace-normal">Kelola profil dan daftar siswa untuk halaqoh <strong className={`text-green-600 bg-green-50 px-2 py-0.5 rounded inline-block break-words whitespace-normal max-w-full align-bottom ${(activeHalaqoh || '').length > 20 ? 'text-[10px] sm:text-xs' : ''}`}>{activeHalaqoh || '-'}</strong>.</p>
           </div>
           <button onClick={openAddStudentModal} disabled={!activeHalaqoh} className="flex items-center justify-center gap-1.5 md:gap-2 bg-[#00e676] hover:bg-green-500 text-white px-4 py-2 md:px-5 md:py-2.5 rounded-xl font-bold transition-colors text-xs md:text-sm shadow-md shadow-green-200 disabled:opacity-50 disabled:cursor-not-allowed mt-2 sm:mt-0">
             <Plus size={16} strokeWidth={3} className="md:w-5 md:h-5"/> Tambah Siswa Baru
@@ -222,6 +244,17 @@ const StudentView = ({ activeHalaqoh, filteredStudents, openAddStudentModal, ope
             </div>
           ))}
         </div>
+      )}
+
+      {/* Tombol Scroll ke Atas */}
+      {showScrollTop && (
+        <button
+          onClick={scrollToTop}
+          className="fixed bottom-24 md:bottom-8 right-6 z-50 p-3 sm:p-3.5 bg-slate-800 text-white rounded-full shadow-2xl hover:bg-slate-900 hover:-translate-y-1 transition-all active:scale-95 animate-in fade-in slide-in-from-bottom-4 duration-300"
+          title="Scroll ke Atas"
+        >
+          <ArrowUp className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.5} />
+        </button>
       )}
     </div>
   );

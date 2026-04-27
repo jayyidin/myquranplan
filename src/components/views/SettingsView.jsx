@@ -1,8 +1,8 @@
 // File: src/components/views/SettingsView.jsx
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   UserCheck, CheckCircle2, X, ImageIcon, Camera,
-  GraduationCap, Plus, User, Edit3, Trash2, Save, Users, Search, ShieldCheck, Database, LayoutGrid, LogOut
+  GraduationCap, Plus, User, Edit3, Trash2, Save, Users, Search, ShieldCheck, Database, LayoutGrid, LogOut, ArrowUp, ChevronDown
 } from 'lucide-react';
 
 const SettingsView = ({ 
@@ -23,6 +23,18 @@ const SettingsView = ({
   const [selectedStudentIds, setSelectedStudentIds] = useState([]);
   const [isBulkEditOpen, setIsBulkEditOpen] = useState(false);
   const [bulkEditData, setBulkEditData] = useState({ kelas: '', halaqoh: '' });
+  const [filterStatus, setFilterStatus] = useState(isSuperAdmin ? 'kosong' : 'all');
+  const [filterKelas, setFilterKelas] = useState('');
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const scrollContainerRef = useRef(null);
+
+  const handleScroll = (e) => {
+    setShowScrollTop(e.target.scrollTop > 300);
+  };
+
+  const scrollToTop = () => {
+    scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const processBulkImport = () => {
     // Mendukung line endings Windows (\r\n) dan Unix (\n)
@@ -97,35 +109,40 @@ const SettingsView = ({
   const myHalaqohs = isSuperAdmin ? [] : (guruKey ? (guruHalaqohData[guruKey] || []) : []);
 
   const filteredStudentsMaster = (students || []).filter(s => {
+    const halaqoh = (s?.halaqoh || "").trim();
+    const isKosong = halaqoh === '' || halaqoh.toLowerCase() === 'unassigned';
+
     if (isSuperAdmin) {
-      // BANK DATA: Jika siswa SUDAH masuk halaqoh, sembunyikan dari sini
-      const halaqoh = (s?.halaqoh || "").trim();
-      if (halaqoh !== '' && halaqoh.toLowerCase() !== 'unassigned') {
-        return false;
-      }
+      // Filter Dropdown: Kosong, Assigned, Semua
+      if (filterStatus === 'kosong' && !isKosong) return false;
+      if (filterStatus === 'assigned' && isKosong) return false;
     } else {
-      if (!myHalaqohs.some(h => h.trim().toLowerCase() === (s?.halaqoh || "").trim().toLowerCase())) {
+      if (!myHalaqohs.some(h => h.trim().toLowerCase() === halaqoh.toLowerCase())) {
         return false;
       }
     }
+
+    // Filter berdasarkan Kelas
+    if (filterKelas && s.kelas !== filterKelas) return false;
+
     const nameMatch = (s?.name || '').toLowerCase().includes((studentSearch || '').toLowerCase());
-    const halaqohMatch = (s?.halaqoh || '').toLowerCase().includes((studentSearch || '').toLowerCase());
+    const halaqohMatch = halaqoh.toLowerCase().includes((studentSearch || '').toLowerCase());
     return nameMatch || halaqohMatch;
   });
 
   const displayedStudents = filteredStudentsMaster.slice(0, visibleCount);
 
   return (
-    <div className="flex-1 w-full h-full overflow-y-auto bg-[#F8F9FA] custom-scrollbar min-h-0" style={{ WebkitOverflowScrolling: 'touch' }}>
+    <div className="flex-1 w-full h-full overflow-y-auto bg-[#F8F9FA] custom-scrollbar min-h-0" style={{ WebkitOverflowScrolling: 'touch' }} ref={scrollContainerRef} onScroll={handleScroll}>
       <div className="max-w-6xl mx-auto px-4 py-6 sm:py-8 md:px-8 pb-32">
         
         {/* HEADER SECTION */}
         <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight mb-2">
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-3xl md:text-4xl font-black text-slate-900 tracking-tight mb-1 sm:mb-2">
               {isSuperAdmin ? 'Pengaturan Sistem' : 'Manajemen Halaqoh'}
             </h1>
-            <p className="text-slate-500 font-medium">
+            <p className="text-xs sm:text-sm md:text-base text-slate-500 font-medium">
               {isSuperAdmin 
                 ? 'Konfigurasi identitas sekolah, hak akses guru, dan struktur database halaqoh.' 
                 : 'Kelola daftar kelompok halaqoh yang berada di bawah bimbingan Anda.'} 
@@ -316,11 +333,14 @@ const SettingsView = ({
                           <div className="space-y-1.5">
                             <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Assign Halaqoh</label>
                             <div className="flex gap-2"> 
-                              <select value={selectedGuruForHalaqoh} onChange={e => setSelectedGuruForHalaqoh(e.target.value)} className="w-[120px] bg-white border border-slate-200 rounded-2xl px-2 py-2.5 text-xs font-bold outline-none">
-                                <option value="">Guru...</option>
-                                {guruList.map(g => <option key={g} value={g}>{g}</option>)}
-                              </select>
-                              <input type="text" placeholder="Nama halaqoh..." value={newHalaqohName} onChange={e => setNewHalaqohName(e.target.value)} className="flex-1 bg-white border border-slate-200 rounded-2xl px-3 py-2.5 text-sm font-bold outline-none" />
+                              <div className="relative shrink-0">
+                                <select value={selectedGuruForHalaqoh} onChange={e => setSelectedGuruForHalaqoh(e.target.value)} className="w-[120px] bg-white border border-slate-200 rounded-2xl pl-3 pr-8 py-2.5 text-xs font-bold outline-none appearance-none cursor-pointer focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all">
+                                  <option value="">Guru...</option>
+                                  {guruList.map(g => <option key={g} value={g}>{g}</option>)}
+                                </select>
+                                <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                              </div>
+                              <input type="text" placeholder="Nama halaqoh..." value={newHalaqohName} onChange={e => setNewHalaqohName(e.target.value)} className="flex-1 bg-white border border-slate-200 rounded-2xl px-3 py-2.5 text-sm font-bold outline-none focus:border-indigo-500 transition-all" />
                               <button onClick={handleAddHalaqoh} disabled={!selectedGuruForHalaqoh} className="bg-indigo-500 text-white px-4 rounded-2xl disabled:bg-slate-200 transition-colors"><Plus size={18}/></button>
                             </div>
                           </div>
@@ -428,10 +448,35 @@ const SettingsView = ({
                   <Database size={32} />
                 </div>
                 <div className="flex-1 text-center md:text-left min-w-0">
-                  <h3 className="text-xl font-black mb-1 truncate">{isSuperAdmin ? 'Bank Data (Belum Masuk Halaqoh)' : 'Cari Siswa Anda'}</h3>
-                  <p className="text-slate-400 text-sm font-medium line-clamp-2">{isSuperAdmin ? 'Siswa yang telah dimasukkan ke halaqoh akan otomatis hilang dari daftar ini.' : 'Temukan data siswa di seluruh kelompok halaqoh binaan Anda.'}</p>
+                  <h3 className="text-xl font-black mb-1 truncate">{isSuperAdmin ? 'Bank Data Siswa' : 'Cari Siswa Anda'}</h3>
+                  <p className="text-slate-400 text-sm font-medium line-clamp-2">{isSuperAdmin ? 'Kelola seluruh data siswa. Gunakan filter untuk menyaring status halaqoh.' : 'Temukan data siswa di seluruh kelompok halaqoh binaan Anda.'}</p>
                 </div>
-                <div className="relative w-full md:w-80 flex gap-2">
+                <div className="flex flex-col sm:flex-row w-full md:w-auto gap-2 flex-wrap">
+                  {isSuperAdmin && (
+                    <div className="relative shrink-0 w-full sm:w-[160px]">
+                      <select
+                        value={filterStatus}
+                        onChange={(e) => setFilterStatus(e.target.value)}
+                        className="w-full bg-slate-800 border-none rounded-2xl py-4 pl-4 pr-10 text-sm font-bold text-purple-400 focus:ring-2 focus:ring-purple-500 outline-none appearance-none cursor-pointer transition-colors"
+                      >
+                        <option value="kosong">Status: Kosong</option>
+                        <option value="assigned">Status: Halaqoh</option>
+                        <option value="all">Semua Siswa</option>
+                      </select>
+                      <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+                    </div>
+                  )}
+                  <div className="relative shrink-0 w-full sm:w-[160px]">
+                    <select
+                      value={filterKelas}
+                      onChange={(e) => setFilterKelas(e.target.value)}
+                      className="w-full bg-slate-800 border-none rounded-2xl py-4 pl-4 pr-10 text-sm font-bold text-purple-400 focus:ring-2 focus:ring-purple-500 outline-none appearance-none cursor-pointer transition-colors"
+                    >
+                      <option value="">Semua Kelas</option>
+                      {kelasList.map(k => <option key={k} value={k}>Kelas {k}</option>)}
+                    </select>
+                    <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+                  </div>
                   <div className="relative flex-1">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
                     <input 
@@ -439,13 +484,13 @@ const SettingsView = ({
                       placeholder="Cari nama siswa..." 
                       value={studentSearch} 
                       onChange={(e) => setStudentSearch(e.target.value)}
-                      className="w-full bg-slate-800 border-none rounded-2xl py-4 pl-12 pr-4 text-sm font-bold focus:ring-2 focus:ring-purple-500 outline-none transition-all placeholder:text-slate-600"
+                      className="w-full bg-slate-800 border-none rounded-2xl py-4 pl-12 pr-4 text-sm font-bold text-white focus:ring-2 focus:ring-purple-500 outline-none transition-all placeholder:text-slate-600"
                     /> 
                   </div>
                   {isSuperAdmin && (
                     <button 
                       onClick={() => setIsBulkImportOpen(!isBulkImportOpen)}
-                      className={`p-4 rounded-2xl shadow-lg transition-all active:scale-95 flex items-center justify-center ${isBulkImportOpen ? 'bg-red-500' : 'bg-purple-600 hover:bg-purple-500'} text-white`}
+                      className={`p-4 rounded-2xl shadow-lg transition-all active:scale-95 flex items-center justify-center ${isBulkImportOpen ? 'bg-red-500' : 'bg-purple-600 hover:bg-purple-500'} text-white shrink-0`}
                       title="Import Masal"
                     >
                       {isBulkImportOpen ? <X size={20} strokeWidth={3}/> : <Plus size={20} strokeWidth={3} />}
@@ -505,22 +550,28 @@ const SettingsView = ({
                     <div className="p-4 bg-white/5 border border-blue-500/30 rounded-2xl animate-in zoom-in-95 duration-200">
                       <label className="block text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] mb-3">Pindah Kelas / Halaqoh Massal</label>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-                        <select
-                          value={bulkEditData.kelas}
-                          onChange={e => setBulkEditData({...bulkEditData, kelas: e.target.value})}
-                          className="w-full bg-slate-800 border-none rounded-xl p-3 text-sm font-bold text-white focus:ring-2 focus:ring-blue-500 outline-none appearance-none cursor-pointer"
-                        >
-                          <option value="">-- Jangan Ubah Kelas --</option>
-                          {kelasList.map(k => <option key={k} value={k}>Kelas {k}</option>)}
-                        </select>
-                        <select
-                          value={bulkEditData.halaqoh}
-                          onChange={e => setBulkEditData({...bulkEditData, halaqoh: e.target.value})}
-                          className="w-full bg-slate-800 border-none rounded-xl p-3 text-sm font-bold text-white focus:ring-2 focus:ring-blue-500 outline-none appearance-none cursor-pointer"
-                        >
-                          <option value="">-- Jangan Ubah Halaqoh --</option>
-                          {Array.from(new Set(Object.values(guruHalaqohData).flat())).map(h => <option key={h} value={h}>{h}</option>)}
-                        </select>
+                        <div className="relative w-full">
+                          <select
+                            value={bulkEditData.kelas}
+                            onChange={e => setBulkEditData({...bulkEditData, kelas: e.target.value})}
+                            className="w-full bg-slate-800 border-none rounded-xl pl-4 pr-10 py-3 text-sm font-bold text-white focus:ring-2 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-shadow"
+                          >
+                            <option value="">-- Jangan Ubah Kelas --</option>
+                            {kelasList.map(k => <option key={k} value={k}>Kelas {k}</option>)}
+                          </select>
+                          <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                        </div>
+                        <div className="relative w-full">
+                          <select
+                            value={bulkEditData.halaqoh}
+                            onChange={e => setBulkEditData({...bulkEditData, halaqoh: e.target.value})}
+                            className="w-full bg-slate-800 border-none rounded-xl pl-4 pr-10 py-3 text-sm font-bold text-white focus:ring-2 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-shadow peer"
+                          >
+                            <option value="">-- Jangan Ubah Halaqoh --</option>
+                            {Array.from(new Set(Object.values(guruHalaqohData).flat())).map(h => <option key={h} value={h}>{h}</option>)}
+                          </select>
+                          <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none peer-focus:-rotate-180 transition-transform duration-300" />
+                        </div>
                       </div>
                       <div className="flex justify-end gap-2">
                         <button onClick={() => setIsBulkEditOpen(false)} className="px-4 py-2 rounded-xl text-xs font-black uppercase text-slate-400 hover:text-white transition-colors">Batal</button>
@@ -587,6 +638,17 @@ const SettingsView = ({
           </div>
 
         </div>
+
+        {/* Tombol Scroll ke Atas */}
+        {showScrollTop && (
+          <button
+            onClick={scrollToTop}
+            className="fixed bottom-24 md:bottom-8 right-6 z-50 p-3 sm:p-3.5 bg-slate-800 text-white rounded-full shadow-2xl hover:bg-slate-900 hover:-translate-y-1 transition-all active:scale-95 animate-in fade-in slide-in-from-bottom-4 duration-300"
+            title="Scroll ke Atas"
+          >
+            <ArrowUp className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.5} />
+          </button>
+        )}
       </div>
     </div>
   );

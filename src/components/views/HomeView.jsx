@@ -1,7 +1,32 @@
-import React, { useState, useEffect } from 'react';
-import { Settings, Users, Edit3, Trash2, Share2, Plus, X, Calendar, ChevronLeft, ChevronRight, BookOpen, Mic, Repeat, Printer, Check, Download, FileText, History, Link, Search, ImageDown, ChevronUp, ChevronDown } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Settings, Users, Edit3, Trash2, Share2, Plus, X, Calendar, ChevronLeft, ChevronRight, BookOpen, Mic, Repeat, Printer, Check, Download, FileText, History, Link, Search, ImageDown, ChevronUp, ChevronDown, ArrowUp } from 'lucide-react';
 import { Tooltip } from 'react-tooltip';
 import { formatShortDate, getInitials, formatPeriode, formatPrintData } from '../../utils/helpers';
+
+const ExpandableText = ({ text }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  if (!text || text === '-') return <div className="text-xs sm:text-sm font-bold text-gray-800">-</div>;
+  
+  const isLong = text.length > 50 || text.split('\n').length > 2;
+  const textSizeClass = text.length > 40 ? 'text-[10px] sm:text-xs leading-snug' : text.length > 25 ? 'text-[11px] sm:text-[13px] leading-snug' : 'text-xs sm:text-sm leading-relaxed';
+
+  return (
+    <div className="flex flex-col items-start w-full">
+      <div className={`${textSizeClass} font-bold text-gray-800 whitespace-pre-wrap ${!isExpanded && isLong ? 'line-clamp-2 print:line-clamp-none' : ''}`}>
+        {text}
+      </div>
+      {isLong && (
+        <button 
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsExpanded(!isExpanded); }}
+          className="text-[9px] sm:text-[10px] font-black text-emerald-500 hover:text-emerald-600 mt-1 active:scale-95 transition-all bg-emerald-50 px-2 py-0.5 rounded-md print:hidden"
+          data-html2canvas-ignore="true"
+        >
+          {isExpanded ? 'Sembunyikan' : 'Lihat Selengkapnya'}
+        </button>
+      )}
+    </div>
+  );
+};
 
 const HomeView = ({
   activeHalaqoh, activeGuru, homeTab, setHomeTab, weekStart, changeWeek,
@@ -24,6 +49,16 @@ const HomeView = ({
   // State untuk Lazy Loading di Mobile
   const [visibleCount, setVisibleCount] = useState(10);
   const [isMoreLoading, setIsMoreLoading] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const scrollContainerRef = useRef(null);
+
+  const handleScroll = (e) => {
+    setShowScrollTop(e.target.scrollTop > 300);
+  };
+
+  const scrollToTop = () => {
+    scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   // Reset jumlah yang terlihat saat berganti halaqoh atau tanggal
   useEffect(() => {
@@ -260,8 +295,9 @@ const HomeView = ({
               const a = aList[i]; const combined = (a && a !== '-' && a !== 'Semua Ayat') ? s + ' ' + a : s;
               const n = nList[i] && nList[i] !== '-' ? nList[i] : null;
               const sBadge = n ? <div className="mt-1 inline-flex items-center justify-center bg-[#0f4c5c] text-white text-[11px] font-black px-2.5 py-1 rounded-full shadow-sm w-max leading-none">{n}</div> : null;
+              const textSize = combined.length > 25 ? 'text-[9px] md:text-[10px]' : combined.length > 15 ? 'text-[10px] md:text-[11px]' : 'text-[11px] md:text-[12px]';
               return (
-                <div key={i} className="text-[11px] md:text-[12px] text-blue-800 bg-blue-50 px-2.5 py-2 rounded-lg border border-blue-100 flex flex-col items-center justify-center gap-1 font-bold leading-snug mt-0.5 w-fit max-w-full text-center">
+                <div key={i} className={`${textSize} text-blue-800 bg-blue-50 px-2.5 py-2 rounded-lg border border-blue-100 flex flex-col items-center justify-center gap-1 font-bold leading-snug mt-0.5 w-fit max-w-full text-center`}>
                   <div className="flex items-center justify-center gap-1"><BookOpen size={14} className="text-blue-500 shrink-0 mt-0.5" /> <span className="flex-1 min-w-0 break-words whitespace-normal">{combined}</span></div>
                   {sBadge}
                 </div>
@@ -272,8 +308,8 @@ const HomeView = ({
       }
       if (tahsin.includes('Jilid')) return (
         <div className="flex flex-col items-center justify-center gap-1 w-full min-w-0 group relative">
-          <div className="flex items-center justify-center gap-1 w-full max-w-full"><span className="text-[14px] font-bold text-gray-800 leading-none break-words text-center">{tahsin}</span></div>
-          {halAyat !== '-' && <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded-md border border-blue-100/70 break-words whitespace-normal max-w-full text-center">{String(halAyat)}</span>}
+          <div className="flex items-center justify-center gap-1 w-full max-w-full"><span className={`${tahsin.length > 15 ? 'text-[11px] md:text-[12px]' : 'text-[14px]'} font-bold text-gray-800 leading-none break-words text-center`}>{tahsin}</span></div>
+          {halAyat !== '-' && <span className={`${String(halAyat).length > 20 ? 'text-[9px] md:text-[10px]' : 'text-[11px]'} font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded-md border border-blue-100/70 break-words whitespace-normal max-w-full text-center`}>{String(halAyat)}</span>}
           {catBadge}
         </div>
       );
@@ -286,8 +322,9 @@ const HomeView = ({
             const a = aList[i]; const combined = (a && a !== '-' && a !== 'Semua Ayat') ? t + ' ' + a : t;
             const n = nList[i] && nList[i] !== '-' ? nList[i] : null;
             const sBadge = n ? <div className="mt-1 inline-flex items-center justify-center bg-[#0f4c5c] text-white text-[11px] font-black px-2.5 py-1 rounded-full shadow-sm w-max leading-none">{n}</div> : null;
+            const textSize = combined.length > 25 ? 'text-[9px] md:text-[10px]' : combined.length > 15 ? 'text-[10px] md:text-[11px]' : 'text-[11px] md:text-[12px]';
             return (
-              <div key={i} className="text-[11px] md:text-[12px] font-bold text-blue-800 bg-blue-50 px-2.5 py-2 rounded-lg border border-blue-100 flex flex-col items-center justify-center gap-1 leading-snug w-fit max-w-full group relative text-center">
+              <div key={i} className={`${textSize} font-bold text-blue-800 bg-blue-50 px-2.5 py-2 rounded-lg border border-blue-100 flex flex-col items-center justify-center gap-1 leading-snug w-fit max-w-full group relative text-center`}>
                 <div className="flex items-center justify-center gap-1 overflow-hidden"><BookOpen size={14} className="text-blue-500 shrink-0 mt-0.5" /><span className="flex-1 min-w-0 break-words whitespace-normal">{combined}</span></div>
                 {sBadge}
               </div>
@@ -313,8 +350,9 @@ const HomeView = ({
             const a = aList[i]; const combined = (a && a !== '-' && a !== 'Semua Ayat') ? t + ' ' + a : t;
             const n = nList[i] && nList[i] !== '-' ? nList[i] : null;
             const badge = n ? <div className="mt-1 inline-flex items-center justify-center bg-[#0f4c5c] text-white text-[11px] font-black px-2.5 py-1 rounded-full shadow-sm w-max leading-none">{n}</div> : null;
+            const textSize = combined.length > 25 ? 'text-[9px] md:text-[10px]' : combined.length > 15 ? 'text-[10px] md:text-[11px]' : 'text-[11px] md:text-[12px]';
             return (
-              <div key={i} className="text-[11px] md:text-[12px] font-bold text-purple-800 bg-purple-50 px-2.5 py-2 rounded-lg border border-purple-100 flex flex-col items-center justify-center gap-1 leading-snug w-fit max-w-full group relative text-center">
+              <div key={i} className={`${textSize} font-bold text-purple-800 bg-purple-50 px-2.5 py-2 rounded-lg border border-purple-100 flex flex-col items-center justify-center gap-1 leading-snug w-fit max-w-full group relative text-center`}>
                 <div className="flex items-center justify-center gap-1 overflow-hidden"><Mic size={14} className="text-purple-500 shrink-0 mt-0.5" /> <span className="flex-1 min-w-0 break-words whitespace-normal">{combined}</span></div>
                 {badge}
               </div>
@@ -334,11 +372,14 @@ const HomeView = ({
       const items = murojaah.split(',').map(s => s.trim());
       return (
         <div className="flex flex-col items-center justify-center gap-1 w-full min-w-0">
-          {items.map((item, i) => (
-            <div key={i} className="text-[11px] md:text-[12px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-2 rounded-lg border border-emerald-100 flex items-center justify-center gap-1 leading-snug w-fit max-w-full group relative text-center">
-              <div className="flex items-center justify-center gap-1 overflow-hidden"><Repeat size={14} className="text-emerald-500 shrink-0 mt-0.5" /><span className="flex-1 min-w-0 break-words whitespace-normal">{item}</span></div>
-            </div>
-          ))}
+          {items.map((item, i) => {
+            const textSize = item.length > 25 ? 'text-[9px] md:text-[10px]' : item.length > 15 ? 'text-[10px] md:text-[11px]' : 'text-[11px] md:text-[12px]';
+            return (
+              <div key={i} className={`${textSize} font-bold text-emerald-800 bg-emerald-50 px-2.5 py-2 rounded-lg border border-emerald-100 flex items-center justify-center gap-1 leading-snug w-fit max-w-full group relative text-center`}>
+                <div className="flex items-center justify-center gap-1 overflow-hidden"><Repeat size={14} className="text-emerald-500 shrink-0 mt-0.5" /><span className="flex-1 min-w-0 break-words whitespace-normal">{item}</span></div>
+              </div>
+            );
+          })}
         </div>
       );
     } catch (err) {
@@ -668,9 +709,9 @@ const HomeView = ({
                 </div>
                 <div>
                   <h2 className={`font-black text-gray-800 mb-2 sm:mb-3 ${(shareStudent?.name || '').length > 24 ? 'text-lg sm:text-xl' : (shareStudent?.name || '').length > 18 ? 'text-xl sm:text-2xl' : 'text-2xl sm:text-3xl'}`}>{String(shareStudent?.name || 'Siswa')}</h2>
-                  <div className="flex flex-wrap justify-center sm:justify-start gap-2">
-                    <span className="bg-[#e6fbf0] text-green-800 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-widest">Kelas {String(shareStudent?.kelas || '-')}</span>
-                    <span className="bg-[#e6fbf0] text-green-800 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-widest">Kelompok {String(activeHalaqoh || '-')}</span>
+                  <div className="flex flex-wrap justify-center sm:justify-start gap-2 mt-1 sm:mt-0">
+                    <span className={`bg-[#e6fbf0] text-green-800 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full font-bold uppercase tracking-widest ${String(shareStudent?.kelas || '-').length > 10 ? 'text-[9px] sm:text-xs' : 'text-[10px] sm:text-xs'}`}>Kelas {String(shareStudent?.kelas || '-')}</span>
+                    <span className={`bg-[#e6fbf0] text-green-800 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full font-bold uppercase tracking-widest ${String(activeHalaqoh || '-').length > 20 ? 'text-[8px] sm:text-[10px]' : String(activeHalaqoh || '-').length > 15 ? 'text-[9px] sm:text-[11px]' : 'text-[10px] sm:text-xs'}`}>Kelompok {String(activeHalaqoh || '-')}</span>
                   </div>
                 </div>
               </div>
@@ -716,27 +757,27 @@ const HomeView = ({
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 sm:gap-y-6 gap-x-4 sm:gap-x-6">
                       {/* Info TAHSIN */}
-                      <div className="bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent">
+                      <div className="bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent h-full flex flex-col">
                         <div className="flex items-center gap-1.5 mb-1.5 text-blue-500"><BookOpen size={14} /><span className="text-[10px] sm:text-xs font-black uppercase tracking-wider">Tahsin</span></div>
-                        <div className="text-xs sm:text-sm font-bold text-gray-800 whitespace-pre-wrap leading-relaxed">{valT}</div>
+                        <ExpandableText text={valT} />
                       </div>
 
                       {/* Info TAHFIDZ */}
-                      <div className="bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent">
+                      <div className="bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent h-full flex flex-col">
                         <div className="flex items-center gap-1.5 mb-1.5 text-purple-500"><Mic size={14} /><span className="text-[10px] sm:text-xs font-black uppercase tracking-wider">Tahfidz</span></div>
-                        <div className="text-xs sm:text-sm font-bold text-gray-800 whitespace-pre-wrap leading-relaxed">{valF}</div>
+                        <ExpandableText text={valF} />
                       </div>
 
                       {/* Info MUROJAAH */}
-                      <div className="bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent">
+                      <div className="bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent h-full flex flex-col">
                         <div className="flex items-center gap-1.5 mb-1.5 text-emerald-500"><Repeat size={14} /><span className="text-[10px] sm:text-xs font-black uppercase tracking-wider">Murojaah</span></div>
-                        <div className="text-xs sm:text-sm font-bold text-gray-800 whitespace-pre-wrap leading-relaxed">{valM}</div>
+                        <ExpandableText text={valM} />
                       </div>
 
                       {/* Info CATATAN */}
-                      <div className="bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent">
+                      <div className="bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent h-full flex flex-col">
                         <div className="flex items-center gap-1.5 mb-1.5 text-orange-500"><FileText size={14} /><span className="text-[10px] sm:text-xs font-black uppercase tracking-wider">Catatan</span></div>
-                        <div className="text-xs sm:text-sm font-bold text-gray-800 whitespace-pre-wrap leading-relaxed">{valC}</div>
+                        <ExpandableText text={valC} />
                       </div>
                     </div>
                   </div>
@@ -783,12 +824,12 @@ const HomeView = ({
                   {homeTab === 'lesson_plan' ? "Lesson Plan Al-Qur'an" : "Jurnal Harian Al-Qur'an"}
                 </h1>
                 <div className="flex flex-wrap sm:flex-row sm:items-center gap-x-3 gap-y-1 text-gray-500 font-medium text-[9px] sm:text-xs mt-0.5 sm:mt-1">
-                  <span className="flex items-center gap-1.5">
-                    Halaqoh: <strong className="text-green-700 bg-green-50 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md border border-green-100">{String(activeHalaqoh || '-')}</strong>
+                  <span className="flex items-center gap-1.5 min-w-0">
+                    <span className="shrink-0">Halaqoh:</span> <strong className={`text-green-700 bg-green-50 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md border border-green-100 whitespace-normal break-words ${(activeHalaqoh || '').length > 20 ? 'text-[8px] sm:text-[10px] leading-tight' : (activeHalaqoh || '').length > 15 ? 'text-[9px] sm:text-[11px] leading-tight' : ''}`}>{String(activeHalaqoh || '-')}</strong>
                   </span>
-                  <span className="hidden md:inline text-gray-300">•</span>
-                  <span className="flex items-center gap-1.5">
-                    Ustadz/ah: <strong className="text-blue-700 bg-blue-50 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md border border-blue-100 transition-colors">{String(activeGuru || '-')}</strong>
+                  <span className="hidden md:inline text-gray-300 shrink-0">•</span>
+                  <span className="flex items-center gap-1.5 min-w-0">
+                    <span className="shrink-0">Ustadz/ah:</span> <strong className={`text-blue-700 bg-blue-50 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md border border-blue-100 transition-colors whitespace-normal break-words ${(activeGuru || '').length > 20 ? 'text-[8px] sm:text-[10px] leading-tight' : (activeGuru || '').length > 15 ? 'text-[9px] sm:text-[11px] leading-tight' : ''}`}>{String(activeGuru || '-')}</strong>
                   </span>
                 </div>
               </div>
@@ -805,7 +846,7 @@ const HomeView = ({
         )}
 
         {/* BLOK 2: KONTEN UTAMA - AREA SCROLL */}
-        <div className="flex-1 overflow-y-auto w-full relative custom-scrollbar bg-slate-50 p-3 sm:p-4 md:p-6 transition-colors duration-500" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto w-full relative custom-scrollbar bg-slate-50 p-3 sm:p-4 md:p-6 transition-colors duration-500" style={{ WebkitOverflowScrolling: 'touch' }}>
           <div className="flex flex-col gap-3 sm:gap-4 w-full mx-auto pb-32 md:pb-8">
 
             {/* TOMBOL TAB & NAVIGASI */}
@@ -1227,7 +1268,7 @@ const HomeView = ({
                           {/* Grid Data - Menampilkan data secara vertikal agar terbaca di HP */}
                           <div className="grid grid-cols-2 gap-2">
                             {/* Tahsin */}
-                            <div onClick={() => handleOpenModal(student, 'tahsin', homeTab)} className="p-3 bg-blue-50/30 border border-blue-100 rounded-2xl flex flex-col items-center justify-center min-h-[90px] text-center active:scale-95 transition-all relative">
+                            <div onClick={() => handleOpenModal(student, 'tahsin', homeTab)} className="p-3 bg-blue-50/30 border border-blue-100 rounded-2xl flex flex-col items-center justify-center min-h-[90px] h-full text-center active:scale-95 transition-all relative">
                               <div className="flex items-center gap-1 mb-1.5 text-blue-500 font-black uppercase text-[8px] tracking-widest"><BookOpen size={12} /> Tahsin</div>
                               {!isTahsinEmpty ? renderTahsinCard(valT, valH, student.id, activeDate, valTNilai, valTSNilai) : (hasGhostTahsin ? <div className="pointer-events-none opacity-30 grayscale blur-[0.5px] scale-90 transition-all" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>{renderTahsinCard(lastRec[k.t], lastRec[k.h], student.id, 'ghost', lastRec[k.tNilai], lastRec[k.tsNilai])}</div> : <span className="text-gray-300">-</span>)
                               }
@@ -1239,7 +1280,7 @@ const HomeView = ({
                             </div>
 
                             {/* Tahfidz */}
-                            <div onClick={() => handleOpenModal(student, 'tahfidz', homeTab)} className="p-3 bg-purple-50/30 border border-purple-100 rounded-2xl flex flex-col items-center justify-center min-h-[90px] text-center active:scale-95 transition-all relative">
+                            <div onClick={() => handleOpenModal(student, 'tahfidz', homeTab)} className="p-3 bg-purple-50/30 border border-purple-100 rounded-2xl flex flex-col items-center justify-center min-h-[90px] h-full text-center active:scale-95 transition-all relative">
                               <div className="flex items-center gap-1 mb-1.5 text-purple-500 font-black uppercase text-[8px] tracking-widest"><Mic size={12} /> Tahfidz</div>
                               {!isTahfidzEmpty ? renderTahfidzCard(valF, valAF, student.id, activeDate, valFNilai) : (hasGhostTahfidz ? <div className="pointer-events-none opacity-30 grayscale blur-[0.5px] scale-90 transition-all" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>{renderTahfidzCard(lastRec[k.f], lastRec[k.af], student.id, 'ghost', lastRec[k.fNilai])}</div> : <span className="text-gray-300">-</span>)
                               }
@@ -1251,7 +1292,7 @@ const HomeView = ({
                             </div>
 
                             {/* Murojaah */}
-                            <div onClick={() => handleOpenModal(student, 'murojaah', homeTab)} className="p-3 bg-emerald-50/30 border border-emerald-100 rounded-2xl flex flex-col items-center justify-center min-h-[90px] text-center active:scale-95 transition-all relative">
+                            <div onClick={() => handleOpenModal(student, 'murojaah', homeTab)} className="p-3 bg-emerald-50/30 border border-emerald-100 rounded-2xl flex flex-col items-center justify-center min-h-[90px] h-full text-center active:scale-95 transition-all relative">
                               <div className="flex items-center gap-1 mb-1.5 text-emerald-500 font-black uppercase text-[8px] tracking-widest"><Repeat size={12} /> Murojaah</div>
                               {!isMurojaahEmpty ? renderMurojaahCard(valM, student.id, activeDate) : (hasGhostMurojaah ? <div className="pointer-events-none opacity-30 grayscale blur-[0.5px] scale-90 transition-all" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>{renderMurojaahCard(lastRec[k.m], student.id, 'ghost')}</div> : <span className="text-gray-300">-</span>)
                               }
@@ -1263,7 +1304,7 @@ const HomeView = ({
                             </div>
 
                             {/* Catatan */}
-                            <div onClick={() => handleOpenModal(student, 'catatan', homeTab)} className="p-3 bg-orange-50/30 border border-orange-100 rounded-2xl flex flex-col items-center justify-center min-h-[90px] text-center active:scale-95 transition-all relative">
+                            <div onClick={() => handleOpenModal(student, 'catatan', homeTab)} className="p-3 bg-orange-50/30 border border-orange-100 rounded-2xl flex flex-col items-center justify-center min-h-[90px] h-full text-center active:scale-95 transition-all relative">
                               <div className="flex items-center gap-1 mb-1.5 text-orange-500 font-black uppercase text-[8px] tracking-widest"><FileText size={12} /> Catatan</div>
                               {!isCatatanEmpty ? (<span className={`text-[10px] leading-tight ${getStatusColor(valC)}`}>{String(valC)}</span>) : (hasGhostCatatan ? <span className="pointer-events-none text-[10px] text-gray-400 opacity-40 blur-[0.5px] italic line-clamp-2 transition-all" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>{String(lastRec[k.c])}</span> : <span className="text-gray-300">-</span>)}
 
@@ -1335,6 +1376,17 @@ const HomeView = ({
           place="top"
           className="!bg-slate-900 !text-white !rounded-xl !px-3 !py-2 !text-[10px] !font-bold !opacity-100 !shadow-2xl z-[100]"
         />
+
+        {/* Tombol Scroll ke Atas */}
+        {showScrollTop && (
+          <button
+            onClick={scrollToTop}
+            className="fixed bottom-24 md:bottom-8 right-6 z-50 p-3 sm:p-3.5 bg-slate-800 text-white rounded-full shadow-2xl hover:bg-slate-900 hover:-translate-y-1 transition-all active:scale-95 animate-in fade-in slide-in-from-bottom-4 duration-300 print:hidden"
+            title="Scroll ke Atas"
+          >
+            <ArrowUp className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.5} />
+          </button>
+        )}
       </div>
     </>
   );

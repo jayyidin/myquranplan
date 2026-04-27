@@ -1194,25 +1194,25 @@ const MainApp = ({ currentUser, onLogout }) => {
 
           {/* Area Filter Halaqoh & Guru */}
           {currentView !== 'pengaturan' && (
-            <div className="bg-white/95 border-gray-200 border-b px-3 md:px-6 py-1 flex justify-between items-center shrink-0 z-50 print:hidden h-11 shadow-sm transition-all duration-500 backdrop-blur-md sticky top-[56px] sm:top-[112px]">
-              <div className="flex items-center gap-2">
+            <div className="bg-white/95 border-gray-200 border-b px-2 sm:px-3 md:px-6 py-1 flex justify-between items-center shrink-0 z-50 print:hidden h-11 shadow-sm transition-all duration-500 backdrop-blur-md sticky top-[56px] sm:top-[112px]">
+              <div className="flex items-center gap-2 flex-1 md:flex-none mr-2">
                 {isSuperAdmin ? (
-                  <select value={activeGuru} onChange={(e) => { setActiveGuru(e.target.value); setActiveHalaqoh(''); }} className="bg-gray-50 border rounded-lg p-1.5 text-xs font-bold w-[130px] md:w-auto outline-none focus:ring-2 focus:ring-green-500/20">
-                    <option value="">Semua Guru</option>
+                  <select value={activeGuru} onChange={(e) => { setActiveGuru(e.target.value); setActiveHalaqoh(''); }} className={`bg-gray-50 border rounded-lg p-1.5 font-bold w-full max-w-[140px] sm:max-w-[160px] md:w-auto md:max-w-none outline-none focus:ring-2 focus:ring-green-500/20 ${(activeGuru || '').length > 20 ? 'text-[9px] sm:text-xs' : (activeGuru || '').length > 15 ? 'text-[10px] sm:text-xs' : 'text-xs'}`}>
+                    {guruList.length === 0 && <option value="">Belum ada Guru</option>}
                     {guruList.map(g => <option key={g} value={g}>{g}</option>)}
                   </select>
                 ) : (
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg border border-blue-100 shadow-sm">
+                  <div className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg border border-blue-100 shadow-sm w-full max-w-[140px] sm:max-w-[160px] md:w-auto md:max-w-none overflow-hidden">
                     <User size={14} className="shrink-0" />
-                    <span className="text-xs font-black truncate max-w-[120px] md:max-w-none">{currentUser.name}</span>
+                    <span className={`font-black truncate w-full ${(currentUser?.name || '').length > 20 ? 'text-[9px] sm:text-xs' : (currentUser?.name || '').length > 15 ? 'text-[10px] sm:text-xs' : 'text-xs'}`}>{currentUser.name}</span>
                   </div>
                 )}
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-1 md:flex-none justify-end">
                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest hidden sm:inline">Kelompok:</span>
-                <select value={activeHalaqoh} onChange={(e) => setActiveHalaqoh(e.target.value)} className="bg-green-50 border border-green-200 text-green-800 rounded-lg p-1.5 text-xs font-bold w-[130px] md:w-auto outline-none focus:ring-2 focus:ring-green-500/20">
-                  <option value="">Semua Halaqoh</option>
+                <select value={activeHalaqoh} onChange={(e) => setActiveHalaqoh(e.target.value)} className={`bg-green-50 border border-green-200 text-green-800 rounded-lg p-1.5 font-bold w-full max-w-[140px] sm:max-w-[160px] md:w-auto md:max-w-none outline-none focus:ring-2 focus:ring-green-500/20 ${(activeHalaqoh || '').length > 20 ? 'text-[9px] sm:text-xs' : (activeHalaqoh || '').length > 15 ? 'text-[10px] sm:text-xs' : 'text-xs'}`}>
+                  {(activeGuru ? (guruHalaqohData[activeGuru] || []) : Array.from(new Set(students.map(s => s.halaqoh).filter(Boolean)))).length === 0 && <option value="">Belum ada Halaqoh</option>}
                   {(activeGuru ? (guruHalaqohData[activeGuru] || []) : Array.from(new Set(students.map(s => s.halaqoh).filter(Boolean)))).map(h => <option key={h} value={h}>{h}</option>)}
                 </select>
               </div>
@@ -1271,6 +1271,7 @@ const MainApp = ({ currentUser, onLogout }) => {
                 changeWeek={changeWeek}
                 filteredStudents={filteredStudents}
                 institutionLogo={institutionLogo}
+                guruHalaqohData={guruHalaqohData}
               />
             )}
             {currentView === 'pengaturan' && (

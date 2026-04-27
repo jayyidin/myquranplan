@@ -8,6 +8,31 @@ import {
 import { supabase } from './supabase';
 import { formatShortDate, getInitials, formatPeriode, formatPrintData, getMonday, formatDateObj } from '../utils/helpers';
 
+const ExpandableText = ({ text }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  if (!text || text === '-') return <div className="text-xs sm:text-sm font-bold text-gray-800">-</div>;
+  
+  const isLong = text.length > 50 || text.split('\n').length > 2;
+  const textSizeClass = text.length > 40 ? 'text-[10px] sm:text-xs leading-snug' : text.length > 25 ? 'text-[11px] sm:text-[13px] leading-snug' : 'text-xs sm:text-sm leading-relaxed';
+
+  return (
+    <div className="flex flex-col items-start w-full">
+      <div className={`${textSizeClass} font-bold text-gray-800 whitespace-pre-wrap ${!isExpanded && isLong ? 'line-clamp-2 print:line-clamp-none' : ''}`}>
+        {text}
+      </div>
+      {isLong && (
+        <button 
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsExpanded(!isExpanded); }}
+          className="text-[9px] sm:text-[10px] font-black text-emerald-500 hover:text-emerald-600 mt-1 active:scale-95 transition-all bg-emerald-50 px-2 py-0.5 rounded-md print:hidden"
+          data-html2canvas-ignore="true"
+        >
+          {isExpanded ? 'Tutup' : 'Lihat Selengkapnya'}
+        </button>
+      )}
+    </div>
+  );
+};
+
 const LoginScreen = ({ onLogin }) => {
   const [isRegistering, setIsRegistering] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
@@ -322,9 +347,9 @@ const LoginScreen = ({ onLogin }) => {
                </div>
                <div>
                   <h2 className={`font-black text-gray-800 mb-2 sm:mb-3 ${publicStudent.name.length > 24 ? 'text-lg sm:text-xl' : publicStudent.name.length > 18 ? 'text-xl sm:text-2xl' : 'text-2xl sm:text-3xl'}`}>{publicStudent.name}</h2>
-                  <div className="flex flex-wrap justify-center sm:justify-start gap-2">
-                     <span className="bg-[#e6fbf0] text-green-800 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-widest">Kelas {publicStudent.kelas || '-'}</span>
-                     <span className="bg-[#e6fbf0] text-green-800 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-widest">Kelompok {publicStudent.halaqoh || '-'}</span>
+                  <div className="flex flex-wrap justify-center sm:justify-start gap-2 mt-1 sm:mt-0">
+                     <span className={`bg-[#e6fbf0] text-green-800 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full font-bold uppercase tracking-widest ${String(publicStudent.kelas || '-').length > 10 ? 'text-[9px] sm:text-xs' : 'text-[10px] sm:text-xs'}`}>Kelas {publicStudent.kelas || '-'}</span>
+                     <span className={`bg-[#e6fbf0] text-green-800 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full font-bold uppercase tracking-widest ${String(publicStudent.halaqoh || '-').length > 20 ? 'text-[8px] sm:text-[10px]' : String(publicStudent.halaqoh || '-').length > 15 ? 'text-[9px] sm:text-[11px]' : 'text-[10px] sm:text-xs'}`}>Kelompok {publicStudent.halaqoh || '-'}</span>
                   </div>
                </div>
                </div>
@@ -366,6 +391,11 @@ const LoginScreen = ({ onLogin }) => {
                   const hasData = (rec[k.t] && rec[k.t] !== '-') || (rec[k.f] && rec[k.f] !== '-') || (rec[k.m] && rec[k.m] !== '-') || (rec[k.c] && rec[k.c] !== '-');
                   if (!hasData) return null;
                   
+                  const valT = formatPrintData(rec[k.t], rec[k.h], rec[k.tNilai], rec[k.tsNilai]);
+                  const valF = formatPrintData(rec[k.f], rec[k.af], null, rec[k.fNilai]);
+                  const valM = formatPrintData(rec[k.m], '-', null, null);
+                  const valC = rec[k.c] && rec[k.c] !== '-' ? String(rec[k.c]) : '-';
+
                   return (
                     <div key={dateStr} className="bg-white border border-gray-100 rounded-[20px] sm:rounded-[24px] p-4 sm:p-5 shadow-sm print:break-inside-avoid transition-colors">
                        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 sm:gap-0 mb-4 sm:mb-5 border-b border-gray-50 pb-3 sm:pb-4">
@@ -373,21 +403,21 @@ const LoginScreen = ({ onLogin }) => {
                           <span className="text-gray-400 dark:text-gray-400 font-bold italic text-xs sm:text-sm">{formatShortDate(dateObj)}</span>
                        </div>
                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 sm:gap-y-6 gap-x-4 sm:gap-x-6">
-                          <div className="bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent">
+                              <div className="bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent h-full flex flex-col">
                              <div className="flex items-center gap-1.5 mb-1.5 text-blue-500"><BookOpen size={14} /><span className="text-[10px] sm:text-xs font-black uppercase tracking-wider">Tahsin</span></div>
-                             <div className="text-xs sm:text-sm font-bold text-gray-800 whitespace-pre-wrap leading-relaxed">{formatPrintData(rec[k.t], rec[k.h], rec[k.tNilai], rec[k.tsNilai])}</div>
+                                <ExpandableText text={valT} />
                           </div>
-                          <div className="bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent">
+                              <div className="bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent h-full flex flex-col">
                              <div className="flex items-center gap-1.5 mb-1.5 text-purple-500"><Mic size={14} /><span className="text-[10px] sm:text-xs font-black uppercase tracking-wider">Tahfidz</span></div>
-                             <div className="text-xs sm:text-sm font-bold text-gray-800 whitespace-pre-wrap leading-relaxed">{formatPrintData(rec[k.f], rec[k.af], null, rec[k.fNilai])}</div>
+                                <ExpandableText text={valF} />
                           </div>
-                          <div className="bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent">
+                              <div className="bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent h-full flex flex-col">
                              <div className="flex items-center gap-1.5 mb-1.5 text-emerald-500"><Repeat size={14} /><span className="text-[10px] sm:text-xs font-black uppercase tracking-wider">Murojaah</span></div>
-                             <div className="text-xs sm:text-sm font-bold text-gray-800 whitespace-pre-wrap leading-relaxed">{formatPrintData(rec[k.m], '-', null, null)}</div>
+                                <ExpandableText text={valM} />
                           </div>
-                          <div className="bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent">
+                              <div className="bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent h-full flex flex-col">
                              <div className="flex items-center gap-1.5 mb-1.5 text-orange-500"><FileText size={14} /><span className="text-[10px] sm:text-xs font-black uppercase tracking-wider">Catatan</span></div>
-                             <div className="text-xs sm:text-sm font-bold text-gray-800 whitespace-pre-wrap leading-relaxed">{rec[k.c] || '-'}</div>
+                                <ExpandableText text={valC} />
                           </div>
                        </div>
                     </div>
