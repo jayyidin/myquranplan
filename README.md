@@ -1,11 +1,11 @@
 # 📖 MyQuranPlan
 
-**MyQuranPlan** adalah platform manajemen halaqoh dan pemantauan progres hafalan Al-Qur'an modern yang dirancang untuk menjembatani komunikasi antara pengajar (Ustadz/ah) dan orang tua santri secara *real-time*.
+**MyQuranPlan** adalah platform manajemen halaqoh dan pemantauan progres hafalan Al-Qur'an modern yang dirancang untuk menjembatani komunikasi antara pengajar (Ustadz/ah) dan orang tua siswa secara *real-time*.
 
 ## 🌟 Fitur Unggulan
 
 ### 👨‍🏫 Panel Pengajar (Admin)
-*   **Manajemen Halaqoh & Santri**: Kelola daftar santri berdasarkan kelompok halaqoh dan jenjang kelas dengan mudah.
+*   **Manajemen Halaqoh & Siswa**: Kelola daftar siswa berdasarkan kelompok halaqoh dan jenjang kelas dengan mudah.
 *   **Input Progres Cepat**: Fitur *Input Massal* dan *Copy Data Pekan Lalu* untuk efisiensi administrasi harian.
 *   **Lesson Plan & Jurnal**: Pantau Target (Lesson Plan) dan Capaian (Jurnal Harian) yang meliputi Tahsin, Tahfidz, dan Murojaah.
 *   **Sistem Persetujuan Akun**: Keamanan ekstra dengan verifikasi pendaftaran guru oleh Super Admin.
@@ -61,7 +61,7 @@
 
 ## 🔐 Keamanan & Privasi
 
-Aplikasi ini menggunakan ID unik (UUID) Supabase yang dienkripsi dalam URL parameter untuk fitur *share* publik, memastikan data santri tetap aman namun mudah diakses oleh pihak yang berwenang (orang tua).
+Aplikasi ini menggunakan ID unik (UUID) Supabase yang dienkripsi dalam URL parameter untuk fitur *share* publik, memastikan data siswa tetap aman namun mudah diakses oleh pihak yang berwenang (orang tua).
 
 ---
 

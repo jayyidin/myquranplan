@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { X, BookOpen, Mic, Repeat, FileText, Plus, ChevronDown, Search, Check, Copy, ClipboardPaste } from 'lucide-react';
+import { X, BookOpen, Mic, Repeat, FileText, Plus, ChevronDown, Search, Check, Copy, ClipboardPaste, UserX } from 'lucide-react';
 import SurahSelector from '../SurahSelector';
 import AyatSelector from '../AyatSelector';
 import { Tooltip } from 'react-tooltip';
@@ -8,11 +8,12 @@ export const JurnalModal = ({
   isOpen, onClose, modalMode, getModalTitle, lessonPlans, handlePlanChange,
   handleToggleArray, handleAddSurat, handleRemoveSurat, handleSuratChange,
   activeDropdown, setActiveDropdown, tahsinCategories, ghoribList, tajwidList, surahList,
-  homeTab, handleSave, editingId, selectedStudents,
+  homeTab, handleSave, handleMarkAbsent, editingId, selectedStudents,
   filteredStudents, toggleStudent
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedId, setCopiedId] = useState(null);
+  const [isAbsentMenuOpen, setIsAbsentMenuOpen] = useState(false);
 
   const gradeOptions = ['A', 'B+', 'B', 'B-', 'C'];
 
@@ -398,9 +399,28 @@ export const JurnalModal = ({
 
         {/* Tombol Simpan Bawah */}
         <div className="absolute sm:relative bottom-0 left-0 right-0 p-4 sm:p-6 bg-white border-t border-gray-100 shadow-[0_-10px_20px_rgba(0,0,0,0.03)] sm:shadow-none z-30">
-          <button onClick={handleSave} className="w-full flex justify-center items-center gap-2 bg-[#00e676] hover:bg-green-500 text-white py-4 rounded-2xl font-black text-sm active:scale-95 transition-all shadow-lg shadow-green-200">
-            <BookOpen size={18}/> Simpan Data {homeTab === 'lesson_plan' ? 'Target' : 'Jurnal'}
-          </button>
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1 sm:flex-none">
+              <button type="button" onClick={() => setIsAbsentMenuOpen(!isAbsentMenuOpen)} className="w-full flex items-center justify-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 px-5 py-4 rounded-2xl font-black text-sm active:scale-95 transition-all shadow-sm border border-red-200">
+                <UserX size={18} />
+                <span>Absen</span>
+              </button>
+              
+              {isAbsentMenuOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setIsAbsentMenuOpen(false)}></div>
+                  <div className="absolute bottom-full left-0 mb-2 w-full sm:w-32 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden flex flex-col p-1.5 animate-in slide-in-from-bottom-2 fade-in z-50">
+                    <button type="button" onClick={() => { handleMarkAbsent('Alpa'); setIsAbsentMenuOpen(false); }} className="px-4 py-3 text-left text-sm font-black text-red-600 hover:bg-red-50 rounded-xl transition-colors">Alpa</button>
+                    <button type="button" onClick={() => { handleMarkAbsent('Sakit'); setIsAbsentMenuOpen(false); }} className="px-4 py-3 text-left text-sm font-black text-amber-500 hover:bg-amber-50 rounded-xl transition-colors">Sakit</button>
+                    <button type="button" onClick={() => { handleMarkAbsent('Izin'); setIsAbsentMenuOpen(false); }} className="px-4 py-3 text-left text-sm font-black text-blue-500 hover:bg-blue-50 rounded-xl transition-colors">Izin</button>
+                  </div>
+                </>
+              )}
+            </div>
+            <button onClick={handleSave} className="flex-[3] sm:flex-1 w-full flex justify-center items-center gap-2 bg-[#00e676] hover:bg-green-500 text-white py-4 rounded-2xl font-black text-sm active:scale-95 transition-all shadow-lg shadow-green-200">
+              <BookOpen size={18}/> Simpan Data {homeTab === 'lesson_plan' ? 'Target' : 'Jurnal'}
+            </button>
+          </div>
         </div>
       </div>
     </div>

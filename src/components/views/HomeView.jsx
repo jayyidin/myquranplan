@@ -1082,6 +1082,7 @@ const HomeView = ({
                           const hasGhostTahfidz = isTahfidzEmpty && lastRec && lastRec[k.f] && lastRec[k.f] !== '-';
                           const hasGhostMurojaah = isMurojaahEmpty && lastRec && lastRec[k.m] && lastRec[k.m] !== '-';
                           const hasGhostCatatan = isCatatanEmpty && lastRec && lastRec[k.c] && lastRec[k.c] !== '-';
+                          const isAbsent = !isCatatanEmpty && ['alpa', 'sakit', 'izin', 'tidak hadir'].some(keyword => String(valC).toLowerCase().includes(keyword));
                           return (
                             <tr
                               key={student?.id || Math.random()}
@@ -1092,15 +1093,15 @@ const HomeView = ({
                               <td onClick={() => setActiveStudentId(student.id)} className="p-2.5 sm:p-3 pl-2 text-left sticky left-[40px] sm:left-[50px] z-10 shadow-[4px_0_12px_rgba(0,0,0,0.03)] transition-all border-r cursor-pointer border-l-4 border-transparent group-hover:border-l-green-500 bg-white border-gray-50 group-hover:bg-[#f4f7fa]">
                                 <div className="flex items-center gap-2 sm:gap-3">
                                   {student?.photo ? (
-                                    <img src={student.photo} alt={student?.name || ''} className="w-7 h-7 sm:w-9 sm:h-9 rounded-full object-cover border border-gray-200 shrink-0 shadow-sm" />
+                                    <img src={student.photo} alt={student?.name || ''} className={`w-7 h-7 sm:w-9 sm:h-9 rounded-full object-cover border border-gray-200 shrink-0 shadow-sm transition-all ${isAbsent ? 'grayscale opacity-50' : ''}`} />
                                   ) : (
-                                    <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-[9px] sm:text-[11px] font-black shrink-0 border transition-colors bg-blue-50 text-blue-700 border-blue-100">
+                                    <div className={`w-7 h-7 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-[9px] sm:text-[11px] font-black shrink-0 border transition-all ${isAbsent ? 'bg-gray-100 text-gray-400 border-gray-200 grayscale opacity-50' : 'bg-blue-50 text-blue-700 border-blue-100'}`}>
                                       {initials}
                                     </div>
                                   )}
                                   <div className="flex flex-col min-w-0">
-                                    <span className={`font-extrabold text-gray-800 group-hover:text-slate-950 transition-colors ${(student?.name || '').length > 24 ? 'text-[10px] sm:text-[11px] leading-tight break-words whitespace-normal line-clamp-2' : (student?.name || '').length > 18 ? 'text-[11px] sm:text-xs leading-tight break-words whitespace-normal line-clamp-2' : 'text-[13px] sm:text-sm truncate'}`}>{String(student?.name || 'Unknown')}</span>
-                                    <span className="text-[10px] text-gray-400 font-bold uppercase group-hover:text-slate-600 transition-colors">Kelas {String(student?.kelas || '-')}</span>
+                                    <span className={`font-extrabold transition-colors ${(student?.name || '').length > 24 ? 'text-[10px] sm:text-[11px] leading-tight break-words whitespace-normal line-clamp-2' : (student?.name || '').length > 18 ? 'text-[11px] sm:text-xs leading-tight break-words whitespace-normal line-clamp-2' : 'text-[13px] sm:text-sm truncate'} ${isAbsent ? 'text-gray-400' : 'text-gray-800 group-hover:text-slate-950'}`}>{String(student?.name || 'Unknown')}</span>
+                                    <span className={`text-[10px] font-bold uppercase transition-colors ${isAbsent ? 'text-gray-300' : 'text-gray-400 group-hover:text-slate-600'}`}>Kelas {String(student?.kelas || '-')}</span>
                                   </div>
                                 </div>
                               </td>
@@ -1166,7 +1167,7 @@ const HomeView = ({
                               </td>
 
                               <td className="p-2">
-                                <div onClick={() => { setActiveStudentId(student.id); handleOpenModal(student, 'catatan', homeTab); }} className="min-h-[60px] flex flex-col items-center justify-center border border-transparent hover:border-gray-200 rounded-xl cursor-pointer relative group/cell transition-colors active:bg-gray-50">
+                                <div onClick={() => { setActiveStudentId(student.id); handleOpenModal(student, 'catatan', homeTab); }} className={`min-h-[60px] flex flex-col items-center justify-center border rounded-xl cursor-pointer relative group/cell transition-colors active:bg-gray-50 ${isAbsent ? 'bg-red-50/60 border-red-100 hover:bg-red-100/60' : 'border-transparent hover:border-gray-200'}`}>
                                   {!isCatatanEmpty ? (
                                     <span className={`text-xs text-center ${getStatusColor(valC)}`}>{String(valC)}</span>
                                   ) : hasGhostCatatan ? (
@@ -1241,6 +1242,7 @@ const HomeView = ({
                       const hasGhostTahfidz = isTahfidzEmpty && lastRec && lastRec[k.f] && lastRec[k.f] !== '-';
                       const hasGhostMurojaah = isMurojaahEmpty && lastRec && lastRec[k.m] && lastRec[k.m] !== '-';
                       const hasGhostCatatan = isCatatanEmpty && lastRec && lastRec[k.c] && lastRec[k.c] !== '-';
+                      const isAbsent = !isCatatanEmpty && ['alpa', 'sakit', 'izin', 'tidak hadir'].some(keyword => String(valC).toLowerCase().includes(keyword));
 
                       return (
                         <div key={student.id} className="p-4 bg-white flex flex-col gap-4 animate-row-slide-in" style={{ animationDelay: `${index * 0.05}s` }}>
@@ -1249,13 +1251,13 @@ const HomeView = ({
                             <div className="flex items-center gap-2">
                               <span className="text-sm font-bold text-slate-400 w-6 text-center">{index + 1}.</span>
                               {student?.photo ? (
-                                <img src={student.photo} className="w-10 h-10 rounded-full object-cover border" alt="" />
+                                <img src={student.photo} className={`w-10 h-10 rounded-full object-cover border transition-all ${isAbsent ? 'grayscale opacity-50' : ''}`} alt="" />
                               ) : (
-                                <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-700 flex items-center justify-center font-black text-xs border border-blue-100">{getInitials(student?.name)}</div>
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-xs border transition-all ${isAbsent ? 'bg-gray-100 text-gray-400 border-gray-200 grayscale opacity-50' : 'bg-blue-50 text-blue-700 border-blue-100'}`}>{getInitials(student?.name)}</div>
                               )}
                               <div>
-                                <h4 className={`font-extrabold text-gray-800 leading-tight ${student.name.length > 24 ? 'text-[11px]' : student.name.length > 18 ? 'text-[13px]' : 'text-sm md:text-base'}`}>{student.name}</h4>
-                                <p className="text-[10px] text-gray-400 font-bold uppercase">Kelas {student.kelas}</p>
+                                <h4 className={`font-extrabold leading-tight transition-colors ${student.name.length > 24 ? 'text-[11px]' : student.name.length > 18 ? 'text-[13px]' : 'text-sm md:text-base'} ${isAbsent ? 'text-gray-400' : 'text-gray-800'}`}>{student.name}</h4>
+                                <p className={`text-[10px] font-bold uppercase transition-colors ${isAbsent ? 'text-gray-300' : 'text-gray-400'}`}>Kelas {student.kelas}</p>
                               </div>
                             </div>
                             <div className="flex items-center gap-1">
@@ -1304,8 +1306,8 @@ const HomeView = ({
                             </div>
 
                             {/* Catatan */}
-                            <div onClick={() => handleOpenModal(student, 'catatan', homeTab)} className="p-3 bg-orange-50/30 border border-orange-100 rounded-2xl flex flex-col items-center justify-center min-h-[90px] h-full text-center active:scale-95 transition-all relative">
-                              <div className="flex items-center gap-1 mb-1.5 text-orange-500 font-black uppercase text-[8px] tracking-widest"><FileText size={12} /> Catatan</div>
+                            <div onClick={() => handleOpenModal(student, 'catatan', homeTab)} className={`p-3 border rounded-2xl flex flex-col items-center justify-center min-h-[90px] h-full text-center active:scale-95 transition-all relative ${isAbsent ? 'bg-red-50/80 border-red-200' : 'bg-orange-50/30 border-orange-100'}`}>
+                              <div className={`flex items-center gap-1 mb-1.5 font-black uppercase text-[8px] tracking-widest ${isAbsent ? 'text-red-500' : 'text-orange-500'}`}><FileText size={12} /> Catatan</div>
                               {!isCatatanEmpty ? (<span className={`text-[10px] leading-tight ${getStatusColor(valC)}`}>{String(valC)}</span>) : (hasGhostCatatan ? <span className="pointer-events-none text-[10px] text-gray-400 opacity-40 blur-[0.5px] italic line-clamp-2 transition-all" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>{String(lastRec[k.c])}</span> : <span className="text-gray-300">-</span>)}
 
                               {!isCatatanEmpty && (

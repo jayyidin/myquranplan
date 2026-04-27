@@ -92,7 +92,7 @@ const ReportView = ({
               <h2 className="text-xs sm:text-sm font-black text-slate-400 uppercase tracking-[0.2em] truncate">Rekapitulasi</h2>
             </div>
             <h1 className="text-xl sm:text-3xl md:text-4xl font-black text-slate-900 tracking-tight">Laporan Halaqoh</h1>
-            <p className="text-xs sm:text-sm md:text-base text-slate-500 font-medium mt-1">Pratinjau dan cetak laporan harian Ananda untuk arsip dan wali santri.</p>
+            <p className="text-xs sm:text-sm md:text-base text-slate-500 font-medium mt-1">Pratinjau dan cetak laporan harian Ananda untuk arsip dan wali siswa.</p>
           </div>
           <div className="flex items-center gap-3">
             <button

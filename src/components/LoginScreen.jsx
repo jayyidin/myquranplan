@@ -603,7 +603,7 @@ const LoginScreen = ({ onLogin }) => {
                   ) : !isSearching ? (
                     <div className="col-span-full py-24 text-center flex flex-col items-center gap-4 text-slate-300 animate-in fade-in duration-700">
                        <SearchCode size={48} className="opacity-20" />
-                       <p className="font-medium italic max-w-[280px]">Silakan masukkan nama santri atau gunakan filter di atas untuk melihat laporan.</p>
+                   <p className="font-medium italic max-w-[280px]">Silakan masukkan nama siswa atau gunakan filter di atas untuk melihat laporan.</p>
                     </div>
                   ) : filtered.length > 0 ? (
                     filtered.map((s, index) => (
@@ -626,7 +626,7 @@ const LoginScreen = ({ onLogin }) => {
                       </button> 
                     ))
                   ) : (
-                    <div className="col-span-full py-12 text-center text-slate-400 font-bold">Santri tidak ditemukan.</div>
+                <div className="col-span-full py-12 text-center text-slate-400 font-bold">Siswa tidak ditemukan.</div>
                   )}
                </div>
             </div>

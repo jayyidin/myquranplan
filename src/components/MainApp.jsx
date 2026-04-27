@@ -4,7 +4,7 @@ import { BookOpen, User, Menu, Home, Users, BarChart3, Settings, LogOut, Loader2
 // Imports
 import { supabase } from './supabase';
 import { surahList, tahsinCategories, ghoribList, tajwidList } from '../data/constants';
-import { getMonday, formatDateObj, formatShortDate, getStatusColor } from '../utils/helpers';
+import { getMonday, formatDateObj, formatShortDate } from '../utils/helpers';
 
 // Views
 import HomeView from './views/HomeView';
@@ -956,6 +956,43 @@ const MainApp = ({ currentUser, onLogout }) => {
   };
   const getAyatRangeOrDefault = (surat, start, end) => start && end ? (start === end ? start : start + '-' + end) : start || end || (surahList.find(s => s.no + '. ' + s.name === surat) ? '1-' + surahList.find(s => s.no + '. ' + s.name === surat).ayat : 'Semua Ayat');
 
+  const handleMarkAbsent = async (status = 'Alpa') => {
+    if (selectedStudents.length === 0) {
+      showToast('Pilih minimal 1 siswa!');
+      return;
+    }
+    const dateStr = lessonPlans[0].tanggal;
+    const k = homeTab === 'lesson_plan' ? { c: 'catatan' } : { c: 'jurnalCatatan', t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah' };
+
+    try {
+      const updates = students.reduce((acc, student) => {
+        if (selectedStudents.includes(student.id)) {
+          const existingRecord = student.records[dateStr] || {};
+          let finalRecord = { ...existingRecord };
+
+          // Reset all fields and set the note to status
+          Object.keys(k).forEach(key => { finalRecord[k[key]] = '-'; });
+          finalRecord[k.c] = status;
+
+          acc.push({ ...student, records: { ...student.records, [dateStr]: finalRecord } });
+        }
+        return acc;
+      }, []);
+
+      const { error } = await supabase.from('students').upsert(updates);
+      if (error) throw error;
+
+      setStudents(prev => {
+        const newStudents = [...prev];
+        updates.forEach(updatedStudent => { const idx = newStudents.findIndex(s => s.id === updatedStudent.id); if (idx !== -1) newStudents[idx] = updatedStudent; });
+        return newStudents;
+      });
+
+      handleCloseModal();
+      showToast(`${selectedStudents.length} siswa ditandai ${status.toLowerCase()}.`);
+    } catch (e) { console.error(e); showToast(`Gagal menandai ${status.toLowerCase()}.`); }
+  };
+
   const handleSave = async () => {
     if (!editingId && selectedStudents.length === 0) { showToast('Pilih minimal 1 siswa!'); return; }
     const plan = lessonPlans[0];
@@ -1083,6 +1120,15 @@ const MainApp = ({ currentUser, onLogout }) => {
       setActiveDate(formatDateObj(targetMonday));
     }
     setHomeTab(tab);
+  };
+
+  const getStatusColor = (text) => {
+    const lowerText = String(text || '').toLowerCase();
+    if (lowerText.includes('alpa') || lowerText.includes('tidak hadir')) return 'text-red-600 font-black italic';
+    if (lowerText.includes('sakit') || lowerText.includes('izin')) return 'text-amber-500 font-black italic';
+    if (lowerText.includes('ulang') || lowerText.includes('belum') || lowerText.includes('kurang')) return 'text-red-600 font-black';
+    if (lowerText.includes('lancar') || lowerText.includes('baik') || lowerText.includes('selesai')) return 'text-green-600 font-black';
+    return 'text-gray-700';
   };
 
   if (!currentUser) return null;
@@ -1312,6 +1358,7 @@ const MainApp = ({ currentUser, onLogout }) => {
           {/* MODAL JURNAL */}
           <JurnalModal
             isOpen={isModalOpen} onClose={handleCloseModal} modalMode={modalMode} getModalTitle={getModalTitle} lessonPlans={lessonPlans} handlePlanChange={handlePlanChange} handleToggleArray={handleToggleArray} handleAddSurat={handleAddSurat} handleRemoveSurat={handleRemoveSurat} handleSuratChange={handleSuratChange} activeDropdown={activeDropdown} setActiveDropdown={setActiveDropdown} tahsinCategories={tahsinCategories} ghoribList={ghoribList} tajwidList={tajwidList} surahList={surahList} homeTab={homeTab} handleSave={handleSave} editingId={editingId} selectedStudents={selectedStudents} filteredStudents={studentsInHalaqoh} toggleStudent={toggleStudent}
+            handleMarkAbsent={handleMarkAbsent}
           />
 
           {/* MODAL CROP GAMBAR */}
