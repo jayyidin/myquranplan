@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Settings, Users, Edit3, Trash2, Share2, Plus, X, Calendar, ChevronLeft, ChevronRight, BookOpen, Mic, Repeat, Printer, Check, Download, FileText, History, Link, Search, ImageDown, ChevronUp, ChevronDown, ArrowUp } from 'lucide-react';
 import { Tooltip } from 'react-tooltip';
 import { formatShortDate, getInitials, formatPeriode, formatPrintData } from '../../utils/helpers';
@@ -7,13 +7,15 @@ const ExpandableText = ({ text }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   if (!text || text === '-') return <div className="text-xs sm:text-sm font-bold text-gray-800">-</div>;
   
-  const isLong = text.length > 50 || text.split('\n').length > 2;
-  const textSizeClass = text.length > 40 ? 'text-[10px] sm:text-xs leading-snug' : text.length > 25 ? 'text-[11px] sm:text-[13px] leading-snug' : 'text-xs sm:text-sm leading-relaxed';
+  // Perbaikan TypeError: Pastikan text diolah sebagai string sebelum membaca properti length
+  const safeText = String(text);
+  const isLong = safeText.length > 50 || safeText.split('\n').length > 2;
+  const textSizeClass = safeText.length > 40 ? 'text-[10px] sm:text-xs leading-snug' : safeText.length > 25 ? 'text-[11px] sm:text-[13px] leading-snug' : 'text-xs sm:text-sm leading-relaxed';
 
   return (
     <div className="flex flex-col items-start w-full">
       <div className={`${textSizeClass} font-bold text-gray-800 whitespace-pre-wrap ${!isExpanded && isLong ? 'line-clamp-2 print:line-clamp-none' : ''}`}>
-        {text}
+        {safeText}
       </div>
       {isLong && (
         <button 
@@ -28,6 +30,24 @@ const ExpandableText = ({ text }) => {
   );
 };
 
+const jurnalKeys = {
+  t: 'jurnalTahsin',
+  h: 'jurnalHalAyatTahsin',
+  tNilai: 'jurnalTahsinNilai',
+  tsNilai: 'jurnalTahsinSuratNilai',
+  f: 'jurnalTahfidz',
+  af: 'jurnalAyatTahfidz',
+  fNilai: 'jurnalTahfidzNilai',
+  m: 'jurnalMurojaah',
+  c: 'jurnalCatatan'
+};
+
+const hasMeaningfulValue = (value) => {
+  if (value === undefined || value === null) return false;
+  const normalized = String(value).trim();
+  return normalized !== '' && normalized !== '-';
+};
+
 const HomeView = ({
   activeHalaqoh, activeGuru, homeTab, setHomeTab, weekStart, changeWeek,
   activeDate, setActiveDate, weekDates, filteredStudents, handleOpenModal,
@@ -36,7 +56,9 @@ const HomeView = ({
   isLoading,
   searchQuery,
   setSearchQuery,
-  studentsInHalaqohCount
+  studentsInHalaqohCount,
+  targetReguler,
+  targetAlQuran
 }) => {
   // State untuk fitur Share Laporan Individu
   const [shareStudent, setShareStudent] = useState(null);
@@ -51,6 +73,18 @@ const HomeView = ({
   const [isMoreLoading, setIsMoreLoading] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const scrollContainerRef = useRef(null);
+
+  // --- DEBOUNCE PENCARIAN (MENGURANGI LAG DI HP) ---
+  const [localSearch, setLocalSearch] = useState(searchQuery || '');
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchQuery(localSearch);
+    }, 300); // Jeda 300ms sebelum filter dijalankan
+    return () => clearTimeout(timer);
+  }, [localSearch, setSearchQuery]);
+  useEffect(() => {
+    if (searchQuery === '') setLocalSearch('');
+  }, [searchQuery]);
 
   const handleScroll = (e) => {
     setShowScrollTop(e.target.scrollTop > 300);
@@ -258,9 +292,26 @@ const HomeView = ({
     if (!shareStudent) return;
     const baseUrl = window.location.origin + window.location.pathname;
     const shareUrl = `${baseUrl}?share=${shareStudent.id}`;
+    const periode = formatPeriode(weekDates[0], weekDates[weekDates.length - 1] || weekDates[0]);
+    const textToCopy = `Assalamu'alaikum Warahmatullahi Wabarakatuh\n\nBerikut adalah tautan Laporan Al-Qur'an ananda *${shareStudent.name}* periode *${periode}*:\n\n${shareUrl}\n\nTerima kasih.`;
 
-    navigator.clipboard.writeText(shareUrl).then(() => {
-      alert("Link khusus orang tua berhasil disalin ke clipboard!");
+    navigator.clipboard.writeText(textToCopy).then(() => {
+      alert("Link dan teks pengantar berhasil disalin ke clipboard!");
+    }).catch(err => {
+      console.error('Gagal menyalin link:', err);
+    });
+  };
+
+  // --- FUNGSI SALIN LINK UNTUK ORANG TUA (LAPORAN KELAS) ---
+  const handleCopyClassShareLink = () => {
+    if (!activeHalaqoh) return;
+    const baseUrl = window.location.origin + window.location.pathname;
+    const shareUrl = `${baseUrl}?shareClass=${encodeURIComponent(activeHalaqoh)}`;
+    const periode = formatPeriode(weekDates[0], weekDates[weekDates.length - 1] || weekDates[0]);
+    const textToCopy = `Assalamu'alaikum Warahmatullahi Wabarakatuh\n\nBerikut adalah tautan Laporan Kelas/Halaqoh *${activeHalaqoh}* periode *${periode}*:\n\n${shareUrl}\n\nTerima kasih.`;
+
+    navigator.clipboard.writeText(textToCopy).then(() => {
+      alert("Link dan teks pengantar Laporan Kelas berhasil disalin ke clipboard!");
     }).catch(err => {
       console.error('Gagal menyalin link:', err);
     });
@@ -391,6 +442,54 @@ const HomeView = ({
   const k = homeTab === 'lesson_plan'
     ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan' }
     : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan' };
+
+  // MEMOISASI: Hitung data bayangan satu kali saja tiap kali tanggal/halaqoh berubah,
+  // jangan dihitung ulang pada setiap re-render (seperti saat scroll atau mengetik)
+  const ghostDataMap = useMemo(() => {
+    const ghostData = {};
+    const activeDateObj = new Date(activeDate);
+    const activeDateDay = Number.isNaN(activeDateObj.getTime()) ? null : activeDateObj.getDay();
+    const isMondayLessonPlan = homeTab === 'lesson_plan' && activeDateDay === 1;
+    const ghostKeys = isMondayLessonPlan ? jurnalKeys : k;
+    const previousWeekStart = new Date(activeDateObj);
+    const previousWeekEnd = new Date(activeDateObj);
+
+    if (isMondayLessonPlan) {
+      previousWeekStart.setDate(previousWeekStart.getDate() - 7);
+      previousWeekEnd.setDate(previousWeekEnd.getDate() - 3);
+    }
+
+    if (homeTab === 'lesson_plan' && !isMondayLessonPlan) return ghostData;
+
+    filteredStudents.forEach(s => {
+      const recordedDates = Object.keys(s.records || {})
+        .map(d => new Date(d))
+        .filter(d => isMondayLessonPlan ? d >= previousWeekStart && d <= previousWeekEnd : d < activeDateObj)
+        .sort((a, b) => b - a); // Urutkan descending
+
+      for (const d of recordedDates) {
+        const dStr = getDateString(d);
+        const rec = s.records[dStr];
+        if (rec && (
+          hasMeaningfulValue(rec[ghostKeys.t]) || hasMeaningfulValue(rec[ghostKeys.f]) || hasMeaningfulValue(rec[ghostKeys.m])
+        )) {
+          const ghostRecord = isMondayLessonPlan
+            ? { ...rec, tahsin: rec[jurnalKeys.t], halAyatTahsin: rec[jurnalKeys.h], tahsinNilai: rec[jurnalKeys.tNilai], tahsinSuratNilai: rec[jurnalKeys.tsNilai], tahfidz: rec[jurnalKeys.f], ayatTahfidz: rec[jurnalKeys.af], tahfidzNilai: rec[jurnalKeys.fNilai], murojaah: rec[jurnalKeys.m], catatan: '-' }
+            : { ...rec, [k.c]: '-' };
+          ghostData[s.id] = { ...ghostRecord, date: dStr };
+          break;
+        }
+      }
+    });
+    return ghostData;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredStudents, activeDate, homeTab]); 
+  // Catatan: K object sengaja diabaikan di deps untuk mencegah render loop.
+
+  // Sinkronisasikan ke window untuk kebutuhan MainApp.jsx
+  useEffect(() => {
+    window._lastDayData = ghostDataMap;
+  }, [ghostDataMap]);
 
   const getDateStatus = (dateStr) => {
     if (filteredStudents.length === 0) return { status: 'none', count: 0 };
@@ -579,21 +678,19 @@ const HomeView = ({
 
   return (
     <>
-      <style type="text/css" media="print">
-        {`
-          @page { size: portrait; margin: 0; }
-          body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-          /* Sembunyikan semua elemen di halaman secara default saat mencetak */
-          body * {
-            visibility: hidden;
-          }
-          /* Kemudian, tampilkan hanya elemen dengan kelas .printable-area dan semua turunannya */
-          .printable-area, .printable-area * {
-            visibility: visible;
-          }
-          ::-webkit-scrollbar { display: none; }
-        `}
-      </style>
+      <style type="text/css" media="print" dangerouslySetInnerHTML={{__html: `
+        @page { size: portrait; margin: 0; }
+        body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        /* Sembunyikan semua elemen di halaman secara default saat mencetak */
+        body * {
+          visibility: hidden;
+        }
+        /* Kemudian, tampilkan hanya elemen dengan kelas .printable-area dan semua turunannya */
+        .printable-area, .printable-area * {
+          visibility: visible;
+        }
+        ::-webkit-scrollbar { display: none; }
+      `}} />
 
       {/* ===== MODAL PREVIEW CETAK LAPORAN KELAS ===== */}
       {isClassReportVisible && (
@@ -605,6 +702,10 @@ const HomeView = ({
               <>
                 {/* Tombol Aksi */}
                 <div className="fixed bottom-6 right-6 md:bottom-auto md:top-6 md:right-6 flex flex-col-reverse md:flex-row gap-3 z-[100000] print:hidden" data-html2canvas-ignore="true">
+                  <button onClick={handleCopyClassShareLink} className="bg-blue-600 text-white px-5 py-3 md:py-2.5 rounded-2xl md:rounded-xl font-bold flex items-center justify-center gap-2 shadow-xl hover:bg-blue-700 transition-colors">
+                    <Link size={18} />
+                    <span className="inline">Salin Link</span>
+                  </button>
                   <button onClick={() => handleDownloadClassReportImage('class-report-page-1', 1)} disabled={isDownloading} className="bg-emerald-500 text-white px-5 py-3 md:py-2.5 rounded-2xl md:rounded-xl font-bold flex items-center justify-center gap-2 shadow-xl hover:bg-emerald-600 transition-colors disabled:opacity-50">
                     {isDownloading ? <span className="animate-spin text-sm">⏳</span> : <ImageDown size={18} />}
                     <span className="inline">{isDownloading ? 'Memproses...' : 'Unduh Hal. 1'}</span>
@@ -831,6 +932,13 @@ const HomeView = ({
                   <span className="flex items-center gap-1.5 min-w-0">
                     <span className="shrink-0">Ustadz/ah:</span> <strong className={`text-blue-700 bg-blue-50 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md border border-blue-100 transition-colors whitespace-normal break-words ${(activeGuru || '').length > 20 ? 'text-[8px] sm:text-[10px] leading-tight' : (activeGuru || '').length > 15 ? 'text-[9px] sm:text-[11px] leading-tight' : ''}`}>{String(activeGuru || '-')}</strong>
                   </span>
+                <span className="hidden md:inline text-gray-300 shrink-0">•</span>
+                <span className="flex items-center gap-1.5 min-w-0" title="Target Hafalan Sekolah">
+                  <span className="shrink-0">Target:</span> 
+                  <strong className="text-amber-700 bg-amber-50 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md border border-amber-100 transition-colors whitespace-normal break-words">
+                    {targetReguler || '2 Juz'} {targetAlQuran ? `/ ${targetAlQuran}` : ''}
+                  </strong>
+                </span>
                 </div>
               </div>
             </div>
@@ -862,8 +970,15 @@ const HomeView = ({
                 <span className="hidden sm:inline">Capaian (Jurnal)</span>
               </button>
               <button 
+                onClick={() => setIsSearchVisible(!isSearchVisible)}
+                className={`flex items-center justify-center px-2.5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl shadow-sm border transition-all ${isSearchVisible || searchQuery ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-white text-slate-500 hover:text-emerald-600 border-gray-200/50'}`}
+                title="Pencarian Siswa"
+              >
+                <Search size={18} />
+              </button>
+              <button 
                 onClick={() => setIsHeaderVisible(!isHeaderVisible)}
-                className="flex items-center justify-center px-2 py-1.5 sm:py-2 bg-white text-slate-500 hover:text-emerald-600 rounded-lg sm:rounded-xl shadow-sm border border-gray-200/50 transition-all"
+                className="flex items-center justify-center px-2.5 py-1.5 sm:py-2 bg-white text-slate-500 hover:text-emerald-600 rounded-lg sm:rounded-xl shadow-sm border border-gray-200/50 transition-all"
                 title={isHeaderVisible ? "Sembunyikan Header Atas" : "Tampilkan Header Atas"}
               >
                 {isHeaderVisible ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
@@ -904,18 +1019,8 @@ const HomeView = ({
             </div>
 
             {/* KOTAK PENCARIAN SISWA */}
-            <div className="sticky md:relative -top-3 sm:-top-4 md:top-auto z-40 bg-slate-50/95 md:bg-transparent backdrop-blur-md md:backdrop-blur-none -mx-3 px-3 sm:-mx-4 sm:px-4 md:mx-0 md:px-0 py-2 md:py-0 mb-2 md:mb-0 border-b border-gray-200/60 md:border-none shadow-[0_4px_15px_-10px_rgba(0,0,0,0.05)] md:shadow-none transition-all">
-              {!isSearchVisible && !searchQuery ? (
-                <div className="flex justify-end md:-mt-1 md:mb-1 z-10">
-                  <button
-                    onClick={() => setIsSearchVisible(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200/80 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 hover:border-emerald-200 transition-all shadow-sm text-[10px] sm:text-xs font-bold"
-                    title="Pencarian Siswa"
-                  >
-                    <Search size={14} /> Cari Siswa
-                  </button>
-                </div>
-              ) : (
+            {(isSearchVisible || searchQuery) && (
+              <div className="sticky md:relative -top-3 sm:-top-4 md:top-auto z-40 bg-slate-50/95 md:bg-transparent backdrop-blur-md md:backdrop-blur-none -mx-3 px-3 sm:-mx-4 sm:px-4 md:mx-0 md:px-0 py-2 md:py-0 mb-2 md:mb-0 border-b border-gray-200/60 md:border-none shadow-[0_4px_15px_-10px_rgba(0,0,0,0.05)] md:shadow-none transition-all">
                 <div className="relative animate-in slide-in-from-top-2 fade-in duration-200">
                   <Search
                     className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
@@ -925,68 +1030,17 @@ const HomeView = ({
                     autoFocus
                     type="text"
                     placeholder={activeHalaqoh ? `Cari nama siswa... (${studentsInHalaqohCount} siswa)` : 'Pilih halaqoh terlebih dahulu'}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                value={localSearch}
+                onChange={(e) => setLocalSearch(e.target.value)}
                     disabled={!activeHalaqoh}
                     className="w-full bg-white border border-gray-200/80 rounded-xl pl-10 pr-10 py-2.5 sm:py-3 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 text-sm font-bold text-slate-700 transition-all shadow-sm disabled:bg-slate-50 disabled:cursor-not-allowed"
                   />
                   <button
-                    onClick={() => { setIsSearchVisible(false); setSearchQuery(''); }}
+                onClick={() => { setIsSearchVisible(false); setLocalSearch(''); setSearchQuery(''); }}
                     className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors"
                   >
                     <X size={16} />
                   </button>
-                </div>
-              )}
-            </div>
-
-            {/* LOGIKA PENCARIAN DATA HARI SEBELUMNYA UNTUK DISPLAY BAYANGAN */}
-            {(() => {
-              window._lastDayData = {};
-              const activeDateObj = new Date(activeDate);
-
-              filteredStudents.forEach(s => {
-                // Get all recorded dates for the student and sort them descending
-                const recordedDates = Object.keys(s.records || {})
-                  .map(d => new Date(d))
-                  .filter(d => d < activeDateObj) // Only dates before the active date
-                  .sort((a, b) => b - a); // Sort descending, most recent first
-
-                // Find the first date that has data
-                for (const d of recordedDates) {
-                  const dStr = getDateString(d);
-                  const rec = s.records[dStr];
-                  if (rec && (rec[k.t] !== '-' || rec[k.f] !== '-' || rec[k.m] !== '-')) {
-                    window._lastDayData[s.id] = { ...rec, date: dStr }; // Found the most recent record
-                    break; // Move to the next student
-                  }
-                }
-              });
-            })()}
-
-            {/* FRAME RIWAYAT DATA TERAKHIR (MUNCUL SAAT SISWA DIPILIH) */}
-            {activeStudentId && window._lastDayData?.[activeStudentId] && (
-              <div className="border-2 rounded-2xl p-4 shadow-sm animate-in fade-in zoom-in-95 duration-300 transition-colors bg-white border-[#00e676]/20">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <History size={16} className="text-[#00e676]" />
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Data Terakhir ({formatShortDate(new Date(window._lastDayData[activeStudentId].date))}):</span>
-                    <span className="text-xs font-black text-slate-700">{filteredStudents.find(s => s.id === activeStudentId)?.name}</span>
-                  </div>
-                  <button onClick={() => setActiveStudentId(null)} className="text-slate-300 hover:text-slate-500"><X size={14} /></button>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  {[
-                    { label: 'Tahsin', val: window._lastDayData[activeStudentId][k.t], color: 'blue' },
-                    { label: 'Tahfidz', val: window._lastDayData[activeStudentId][k.f], color: 'purple' },
-                    { label: 'Murojaah', val: window._lastDayData[activeStudentId][k.m], color: 'emerald' },
-                    { label: 'Catatan', val: window._lastDayData[activeStudentId][k.c], color: 'orange' }
-                  ].map((item, i) => ( // Fix potential missing colors in tailwind by using full classes or safe list
-                    <div key={i} className={`bg-${item.color}-50/50 p-2 rounded-xl border border-${item.color}-100/50`}>
-                      <p className={`text-[8px] font-black text-${item.color}-400 uppercase mb-0.5`}>{item.label}</p>
-                      <p className={`text-[10px] font-bold text-${item.color}-800 truncate`}>{item.val || '-'}</p>
-                    </div>
-                  ))}
                 </div>
               </div>
             )}
@@ -998,6 +1052,38 @@ const HomeView = ({
                 Geser tabel ke kiri untuk melihat detail
               </div>
             )}
+
+          {/* PROGRESS BAR PENGISIAN JURNAL */}
+          {activeHalaqoh && filteredStudents.length > 0 && (() => {
+            const { count } = getDateStatus(activeDate);
+            const total = filteredStudents.length;
+            const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
+            const isComplete = count === total && total > 0;
+
+            return (
+              <div className="w-full flex flex-col gap-1.5 mb-3 mt-1 px-1 animate-in fade-in duration-500">
+                <div className="flex justify-between items-end">
+                  <span className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                    Progres {homeTab === 'lesson_plan' ? 'Target' : 'Capaian'} Hari Ini
+                    {isComplete && <Check size={14} className="text-[#00e676]" strokeWidth={3} />}
+                  </span>
+                  <span className={`text-xs sm:text-sm font-black ${isComplete ? 'text-[#00e676]' : 'text-emerald-500'}`}>
+                    {percentage}% <span className="text-[10px] text-slate-400 font-bold ml-1">({count}/{total})</span>
+                  </span>
+                </div>
+                <div className="w-full h-2.5 sm:h-3 bg-slate-200/70 rounded-full overflow-hidden shadow-inner">
+                  <div 
+                    className={`h-full rounded-full transition-all duration-1000 ease-out relative ${isComplete ? 'bg-[#00e676] shadow-[0_0_10px_rgba(0,230,118,0.5)]' : 'bg-gradient-to-r from-emerald-400 to-emerald-500'}`}
+                    style={{ width: `${percentage}%` }}
+                  >
+                    {isComplete && (
+                      <div className="absolute inset-0 bg-white/20 w-full h-full"></div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
             {/* TABEL DATA WEB (TIDAK LAGI FIXED HEIGHT, SEKARANG MEMANJANG BEBAS) */}
             <div key={homeTab} className="rounded-2xl shadow-sm border overflow-visible relative flex-1 flex flex-col animate-tab-content transition-colors bg-white border-gray-200 shadow-slate-200/50">
@@ -1067,15 +1153,25 @@ const HomeView = ({
                           const valM = record?.[k.m] || '-';
                           const valC = record?.[k.c] || '-';
 
+                          // Jurnal Check for Target Achieved
+                          const jT = record?.jurnalTahsin || '-';
+                          const jF = record?.jurnalTahfidz || '-';
+                          const jM = record?.jurnalMurojaah || '-';
+                          const jC = record?.jurnalCatatan || '-';
+
                           // Inisial untuk avatar web
                           const initials = getInitials(student?.name);
 
                           // Ambil data referensi pekan lalu
-                          const lastRec = window._lastDayData?.[student.id];
+                          const lastRec = ghostDataMap[student.id];
+                          const ghostLabel = homeTab === 'lesson_plan' ? 'Jurnal Pekan Lalu' : 'Hari Sebelumnya';
                           const isTahsinEmpty = valT === '-' && valH === '-' && valTNilai === '-';
                           const isTahfidzEmpty = valF === '-' && valAF === '-' && valFNilai === '-';
                           const isMurojaahEmpty = valM === '-';
                           const isCatatanEmpty = valC === '-';
+
+                          const isTahsinAchieved = homeTab === 'lesson_plan' && !isTahsinEmpty && jT !== '-';
+                          const isTahfidzAchieved = homeTab === 'lesson_plan' && !isTahfidzEmpty && jF !== '-';
 
                           // Determine if the current cell is empty and has ghost data
                           const hasGhostTahsin = isTahsinEmpty && lastRec && lastRec[k.t] && lastRec[k.t] !== '-';
@@ -1085,7 +1181,8 @@ const HomeView = ({
                           const isAbsent = !isCatatanEmpty && ['alpa', 'sakit', 'izin', 'tidak hadir'].some(keyword => String(valC).toLowerCase().includes(keyword));
                           return (
                             <tr
-                              key={student?.id || Math.random()}
+                              /* Perbaikan Error Warning Key: Hindari Math.random() pada loop render */
+                              key={student?.id || `student-row-${index}`}
                               className={`relative transition-all duration-300 group ${!isLoading ? 'animate-row-slide-in' : ''} hover:bg-white hover:shadow-xl hover:z-20`}
                               style={!isLoading ? { animationDelay: `${index * 0.05}s` } : {}}
                             >
@@ -1107,13 +1204,18 @@ const HomeView = ({
                               </td>
 
                               <td className="p-2">
-                                <div onClick={() => { setActiveStudentId(student.id); handleOpenModal(student, 'tahsin', homeTab); }} className="min-h-[60px] flex flex-col items-center justify-center border border-transparent hover:border-gray-200 rounded-xl cursor-pointer relative group/cell transition-colors active:bg-gray-50">
+                                <div onClick={() => { setActiveStudentId(student.id); handleOpenModal(student, 'tahsin', homeTab); }} className={`min-h-[60px] flex flex-col items-center justify-center border hover:border-gray-200 rounded-xl cursor-pointer relative group/cell transition-colors active:bg-gray-50 ${isTahsinAchieved ? 'border-emerald-300 bg-emerald-50/40' : 'border-transparent'}`}>
+                                  {isTahsinAchieved && (
+                                    <div className="absolute top-1 left-1 text-emerald-600 bg-emerald-100 p-0.5 rounded-md border border-emerald-200 z-10 shadow-sm" title="Target Tercapai (Jurnal Terisi)">
+                                      <Check size={12} strokeWidth={4} />
+                                    </div>
+                                  )}
                                   {!isTahsinEmpty ? (
                                     renderTahsinCard(valT, valH, student?.id, activeDate, valTNilai, valTSNilai)
                                   ) : hasGhostTahsin ? (
                                 <div className="pointer-events-none opacity-30 grayscale blur-[0.5px] scale-90 origin-center transition-all group-hover/cell:opacity-70 group-hover/cell:blur-none group-hover/cell:grayscale-0" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>
                                     <div className="flex items-center justify-center gap-1 text-[9px] font-black text-gray-400 uppercase tracking-tighter mb-0.5">
-                                      <History size={10} /> Hari Sebelumnya
+                                      <History size={10} /> {ghostLabel}
                                     </div>
                                       {renderTahsinCard(lastRec[k.t], lastRec[k.h], student?.id, 'ghost', lastRec[k.tNilai], lastRec[k.tsNilai])}
                                     </div>
@@ -1127,13 +1229,18 @@ const HomeView = ({
                               </td>
 
                               <td className="p-2">
-                                <div onClick={() => { setActiveStudentId(student.id); handleOpenModal(student, 'tahfidz', homeTab); }} className="min-h-[60px] flex flex-col items-center justify-center border border-transparent hover:border-gray-200 rounded-xl cursor-pointer relative group/cell transition-colors active:bg-gray-50">
+                                <div onClick={() => { setActiveStudentId(student.id); handleOpenModal(student, 'tahfidz', homeTab); }} className={`min-h-[60px] flex flex-col items-center justify-center border hover:border-gray-200 rounded-xl cursor-pointer relative group/cell transition-colors active:bg-gray-50 ${isTahfidzAchieved ? 'border-emerald-300 bg-emerald-50/40' : 'border-transparent'}`}>
+                                  {isTahfidzAchieved && (
+                                    <div className="absolute top-1 left-1 text-emerald-600 bg-emerald-100 p-0.5 rounded-md border border-emerald-200 z-10 shadow-sm" title="Target Tercapai (Jurnal Terisi)">
+                                      <Check size={12} strokeWidth={4} />
+                                    </div>
+                                  )}
                                   {!isTahfidzEmpty ? (
                                     renderTahfidzCard(valF, valAF, student?.id, activeDate, valFNilai)
                                   ) : hasGhostTahfidz ? (
                                 <div className="pointer-events-none opacity-30 grayscale blur-[0.5px] scale-90 origin-center transition-all group-hover/cell:opacity-70 group-hover/cell:blur-none group-hover/cell:grayscale-0" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>
                                     <div className="flex items-center justify-center gap-1 text-[9px] font-black text-gray-400 uppercase tracking-tighter mb-0.5">
-                                      <History size={10} /> Hari Sebelumnya
+                                      <History size={10} /> {ghostLabel}
                                     </div>
                                       {renderTahfidzCard(lastRec[k.f], lastRec[k.af], student?.id, 'ghost', lastRec[k.fNilai])}
                                     </div>
@@ -1153,7 +1260,7 @@ const HomeView = ({
                                   ) : hasGhostMurojaah ? (
                                 <div className="pointer-events-none opacity-30 grayscale blur-[0.5px] scale-90 origin-center transition-all group-hover/cell:opacity-70 group-hover/cell:blur-none group-hover/cell:grayscale-0" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>
                                     <div className="flex items-center justify-center gap-1 text-[9px] font-black text-gray-400 uppercase tracking-tighter mb-0.5">
-                                      <History size={10} /> Hari Sebelumnya
+                                      <History size={10} /> {ghostLabel}
                                     </div>
                                       {renderMurojaahCard(lastRec[k.m], student?.id, 'ghost')}
                                     </div>
@@ -1232,11 +1339,19 @@ const HomeView = ({
                       const valM = record?.[k.m] || '-';
                       const valC = record?.[k.c] || '-';
 
-                      const lastRec = window._lastDayData?.[student.id];
+                      const jT = record?.jurnalTahsin || '-';
+                      const jF = record?.jurnalTahfidz || '-';
+                      const jM = record?.jurnalMurojaah || '-';
+                      const jC = record?.jurnalCatatan || '-';
+
+                      const lastRec = ghostDataMap[student.id];
                       const isTahsinEmpty = valT === '-' && valH === '-' && valTNilai === '-';
                       const isTahfidzEmpty = valF === '-' && valAF === '-' && valFNilai === '-';
                       const isMurojaahEmpty = valM === '-';
                       const isCatatanEmpty = valC === '-';
+
+                      const isTahsinAchieved = homeTab === 'lesson_plan' && !isTahsinEmpty && jT !== '-';
+                      const isTahfidzAchieved = homeTab === 'lesson_plan' && !isTahfidzEmpty && jF !== '-';
 
                       const hasGhostTahsin = isTahsinEmpty && lastRec && lastRec[k.t] && lastRec[k.t] !== '-';
                       const hasGhostTahfidz = isTahfidzEmpty && lastRec && lastRec[k.f] && lastRec[k.f] !== '-';
@@ -1270,7 +1385,12 @@ const HomeView = ({
                           {/* Grid Data - Menampilkan data secara vertikal agar terbaca di HP */}
                           <div className="grid grid-cols-2 gap-2">
                             {/* Tahsin */}
-                            <div onClick={() => handleOpenModal(student, 'tahsin', homeTab)} className="p-3 bg-blue-50/30 border border-blue-100 rounded-2xl flex flex-col items-center justify-center min-h-[90px] h-full text-center active:scale-95 transition-all relative">
+                            <div onClick={() => handleOpenModal(student, 'tahsin', homeTab)} className={`p-3 bg-blue-50/30 border ${isTahsinAchieved ? 'border-emerald-400 shadow-[0_0_0_1px_rgba(52,211,153,0.3)]' : 'border-blue-100'} rounded-2xl flex flex-col items-center justify-center min-h-[90px] h-full text-center active:scale-95 transition-all relative`}>
+                              {isTahsinAchieved && (
+                                <div className="absolute top-2 left-2 text-emerald-600 bg-emerald-100 p-0.5 rounded-md z-10 shadow-sm" title="Target Tercapai">
+                                  <Check size={12} strokeWidth={4} />
+                                </div>
+                              )}
                               <div className="flex items-center gap-1 mb-1.5 text-blue-500 font-black uppercase text-[8px] tracking-widest"><BookOpen size={12} /> Tahsin</div>
                               {!isTahsinEmpty ? renderTahsinCard(valT, valH, student.id, activeDate, valTNilai, valTSNilai) : (hasGhostTahsin ? <div className="pointer-events-none opacity-30 grayscale blur-[0.5px] scale-90 transition-all" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>{renderTahsinCard(lastRec[k.t], lastRec[k.h], student.id, 'ghost', lastRec[k.tNilai], lastRec[k.tsNilai])}</div> : <span className="text-gray-300">-</span>)
                               }
@@ -1282,7 +1402,12 @@ const HomeView = ({
                             </div>
 
                             {/* Tahfidz */}
-                            <div onClick={() => handleOpenModal(student, 'tahfidz', homeTab)} className="p-3 bg-purple-50/30 border border-purple-100 rounded-2xl flex flex-col items-center justify-center min-h-[90px] h-full text-center active:scale-95 transition-all relative">
+                            <div onClick={() => handleOpenModal(student, 'tahfidz', homeTab)} className={`p-3 bg-purple-50/30 border ${isTahfidzAchieved ? 'border-emerald-400 shadow-[0_0_0_1px_rgba(52,211,153,0.3)]' : 'border-purple-100'} rounded-2xl flex flex-col items-center justify-center min-h-[90px] h-full text-center active:scale-95 transition-all relative`}>
+                              {isTahfidzAchieved && (
+                                <div className="absolute top-2 left-2 text-emerald-600 bg-emerald-100 p-0.5 rounded-md z-10 shadow-sm" title="Target Tercapai">
+                                  <Check size={12} strokeWidth={4} />
+                                </div>
+                              )}
                               <div className="flex items-center gap-1 mb-1.5 text-purple-500 font-black uppercase text-[8px] tracking-widest"><Mic size={12} /> Tahfidz</div>
                               {!isTahfidzEmpty ? renderTahfidzCard(valF, valAF, student.id, activeDate, valFNilai) : (hasGhostTahfidz ? <div className="pointer-events-none opacity-30 grayscale blur-[0.5px] scale-90 transition-all" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>{renderTahfidzCard(lastRec[k.f], lastRec[k.af], student.id, 'ghost', lastRec[k.fNilai])}</div> : <span className="text-gray-300">-</span>)
                               }

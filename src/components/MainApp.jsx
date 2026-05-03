@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { BookOpen, User, Menu, Home, Users, BarChart3, Settings, LogOut, Loader2, Edit3, Mic, Repeat, FileText, X, AlertTriangle } from 'lucide-react';
 
 // Imports
@@ -28,10 +28,13 @@ const MainApp = ({ currentUser, onLogout }) => {
   const [homeTab, setHomeTab] = useState('jurnal');
 
   const [guruHalaqohData, setGuruHalaqohData] = useState({});
-  const guruList = Object.keys(guruHalaqohData);
+  // Perbaikan Warning Infinite Loop: Cegah guruList memicu useEffect pada setiap render
+  const guruList = useMemo(() => Object.keys(guruHalaqohData), [guruHalaqohData]);
   const [kelasList, setKelasList] = useState([]);
   const [institutionName, setInstitutionName] = useState('Nama Sekolah Anda');
   const [institutionLogo, setInstitutionLogo] = useState('logo.png');
+  const [targetReguler, setTargetReguler] = useState('2 Juz');
+  const [targetAlQuran, setTargetAlQuran] = useState('');
   const [appUsers, setAppUsers] = useState([]);
 
   const [activeGuru, setActiveGuru] = useState('');
@@ -98,6 +101,8 @@ const MainApp = ({ currentUser, onLogout }) => {
         setKelasList(settingsData.kelaslist || settingsData.kelasList || []);
         setInstitutionName(settingsData.institutionname || settingsData.institutionName || 'Nama Sekolah Anda');
         setInstitutionLogo(settingsData.institutionlogo || settingsData.institutionLogo || 'logo.png');
+        setTargetReguler(settingsData.targetreguler || settingsData.targetReguler || '2 Juz');
+        setTargetAlQuran(settingsData.targetalquran || settingsData.targetAlQuran || '');
       }
 
       // 2. Ambil data siswa
@@ -224,6 +229,8 @@ const MainApp = ({ currentUser, onLogout }) => {
     if (updates.kelasList !== undefined) mappedUpdates.kelaslist = updates.kelasList;
     if (updates.institutionName !== undefined) mappedUpdates.institutionname = updates.institutionName;
     if (updates.institutionLogo !== undefined) mappedUpdates.institutionlogo = updates.institutionLogo;
+    if (updates.targetReguler !== undefined) mappedUpdates.targetreguler = updates.targetReguler;
+    if (updates.targetAlQuran !== undefined) mappedUpdates.targetalquran = updates.targetAlQuran;
 
     const { error } = await supabase
       .from('settings')
@@ -853,7 +860,7 @@ const MainApp = ({ currentUser, onLogout }) => {
       for (const s of studentsInHalaqoh) {
         const lastData = findLastRecord(s);
         if (lastData) {
-          initialDataForModal = lastData.record;
+          initialDataForModal = { ...lastData.record, [k.c]: '-' };
           showToast(`Menyalin data terakhir ${s.name.split(' ')[0]} (${formatShortDate(new Date(lastData.date))})`);
           break;
         }
@@ -868,14 +875,28 @@ const MainApp = ({ currentUser, onLogout }) => {
       setSelectedStudents([studentToProcess.id]);
       const lastData = findLastRecord(studentToProcess);
       if (lastData) {
-        initialDataForModal = lastData.record;
+        initialDataForModal = { ...lastData.record, [k.c]: '-' };
         showToast(`Mengisi dari data terakhir ${studentToProcess.name.split(' ')[0]} (${formatShortDate(new Date(lastData.date))})`);
       } else {
         showToast("Tidak ditemukan data sebelumnya untuk siswa ini.");
       }
 
     } else if (studentToProcess) { // Regular single student edit/input
-      initialDataForModal = studentToProcess.records[activeDate] || {};
+      const currentRecord = studentToProcess.records[activeDate] || {};
+      initialDataForModal = { ...currentRecord };
+      
+      // Ambil data bayangan (ghost data) sebagai saran input jika field masih kosong
+      const ghostRecord = window._lastDayData ? window._lastDayData[studentToProcess.id] : null;
+      if (ghostRecord) {
+        Object.values(k).forEach(keyName => {
+          if (!initialDataForModal[keyName] || initialDataForModal[keyName] === '-') {
+            if (ghostRecord[keyName] && ghostRecord[keyName] !== '-') {
+              initialDataForModal[keyName] = ghostRecord[keyName];
+            }
+          }
+        });
+      }
+
       setEditingId(studentToProcess.id);
       setSelectedStudents([studentToProcess.id]);
     } else { // Regular full_bulk (empty)
@@ -1137,19 +1158,17 @@ const MainApp = ({ currentUser, onLogout }) => {
   return (
     <div className="h-screen h-[100dvh] bg-slate-50 text-gray-800 font-sans flex flex-col overflow-hidden transition-all duration-500">
       {/* CSS Khusus untuk Menyembunyikan Scrollbar Bawaan (Membuat UI lebih minimalis) */}
-      <style>
-        {`
-          /* Chrome, Safari, Edge, Opera */
-          .custom-scrollbar::-webkit-scrollbar {
-            display: none;
-          }
-          /* Firefox, IE */
-          .custom-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-          }
-        `}
-      </style>
+      <style dangerouslySetInnerHTML={{__html: `
+        /* Chrome, Safari, Edge, Opera */
+        .custom-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        /* Firefox, IE */
+        .custom-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}} />
 
       {/* Header */}
       <header className="bg-white border-b border-gray-100 shrink-0 z-[60] w-full shadow-sm print:hidden sticky top-0 transition-all duration-500">
@@ -1289,6 +1308,8 @@ const MainApp = ({ currentUser, onLogout }) => {
                 setSearchQuery={setSearchQuery}
                 studentsInHalaqohCount={studentsInHalaqoh.length}
                 isLoading={isLoading}
+                targetReguler={targetReguler}
+                targetAlQuran={targetAlQuran}
               />
             )}
             {currentView === 'siswa' && (
@@ -1325,6 +1346,7 @@ const MainApp = ({ currentUser, onLogout }) => {
                 isSuperAdmin={isSuperAdmin} appUsers={appUsers}
                 handleApproveUser={handleApproveUser} handleRejectUser={handleRejectUser} handleUpdateUserAccount={handleUpdateUserAccount}
                 institutionName={institutionName} setInstitutionName={setInstitutionName} institutionLogo={institutionLogo} handleInstitutionLogoUpload={handleInstitutionLogoUpload} setInstitutionLogo={setInstitutionLogo} updateMasterDataCloud={updateMasterDataCloud} showToast={showToast}
+                targetReguler={targetReguler} setTargetReguler={setTargetReguler} targetAlQuran={targetAlQuran} setTargetAlQuran={setTargetAlQuran}
                 kelasList={kelasList} newKelasName={newKelasName} setNewKelasName={setNewKelasName} handleAddKelas={handleAddKelas} handleDeleteKelas={handleDeleteKelas}
                 newGuruName={newGuruName} setNewGuruName={setNewGuruName} handleAddGuru={handleAddGuru} guruList={isSuperAdmin ? guruList : [currentUser.name]}
                 selectedGuruForHalaqoh={selectedGuruForHalaqoh} setSelectedGuruForHalaqoh={setSelectedGuruForHalaqoh} newHalaqohName={newHalaqohName} setNewHalaqohName={setNewHalaqohName} handleAddHalaqoh={handleAddHalaqoh}

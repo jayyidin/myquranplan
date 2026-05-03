@@ -8,6 +8,7 @@ import {
 const SettingsView = ({ 
   isSuperAdmin, appUsers, handleApproveUser, handleRejectUser, handleUpdateUserAccount,
   institutionName, setInstitutionName, institutionLogo, handleInstitutionLogoUpload, setInstitutionLogo, updateMasterDataCloud, showToast, isUploadingLogo, logoUploadProgress,
+  targetReguler, setTargetReguler, targetAlQuran, setTargetAlQuran,
   kelasList, newKelasName, setNewKelasName, handleAddKelas, handleDeleteKelas,
   newGuruName, setNewGuruName, handleAddGuru, guruList, 
   selectedGuruForHalaqoh, setSelectedGuruForHalaqoh, newHalaqohName, setNewHalaqohName, handleAddHalaqoh,
@@ -256,6 +257,50 @@ const SettingsView = ({
                         <button onClick={() => handleDeleteKelas(kelas)} className="p-1 text-slate-300 hover:text-red-500 transition-colors"><X size={14}/></button>
                       </div>
                     ))}
+                  </div>
+                </div>
+              </section>
+
+              {/* TARGET HAFALAN */}
+              <section className="lg:col-span-2">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-2 h-6 bg-amber-500 rounded-full"></div>
+                  <h2 className="text-sm font-black text-slate-400 uppercase tracking-[0.2em]">Target Hafalan Sekolah</h2>
+                </div>
+                <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Target Kelas Reguler</label>
+                    <div className="relative">
+                      <select 
+                        value={targetReguler} 
+                        onChange={e => setTargetReguler(e.target.value)} 
+                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-4 pr-10 py-3 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-amber-500/20 outline-none appearance-none cursor-pointer transition-all"
+                      >
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(juz => (
+                          <option key={juz} value={`${juz} Juz`}>{juz} Juz</option>
+                        ))}
+                      </select>
+                      <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Target Kelas Al-Qur'an</label>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <select 
+                          value={targetAlQuran} 
+                          onChange={e => setTargetAlQuran(e.target.value)} 
+                          className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-4 pr-10 py-3 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-amber-500/20 outline-none appearance-none cursor-pointer transition-all"
+                        >
+                          <option value="">Bebas / Sesuai Kesepakatan</option>
+                          {[1, 2, 3, 4, 5, 10, 15, 20, 25, 30].map(juz => (
+                            <option key={juz} value={`${juz} Juz`}>{juz} Juz</option>
+                          ))}
+                        </select>
+                        <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                      </div>
+                      <button onClick={() => { updateMasterDataCloud({ targetReguler, targetAlQuran }); showToast('Target hafalan disimpan!'); }} className="bg-amber-500 hover:bg-amber-600 text-white p-3 rounded-2xl shadow-lg shadow-amber-100 transition-all shrink-0"><Save size={20}/></button>
+                    </div>
                   </div>
                 </div>
               </section>

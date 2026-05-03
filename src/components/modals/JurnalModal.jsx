@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { X, BookOpen, Mic, Repeat, FileText, Plus, ChevronDown, Search, Check, Copy, ClipboardPaste, UserX } from 'lucide-react';
+import { X, BookOpen, Mic, Repeat, FileText, Plus, ChevronDown, Search, Check, UserX } from 'lucide-react';
 import SurahSelector from '../SurahSelector';
 import AyatSelector from '../AyatSelector';
 import { Tooltip } from 'react-tooltip';
@@ -12,7 +12,6 @@ export const JurnalModal = ({
   filteredStudents, toggleStudent
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [copiedId, setCopiedId] = useState(null);
   const [isAbsentMenuOpen, setIsAbsentMenuOpen] = useState(false);
 
   const gradeOptions = ['A', 'B+', 'B', 'B-', 'C'];
@@ -349,39 +348,7 @@ export const JurnalModal = ({
               {/* --- FORM CATATAN --- */}
               {['full_bulk', 'full_edit', 'catatan'].includes(modalMode) && (
                   <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="font-black text-gray-800 text-sm flex items-center gap-2"><FileText size={18} className="text-orange-500"/> {homeTab === 'lesson_plan' ? 'Catatan Target Guru' : 'Catatan Capaian / Nilai Jurnal'}</h3>
-                      <div className="flex items-center gap-2">
-                        <button 
-                          type="button"
-                          onClick={async () => {
-                            try {
-                              const text = await navigator.clipboard.readText();
-                              if (text) handlePlanChange(plan.id, 'lainLain', (plan.lainLain ? plan.lainLain + ' ' : '') + text);
-                            } catch (err) {
-                              alert('Gagal mengakses clipboard. Pastikan browser mengizinkan akses tempel.');
-                            }
-                          }} 
-                          className="flex items-center gap-1.5 text-[10px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 px-2.5 py-1.5 rounded-lg transition-colors border border-blue-100 shadow-sm"
-                          title="Tempel dari Clipboard"
-                        >
-                          <ClipboardPaste size={12} /> Tempel
-                        </button>
-                        <button 
-                          type="button"
-                          onClick={() => {
-                            navigator.clipboard.writeText(plan.lainLain || '');
-                            setCopiedId(plan.id);
-                            setTimeout(() => setCopiedId(null), 2000);
-                          }} 
-                          className="flex items-center gap-1.5 text-[10px] font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 px-2.5 py-1.5 rounded-lg transition-colors border border-orange-100 shadow-sm"
-                          title="Salin Catatan"
-                        >
-                          {copiedId === plan.id ? <Check size={12} /> : <Copy size={12} />} 
-                          {copiedId === plan.id ? 'Tersalin' : 'Salin'}
-                        </button>
-                      </div>
-                    </div>
+                    <h3 className="font-black text-gray-800 text-sm mb-4 flex items-center gap-2"><FileText size={18} className="text-orange-500"/> {homeTab === 'lesson_plan' ? 'Catatan Target Guru' : 'Catatan Capaian / Nilai Jurnal'}</h3>
                     <textarea rows="3" placeholder="Ketikkan catatan khusus di sini..." value={plan.lainLain} onChange={e => handlePlanChange(plan.id, 'lainLain', e.target.value)} className="w-full bg-gray-50 border border-gray-200 focus:border-orange-400 rounded-2xl p-4 text-sm font-bold outline-none resize-none text-gray-800 transition-colors focus:ring-2 focus:ring-orange-400/20"></textarea>
                     
                     <div className="mt-3 flex overflow-x-auto gap-2 pb-2 custom-scrollbar">

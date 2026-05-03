@@ -6,19 +6,20 @@ import {
   ChevronLeft, ChevronRight, Search, SearchCode, RotateCcw, LayoutGrid, X
 } from 'lucide-react';
 import { supabase } from './supabase';
-import { formatShortDate, getInitials, formatPeriode, formatPrintData, getMonday, formatDateObj } from '../utils/helpers';
+import { formatShortDate, getInitials, formatPeriode, formatPrintData, getMonday, formatDateObj, getMonthYear, getDayName } from '../utils/helpers';
 
 const ExpandableText = ({ text }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   if (!text || text === '-') return <div className="text-xs sm:text-sm font-bold text-gray-800">-</div>;
   
-  const isLong = text.length > 50 || text.split('\n').length > 2;
-  const textSizeClass = text.length > 40 ? 'text-[10px] sm:text-xs leading-snug' : text.length > 25 ? 'text-[11px] sm:text-[13px] leading-snug' : 'text-xs sm:text-sm leading-relaxed';
+  const safeText = String(text);
+  const isLong = safeText.length > 50 || safeText.split('\n').length > 2;
+  const textSizeClass = safeText.length > 40 ? 'text-[10px] sm:text-xs leading-snug' : safeText.length > 25 ? 'text-[11px] sm:text-[13px] leading-snug' : 'text-xs sm:text-sm leading-relaxed';
 
   return (
     <div className="flex flex-col items-start w-full">
       <div className={`${textSizeClass} font-bold text-gray-800 whitespace-pre-wrap ${!isExpanded && isLong ? 'line-clamp-2 print:line-clamp-none' : ''}`}>
-        {text}
+        {safeText}
       </div>
       {isLong && (
         <button 
@@ -73,6 +74,10 @@ const LoginScreen = ({ onLogin }) => {
   };
   const [publicWeekStart, setPublicWeekStart] = useState(getMonday(new Date()));
 
+  const [publicClassHalaqoh, setPublicClassHalaqoh] = useState(null);
+  const [publicClassGuru, setPublicClassGuru] = useState('');
+  const [publicClassStudents, setPublicClassStudents] = useState([]);
+
   const changePublicWeek = (offset) => {
     const n = new Date(publicWeekStart);
     n.setDate(n.getDate() + offset);
@@ -83,6 +88,7 @@ const LoginScreen = ({ onLogin }) => {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const shareId = params.get('share');
+    const shareClass = params.get('shareClass');
     let isMounted = true;
 
     const fetchSettings = async () => {
@@ -94,6 +100,9 @@ const LoginScreen = ({ onLogin }) => {
         
         if (shareId && !publicStudent) {
            fetchPublicData(shareId, data.guruhalaqohdata || data.guruHalaqohData || {});
+        }
+        if (shareClass && !publicClassHalaqoh) {
+           fetchPublicClassData(shareClass, data.guruhalaqohdata || data.guruHalaqohData || {});
         }
       }
     };
@@ -172,6 +181,26 @@ const LoginScreen = ({ onLogin }) => {
     } finally {
       setIsPublicLoading(false);
     }
+  };
+
+  const fetchPublicClassData = async (halaqohName, guruData) => {
+    setIsPublicLoading(true);
+    setPublicClassHalaqoh(halaqohName);
+    try {
+      const { data: sData } = await supabase.from('students').select('*').eq('halaqoh', halaqohName);
+      if (sData) {
+        setPublicClassStudents(sData.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)));
+        let foundTeacher = '-';
+        for (const [guru, halaqohs] of Object.entries(guruData)) {
+          if (Array.isArray(halaqohs) && halaqohs.includes(halaqohName)) {
+            foundTeacher = guru;
+            break;
+          }
+        }
+        setPublicClassGuru(foundTeacher);
+      }
+    } catch (err) { console.error("Gagal memuat data kelas publik:", err); }
+    finally { setIsPublicLoading(false); }
   };
 
   const handleAuth = async (e) => {
@@ -293,6 +322,267 @@ const LoginScreen = ({ onLogin }) => {
     finally { setIsLoading(false); }
   };
 
+  const handleDownloadClassReportImage = async (pageId, pageNum) => {
+    setIsLoading(true);
+    try {
+      await document.fonts.ready;
+      if (!window.htmlToImage) {
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js';
+        document.body.appendChild(script);
+        await new Promise((resolve) => script.onload = resolve);
+      }
+      const element = document.getElementById(pageId);
+      if (element) {
+        const dataURL = await window.htmlToImage.toJpeg(element, { quality: 0.85, pixelRatio: 1.5, backgroundColor: '#ffffff' });
+        const link = document.createElement('a');
+        const safeHalaqoh = String(publicClassHalaqoh || 'Kelas').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        link.download = `Laporan_Halaqoh_${safeHalaqoh}_Hal${pageNum}.jpg`;
+        link.href = dataURL;
+        link.click();
+      }
+    } catch (error) { alert("Gagal mengunduh gambar laporan kelas."); }
+    finally { setIsLoading(false); }
+  };
+
+  const handleDownloadClassReportPdf = async () => {
+    setIsLoading(true);
+    try {
+      await document.fonts.ready;
+      if (!window.htmlToImage) { const script = document.createElement('script'); script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js'; document.body.appendChild(script); await new Promise((r) => script.onload = r); }
+      if (!window.jspdf) { const script = document.createElement('script'); script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'; document.body.appendChild(script); await new Promise((r) => script.onload = r); }
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      
+      const weekDates = Array.from({length: 5}).map((_, i) => { const d = new Date(publicWeekStart); d.setDate(d.getDate() + i); return d; });
+      const workDays = weekDates.filter(d => d && d.getDay() !== 0 && d.getDay() !== 6);
+
+      const addPageToPdf = async (pageId) => {
+        const element = document.getElementById(pageId);
+        if (element) {
+          const imgData = await window.htmlToImage.toJpeg(element, { quality: 0.85, pixelRatio: 1.5, backgroundColor: '#ffffff' });
+          const img = new Image(); img.src = imgData; await new Promise(r => img.onload = r);
+          const ratio = Math.min(pdfWidth / img.width, pdfHeight / img.height);
+          const w = img.width * ratio; const h = img.height * ratio;
+          const x = (pdfWidth - w) / 2; const y = 0;
+          pdf.addImage(imgData, 'JPEG', x, y, w, h);
+        }
+      };
+      await addPageToPdf('class-report-page-1');
+      if (workDays.length > 3) { pdf.addPage(); await addPageToPdf('class-report-page-2'); }
+      const safeHalaqoh = String(publicClassHalaqoh || 'Kelas').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      pdf.save(`Laporan_Halaqoh_${safeHalaqoh}.pdf`);
+    } catch (error) { alert("Gagal mengunduh PDF laporan kelas."); }
+    finally { setIsLoading(false); }
+  };
+
+  const renderClassPrintTable = (datesToRender, pageNum, totalPages) => {
+    const isThreeDays = datesToRender.length === 3;
+    const tableWidth = isThreeDays ? '100%' : '73%';
+    const wNo = isThreeDays ? '3%' : '4.1%';
+    const wNama = isThreeDays ? '18%' : '24.6%';
+    const wDay = isThreeDays ? '26.3%' : '35.6%';
+    const k = publicTab === 'lesson_plan' ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan' } : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan' };
+
+    return (
+      <div id={`class-report-page-${pageNum}`} className="w-full min-h-screen p-10 flex flex-col justify-between bg-white text-black print-area" style={{ breakAfter: 'page', pageBreakAfter: pageNum < totalPages ? 'always' : 'auto' }}>
+        <div>
+          {/* MODERN HEADER CETAK */}
+          <div className="flex items-center justify-between mb-10 bg-[#f2fdf5] p-6 rounded-[2rem] border border-green-100">
+            <div>
+              <h1 className="text-2xl font-black text-gray-900 leading-tight">
+                {publicTab === 'lesson_plan' ? "Lesson Plan Al-Qur'an" : "Jurnal Harian Al-Qur'an"}
+              </h1>
+              <p className="text-[#00e676] font-extrabold text-sm italic tracking-wide">SDIT Al-Fityan School Bogor</p>
+            </div>
+            <div className="w-24 h-24 flex items-center justify-center shrink-0">
+              {institutionLogo && institutionLogo !== 'logo.png' ? (
+                <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain" />
+              ) : (
+                <BookOpen size={48} className="text-green-600" />
+              )}
+            </div>
+          </div>
+
+          {/* INFO BOX CETAK */}
+          <div className="grid grid-cols-4 gap-4 w-full mb-8 bg-gray-50/50 p-4 rounded-[1.5rem] border border-gray-100">
+            <div className="flex-1 border-l-4 border-[#00e676] pl-3">
+              <p className="text-[9px] font-black text-gray-400 tracking-widest uppercase">Bulan</p>
+              <p className="text-sm font-extrabold text-gray-800">{getMonthYear(publicWeekStart)}</p>
+            </div>
+            <div className="flex-1 border-l-4 border-[#00b050] pl-3">
+              <p className="text-[9px] font-black text-gray-400 tracking-widest uppercase">Halaqoh</p>
+              <p className="text-sm font-extrabold text-gray-800">{String(publicClassHalaqoh || '-')}</p>
+            </div>
+            <div className="flex-[1.5] border-l-4 border-[#00b050] pl-3">
+              <p className="text-[9px] font-black text-gray-400 tracking-widest uppercase">Periode</p>
+              <p className="text-sm font-extrabold text-gray-800">{formatPeriode(datesToRender[0], datesToRender[datesToRender.length - 1] || datesToRender[0])}</p>
+            </div>
+            <div className="flex-1 border-l-4 border-[#00b050] pl-3">
+              <p className="text-[9px] font-black text-gray-400 tracking-widest uppercase">Ustadz/ah</p>
+              <p className="text-sm font-extrabold text-gray-800">{String(publicClassGuru || '-')}</p>
+            </div>
+          </div>
+
+          {pageNum > 1 && (
+            <div className="flex items-center gap-2 mb-4">
+              <div className="h-px flex-1 bg-gray-100"></div>
+              <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] italic px-4 bg-white">Halaman {pageNum}: Lanjutan Kamis & Jumat</span>
+              <div className="h-px flex-1 bg-gray-100"></div>
+            </div>
+          )}
+
+          <div className="w-full flex justify-center overflow-hidden">
+            <table className="border-collapse table-fixed mx-auto w-full" style={{ width: tableWidth }}>
+              <thead className="bg-gray-50">
+                <tr className="border-b-2 border-slate-200">
+                  <th rowSpan={2} className="p-1.5 text-[9px] font-black text-gray-500 text-center uppercase align-middle bg-gray-50" style={{ width: wNo }}>No</th>
+                  <th rowSpan={2} className="p-1.5 text-[9px] font-black text-gray-500 text-center uppercase align-middle bg-gray-50" style={{ width: wNama }}>Nama Siswa</th>
+                  {datesToRender.map((dateObj, idx) => (
+                    <th key={`head-day-${idx}`} colSpan={3} className="p-1.5 text-center bg-gray-50" style={{ width: wDay }}>
+                      <div className="text-[10px] font-black text-green-700 uppercase tracking-widest">{getDayName(dateObj)}</div>
+                      <div className="text-[8px] font-bold text-gray-400 mt-0.5">{dateObj && typeof dateObj.getDate === 'function' ? `${dateObj.getDate()} ${getMonthYear(dateObj).split(' ')[0]} ${dateObj.getFullYear()}` : '-'}</div>
+                    </th>
+                  ))}
+                </tr>
+                <tr className="border-b-2 border-slate-200">
+                  {datesToRender.map((dateObj, idx) => (
+                    <React.Fragment key={`head-sub-${idx}`}>
+                      <th className="p-0.5 text-[8px] font-black text-emerald-600 text-center tracking-widest w-1/3">MUROJAAH</th>
+                      <th className="p-0.5 text-[8px] font-black text-blue-600 text-center tracking-widest w-1/3">TAHSIN</th>
+                      <th className="p-0.5 text-[8px] font-black text-purple-600 text-center tracking-widest w-1/3">TAHFIDZ</th>
+                    </React.Fragment>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {publicClassStudents.map((student, idx) => {
+                  const initials = getInitials(student?.name);
+                  return (
+                    <React.Fragment key={(student?.id || idx) + '-row'}>
+                      <tr className="border-b border-slate-100">
+                        <td rowSpan={2} className="p-1.5 text-center text-[10px] font-bold text-gray-600 align-top bg-white">{idx + 1}</td>
+                        <td rowSpan={2} className="p-2 align-top bg-white">
+                          <div className="flex items-center gap-2.5">
+                            {student?.photo && student.photo !== '' ? (
+                              <img src={student.photo} alt={student?.name} className="w-9 h-9 rounded-full object-cover border-2 border-green-100 shrink-0 shadow-sm" />
+                            ) : (
+                              <div className="w-9 h-9 rounded-full bg-green-50 border-2 border-green-100 text-green-700 flex items-center justify-center text-[11px] font-black shrink-0 shadow-sm">{initials}</div>
+                            )}
+                            <div className="flex flex-col justify-center">
+                              <div className="text-[11px] font-black text-gray-800 leading-tight">{String(student?.name || 'Unknown')}</div>
+                              <div className="text-[8px] text-gray-400 font-bold uppercase mt-1">Kelas {String(student?.kelas || '-')}</div>
+                            </div>
+                          </div>
+                        </td>
+                        {datesToRender.map((dateObj, dIdx) => {
+                          const dateStr = formatDateObj(dateObj);
+                          const rec = student?.records?.[dateStr] || {};
+                          const valM = rec?.[k.m] || '-';
+                          const valT = rec?.[k.t] || '-';
+                          const valH = rec?.[k.h] || '-';
+                          const valTNilai = rec?.[k.tNilai] || '-';
+                          const valTSNilai = rec?.[k.tsNilai] || '-';
+                          const valF = rec?.[k.f] || '-';
+                          const valAF = rec?.[k.af] || '-';
+                          const valFNilai = rec?.[k.fNilai] || '-';
+                          return (
+                            <React.Fragment key={dateStr + '-data'}>
+                              <td className="p-1.5 text-center text-[9px] font-bold text-emerald-600 whitespace-pre-wrap leading-snug bg-white align-top">{formatPrintData(valM, '-', null, null)}</td>
+                              <td className="p-1.5 text-center text-[9px] font-bold text-blue-600 whitespace-pre-wrap leading-snug bg-white align-top">{formatPrintData(valT, valH, valTNilai, valTSNilai)}</td>
+                              <td className="p-1.5 text-center text-[9px] font-bold text-purple-600 whitespace-pre-wrap leading-snug bg-white align-top">{formatPrintData(valF, valAF, null, valFNilai)}</td>
+                            </React.Fragment>
+                          );
+                        })}
+                      </tr>
+                      <tr className="border-b-2 border-slate-200 last:border-b-0">
+                        {datesToRender.map((dateObj, dIdx) => {
+                          const dateStr = formatDateObj(dateObj);
+                          const rec = student?.records?.[dateStr] || {};
+                          const valC = rec?.[k.c] && rec?.[k.c] !== '-' ? String(rec[k.c]) : '';
+                          return (
+                            <td key={dateStr + '-note'} colSpan={3} className="px-2 py-0.5 text-[7px] text-center bg-white h-auto align-middle">
+                              {valC ? <span className="text-red-600 font-bold"><span className="text-orange-500 font-black">Catatan:</span> {valC}</span> : <span className="text-transparent">-</span>}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div className="flex justify-between items-center border-t border-gray-200 pt-3 mt-4">
+          <div className="text-[8px] font-bold text-gray-400 tracking-widest uppercase">Membangun Generasi Qurani Dan Pemimpin Masa Depan</div>
+          <div className="text-[8px] font-bold text-gray-400 tracking-widest uppercase">PAGE {pageNum} OF {totalPages}</div>
+          <div className="text-[8px] font-bold text-gray-400 tracking-widest uppercase">DOC ID: SDITALFITYAN-LP-{formatDateObj(datesToRender[0]).replace(/-/g, '')}-{(publicClassHalaqoh || 'UNKNOWN').toUpperCase().replace(/[^A-Z0-9]/g, '')}</div>
+        </div>
+      </div>
+    );
+  };
+
+  if (publicClassHalaqoh) {
+    const weekStart = publicWeekStart;
+    const weekDates = Array.from({length: 5}).map((_, i) => { const d = new Date(weekStart); d.setDate(d.getDate() + i); return d; });
+    const workDays = weekDates.filter(d => d && d.getDay() !== 0 && d.getDay() !== 6);
+    const totalPages = workDays.length > 3 ? 2 : 1;
+
+    return (
+      <div className="min-h-screen bg-slate-900 text-gray-800 flex flex-col items-center p-0 md:p-6 overflow-y-auto printable-area print:!static print:p-0 print:m-0 print:overflow-visible transition-all duration-500">
+        <div className="fixed bottom-6 right-6 md:bottom-auto md:top-6 md:right-6 flex flex-col-reverse md:flex-row gap-3 z-[100000] print:hidden" data-html2canvas-ignore="true">
+            <button onClick={() => handleDownloadClassReportImage('class-report-page-1', 1)} disabled={isLoading} className="bg-emerald-500 text-white px-5 py-3 md:py-2.5 rounded-2xl md:rounded-xl font-bold flex items-center justify-center gap-2 shadow-xl hover:bg-emerald-600 transition-colors disabled:opacity-50">
+              {isLoading ? <span className="animate-spin text-sm">⏳</span> : <Download size={18} />}
+              <span className="inline">{isLoading ? 'Memproses...' : 'Unduh Hal. 1'}</span>
+            </button>
+            {totalPages > 1 && (
+              <button onClick={() => handleDownloadClassReportImage('class-report-page-2', 2)} disabled={isLoading} className="bg-emerald-500 text-white px-5 py-3 md:py-2.5 rounded-2xl md:rounded-xl font-bold flex items-center justify-center gap-2 shadow-xl hover:bg-emerald-600 transition-colors disabled:opacity-50">
+                {isLoading ? <span className="animate-spin text-sm">⏳</span> : <Download size={18} />}
+                <span className="inline">{isLoading ? 'Memproses...' : 'Unduh Hal. 2'}</span>
+              </button>
+            )}
+            <button onClick={handleDownloadClassReportPdf} disabled={isLoading} className="bg-white text-gray-800 px-5 py-3 md:py-2.5 rounded-2xl md:rounded-xl font-bold flex items-center justify-center gap-2 shadow-xl hover:bg-gray-50 transition-colors disabled:opacity-50">
+              {isLoading ? <span className="animate-spin text-sm">⏳</span> : <FileText size={18} />}
+              <span className="inline">{isLoading ? 'Memproses...' : 'Download PDF'}</span>
+            </button>
+            <button onClick={() => setPublicClassHalaqoh(null)} className="bg-red-500 text-white w-14 h-14 md:w-11 md:h-11 flex items-center justify-center rounded-full md:rounded-xl shadow-xl hover:bg-red-600 transition-colors self-end md:self-auto mb-2 md:mb-0">
+              <X size={24} className="md:w-5 md:h-5" />
+            </button>
+        </div>
+        <div className="fixed top-6 left-6 z-[100000] print:hidden bg-white p-2 rounded-2xl shadow-xl flex gap-2 flex-col sm:flex-row">
+            <div className="flex gap-2">
+               <button onClick={() => setPublicTab('lesson_plan')} className={`px-4 py-2 text-xs font-black rounded-xl transition-all ${publicTab === 'lesson_plan' ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-500'}`}>Target</button>
+               <button onClick={() => setPublicTab('jurnal')} className={`px-4 py-2 text-xs font-black rounded-xl transition-all ${publicTab === 'jurnal' ? 'bg-blue-500 text-white' : 'bg-slate-100 text-slate-500'}`}>Capaian</button>
+            </div>
+            <div className="flex gap-2 items-center bg-slate-100 rounded-xl px-2">
+               <button onClick={() => changePublicWeek(-7)} className="p-2 text-slate-500 hover:text-emerald-600"><ChevronLeft size={16}/></button>
+               <span className="text-xs font-bold whitespace-nowrap">{formatPeriode(weekDates[0], weekDates[4])}</span>
+               <button onClick={() => changePublicWeek(7)} className="p-2 text-slate-500 hover:text-emerald-600"><ChevronRight size={16}/></button>
+            </div>
+        </div>
+        <div className="w-full overflow-x-auto custom-scrollbar flex justify-start md:justify-center p-0 md:p-4 md:mt-24 print:p-0 print:m-0 print:overflow-visible">
+            <div className="flex flex-col gap-8 items-center w-max shrink-0">
+              <div className="w-[1000px] min-w-[1000px] shrink-0 print:w-full print:min-w-0 print:shadow-none">
+                <div className="bg-white rounded-none md:rounded-2xl shadow-2xl overflow-hidden print:shadow-none print:rounded-none">
+                  {workDays.length >= 1 && renderClassPrintTable(workDays.slice(0, 3), 1, totalPages)}
+                </div>
+              </div>
+              {totalPages > 1 && (
+                <div className="w-[1000px] min-w-[1000px] shrink-0 print:w-full print:min-w-0 print:shadow-none">
+                  <div className="bg-white rounded-none md:rounded-2xl shadow-2xl overflow-hidden print:shadow-none print:rounded-none">
+                    {workDays.length > 3 && renderClassPrintTable(workDays.slice(3, 5), 2, totalPages)}
+                  </div>
+                </div>
+              )}
+            </div>
+        </div>
+      </div>
+    );
+  }
+
   if (publicStudent) {
     const weekStart = publicWeekStart;
     const weekDates = Array.from({length: 5}).map((_, i) => { const d = new Date(weekStart); d.setDate(d.getDate() + i); return d; });
@@ -335,7 +625,7 @@ const LoginScreen = ({ onLogin }) => {
                   <p className="text-[#00e676] font-bold text-xs sm:text-sm italic">SDIT Al-Fityan School Bogor</p>
                </div>
                <div className="w-20 h-20 sm:w-32 sm:h-32 flex items-center justify-center shrink-0">
-                  {institutionLogo ? <img src={institutionLogo} className="w-full h-full object-contain transition-all" /> : <BookOpen size={64} className="text-green-600 sm:w-16 sm:h-16" />}
+                  {institutionLogo ? <img src={institutionLogo} alt="Logo Instansi" className="w-full h-full object-contain transition-all" /> : <BookOpen size={64} className="text-green-600 sm:w-16 sm:h-16" />}
                </div> 
             </div>
 
@@ -343,7 +633,7 @@ const LoginScreen = ({ onLogin }) => {
             <div className="p-6 sm:p-8 flex flex-col sm:flex-row justify-between items-center gap-6 border-b border-gray-50 transition-colors text-center sm:text-left">
                <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-5 w-full sm:w-auto">
                <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full bg-[#e6fbf0] border-4 sm:border-[5px] border-[#00e676] text-[#00e676] flex items-center justify-center text-4xl sm:text-5xl font-black shrink-0 overflow-hidden shadow-inner">
-                  {publicStudent.photo ? <img src={publicStudent.photo} className="w-full h-full object-cover" /> : <span>{getInitials(publicStudent.name)}</span>}
+                  {publicStudent.photo ? <img src={publicStudent.photo} alt={publicStudent.name} className="w-full h-full object-cover" /> : <span>{getInitials(publicStudent.name)}</span>}
                </div>
                <div>
                   <h2 className={`font-black text-gray-800 mb-2 sm:mb-3 ${publicStudent.name.length > 24 ? 'text-lg sm:text-xl' : publicStudent.name.length > 18 ? 'text-xl sm:text-2xl' : 'text-2xl sm:text-3xl'}`}>{publicStudent.name}</h2>
@@ -481,7 +771,7 @@ const LoginScreen = ({ onLogin }) => {
          <header className="w-full bg-white/80 border-slate-100 backdrop-blur-md border-b px-4 sm:px-8 py-4 flex justify-between items-center z-50 sticky top-0 shadow-sm transition-all duration-500">
             <div className="flex items-center gap-2">
                <div className="w-8 h-8 sm:w-10 sm:h-10">
-                  {institutionLogo ? <img src={institutionLogo} className="w-full h-full object-contain" /> : <BookOpen size={24} className="text-emerald-500" />}
+                  {institutionLogo ? <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain" /> : <BookOpen size={24} className="text-emerald-500" />}
                </div>
                <div className="flex flex-col">
                   <span className="font-arabic font-bold text-slate-800 tracking-tighter text-lg sm:text-2xl transition-all leading-tight">MyQuranPlan</span>
@@ -509,7 +799,7 @@ const LoginScreen = ({ onLogin }) => {
          <div className="w-full max-w-4xl z-10 px-4 sm:px-8 py-8 md:py-12 flex-1">
             <div className="flex flex-col items-center mb-6 sm:mb-8 text-center px-4">
                <div className="w-20 h-20 sm:w-24 sm:h-24 mb-4 sm:mb-6 transition-transform hover:scale-110 duration-500">
-                  {institutionLogo ? <img src={institutionLogo} className="w-full h-full object-contain" /> : <BookOpen size={64} className="text-emerald-500" />}
+                  {institutionLogo ? <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain" /> : <BookOpen size={64} className="text-emerald-500" />}
                </div>
                <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-widest mb-3 sm:mb-4 animate-in fade-in slide-in-from-top-4 duration-1000">
                   <span className="relative flex h-2 w-2">
@@ -615,7 +905,7 @@ const LoginScreen = ({ onLogin }) => {
                       >
                         <div className="flex items-center gap-4 text-left">
                            <div className="w-12 h-12 rounded-full bg-white border-2 border-slate-200 flex items-center justify-center text-slate-400 font-black group-hover:border-emerald-500 group-hover:text-emerald-500 transition-colors overflow-hidden">
-                              {s.photo ? <img src={s.photo} className="w-full h-full object-cover" /> : getInitials(s.name)}
+                              {s.photo ? <img src={s.photo} alt={s.name} className="w-full h-full object-cover" /> : getInitials(s.name)}
                            </div>
                            <div> 
                               <p className={`font-black text-slate-800 group-hover:text-emerald-700 transition-colors ${s.name.length > 24 ? 'text-xs sm:text-sm whitespace-normal line-clamp-2 leading-tight' : s.name.length > 18 ? 'text-sm sm:text-[15px] whitespace-normal line-clamp-2 leading-tight' : 'text-base truncate'}`}>{s.name}</p>

@@ -7,7 +7,9 @@ CREATE TABLE settings (
   guruhalaqohdata jsonb DEFAULT '{}'::jsonb,
   kelaslist jsonb DEFAULT '[]'::jsonb,
   institutionname text DEFAULT 'Nama Sekolah Anda',
-  institutionlogo text
+  institutionlogo text,
+  targetreguler text DEFAULT '2 Juz',
+  targetalquran text DEFAULT ''
 );
 
 -- 2. TABEL APP_USERS

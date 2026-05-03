@@ -10,6 +10,18 @@ const StudentView = ({ activeHalaqoh, filteredStudents, openAddStudentModal, ope
   const [showScrollTop, setShowScrollTop] = useState(false);
   const containerRef = useRef(null);
 
+  // --- DEBOUNCE PENCARIAN (MENGURANGI LAG DI HP) ---
+  const [localSearch, setLocalSearch] = useState(searchQuery || '');
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchQuery(localSearch);
+    }, 300); // Jeda 300ms sebelum filter dijalankan
+    return () => clearTimeout(timer);
+  }, [localSearch, setSearchQuery]);
+  useEffect(() => {
+    if (searchQuery === '') setLocalSearch('');
+  }, [searchQuery]);
+
   // Mendeteksi guliran (scroll) dari kontainer luarnya
   useEffect(() => {
     const scrollContainer = containerRef.current?.closest('.overflow-y-auto');
@@ -147,8 +159,8 @@ const StudentView = ({ activeHalaqoh, filteredStudents, openAddStudentModal, ope
                 autoFocus
                 type="text"
                 placeholder="Cari nama siswa..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={localSearch}
+                onChange={(e) => setLocalSearch(e.target.value)}
                 className="w-full bg-white border border-gray-200/80 rounded-xl pl-10 pr-[80px] py-2.5 sm:py-3 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 text-sm font-bold text-slate-700 transition-all shadow-sm"
               />
               <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
@@ -160,7 +172,7 @@ const StudentView = ({ activeHalaqoh, filteredStudents, openAddStudentModal, ope
                   {isHeaderVisible ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                 </button>
                 <button
-                  onClick={() => { setIsSearchVisible(false); setSearchQuery(''); }}
+                  onClick={() => { setIsSearchVisible(false); setLocalSearch(''); setSearchQuery(''); }}
                   className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors"
                 >
                   <X size={16} />
