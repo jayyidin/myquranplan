@@ -51,7 +51,7 @@ const hasMeaningfulValue = (value) => {
 const HomeView = ({
   activeHalaqoh, activeGuru, homeTab, setHomeTab, weekStart, changeWeek,
   activeDate, setActiveDate, weekDates, filteredStudents, handleOpenModal,
-  requestClearRecord, setSharingStudent, handleRemoveData, getStatusColor,
+  requestClearRecord, requestClearAllRecordForDay, setSharingStudent, handleRemoveData, getStatusColor,
   institutionLogo,
   isLoading,
   searchQuery,
@@ -450,9 +450,17 @@ const HomeView = ({
     const activeDateObj = new Date(activeDate);
     const activeDateDay = Number.isNaN(activeDateObj.getTime()) ? null : activeDateObj.getDay();
     const isMondayLessonPlan = homeTab === 'lesson_plan' && activeDateDay === 1;
+    const isTueFriLessonPlan = homeTab === 'lesson_plan' && activeDateDay >= 2 && activeDateDay <= 5;
     const ghostKeys = isMondayLessonPlan ? jurnalKeys : k;
     const previousWeekStart = new Date(activeDateObj);
     const previousWeekEnd = new Date(activeDateObj);
+
+    const currentWeekStart = new Date(activeDateObj);
+    if (activeDateDay !== null) {
+      const diffToMonday = currentWeekStart.getDate() - activeDateDay + (activeDateDay === 0 ? -6 : 1);
+      currentWeekStart.setDate(diffToMonday);
+      currentWeekStart.setHours(0, 0, 0, 0);
+    }
 
     if (isMondayLessonPlan) {
       previousWeekStart.setDate(previousWeekStart.getDate() - 7);
@@ -462,7 +470,11 @@ const HomeView = ({
     filteredStudents.forEach(s => {
       const recordedDates = Object.keys(s.records || {})
         .map(d => new Date(d))
-        .filter(d => isMondayLessonPlan ? d >= previousWeekStart && d <= previousWeekEnd : d < activeDateObj)
+        .filter(d => {
+          if (isMondayLessonPlan) return d >= previousWeekStart && d <= previousWeekEnd;
+          if (isTueFriLessonPlan) return d >= currentWeekStart && d < activeDateObj;
+          return d < activeDateObj;
+        })
         .sort((a, b) => b - a); // Urutkan descending
 
       for (const d of recordedDates) {
@@ -471,6 +483,9 @@ const HomeView = ({
         if (rec && (
           hasMeaningfulValue(rec[ghostKeys.t]) || hasMeaningfulValue(rec[ghostKeys.f]) || hasMeaningfulValue(rec[ghostKeys.m])
         )) {
+          const catatan = String(rec[ghostKeys.c] || '').toLowerCase();
+          if (catatan.includes('libur')) continue;
+
           let ghostRecord;
           if (isMondayLessonPlan) {
             ghostRecord = { ...rec, tahsin: rec[jurnalKeys.t], halAyatTahsin: rec[jurnalKeys.h], tahsinNilai: '-', tahsinSuratNilai: '-', tahfidz: rec[jurnalKeys.f], ayatTahfidz: rec[jurnalKeys.af], tahfidzNilai: '-', murojaah: rec[jurnalKeys.m], catatan: '-' };
@@ -1029,6 +1044,9 @@ const HomeView = ({
               </button>
               <button onClick={() => handleOpenModal(null, 'full_bulk', homeTab)} disabled={!activeHalaqoh} className="flex-1 md:flex-none border-2 px-3 sm:px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 font-black text-xs sm:text-sm transition-all bg-white text-slate-700 border-slate-200 hover:bg-gray-50 disabled:opacity-50" title="Input Massal">
                 <Edit3 size={16} className="text-[#00e676]" /> <span className="hidden sm:inline">Input Massal</span>
+              </button>
+              <button onClick={() => requestClearAllRecordForDay(null, activeDate, homeTab)} disabled={!activeHalaqoh || filteredStudents.length === 0} className="flex-1 md:flex-none border-2 px-3 sm:px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 font-black text-xs sm:text-sm transition-all bg-red-50 text-red-600 border-red-200 hover:bg-red-100 disabled:opacity-50" title={`Kosongkan ${homeTab === 'lesson_plan' ? 'Target' : 'Capaian'} Hari Ini`}>
+                <Trash2 size={16} /> <span className="hidden sm:inline">Kosongkan</span>
               </button>
               <button onClick={() => setIsClassReportVisible(true)} disabled={!activeHalaqoh || filteredStudents.length === 0} className="flex-1 md:flex-none px-3 sm:px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 font-black text-xs sm:text-sm transition-all shadow-lg border-2 bg-gray-800 text-white border-gray-900 hover:bg-gray-700 disabled:opacity-50" title="Laporan Kelas">
                 <Printer size={16} /> <span className="hidden sm:inline">Laporan Kelas</span>

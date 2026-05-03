@@ -538,6 +538,51 @@ const MainApp = ({ currentUser, onLogout }) => {
     }
   };
 
+  const requestClearAllRecordForDay = async (e, dateStr, tab) => {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    const typeName = tab === 'lesson_plan' ? 'Target (Lesson Plan)' : 'Capaian (Jurnal)';
+    setConfirmDialog({
+      isOpen: true,
+      message: `Yakin ingin mengosongkan semua data ${typeName} untuk SELURUH SISWA yang tampil saat ini pada tanggal ${formatShortDate(new Date(dateStr))}? Tindakan ini tidak dapat dibatalkan.`,
+      onConfirm: async () => {
+        setIsLoading(true);
+        const k = tab === 'lesson_plan' ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan' } : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan' };
+        
+        try {
+          const updates = filteredStudents.map(student => {
+            const newRecords = { ...student.records };
+            const dayRec = newRecords[dateStr] ? { ...newRecords[dateStr] } : {};
+            dayRec[k.t] = '-'; dayRec[k.h] = '-'; dayRec[k.tNilai] = '-'; dayRec[k.tsNilai] = '-'; dayRec[k.f] = '-'; dayRec[k.af] = '-'; dayRec[k.fNilai] = '-'; dayRec[k.m] = '-'; dayRec[k.c] = '-';
+            newRecords[dateStr] = dayRec;
+            return { ...student, records: newRecords };
+          });
+
+          if (updates.length === 0) {
+            setIsLoading(false);
+            return;
+          }
+
+          const { error } = await supabase.from('students').upsert(updates);
+          if (error) throw error;
+
+          setStudents(prev => {
+            const newStudents = [...prev];
+            updates.forEach(u => {
+              const idx = newStudents.findIndex(s => s.id === u.id);
+              if (idx !== -1) newStudents[idx].records = u.records;
+            });
+            return newStudents;
+          });
+          showToast(`Data ${typeName} pada hari tersebut dikosongkan!`);
+        } catch(e) {
+          console.error(e);
+          showToast('Gagal mengosongkan data.');
+        }
+        setIsLoading(false);
+      }
+    });
+  };
+
   const setSharingStudent = (student) => { showToast("Fitur Share Gambar akan segera diaktifkan."); };
 
   // -- FUNGSI SISWA --
@@ -918,15 +963,31 @@ const MainApp = ({ currentUser, onLogout }) => {
 
     const findLastRecord = (s) => {
       const activeDateObj = new Date(activeDate);
+      
+      // Untuk Lesson Plan (Selasa-Jumat), batasi pencarian hanya dalam pekan yang sama
+      const currentWeekStart = new Date(activeDateObj);
+      const dayOfWeek = currentWeekStart.getDay();
+      const diffToMonday = currentWeekStart.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+      currentWeekStart.setDate(diffToMonday);
+      currentWeekStart.setHours(0, 0, 0, 0);
+
       const recordedDates = Object.keys(s.records || {})
         .map(d => new Date(d))
         .filter(d => d < activeDateObj) // Only dates before the active date
+        .filter(d => {
+          if (homeTab === 'lesson_plan' && activeDateObj.getDay() !== 1) {
+            return d >= currentWeekStart && d < activeDateObj;
+          }
+          return d < activeDateObj;
+        })
         .sort((a, b) => b - a); // Sort descending
 
       for (const d of recordedDates) {
         const dStr = formatDateObj(d);
         const rec = s.records[dStr];
         if (rec && ((rec[k.t] && rec[k.t] !== '-') || (rec[k.f] && rec[k.f] !== '-') || (rec[k.m] && rec[k.m] !== '-'))) {
+          const catatan = String(rec[k.c] || '').toLowerCase();
+          if (catatan.includes('libur')) continue;
           return { record: rec, date: dStr }; // Found it
         }
       }
@@ -1381,6 +1442,7 @@ const MainApp = ({ currentUser, onLogout }) => {
                 filteredStudents={filteredStudents}
                 handleOpenModal={handleOpenModal}
                 requestClearRecord={requestClearRecord}
+                requestClearAllRecordForDay={requestClearAllRecordForDay}
                 setSharingStudent={setSharingStudent}
                 handleRemoveData={handleRemoveData}
                 getStatusColor={getStatusColor}
