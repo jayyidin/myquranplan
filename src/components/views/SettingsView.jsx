@@ -2,7 +2,7 @@
 import React, { useState, useRef } from 'react';
 import { 
   UserCheck, CheckCircle2, X, ImageIcon, Camera,
-  GraduationCap, Plus, User, Edit3, Trash2, Save, Users, Search, ShieldCheck, Database, LayoutGrid, LogOut, ArrowUp, ChevronDown
+  GraduationCap, Plus, User, Edit3, Trash2, Save, Users, Search, ShieldCheck, Database, LayoutGrid, LogOut, ArrowUp, ChevronDown, Wrench
 } from 'lucide-react';
 
 const SettingsView = ({ 
@@ -14,7 +14,7 @@ const SettingsView = ({
   selectedGuruForHalaqoh, setSelectedGuruForHalaqoh, newHalaqohName, setNewHalaqohName, handleAddHalaqoh,
   currentUser, guruHalaqohData, editingGuru, setEditingGuru, handleSaveEditGuru, requestDeleteGuru,
   editingHalaqoh, setEditingHalaqoh, handleSaveEditHalaqoh, requestDeleteHalaqoh,
-  students, openEditStudentModal, requestDeleteStudent, requestBulkDeleteStudents, requestBulkEditStudents, handleBulkSaveStudents, onLogout
+  students, openEditStudentModal, requestDeleteStudent, requestBulkDeleteStudents, requestBulkEditStudents, handleBulkSaveStudents, onLogout, handleCleanLessonPlanValues
 }) => {
   const [studentSearch, setStudentSearch] = useState('');
   const [editingAccount, setEditingAccount] = useState(null);
@@ -675,7 +675,28 @@ const SettingsView = ({
             </div>
           </section>
 
-          {/* 5. TOMBOL KELUAR (KHUSUS MOBILE) */}
+          {/* 5. PEMELIHARAAN DATA (SUPER ADMIN ONLY) */}
+          {isSuperAdmin && (
+            <section className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-2 h-6 bg-rose-500 rounded-full"></div>
+                <h2 className="text-sm font-black text-slate-400 uppercase tracking-[0.2em]">Pemeliharaan Data</h2>
+              </div>
+              <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm p-6 sm:p-8">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-lg font-black text-slate-800 mb-1">Bersihkan Nilai Lesson Plan</h3>
+                    <p className="text-sm text-slate-500 font-medium">Hapus semua data nilai yang tidak sengaja tersimpan pada mode Target (Lesson Plan).</p>
+                  </div>
+                  <button onClick={handleCleanLessonPlanValues} className="w-full md:w-auto px-6 py-3 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700 rounded-xl font-black uppercase tracking-widest text-xs transition-colors flex items-center justify-center gap-2">
+                    <Wrench size={16} /> Bersihkan Sekarang
+                  </button>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* 6. TOMBOL KELUAR (KHUSUS MOBILE) */}
           <div className="md:hidden pt-4">
             <button 
               onClick={onLogout}

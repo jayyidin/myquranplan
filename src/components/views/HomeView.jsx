@@ -471,9 +471,17 @@ const HomeView = ({
         if (rec && (
           hasMeaningfulValue(rec[ghostKeys.t]) || hasMeaningfulValue(rec[ghostKeys.f]) || hasMeaningfulValue(rec[ghostKeys.m])
         )) {
-          const ghostRecord = isMondayLessonPlan
-            ? { ...rec, tahsin: rec[jurnalKeys.t], halAyatTahsin: rec[jurnalKeys.h], tahsinNilai: rec[jurnalKeys.tNilai], tahsinSuratNilai: rec[jurnalKeys.tsNilai], tahfidz: rec[jurnalKeys.f], ayatTahfidz: rec[jurnalKeys.af], tahfidzNilai: rec[jurnalKeys.fNilai], murojaah: rec[jurnalKeys.m], catatan: '-' }
-            : { ...rec, [k.c]: '-' };
+          let ghostRecord;
+          if (isMondayLessonPlan) {
+            ghostRecord = { ...rec, tahsin: rec[jurnalKeys.t], halAyatTahsin: rec[jurnalKeys.h], tahsinNilai: '-', tahsinSuratNilai: '-', tahfidz: rec[jurnalKeys.f], ayatTahfidz: rec[jurnalKeys.af], tahfidzNilai: '-', murojaah: rec[jurnalKeys.m], catatan: '-' };
+          } else {
+            ghostRecord = { ...rec, [k.c]: '-' };
+            if (homeTab === 'lesson_plan') {
+              ghostRecord.tahsinNilai = '-';
+              ghostRecord.tahsinSuratNilai = '-';
+              ghostRecord.tahfidzNilai = '-';
+            }
+          }
           ghostData[s.id] = { ...ghostRecord, date: dStr };
           break;
         }

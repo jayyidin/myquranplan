@@ -702,6 +702,59 @@ const MainApp = ({ currentUser, onLogout }) => {
     });
   };
 
+  const handleCleanLessonPlanValues = async () => {
+    setConfirmDialog({
+      isOpen: true,
+      message: 'Yakin ingin membersihkan semua nilai pada Target (Lesson Plan) untuk seluruh siswa di database? Tindakan ini tidak dapat dibatalkan.',
+      onConfirm: async () => {
+        setIsLoading(true);
+        try {
+          const updates = students.map(student => {
+            let hasChanges = false;
+            const newRecords = { ...student.records };
+            Object.keys(newRecords).forEach(dateStr => {
+              const rec = { ...newRecords[dateStr] };
+              let recChanged = false;
+              if (rec.tahsinNilai && rec.tahsinNilai !== '-') { rec.tahsinNilai = '-'; recChanged = true; }
+              if (rec.tahsinSuratNilai && rec.tahsinSuratNilai !== '-') { rec.tahsinSuratNilai = '-'; recChanged = true; }
+              if (rec.tahfidzNilai && rec.tahfidzNilai !== '-') { rec.tahfidzNilai = '-'; recChanged = true; }
+              if (recChanged) {
+                newRecords[dateStr] = rec;
+                hasChanges = true;
+              }
+            });
+            if (hasChanges) return { ...student, records: newRecords };
+            return null;
+          }).filter(Boolean);
+
+          if (updates.length === 0) {
+            showToast('Tidak ada data nilai pada Lesson Plan yang perlu dibersihkan.');
+            setIsLoading(false);
+            return;
+          }
+
+          const { error } = await supabase.from('students').upsert(updates);
+          if (error) throw error;
+
+          setStudents(prev => {
+            const newStudents = [...prev];
+            updates.forEach(u => {
+              const idx = newStudents.findIndex(s => s.id === u.id);
+              if (idx !== -1) newStudents[idx].records = u.records;
+            });
+            return newStudents;
+          });
+          
+          showToast(`Berhasil membersihkan nilai Lesson Plan pada ${updates.length} siswa.`);
+        } catch (e) {
+          console.error(e);
+          showToast('Gagal membersihkan nilai Lesson Plan.');
+        }
+        setIsLoading(false);
+      }
+    });
+  };
+
   const handleReorderStudents = (reorderedList) => {
     // Beri index urutan baru berdasarkan posisi mereka di array
     const updates = reorderedList.map((s, index) => ({ ...s, sort_order: index }));
@@ -1385,6 +1438,7 @@ const MainApp = ({ currentUser, onLogout }) => {
                 editingHalaqoh={editingHalaqoh} setEditingHalaqoh={setEditingHalaqoh} handleSaveEditHalaqoh={handleSaveEditHalaqoh} requestDeleteHalaqoh={requestDeleteHalaqoh}
                 students={students} openEditStudentModal={(s) => { setEditStudentData({ id: s.id, name: s.name, kelas: s.kelas, halaqoh: s.halaqoh, photo: s.photo || null }); setIsEditStudentModalOpen(true); }}
                 requestDeleteStudent={requestDeleteStudent} requestBulkDeleteStudents={requestBulkDeleteStudents} requestBulkEditStudents={requestBulkEditStudents} handleBulkSaveStudents={handleBulkSaveStudents} onLogout={onLogout}
+                handleCleanLessonPlanValues={handleCleanLessonPlanValues}
               />
             )}
           </main>
