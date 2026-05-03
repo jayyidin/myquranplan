@@ -51,9 +51,10 @@ const SettingsView = ({
       return;
     }
     
-    handleBulkSaveStudents(parsed);
-    setBulkData('');
-    setIsBulkImportOpen(false);
+    handleBulkSaveStudents(parsed, () => {
+      setBulkData('');
+      setIsBulkImportOpen(false);
+    });
   };
 
   const handleStartEditAccount = (user) => {
@@ -83,9 +84,10 @@ const SettingsView = ({
   };
 
   const handleBulkDelete = () => {
-    requestBulkDeleteStudents(selectedStudentIds);
-    setSelectedStudentIds([]);
-    setIsBulkEditOpen(false);
+    requestBulkDeleteStudents(selectedStudentIds, () => {
+      setSelectedStudentIds([]);
+      setIsBulkEditOpen(false);
+    });
   };
 
   const handleExecuteBulkEdit = () => {
@@ -98,10 +100,11 @@ const SettingsView = ({
       return;
     }
 
-    requestBulkEditStudents(selectedStudentIds, updates);
-    setSelectedStudentIds([]);
-    setIsBulkEditOpen(false);
-    setBulkEditData({ kelas: '', halaqoh: '' });
+    requestBulkEditStudents(selectedStudentIds, updates, () => {
+      setSelectedStudentIds([]);
+      setIsBulkEditOpen(false);
+      setBulkEditData({ kelas: '', halaqoh: '' });
+    });
   };
 
   // Cari key guru secara case-insensitive untuk mendapatkan daftar halaqoh saya
@@ -327,8 +330,8 @@ const SettingsView = ({
                       </div>
                     </div>
                     <div className="p-4 space-y-3 overflow-y-auto custom-scrollbar flex-1">
-                      {appUsers.filter(u => u.status === 'active' || u.role === 'superadmin').map(user => (
-                        <div key={user.id} className="bg-slate-50 border border-slate-100 rounded-2xl p-4 transition-all hover:border-indigo-200 group">
+                      {appUsers.map(user => (
+                        <div key={user.id} className={`bg-slate-50 border ${user.status === 'pending' ? 'border-orange-200 bg-orange-50/50' : 'border-slate-100'} rounded-2xl p-4 transition-all hover:border-indigo-200 group`}>
                           {editingAccount?.id === user.id ? (
                             <div className="space-y-3 animate-in fade-in duration-300">
                               <input type="text" value={editingAccount.name} onChange={e => setEditingAccount({...editingAccount, name: e.target.value})} className="w-full bg-white border border-indigo-200 rounded-xl px-3 py-2 text-xs font-bold" />
@@ -341,9 +344,10 @@ const SettingsView = ({
                           ) : (
                             <div className="flex items-center justify-between">
                               <div className="min-w-0">
-                                <p className="font-black text-sm truncate">
-                                  {user.name}
-                                  {user.resetrequested && <span className="ml-2 text-[8px] bg-red-500 text-white px-1.5 py-0.5 rounded font-black animate-pulse">RESET</span>}
+                                <p className="font-black text-sm truncate flex items-center gap-2">
+                                  <span className="truncate">{user.name}</span>
+                                  {user.status === 'pending' && <span className="text-[8px] bg-orange-500 text-white px-1.5 py-0.5 rounded font-black shrink-0">PENDING</span>}
+                                  {user.resetrequested && <span className="text-[8px] bg-red-500 text-white px-1.5 py-0.5 rounded font-black animate-pulse shrink-0">RESET</span>}
                                 </p>
                                 <p className="text-[10px] font-bold text-slate-400 uppercase">@{user.username} • {user.role}</p>
                               </div>

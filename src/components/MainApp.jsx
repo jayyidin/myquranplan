@@ -334,7 +334,7 @@ const MainApp = ({ currentUser, onLogout }) => {
     }
   };
 
-  const handleBulkSaveStudents = async (studentList) => {
+  const handleBulkSaveStudents = (studentList, onSuccess) => {
     // Mencegah duplikasi nama ganda (Kalau ada yang sama maka jadi 1)
     const existingNames = new Set(students.map(s => s.name.trim().toLowerCase()));
     const uniqueInput = [];
@@ -353,26 +353,33 @@ const MainApp = ({ currentUser, onLogout }) => {
       return;
     }
 
-    let currentMaxSort = students.length > 0 ? Math.max(...students.map(s => s.sort_order || 0)) : 0;
-    const studentsToInsert = uniqueInput.map(s => {
-      currentMaxSort++;
-      return {
-        name: s.name,
-        kelas: s.kelas || '',
-        halaqoh: s.halaqoh || '',
-        initial: getInitials(s.name),
-        records: {},
-        sort_order: currentMaxSort
-      };
-    });
-    
-    const { data, error } = await supabase.from('students').insert(studentsToInsert).select();
-    if (error) { showToast('Gagal mengimpor data.'); } else {
-      if (data) {
-         setStudents(prev => [...prev, ...data]);
+    setConfirmDialog({
+      isOpen: true,
+      message: `Sistem akan mengimpor ${uniqueInput.length} siswa baru. Data dengan nama yang sama persis (duplikat) otomatis diabaikan agar tidak ada yang tertimpa.\n\nLanjutkan proses impor?`,
+      onConfirm: async () => {
+        let currentMaxSort = students.length > 0 ? Math.max(...students.map(s => s.sort_order || 0)) : 0;
+        const studentsToInsert = uniqueInput.map(s => {
+          currentMaxSort++;
+          return {
+            name: s.name,
+            kelas: s.kelas || '',
+            halaqoh: s.halaqoh || '',
+            initial: getInitials(s.name),
+            records: {},
+            sort_order: currentMaxSort
+          };
+        });
+        
+        const { data, error } = await supabase.from('students').insert(studentsToInsert).select();
+        if (error) { showToast('Gagal mengimpor data.'); } else {
+          if (data) {
+             setStudents(prev => [...prev, ...data]);
+          }
+          showToast(`${uniqueInput.length} siswa berhasil diimpor!`);
+          if (onSuccess) onSuccess();
+        }
       }
-      showToast(`${uniqueInput.length} siswa berhasil diimpor!`);
-    }
+    });
   };
 
   const handleInstitutionLogoUpload = (e) => {
@@ -546,6 +553,11 @@ const MainApp = ({ currentUser, onLogout }) => {
     try {
       const { photo, ...studentData } = newStudent;
         
+        if (!studentData.name || studentData.name.trim() === '') {
+          showToast('Nama siswa tidak boleh kosong!');
+          return;
+        }
+
         // Mencegah duplikasi nama
         const normalizedName = studentData.name.trim().toLowerCase();
         const isDuplicate = students.some(s => s.name.trim().toLowerCase() === normalizedName);
@@ -582,6 +594,7 @@ const MainApp = ({ currentUser, onLogout }) => {
         setStudents(prev => [...prev, data[0]]);
       }
       setIsAddStudentModalOpen(false);
+      setNewStudent({ name: '', kelas: kelasList.length > 0 ? kelasList[0] : '', halaqoh: activeHalaqoh, photo: null });
       showToast('Siswa ditambahkan!');
     } catch (e) { console.error("Gagal menyimpan siswa baru:", e); showToast('Gagal menyimpan.'); }
   };
@@ -589,6 +602,11 @@ const MainApp = ({ currentUser, onLogout }) => {
     e.preventDefault();
     try {
       let { id, photo, ...studentData } = editStudentData;
+
+      if (!studentData.name || studentData.name.trim() === '') {
+        showToast('Nama siswa tidak boleh kosong!');
+        return;
+      }
 
       // Jika foto adalah base64 baru, unggah dan ganti dengan URL
       if (photo && photo.startsWith('data:image')) {
@@ -634,7 +652,7 @@ const MainApp = ({ currentUser, onLogout }) => {
     }
   };
 
-  const requestBulkDeleteStudents = async (studentIds) => {
+  const requestBulkDeleteStudents = (studentIds, onSuccess) => {
     if (!studentIds || studentIds.length === 0) return;
     if (isSuperAdmin) {
       setConfirmDialog({
@@ -644,6 +662,7 @@ const MainApp = ({ currentUser, onLogout }) => {
           supabase.from('students').delete().in('id', studentIds).then(() => {
             setStudents(prev => prev.filter(s => !studentIds.includes(s.id)));
             showToast(`${studentIds.length} siswa dihapus.`);
+            if (onSuccess) onSuccess();
           });
         }
       });
@@ -655,23 +674,32 @@ const MainApp = ({ currentUser, onLogout }) => {
           supabase.from('students').update({ halaqoh: '' }).in('id', studentIds).then(() => {
             setStudents(prev => prev.map(s => studentIds.includes(s.id) ? { ...s, halaqoh: '' } : s));
             showToast(`${studentIds.length} siswa dikeluarkan.`);
+            if (onSuccess) onSuccess();
           });
         }
       });
     }
   };
 
-  const requestBulkEditStudents = async (studentIds, updates) => {
+  const requestBulkEditStudents = (studentIds, updates, onSuccess) => {
     if (!studentIds || studentIds.length === 0) return;
-    try {
-      const { error } = await supabase.from('students').update(updates).in('id', studentIds);
-      if (error) throw error;
-      setStudents(prev => prev.map(s => studentIds.includes(s.id) ? { ...s, ...updates } : s));
-      showToast(`${studentIds.length} siswa berhasil diperbarui.`);
-    } catch (e) {
-      console.error(e);
-      showToast('Gagal memperbarui siswa secara massal.');
-    }
+    
+    setConfirmDialog({
+      isOpen: true,
+      message: `Yakin ingin memperbarui data untuk ${studentIds.length} siswa yang dipilih?`,
+      onConfirm: async () => {
+        try {
+          const { error } = await supabase.from('students').update(updates).in('id', studentIds);
+          if (error) throw error;
+          setStudents(prev => prev.map(s => studentIds.includes(s.id) ? { ...s, ...updates } : s));
+          showToast(`${studentIds.length} siswa berhasil diperbarui.`);
+          if (onSuccess) onSuccess();
+        } catch (e) {
+          console.error(e);
+          showToast('Gagal memperbarui siswa secara massal.');
+        }
+      }
+    });
   };
 
   const handleReorderStudents = (reorderedList) => {
@@ -1316,7 +1344,10 @@ const MainApp = ({ currentUser, onLogout }) => {
               <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar bg-slate-50">
                 <StudentView
                   activeHalaqoh={activeHalaqoh} filteredStudents={filteredStudents}
-                  openAddStudentModal={() => setIsAddStudentModalOpen(true)}
+                  openAddStudentModal={() => {
+                    setNewStudent({ name: '', kelas: kelasList.length > 0 ? kelasList[0] : '', halaqoh: activeHalaqoh, photo: null });
+                    setIsAddStudentModalOpen(true);
+                  }}
                   openEditStudentModal={(s) => { setEditStudentData({ id: s.id, name: s.name, kelas: s.kelas, halaqoh: s.halaqoh, photo: s.photo || null }); setIsEditStudentModalOpen(true); }}
                   requestDeleteStudent={requestDeleteStudent} isSuperAdmin={isSuperAdmin}
                   openCropModal={openCropModal}

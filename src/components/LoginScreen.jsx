@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   BookOpen, UserPlus, GraduationCap, User, Lock, Calendar, Mic, Repeat, FileText,
   Eye, EyeOff, Loader2, ShieldAlert, CheckCircle2, HelpCircle, Download, Printer, Users,
-  ChevronLeft, ChevronRight, Search, SearchCode, RotateCcw, LayoutGrid, X
+  ChevronLeft, ChevronRight, Search, SearchCode, RotateCcw, LayoutGrid, X, Link
 } from 'lucide-react';
 import { supabase } from './supabase';
 import { formatShortDate, getInitials, formatPeriode, formatPrintData, getMonday, formatDateObj, getMonthYear, getDayName } from '../utils/helpers';
@@ -73,6 +73,23 @@ const LoginScreen = ({ onLogin }) => {
     }, 500);
   };
   const [publicWeekStart, setPublicWeekStart] = useState(getMonday(new Date()));
+
+  const handleCopyClassShareLink = () => {
+    if (!publicClassHalaqoh) return;
+    const baseUrl = window.location.origin + window.location.pathname;
+    const shareUrl = `${baseUrl}?shareClass=${encodeURIComponent(publicClassHalaqoh)}`;
+    const weekStart = publicWeekStart;
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 4);
+    const periode = formatPeriode(weekStart, weekEnd);
+    const textToCopy = `Assalamu'alaikum Warahmatullahi Wabarakatuh\n\nBerikut adalah tautan Laporan Kelas/Halaqoh *${publicClassHalaqoh}* periode *${periode}*:\n\n${shareUrl}\n\nTerima kasih.`;
+
+    navigator.clipboard.writeText(textToCopy).then(() => {
+      alert("Link Laporan Kelas berhasil disalin ke clipboard!");
+    }).catch(err => {
+      console.error('Gagal menyalin link:', err);
+    });
+  };
 
   const [publicClassHalaqoh, setPublicClassHalaqoh] = useState(null);
   const [publicClassGuru, setPublicClassGuru] = useState('');
@@ -532,52 +549,144 @@ const LoginScreen = ({ onLogin }) => {
     const totalPages = workDays.length > 3 ? 2 : 1;
 
     return (
-      <div className="min-h-screen bg-slate-900 text-gray-800 flex flex-col items-center p-0 md:p-6 overflow-y-auto printable-area print:!static print:p-0 print:m-0 print:overflow-visible transition-all duration-500">
-        <div className="fixed bottom-6 right-6 md:bottom-auto md:top-6 md:right-6 flex flex-col-reverse md:flex-row gap-3 z-[100000] print:hidden" data-html2canvas-ignore="true">
-            <button onClick={() => handleDownloadClassReportImage('class-report-page-1', 1)} disabled={isLoading} className="bg-emerald-500 text-white px-5 py-3 md:py-2.5 rounded-2xl md:rounded-xl font-bold flex items-center justify-center gap-2 shadow-xl hover:bg-emerald-600 transition-colors disabled:opacity-50">
-              {isLoading ? <span className="animate-spin text-sm">⏳</span> : <Download size={18} />}
-              <span className="inline">{isLoading ? 'Memproses...' : 'Unduh Hal. 1'}</span>
+      <div className="min-h-screen bg-slate-900 text-gray-800 flex flex-col p-0 md:p-6 printable-area print:!static print:p-0 print:m-0 transition-all duration-500">
+        
+        {/* Header Navigasi & Aksi (Sticky Top) */}
+        <div className="bg-slate-800/95 backdrop-blur-md sticky top-0 z-[100000] print:hidden flex flex-col xl:flex-row justify-between items-center p-4 sm:p-6 gap-4 shadow-2xl w-full border-b border-slate-700" data-html2canvas-ignore="true">
+          
+          {/* Bagian Kiri: Tab & Minggu */}
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full xl:w-auto">
+            <div className="flex gap-2 w-full sm:w-auto">
+               <button onClick={() => setPublicTab('lesson_plan')} className={`flex-1 sm:flex-none px-5 py-3 sm:py-2.5 text-xs sm:text-sm font-black rounded-xl transition-all shadow-md ${publicTab === 'lesson_plan' ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>Target (Lesson Plan)</button>
+               <button onClick={() => setPublicTab('jurnal')} className={`flex-1 sm:flex-none px-5 py-3 sm:py-2.5 text-xs sm:text-sm font-black rounded-xl transition-all shadow-md ${publicTab === 'jurnal' ? 'bg-blue-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>Capaian (Jurnal)</button>
+            </div>
+            <div className="flex items-center justify-between bg-slate-700 rounded-xl px-2 py-1.5 shadow-md w-full sm:w-auto">
+               <button onClick={() => changePublicWeek(-7)} className="p-2 sm:p-2.5 text-slate-400 hover:text-emerald-400 transition-colors"><ChevronLeft size={18}/></button>
+               <span className="text-xs sm:text-sm font-bold whitespace-nowrap px-4 text-white">{formatPeriode(weekDates[0], weekDates[4])}</span>
+               <button onClick={() => changePublicWeek(7)} className="p-2 sm:p-2.5 text-slate-400 hover:text-emerald-400 transition-colors"><ChevronRight size={18}/></button>
+            </div>
+          </div>
+
+          {/* Bagian Kanan: Tombol Unduh & Tutup */}
+          <div className="flex flex-wrap justify-center gap-2 w-full xl:w-auto">
+            <button onClick={handleCopyClassShareLink} className="flex-1 sm:flex-none bg-blue-600 text-white px-4 py-3 sm:py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg hover:bg-blue-700 transition-colors">
+              <Link size={16} />
+              <span className="text-[11px] sm:text-xs whitespace-nowrap">Salin Link</span>
+            </button>
+            <button onClick={() => handleDownloadClassReportImage('class-report-page-1', 1)} disabled={isLoading} className="flex-1 sm:flex-none bg-emerald-500 text-white px-4 py-3 sm:py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg hover:bg-emerald-600 transition-colors disabled:opacity-50">
+              {isLoading ? <span className="animate-spin text-sm">⏳</span> : <Download size={16} />}
+              <span className="text-[11px] sm:text-xs whitespace-nowrap">Unduh Hal. 1</span>
             </button>
             {totalPages > 1 && (
-              <button onClick={() => handleDownloadClassReportImage('class-report-page-2', 2)} disabled={isLoading} className="bg-emerald-500 text-white px-5 py-3 md:py-2.5 rounded-2xl md:rounded-xl font-bold flex items-center justify-center gap-2 shadow-xl hover:bg-emerald-600 transition-colors disabled:opacity-50">
-                {isLoading ? <span className="animate-spin text-sm">⏳</span> : <Download size={18} />}
-                <span className="inline">{isLoading ? 'Memproses...' : 'Unduh Hal. 2'}</span>
+              <button onClick={() => handleDownloadClassReportImage('class-report-page-2', 2)} disabled={isLoading} className="flex-1 sm:flex-none bg-emerald-500 text-white px-4 py-3 sm:py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg hover:bg-emerald-600 transition-colors disabled:opacity-50">
+                {isLoading ? <span className="animate-spin text-sm">⏳</span> : <Download size={16} />}
+                <span className="text-[11px] sm:text-xs whitespace-nowrap">Unduh Hal. 2</span>
               </button>
             )}
-            <button onClick={handleDownloadClassReportPdf} disabled={isLoading} className="bg-white text-gray-800 px-5 py-3 md:py-2.5 rounded-2xl md:rounded-xl font-bold flex items-center justify-center gap-2 shadow-xl hover:bg-gray-50 transition-colors disabled:opacity-50">
-              {isLoading ? <span className="animate-spin text-sm">⏳</span> : <FileText size={18} />}
-              <span className="inline">{isLoading ? 'Memproses...' : 'Download PDF'}</span>
+            <button onClick={handleDownloadClassReportPdf} disabled={isLoading} className="flex-1 sm:flex-none bg-white text-gray-800 px-4 py-3 sm:py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg hover:bg-gray-100 transition-colors disabled:opacity-50">
+              {isLoading ? <span className="animate-spin text-sm">⏳</span> : <FileText size={16} />}
+              <span className="text-[11px] sm:text-xs whitespace-nowrap">Unduh PDF</span>
             </button>
-            <button onClick={() => setPublicClassHalaqoh(null)} className="bg-red-500 text-white w-14 h-14 md:w-11 md:h-11 flex items-center justify-center rounded-full md:rounded-xl shadow-xl hover:bg-red-600 transition-colors self-end md:self-auto mb-2 md:mb-0">
-              <X size={24} className="md:w-5 md:h-5" />
+            <button onClick={() => setPublicClassHalaqoh(null)} className="flex-none bg-red-500 text-white px-4 py-3 sm:py-2.5 flex items-center justify-center rounded-xl shadow-lg hover:bg-red-600 transition-colors" title="Tutup">
+              <X size={18} />
             </button>
+          </div>
         </div>
-        <div className="fixed top-6 left-6 z-[100000] print:hidden bg-white p-2 rounded-2xl shadow-xl flex gap-2 flex-col sm:flex-row">
-            <div className="flex gap-2">
-               <button onClick={() => setPublicTab('lesson_plan')} className={`px-4 py-2 text-xs font-black rounded-xl transition-all ${publicTab === 'lesson_plan' ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-500'}`}>Target</button>
-               <button onClick={() => setPublicTab('jurnal')} className={`px-4 py-2 text-xs font-black rounded-xl transition-all ${publicTab === 'jurnal' ? 'bg-blue-500 text-white' : 'bg-slate-100 text-slate-500'}`}>Capaian</button>
-            </div>
-            <div className="flex gap-2 items-center bg-slate-100 rounded-xl px-2">
-               <button onClick={() => changePublicWeek(-7)} className="p-2 text-slate-500 hover:text-emerald-600"><ChevronLeft size={16}/></button>
-               <span className="text-xs font-bold whitespace-nowrap">{formatPeriode(weekDates[0], weekDates[4])}</span>
-               <button onClick={() => changePublicWeek(7)} className="p-2 text-slate-500 hover:text-emerald-600"><ChevronRight size={16}/></button>
-            </div>
-        </div>
-        <div className="w-full overflow-x-auto custom-scrollbar flex justify-start md:justify-center p-0 md:p-4 md:mt-24 print:p-0 print:m-0 print:overflow-visible">
-            <div className="flex flex-col gap-8 items-center w-max shrink-0">
-              <div className="w-[1000px] min-w-[1000px] shrink-0 print:w-full print:min-w-0 print:shadow-none">
-                <div className="bg-white rounded-none md:rounded-2xl shadow-2xl overflow-hidden print:shadow-none print:rounded-none">
-                  {workDays.length >= 1 && renderClassPrintTable(workDays.slice(0, 3), 1, totalPages)}
-                </div>
-              </div>
-              {totalPages > 1 && (
-                <div className="w-[1000px] min-w-[1000px] shrink-0 print:w-full print:min-w-0 print:shadow-none">
-                  <div className="bg-white rounded-none md:rounded-2xl shadow-2xl overflow-hidden print:shadow-none print:rounded-none">
-                    {workDays.length > 3 && renderClassPrintTable(workDays.slice(3, 5), 2, totalPages)}
+
+        {/* Kontainer Tabel */}
+        <div className="w-full flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar flex flex-col md:items-center p-0 md:p-6 print:p-0 print:m-0 print:overflow-visible relative">
+          
+          {/* MOBILE VIEW (CARD-BASED) */}
+          <div className="md:hidden w-full flex flex-col gap-4 print:hidden px-4 py-4 pb-24">
+            {publicClassStudents.map((student, idx) => (
+              <div key={student.id} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+                <div className="flex items-center gap-3 mb-3 border-b border-slate-50 pb-3">
+                  <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-black text-xs shrink-0">
+                    {idx + 1}
+                  </div>
+                  {student?.photo && student.photo !== '' ? (
+                    <img src={student.photo} alt={student?.name} className="w-10 h-10 rounded-full object-cover border-2 border-emerald-100 shrink-0" />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-emerald-50 border-2 border-emerald-100 text-emerald-700 flex items-center justify-center text-[11px] font-black shrink-0">{getInitials(student?.name)}</div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="font-black text-slate-800 text-sm truncate">{student?.name || 'Unknown'}</div>
+                    <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Kelas {student?.kelas || '-'}</div>
                   </div>
                 </div>
-              )}
+                
+                <div className="flex flex-col gap-2">
+                  {workDays.map((dateObj) => {
+                    const dateStr = formatDateObj(dateObj);
+                    const rec = student?.records?.[dateStr] || {};
+                    const k = publicTab === 'lesson_plan' ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan' } : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan' };
+                    
+                    const valM = formatPrintData(rec?.[k.m], '-', null, null);
+                    const valT = formatPrintData(rec?.[k.t], rec?.[k.h], rec?.[k.tNilai], rec?.[k.tsNilai]);
+                    const valF = formatPrintData(rec?.[k.f], rec?.[k.af], null, rec?.[k.fNilai]);
+                    const valC = rec?.[k.c] && rec?.[k.c] !== '-' ? String(rec[k.c]) : '';
+
+                    const hasData = valM !== '-' || valT !== '-' || valF !== '-' || valC !== '';
+                    if (!hasData) return null;
+
+                    return (
+                      <div key={dateStr} className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                        <div className="text-[10px] font-black text-emerald-600 mb-2 uppercase tracking-widest">{getDayName(dateObj)} <span className="text-slate-400 normal-case font-bold ml-1">{formatShortDate(dateObj)}</span></div>
+                        <div className="flex flex-col gap-2">
+                          {valM !== '-' && (
+                            <div>
+                              <div className="text-[9px] text-emerald-500 font-black uppercase tracking-widest mb-0.5">Murojaah</div>
+                              <div className="text-[11px] font-bold text-slate-700 leading-snug whitespace-pre-wrap">{valM}</div>
+                            </div>
+                          )}
+                          {valT !== '-' && (
+                            <div>
+                              <div className="text-[9px] text-blue-500 font-black uppercase tracking-widest mb-0.5">Tahsin</div>
+                              <div className="text-[11px] font-bold text-slate-700 leading-snug whitespace-pre-wrap">{valT}</div>
+                            </div>
+                          )}
+                          {valF !== '-' && (
+                            <div>
+                              <div className="text-[9px] text-purple-500 font-black uppercase tracking-widest mb-0.5">Tahfidz</div>
+                              <div className="text-[11px] font-bold text-slate-700 leading-snug whitespace-pre-wrap">{valF}</div>
+                            </div>
+                          )}
+                          {valC && (
+                            <div className="mt-1 text-[10px] text-red-600 font-bold leading-snug"><span className="text-orange-500 font-black uppercase tracking-widest text-[9px]">Catatan:</span><br/> {valC}</div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {workDays.every(d => {
+                    const k = publicTab === 'lesson_plan' ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan' } : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan' };
+                    const rec = student?.records?.[formatDateObj(d)] || {};
+                    return !(rec[k.m] && rec[k.m] !== '-') && !(rec[k.t] && rec[k.t] !== '-') && !(rec[k.f] && rec[k.f] !== '-') && !(rec[k.c] && rec[k.c] !== '-');
+                  }) && (
+                    <div className="text-center py-4 text-slate-400 text-[11px] font-bold italic">
+                      Belum ada rekaman pekan ini.
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* DESKTOP & PRINT VIEW (TABLE) */}
+          <div className="absolute top-[-9999px] left-[-9999px] md:static opacity-0 md:opacity-100 pointer-events-none md:pointer-events-auto flex flex-col gap-6 sm:gap-8 items-center w-max shrink-0 print:!static print:!opacity-100 print:!pointer-events-auto print:!flex print:w-full">
+            <div className="w-[1000px] min-w-[1000px] shrink-0 print:w-full print:min-w-0 print:shadow-none">
+              <div className="bg-white rounded-2xl shadow-2xl overflow-hidden print:shadow-none print:rounded-none">
+                {workDays.length >= 1 && renderClassPrintTable(workDays.slice(0, 3), 1, totalPages)}
+              </div>
             </div>
+            {totalPages > 1 && (
+              <div className="w-[1000px] min-w-[1000px] shrink-0 print:w-full print:min-w-0 print:shadow-none">
+                <div className="bg-white rounded-2xl shadow-2xl overflow-hidden print:shadow-none print:rounded-none">
+                  {workDays.length > 3 && renderClassPrintTable(workDays.slice(3, 5), 2, totalPages)}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );

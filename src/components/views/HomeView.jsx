@@ -459,8 +459,6 @@ const HomeView = ({
       previousWeekEnd.setDate(previousWeekEnd.getDate() - 3);
     }
 
-    if (homeTab === 'lesson_plan' && !isMondayLessonPlan) return ghostData;
-
     filteredStudents.forEach(s => {
       const recordedDates = Object.keys(s.records || {})
         .map(d => new Date(d))
@@ -726,15 +724,90 @@ const HomeView = ({
                 </div>
 
                 {/* Konten Laporan */}
-                <div className="w-full overflow-x-auto custom-scrollbar flex justify-start md:justify-center p-0 md:p-4 print:p-0 print:overflow-visible">
-                  <div className="flex flex-col gap-8 items-center w-max shrink-0">
-                    {/* Halaman 1 */}
+                <div className="w-full flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar flex flex-col md:items-center p-0 md:p-4 print:p-0 print:overflow-visible relative">
+                  
+                  {/* MOBILE VIEW (CARD-BASED) */}
+                  <div className="md:hidden w-full flex flex-col gap-4 print:hidden px-4 py-4 pb-24">
+                    {filteredStudents.map((student, idx) => (
+                      <div key={student.id} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+                        <div className="flex items-center gap-3 mb-3 border-b border-slate-50 pb-3">
+                          <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-black text-xs shrink-0">
+                            {idx + 1}
+                          </div>
+                          {student?.photo && student.photo !== '' ? (
+                            <img src={student.photo} alt={student?.name} className="w-10 h-10 rounded-full object-cover border-2 border-emerald-100 shrink-0" />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-emerald-50 border-2 border-emerald-100 text-emerald-700 flex items-center justify-center text-[11px] font-black shrink-0">{getInitials(student?.name)}</div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="font-black text-slate-800 text-sm truncate">{student?.name || 'Unknown'}</div>
+                            <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Kelas {student?.kelas || '-'}</div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex flex-col gap-2">
+                          {workDays.map((dateObj) => {
+                            const dateStr = getDateString(dateObj);
+                            const rec = student?.records?.[dateStr] || {};
+                            
+                            const valM = formatPrintData(rec?.[k.m], '-', null, null);
+                            const valT = formatPrintData(rec?.[k.t], rec?.[k.h], rec?.[k.tNilai], rec?.[k.tsNilai]);
+                            const valF = formatPrintData(rec?.[k.f], rec?.[k.af], null, rec?.[k.fNilai]);
+                            const valC = rec?.[k.c] && rec?.[k.c] !== '-' ? String(rec[k.c]) : '';
+
+                            const hasData = valM !== '-' || valT !== '-' || valF !== '-' || valC !== '';
+                            if (!hasData) return null;
+
+                            return (
+                              <div key={dateStr} className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                                <div className="text-[10px] font-black text-emerald-600 mb-2 uppercase tracking-widest">{getDayName(dateObj)} <span className="text-slate-400 normal-case font-bold ml-1">{formatShortDate(dateObj)}</span></div>
+                                <div className="flex flex-col gap-2">
+                                  {valM !== '-' && (
+                                    <div>
+                                      <div className="text-[9px] text-emerald-500 font-black uppercase tracking-widest mb-0.5">Murojaah</div>
+                                      <div className="text-[11px] font-bold text-slate-700 leading-snug whitespace-pre-wrap">{valM}</div>
+                                    </div>
+                                  )}
+                                  {valT !== '-' && (
+                                    <div>
+                                      <div className="text-[9px] text-blue-500 font-black uppercase tracking-widest mb-0.5">Tahsin</div>
+                                      <div className="text-[11px] font-bold text-slate-700 leading-snug whitespace-pre-wrap">{valT}</div>
+                                    </div>
+                                  )}
+                                  {valF !== '-' && (
+                                    <div>
+                                      <div className="text-[9px] text-purple-500 font-black uppercase tracking-widest mb-0.5">Tahfidz</div>
+                                      <div className="text-[11px] font-bold text-slate-700 leading-snug whitespace-pre-wrap">{valF}</div>
+                                    </div>
+                                  )}
+                                  {valC && (
+                                    <div className="mt-1 text-[10px] text-red-600 font-bold leading-snug"><span className="text-orange-500 font-black uppercase tracking-widest text-[9px]">Catatan:</span><br/> {valC}</div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                          
+                          {workDays.every(d => {
+                            const rec = student?.records?.[getDateString(d)] || {};
+                            return !(rec[k.m] && rec[k.m] !== '-') && !(rec[k.t] && rec[k.t] !== '-') && !(rec[k.f] && rec[k.f] !== '-') && !(rec[k.c] && rec[k.c] !== '-');
+                          }) && (
+                            <div className="text-center py-4 text-slate-400 text-[11px] font-bold italic">
+                              Belum ada rekaman pekan ini.
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* DESKTOP & PRINT VIEW (TABLE) */}
+                  <div className="absolute top-[-9999px] left-[-9999px] md:static opacity-0 md:opacity-100 pointer-events-none md:pointer-events-auto flex flex-col gap-6 sm:gap-8 items-center w-max shrink-0 print:!static print:!opacity-100 print:!pointer-events-auto print:!flex print:w-full">
                     <div className="w-[1000px] min-w-[1000px] shrink-0 print:w-full print:min-w-0 print:shadow-none">
                       <div className="bg-white rounded-none md:rounded-2xl shadow-2xl overflow-hidden print:shadow-none print:rounded-none">
                         {workDays.length >= 1 && renderPrintTable(workDays.slice(0, 3), 1, totalPages)}
                       </div>
                     </div>
-                    {/* Halaman 2 */}
                     {totalPages > 1 && (
                       <div className="w-[1000px] min-w-[1000px] shrink-0 print:w-full print:min-w-0 print:shadow-none">
                         <div className="bg-white rounded-none md:rounded-2xl shadow-2xl overflow-hidden print:shadow-none print:rounded-none">
@@ -943,11 +1016,14 @@ const HomeView = ({
               </div>
             </div>
             <div className="flex w-full md:w-auto gap-2 shrink-0 mt-1 sm:mt-0 transition-all">
-              <button onClick={() => handleOpenModal(null, 'full_bulk', homeTab)} disabled={!activeHalaqoh} className="flex-1 md:flex-none border-2 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 font-black text-xs sm:text-sm transition-all bg-white text-slate-700 border-slate-200 hover:bg-gray-50 disabled:opacity-50">
-                <Edit3 size={16} className="text-[#00e676]" /> <span className="inline">Input Massal</span>
+              <button onClick={handleCopyClassShareLink} disabled={!activeHalaqoh} className="flex-1 md:flex-none border-2 px-3 sm:px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 font-black text-xs sm:text-sm transition-all bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 disabled:opacity-50" title="Salin Link Laporan Kelas">
+                <Link size={16} /> <span className="hidden sm:inline">Salin Link</span>
               </button>
-              <button onClick={() => setIsClassReportVisible(true)} disabled={!activeHalaqoh || filteredStudents.length === 0} className="flex-1 md:flex-none px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 font-black text-xs sm:text-sm transition-all shadow-lg border-2 bg-gray-800 text-white border-gray-900 hover:bg-gray-700 disabled:opacity-50">
-                <Printer size={18} /> <span className="inline">Laporan Kelas</span>
+              <button onClick={() => handleOpenModal(null, 'full_bulk', homeTab)} disabled={!activeHalaqoh} className="flex-1 md:flex-none border-2 px-3 sm:px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 font-black text-xs sm:text-sm transition-all bg-white text-slate-700 border-slate-200 hover:bg-gray-50 disabled:opacity-50" title="Input Massal">
+                <Edit3 size={16} className="text-[#00e676]" /> <span className="hidden sm:inline">Input Massal</span>
+              </button>
+              <button onClick={() => setIsClassReportVisible(true)} disabled={!activeHalaqoh || filteredStudents.length === 0} className="flex-1 md:flex-none px-3 sm:px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 font-black text-xs sm:text-sm transition-all shadow-lg border-2 bg-gray-800 text-white border-gray-900 hover:bg-gray-700 disabled:opacity-50" title="Laporan Kelas">
+                <Printer size={16} /> <span className="hidden sm:inline">Laporan Kelas</span>
               </button>
             </div>
           </div>
@@ -1164,7 +1240,7 @@ const HomeView = ({
 
                           // Ambil data referensi pekan lalu
                           const lastRec = ghostDataMap[student.id];
-                          const ghostLabel = homeTab === 'lesson_plan' ? 'Jurnal Pekan Lalu' : 'Hari Sebelumnya';
+                          const ghostLabel = homeTab === 'lesson_plan' && new Date(activeDate).getDay() === 1 ? 'Jurnal Pekan Lalu' : 'Hari Sebelumnya';
                           const isTahsinEmpty = valT === '-' && valH === '-' && valTNilai === '-';
                           const isTahfidzEmpty = valF === '-' && valAF === '-' && valFNilai === '-';
                           const isMurojaahEmpty = valM === '-';
