@@ -1021,6 +1021,25 @@ const MainApp = ({ currentUser, onLogout }) => {
         .filter(d => d < activeDateObj) // Only dates before the active date
         .sort((a, b) => b - a); // Sort descending
 
+      const hasValue = (value) => value !== undefined && value !== null && String(value).trim() !== '' && String(value).trim() !== '-';
+      const combinedRecord = {
+        [k.t]: '-',
+        [k.h]: '-',
+        [k.tNilai]: '-',
+        [k.tsNilai]: '-',
+        [k.f]: '-',
+        [k.af]: '-',
+        [k.fNilai]: '-',
+        [k.m]: '-',
+        [k.c]: '-',
+        [k.cT]: '-',
+        [k.cF]: '-',
+        __dates: {}
+      };
+      const hasTahsin = () => hasValue(combinedRecord[k.t]) || hasValue(combinedRecord[k.h]);
+      const hasTahfidz = () => hasValue(combinedRecord[k.f]) || hasValue(combinedRecord[k.af]);
+      const hasMurojaah = () => hasValue(combinedRecord[k.m]);
+
       for (const d of recordedDates) {
         const dStr = formatDateObj(d);
         const rec = s.records[dStr];
@@ -1028,33 +1047,39 @@ const MainApp = ({ currentUser, onLogout }) => {
         const isFromPreviousWeek = d < currentWeekStart;
         const searchKeys = (homeTab === 'lesson_plan' && isFromPreviousWeek) ? jurnalKeys : k;
 
-        if (rec && ((rec[searchKeys.t] && rec[searchKeys.t] !== '-') || (rec[searchKeys.f] && rec[searchKeys.f] !== '-') || (rec[searchKeys.m] && rec[searchKeys.m] !== '-'))) {
+        if (rec) {
           const catatan = String(rec[searchKeys.c] || '').toLowerCase();
           if (catatan.includes('libur') || catatan.includes('sakit') || catatan.includes('izin') || catatan.includes('alpa') || catatan.includes('tidak hadir')) continue;
-          
-          if (homeTab === 'lesson_plan' && isFromPreviousWeek) {
-            return { 
-              record: {
-                ...rec,
-                tahsin: rec.jurnalTahsin,
-                halAyatTahsin: rec.jurnalHalAyatTahsin || '-',
-                tahfidz: rec.jurnalTahfidz,
-                ayatTahfidz: rec.jurnalAyatTahfidz || '-',
-                murojaah: rec.jurnalMurojaah,
-                catatan: '-',
-                catatanTahsin: '-',
-                catatanTahfidz: '-',
-                tahsinNilai: '-',
-                tahsinSuratNilai: '-',
-                tahfidzNilai: '-'
-              }, 
-              date: dStr 
-            };
+
+          if (!hasTahsin() && (hasValue(rec[searchKeys.t]) || hasValue(rec[searchKeys.h]))) {
+            combinedRecord[k.t] = rec[searchKeys.t] || '-';
+            combinedRecord[k.h] = rec[searchKeys.h] || '-';
+            combinedRecord[k.tNilai] = homeTab === 'lesson_plan' ? '-' : rec[searchKeys.tNilai] || '-';
+            combinedRecord[k.tsNilai] = homeTab === 'lesson_plan' ? '-' : rec[searchKeys.tsNilai] || '-';
+            combinedRecord.__dates.tahsin = dStr;
           }
-          return { record: rec, date: dStr }; // Found it
+
+          if (!hasTahfidz() && (hasValue(rec[searchKeys.f]) || hasValue(rec[searchKeys.af]))) {
+            combinedRecord[k.f] = rec[searchKeys.f] || '-';
+            combinedRecord[k.af] = rec[searchKeys.af] || '-';
+            combinedRecord[k.fNilai] = homeTab === 'lesson_plan' ? '-' : rec[searchKeys.fNilai] || '-';
+            combinedRecord.__dates.tahfidz = dStr;
+          }
+
+          if (!hasMurojaah() && hasValue(rec[searchKeys.m])) {
+            combinedRecord[k.m] = rec[searchKeys.m] || '-';
+            combinedRecord.__dates.murojaah = dStr;
+          }
+
+          if (hasTahsin() && hasTahfidz() && hasMurojaah()) break;
         }
       }
-      return null; // Not found
+
+      if (!hasTahsin() && !hasTahfidz() && !hasMurojaah()) return null;
+      return {
+        record: combinedRecord,
+        date: combinedRecord.__dates.tahsin || combinedRecord.__dates.tahfidz || combinedRecord.__dates.murojaah
+      };
     };
 
     // Logic for 'Lanjutkan Data Terakhir' button (bulk_last)

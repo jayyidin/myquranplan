@@ -146,6 +146,11 @@ const hasMeaningfulValue = (value) => {
   return normalized !== '' && normalized !== '-';
 };
 
+const getGhostDateLabel = (record, group) => {
+  const date = record?.__dates?.[group] || record?.date;
+  return date ? formatShortDate(new Date(date)) : '-';
+};
+
 const HomeView = ({
   activeHalaqoh, activeGuru, homeTab, setHomeTab, weekStart, changeWeek,
   activeDate, setActiveDate, weekDates, filteredStudents, handleOpenModal,
@@ -577,6 +582,25 @@ const HomeView = ({
         .filter(d => d < activeDateObj)
         .sort((a, b) => b - a); // Urutkan descending
 
+      const ghostRecord = {
+        [k.t]: '-',
+        [k.h]: '-',
+        [k.tNilai]: '-',
+        [k.tsNilai]: '-',
+        [k.f]: '-',
+        [k.af]: '-',
+        [k.fNilai]: '-',
+        [k.m]: '-',
+        [k.c]: '-',
+        [k.cT]: '-',
+        [k.cF]: '-',
+        __dates: {}
+      };
+
+      const hasTahsinGhost = () => hasMeaningfulValue(ghostRecord[k.t]) || hasMeaningfulValue(ghostRecord[k.h]);
+      const hasTahfidzGhost = () => hasMeaningfulValue(ghostRecord[k.f]) || hasMeaningfulValue(ghostRecord[k.af]);
+      const hasMurojaahGhost = () => hasMeaningfulValue(ghostRecord[k.m]);
+
       for (const d of recordedDates) {
         const dStr = getDateString(d);
         const rec = s.records[dStr];
@@ -584,26 +608,39 @@ const HomeView = ({
         const isFromPreviousWeek = d < currentWeekStart;
         const searchKeys = (homeTab === 'lesson_plan' && isFromPreviousWeek) ? jurnalKeys : k;
 
-        if (rec && (
-          hasMeaningfulValue(rec[searchKeys.t]) || hasMeaningfulValue(rec[searchKeys.f]) || hasMeaningfulValue(rec[searchKeys.m])
-        )) {
+        if (rec) {
           const catatan = String(rec[searchKeys.c] || '').toLowerCase();
           if (catatan.includes('libur') || catatan.includes('sakit') || catatan.includes('izin') || catatan.includes('alpa') || catatan.includes('tidak hadir')) continue;
 
-          let ghostRecord;
-          if (homeTab === 'lesson_plan' && isFromPreviousWeek) {
-            ghostRecord = { ...rec, tahsin: rec[jurnalKeys.t], halAyatTahsin: rec[jurnalKeys.h], tahsinNilai: '-', tahsinSuratNilai: '-', tahfidz: rec[jurnalKeys.f], ayatTahfidz: rec[jurnalKeys.af], tahfidzNilai: '-', murojaah: rec[jurnalKeys.m], catatan: '-', catatanTahsin: '-', catatanTahfidz: '-' };
-          } else {
-            ghostRecord = { ...rec, [k.c]: '-', [k.cT]: '-', [k.cF]: '-' };
-            if (homeTab === 'lesson_plan') {
-              ghostRecord.tahsinNilai = '-';
-              ghostRecord.tahsinSuratNilai = '-';
-              ghostRecord.tahfidzNilai = '-';
-            }
+          if (!hasTahsinGhost() && (hasMeaningfulValue(rec[searchKeys.t]) || hasMeaningfulValue(rec[searchKeys.h]))) {
+            ghostRecord[k.t] = rec[searchKeys.t] || '-';
+            ghostRecord[k.h] = rec[searchKeys.h] || '-';
+            ghostRecord[k.tNilai] = homeTab === 'lesson_plan' ? '-' : rec[searchKeys.tNilai] || '-';
+            ghostRecord[k.tsNilai] = homeTab === 'lesson_plan' ? '-' : rec[searchKeys.tsNilai] || '-';
+            ghostRecord.__dates.tahsin = dStr;
           }
-          ghostData[s.id] = { ...ghostRecord, date: dStr };
-          break;
+
+          if (!hasTahfidzGhost() && (hasMeaningfulValue(rec[searchKeys.f]) || hasMeaningfulValue(rec[searchKeys.af]))) {
+            ghostRecord[k.f] = rec[searchKeys.f] || '-';
+            ghostRecord[k.af] = rec[searchKeys.af] || '-';
+            ghostRecord[k.fNilai] = homeTab === 'lesson_plan' ? '-' : rec[searchKeys.fNilai] || '-';
+            ghostRecord.__dates.tahfidz = dStr;
+          }
+
+          if (!hasMurojaahGhost() && hasMeaningfulValue(rec[searchKeys.m])) {
+            ghostRecord[k.m] = rec[searchKeys.m] || '-';
+            ghostRecord.__dates.murojaah = dStr;
+          }
+
+          if (hasTahsinGhost() && hasTahfidzGhost() && hasMurojaahGhost()) break;
         }
+      }
+
+      if (hasTahsinGhost() || hasTahfidzGhost() || hasMurojaahGhost()) {
+        ghostData[s.id] = {
+          ...ghostRecord,
+          date: ghostRecord.__dates.tahsin || ghostRecord.__dates.tahfidz || ghostRecord.__dates.murojaah
+        };
       }
     });
     return ghostData;
@@ -1481,7 +1518,7 @@ const HomeView = ({
                                   {!isTahsinEmpty ? (
                                     renderTahsinCard(valT, valH, student?.id, activeDate, valTNilai, valTSNilai)
                                   ) : hasGhostTahsin ? (
-                                <div className="pointer-events-none opacity-30 grayscale blur-[0.5px] scale-90 origin-center transition-all group-hover/cell:opacity-70 group-hover/cell:blur-none group-hover/cell:grayscale-0" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>
+                                <div className="pointer-events-none opacity-30 grayscale blur-[0.5px] scale-90 origin-center transition-all group-hover/cell:opacity-70 group-hover/cell:blur-none group-hover/cell:grayscale-0" title={`Dari tgl ${getGhostDateLabel(lastRec, 'tahsin')}`}>
                                     <div className="flex items-center justify-center gap-1 text-[9px] font-black text-gray-400 uppercase tracking-tighter mb-0.5">
                                       <History size={10} /> {ghostLabel}
                                     </div>
@@ -1506,7 +1543,7 @@ const HomeView = ({
                                   {!isTahfidzEmpty ? (
                                     renderTahfidzCard(valF, valAF, student?.id, activeDate, valFNilai)
                                   ) : hasGhostTahfidz ? (
-                                <div className="pointer-events-none opacity-30 grayscale blur-[0.5px] scale-90 origin-center transition-all group-hover/cell:opacity-70 group-hover/cell:blur-none group-hover/cell:grayscale-0" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>
+                                <div className="pointer-events-none opacity-30 grayscale blur-[0.5px] scale-90 origin-center transition-all group-hover/cell:opacity-70 group-hover/cell:blur-none group-hover/cell:grayscale-0" title={`Dari tgl ${getGhostDateLabel(lastRec, 'tahfidz')}`}>
                                     <div className="flex items-center justify-center gap-1 text-[9px] font-black text-gray-400 uppercase tracking-tighter mb-0.5">
                                       <History size={10} /> {ghostLabel}
                                     </div>
@@ -1526,7 +1563,7 @@ const HomeView = ({
                                   {!isMurojaahEmpty ? (
                                     renderMurojaahCard(valM, student?.id, activeDate)
                                   ) : hasGhostMurojaah ? (
-                                <div className="pointer-events-none opacity-30 grayscale blur-[0.5px] scale-90 origin-center transition-all group-hover/cell:opacity-70 group-hover/cell:blur-none group-hover/cell:grayscale-0" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>
+                                <div className="pointer-events-none opacity-30 grayscale blur-[0.5px] scale-90 origin-center transition-all group-hover/cell:opacity-70 group-hover/cell:blur-none group-hover/cell:grayscale-0" title={`Dari tgl ${getGhostDateLabel(lastRec, 'murojaah')}`}>
                                     <div className="flex items-center justify-center gap-1 text-[9px] font-black text-gray-400 uppercase tracking-tighter mb-0.5">
                                       <History size={10} /> {ghostLabel}
                                     </div>
@@ -1546,7 +1583,7 @@ const HomeView = ({
                                   {!isCatatanEmpty ? (
                                     renderCompactCatatan(valC, valCT, valCF, getStatusColor)
                                   ) : hasGhostCatatan ? (
-                                    <div className="pointer-events-none opacity-30 grayscale blur-[0.5px] italic scale-90 origin-center transition-all group-hover/cell:opacity-70 group-hover/cell:blur-none group-hover/cell:grayscale-0" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>
+                                    <div className="pointer-events-none opacity-30 grayscale blur-[0.5px] italic scale-90 origin-center transition-all group-hover/cell:opacity-70 group-hover/cell:blur-none group-hover/cell:grayscale-0" title={`Dari tgl ${getGhostDateLabel(lastRec, 'catatan')}`}>
                                       <div className="flex flex-col items-center justify-center gap-1 text-[10px] text-gray-400 w-full px-2 py-1 text-center">
                                         <div className="flex items-center gap-1 font-black uppercase tracking-tighter mb-0.5"><History size={10} /> {ghostLabel}</div>
                                         {lastRec[k.cT] && lastRec[k.cT] !== '-' && <div className="leading-tight line-clamp-1 w-full"><span className="font-black">T:</span> {lastRec[k.cT]}</div>}
@@ -1670,7 +1707,7 @@ const HomeView = ({
                                 </div>
                               )}
                               <div className="flex items-center gap-1 mb-1.5 text-blue-500 font-black uppercase text-[8px] tracking-widest"><BookOpen size={12} /> Tahsin</div>
-                              {!isTahsinEmpty ? renderTahsinCard(valT, valH, student.id, activeDate, valTNilai, valTSNilai) : (hasGhostTahsin ? <div className="pointer-events-none opacity-30 grayscale blur-[0.5px] scale-90 transition-all" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>{renderTahsinCard(lastRec[k.t], lastRec[k.h], student.id, 'ghost', lastRec[k.tNilai], lastRec[k.tsNilai])}</div> : <span className="text-gray-300">-</span>)
+                              {!isTahsinEmpty ? renderTahsinCard(valT, valH, student.id, activeDate, valTNilai, valTSNilai) : (hasGhostTahsin ? <div className="pointer-events-none opacity-30 grayscale blur-[0.5px] scale-90 transition-all" title={`Dari tgl ${getGhostDateLabel(lastRec, 'tahsin')}`}>{renderTahsinCard(lastRec[k.t], lastRec[k.h], student.id, 'ghost', lastRec[k.tNilai], lastRec[k.tsNilai])}</div> : <span className="text-gray-300">-</span>)
                               }
                               {!isTahsinEmpty && (
                                 <button onClick={(e) => { e.stopPropagation(); handleRemoveData(e, student.id, activeDate, 'tahsin_all', homeTab); }} className="absolute top-1 right-1 p-1 bg-red-50 text-red-500 rounded-lg">
@@ -1687,7 +1724,7 @@ const HomeView = ({
                                 </div>
                               )}
                               <div className="flex items-center gap-1 mb-1.5 text-purple-500 font-black uppercase text-[8px] tracking-widest"><Mic size={12} /> Tahfidz</div>
-                              {!isTahfidzEmpty ? renderTahfidzCard(valF, valAF, student.id, activeDate, valFNilai) : (hasGhostTahfidz ? <div className="pointer-events-none opacity-30 grayscale blur-[0.5px] scale-90 transition-all" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>{renderTahfidzCard(lastRec[k.f], lastRec[k.af], student.id, 'ghost', lastRec[k.fNilai])}</div> : <span className="text-gray-300">-</span>)
+                              {!isTahfidzEmpty ? renderTahfidzCard(valF, valAF, student.id, activeDate, valFNilai) : (hasGhostTahfidz ? <div className="pointer-events-none opacity-30 grayscale blur-[0.5px] scale-90 transition-all" title={`Dari tgl ${getGhostDateLabel(lastRec, 'tahfidz')}`}>{renderTahfidzCard(lastRec[k.f], lastRec[k.af], student.id, 'ghost', lastRec[k.fNilai])}</div> : <span className="text-gray-300">-</span>)
                               }
                               {!isTahfidzEmpty && (
                                 <button onClick={(e) => { e.stopPropagation(); handleRemoveData(e, student.id, activeDate, 'tahfidz_all', homeTab); }} className="absolute top-1 right-1 p-1 bg-red-50 text-red-500 rounded-lg">
@@ -1699,7 +1736,7 @@ const HomeView = ({
                             {/* Murojaah */}
                             <div onClick={() => handleOpenModal(student, 'murojaah', homeTab)} className="p-3 bg-emerald-50/30 border border-emerald-100 rounded-2xl flex flex-col items-center justify-center min-h-[90px] h-full text-center active:scale-95 transition-all relative">
                               <div className="flex items-center gap-1 mb-1.5 text-emerald-500 font-black uppercase text-[8px] tracking-widest"><Repeat size={12} /> Murojaah</div>
-                              {!isMurojaahEmpty ? renderMurojaahCard(valM, student.id, activeDate) : (hasGhostMurojaah ? <div className="pointer-events-none opacity-30 grayscale blur-[0.5px] scale-90 transition-all" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>{renderMurojaahCard(lastRec[k.m], student.id, 'ghost')}</div> : <span className="text-gray-300">-</span>)
+                              {!isMurojaahEmpty ? renderMurojaahCard(valM, student.id, activeDate) : (hasGhostMurojaah ? <div className="pointer-events-none opacity-30 grayscale blur-[0.5px] scale-90 transition-all" title={`Dari tgl ${getGhostDateLabel(lastRec, 'murojaah')}`}>{renderMurojaahCard(lastRec[k.m], student.id, 'ghost')}</div> : <span className="text-gray-300">-</span>)
                               }
                               {!isMurojaahEmpty && (
                                 <button onClick={(e) => { e.stopPropagation(); handleRemoveData(e, student.id, activeDate, 'murojaah_all', homeTab); }} className="absolute top-1 right-1 p-1 bg-red-50 text-red-500 rounded-lg">
@@ -1714,7 +1751,7 @@ const HomeView = ({
                               {!isCatatanEmpty ? (
                                 renderCompactCatatan(valC, valCT, valCF, getStatusColor)
                               ) : (hasGhostCatatan ? (
-                                <div className="pointer-events-none text-[10px] text-gray-400 opacity-40 blur-[0.5px] italic line-clamp-2 transition-all" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>
+                                <div className="pointer-events-none text-[10px] text-gray-400 opacity-40 blur-[0.5px] italic line-clamp-2 transition-all" title={`Dari tgl ${getGhostDateLabel(lastRec, 'catatan')}`}>
                                   {lastRec[k.cT] && lastRec[k.cT] !== '-' && <div><span className="font-black">T:</span> {lastRec[k.cT]}</div>}
                                   {lastRec[k.cF] && lastRec[k.cF] !== '-' && <div><span className="font-black">F:</span> {lastRec[k.cF]}</div>}
                                   {lastRec[k.c] && lastRec[k.c] !== '-' && <div>{lastRec[k.c]}</div>}
