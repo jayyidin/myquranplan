@@ -124,11 +124,16 @@ export const JurnalModal = ({
 
                         {/* Pilihan Halaman */}
                         {['Jilid 1', 'Jilid 2', 'Jilid 3', 'Jilid 4', 'Jilid 5', 'Jilid 6', 'Tajwid', 'Ghorib'].includes(plan.tahsinKategori) && (
-                          <div>
-                              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Halaman</label>
-                              <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
+                          <div className="bg-blue-50/30 p-3 sm:p-4 rounded-2xl border border-blue-100/50">
+                              <div className="flex items-center justify-between mb-3">
+                                <label className="block text-[10px] font-black text-blue-600 uppercase tracking-widest">Halaman</label>
+                                {plan.tahsinHalaman.length > 0 && (
+                                  <span className="text-[10px] font-bold text-blue-500 bg-blue-100 px-2 py-0.5 rounded-full">{plan.tahsinHalaman.length} Dipilih</span>
+                                )}
+                              </div>
+                              <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-1.5 sm:gap-2">
                                 {Array.from({length: plan.tahsinKategori === 'Ghorib' ? 28 : plan.tahsinKategori === 'Tajwid' ? 20 : 40}, (_, i) => String(i + 1)).map(p => (
-                                    <button type="button" key={p} onClick={() => handleToggleArray(plan.id, 'tahsinHalaman', p)} className={`shrink-0 w-12 h-12 rounded-xl text-sm font-black border-2 flex items-center justify-center transition-all ${plan.tahsinHalaman.includes(p) ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:bg-blue-50'}`}>{p}</button>
+                                    <button type="button" key={p} onClick={() => handleToggleArray(plan.id, 'tahsinHalaman', p)} className={`w-full aspect-square rounded-xl text-xs sm:text-sm font-black border-2 flex items-center justify-center transition-all ${plan.tahsinHalaman.includes(p) ? 'bg-blue-600 text-white border-blue-600 shadow-md scale-105' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:bg-blue-50'}`}>{p}</button>
                                 ))}
                               </div>
                           </div>
@@ -136,11 +141,16 @@ export const JurnalModal = ({
 
                         {/* Pilihan Baris */}
                         {['Jilid 1', 'Jilid 2', 'Jilid 3', 'Jilid 4', 'Jilid 5', 'Jilid 6'].includes(plan.tahsinKategori) && (
-                          <div>
-                              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Baris</label>
-                              <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
+                          <div className="bg-blue-50/30 p-3 sm:p-4 rounded-2xl border border-blue-100/50">
+                              <div className="flex items-center justify-between mb-3">
+                                <label className="block text-[10px] font-black text-blue-600 uppercase tracking-widest">Baris</label>
+                                {plan.tahsinBaris.length > 0 && (
+                                  <span className="text-[10px] font-bold text-blue-500 bg-blue-100 px-2 py-0.5 rounded-full">{plan.tahsinBaris.length} Dipilih</span>
+                                )}
+                              </div>
+                              <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5 sm:gap-2">
                                 {['1','2','3','4','5','6','7','8'].map(b => (
-                                    <button type="button" key={b} onClick={() => handleToggleArray(plan.id, 'tahsinBaris', b)} className={`shrink-0 w-12 h-12 rounded-xl text-sm font-black border-2 flex items-center justify-center transition-all ${plan.tahsinBaris.includes(b) ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:bg-blue-50'}`}>{b}</button>
+                                    <button type="button" key={b} onClick={() => handleToggleArray(plan.id, 'tahsinBaris', b)} className={`w-full aspect-[2/1] sm:aspect-square rounded-xl text-xs sm:text-sm font-black border-2 flex items-center justify-center transition-all ${plan.tahsinBaris.includes(b) ? 'bg-blue-600 text-white border-blue-600 shadow-md scale-105' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:bg-blue-50'}`}>{b}</button>
                                 ))}
                               </div>
                           </div>
@@ -152,13 +162,13 @@ export const JurnalModal = ({
                               <label className="block text-[10px] font-black text-blue-600 uppercase tracking-widest mb-2">
                                 Nilai {plan.tahsinKategori.includes('Jilid') ? 'Jilid' : plan.tahsinKategori}
                               </label>
-                              <div className="flex overflow-x-auto gap-2 custom-scrollbar pb-1">
+                              <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
                                   {gradeOptions.map(n => (
                                     <button 
                                       type="button" 
                                       key={n} 
                                       onClick={() => handlePlanChange(plan.id, 'tahsinNilai', n)} 
-                                      className={`shrink-0 flex-1 min-w-[50px] py-2.5 rounded-xl text-sm font-black border-2 transition-all ${plan.tahsinNilai === n ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-100 hover:border-blue-300'}`}
+                                      className={`w-full py-2.5 rounded-xl text-sm font-black border-2 transition-all ${plan.tahsinNilai === n ? 'bg-blue-600 text-white border-blue-600 shadow-md scale-105' : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-100 hover:border-blue-300'}`}
                                     >
                                       {n}
                                     </button>
@@ -349,14 +359,43 @@ export const JurnalModal = ({
               {['full_bulk', 'full_edit', 'catatan'].includes(modalMode) && (
                   <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
                     <h3 className="font-black text-gray-800 text-sm mb-4 flex items-center gap-2"><FileText size={18} className="text-orange-500"/> {homeTab === 'lesson_plan' ? 'Catatan Target Guru' : 'Catatan Capaian / Nilai Jurnal'}</h3>
-                    <textarea rows="3" placeholder="Ketikkan catatan khusus di sini..." value={plan.lainLain} onChange={e => handlePlanChange(plan.id, 'lainLain', e.target.value)} className="w-full bg-gray-50 border border-gray-200 focus:border-orange-400 rounded-2xl p-4 text-sm font-bold outline-none resize-none text-gray-800 transition-colors focus:ring-2 focus:ring-orange-400/20"></textarea>
                     
-                    <div className="mt-3 flex overflow-x-auto gap-2 pb-2 custom-scrollbar">
-                        {['Sangat Baik', 'Lancar', 'Bagus', 'Perlu Murojaah', 'Kurang Lancar', 'Ulangi Besok', 'DRILL'].map(note => (
-                          <button type="button" key={note} onClick={() => handlePlanChange(plan.id, 'lainLain', (plan.lainLain ? plan.lainLain + ', ' : '') + note)} className="shrink-0 bg-white border border-orange-200 text-orange-600 hover:bg-orange-50 px-3 py-2 rounded-xl text-[11px] font-black transition-colors shadow-sm">
-                            + {note}
-                          </button>
-                        ))}
+                    <div className="flex flex-col gap-4">
+                      <div>
+                        <label className="block text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1.5">Catatan Tahsin</label>
+                        <textarea rows="2" placeholder="Ketikkan catatan khusus tahsin..." value={plan.catatanTahsin || ''} onChange={e => handlePlanChange(plan.id, 'catatanTahsin', e.target.value)} className="w-full bg-blue-50/50 border border-blue-100 focus:border-blue-400 rounded-2xl p-3 text-sm font-bold outline-none resize-none text-gray-800 transition-colors focus:ring-2 focus:ring-blue-400/20"></textarea>
+                        <div className="mt-2 flex overflow-x-auto gap-2 pb-1 custom-scrollbar">
+                            {['Sangat Baik', 'Lancar', 'Perlu Murojaah', 'Bacaan Dengung', 'Makharijul Huruf', 'Panjang Pendek (Mad)', 'Ulangi Besok'].map(note => (
+                              <button type="button" key={note} onClick={() => handlePlanChange(plan.id, 'catatanTahsin', (plan.catatanTahsin ? plan.catatanTahsin + ', ' : '') + note)} className="shrink-0 bg-white border border-blue-200 text-blue-600 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg text-[10px] font-black transition-colors shadow-sm">
+                                + {note}
+                              </button>
+                            ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-black text-purple-500 uppercase tracking-widest mb-1.5">Catatan Tahfidz</label>
+                        <textarea rows="2" placeholder="Ketikkan catatan khusus tahfidz..." value={plan.catatanTahfidz || ''} onChange={e => handlePlanChange(plan.id, 'catatanTahfidz', e.target.value)} className="w-full bg-purple-50/50 border border-purple-100 focus:border-purple-400 rounded-2xl p-3 text-sm font-bold outline-none resize-none text-gray-800 transition-colors focus:ring-2 focus:ring-purple-400/20"></textarea>
+                        <div className="mt-2 flex overflow-x-auto gap-2 pb-1 custom-scrollbar">
+                            {['Sangat Baik', 'Lancar', 'Kelancaran Hafalan', 'Sering Lupa', 'Perlu Murojaah', 'Kurang Lancar', 'Ulangi Besok'].map(note => (
+                              <button type="button" key={note} onClick={() => handlePlanChange(plan.id, 'catatanTahfidz', (plan.catatanTahfidz ? plan.catatanTahfidz + ', ' : '') + note)} className="shrink-0 bg-white border border-purple-200 text-purple-600 hover:bg-purple-50 px-2.5 py-1.5 rounded-lg text-[10px] font-black transition-colors shadow-sm">
+                                + {note}
+                              </button>
+                            ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-black text-orange-500 uppercase tracking-widest mb-1.5">Catatan Umum / Lainnya</label>
+                        <textarea rows="2" placeholder="Ketikkan catatan lainnya (contoh: Sakit, Izin, Libur, dll)..." value={plan.lainLain || ''} onChange={e => handlePlanChange(plan.id, 'lainLain', e.target.value)} className="w-full bg-orange-50/30 border border-orange-100 focus:border-orange-400 rounded-2xl p-3 text-sm font-bold outline-none resize-none text-gray-800 transition-colors focus:ring-2 focus:ring-orange-400/20"></textarea>
+                        <div className="mt-2 flex overflow-x-auto gap-2 pb-1 custom-scrollbar">
+                            {['Sakit', 'Izin', 'Libur', 'Ujian Kenaikan Jilid'].map(note => (
+                              <button type="button" key={note} onClick={() => handlePlanChange(plan.id, 'lainLain', (plan.lainLain ? plan.lainLain + ', ' : '') + note)} className="shrink-0 bg-white border border-orange-200 text-orange-600 hover:bg-orange-50 px-2.5 py-1.5 rounded-lg text-[10px] font-black transition-colors shadow-sm">
+                                + {note}
+                              </button>
+                            ))}
+                        </div>
+                      </div>
                     </div>
                   </div>
               )}
@@ -380,6 +419,7 @@ export const JurnalModal = ({
                     <button type="button" onClick={() => { handleMarkAbsent('Alpa'); setIsAbsentMenuOpen(false); }} className="px-4 py-3 text-left text-sm font-black text-red-600 hover:bg-red-50 rounded-xl transition-colors">Alpa</button>
                     <button type="button" onClick={() => { handleMarkAbsent('Sakit'); setIsAbsentMenuOpen(false); }} className="px-4 py-3 text-left text-sm font-black text-amber-500 hover:bg-amber-50 rounded-xl transition-colors">Sakit</button>
                     <button type="button" onClick={() => { handleMarkAbsent('Izin'); setIsAbsentMenuOpen(false); }} className="px-4 py-3 text-left text-sm font-black text-blue-500 hover:bg-blue-50 rounded-xl transition-colors">Izin</button>
+                    <button type="button" onClick={() => { handleMarkAbsent('Libur'); setIsAbsentMenuOpen(false); }} className="px-4 py-3 text-left text-sm font-black text-emerald-500 hover:bg-emerald-50 rounded-xl transition-colors">Libur</button>
                   </div>
                 </>
               )}

@@ -1,7 +1,61 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Settings, Users, Edit3, Trash2, Share2, Plus, X, Calendar, ChevronLeft, ChevronRight, BookOpen, Mic, Repeat, Printer, Check, Download, FileText, History, Link, Search, ImageDown, ChevronUp, ChevronDown, ArrowUp } from 'lucide-react';
+import { Settings, Users, Edit3, Trash2, Share2, Plus, X, Calendar, ChevronLeft, ChevronRight, BookOpen, Mic, Repeat, Printer, Check, Download, FileText, History, Link, Search, ImageDown, ChevronUp, ChevronDown, ArrowUp, Star } from 'lucide-react';
 import { Tooltip } from 'react-tooltip';
 import { formatShortDate, getInitials, formatPeriode, formatPrintData } from '../../utils/helpers';
+
+const renderTextWithHighlights = (txt) => {
+  if (typeof txt !== 'string') return txt;
+  
+  const regex = /(Sangat Baik|\(A\)|\(B\+\)|\(B\)|Nilai:\s*A|Nilai:\s*B\+|Nilai:\s*B)/g;
+  const parts = txt.split(regex);
+  
+  return parts.map((part, index) => {
+    if (part === 'Sangat Baik') {
+      return (
+        <span key={index} className="inline-flex items-center gap-0.5 bg-amber-100 text-amber-700 px-1.5 py-px rounded-[4px] text-[9px] sm:text-[10px] font-black uppercase tracking-widest mx-0.5 border border-amber-200 shadow-sm align-baseline">
+          <Star size={10} className="fill-amber-500 text-amber-500" /> Sangat Baik
+        </span>
+      );
+    } else if (part === '(A)') {
+      return (
+        <span key={index} className="inline-flex items-center gap-0.5 bg-amber-400 text-amber-900 px-1.5 py-px rounded-full text-[10px] sm:text-[11px] font-black mx-0.5 shadow-sm shadow-amber-200 align-baseline leading-none">
+          <Star size={10} className="fill-amber-900" /> A
+        </span>
+      );
+    } else if (part === '(B+)') {
+      return (
+        <span key={index} className="inline-flex items-center gap-0.5 bg-slate-200 text-slate-700 px-1.5 py-px rounded-full text-[10px] sm:text-[11px] font-black mx-0.5 shadow-sm shadow-slate-300 border border-slate-300 align-baseline leading-none">
+          <Star size={10} className="fill-slate-500 text-slate-500" /> B+
+        </span>
+      );
+    } else if (part === '(B)') {
+      return (
+        <span key={index} className="inline-flex items-center gap-0.5 bg-orange-100 text-orange-800 px-1.5 py-px rounded-full text-[10px] sm:text-[11px] font-black mx-0.5 shadow-sm shadow-orange-200 border border-orange-300 align-baseline leading-none">
+          <Star size={10} className="fill-orange-600 text-orange-600" /> B
+        </span>
+      );
+    } else if (part.match(/^Nilai:\s*A$/)) {
+      return (
+        <span key={index} className="inline-flex items-center gap-0.5 bg-amber-400 text-amber-900 px-1.5 py-px rounded-full text-[10px] sm:text-[11px] font-black mx-0.5 shadow-sm shadow-amber-200 align-baseline leading-none">
+          <Star size={10} className="fill-amber-900" /> Nilai A
+        </span>
+      );
+    } else if (part.match(/^Nilai:\s*B\+$/)) {
+      return (
+        <span key={index} className="inline-flex items-center gap-0.5 bg-slate-200 text-slate-700 px-1.5 py-px rounded-full text-[10px] sm:text-[11px] font-black mx-0.5 shadow-sm shadow-slate-300 border border-slate-300 align-baseline leading-none">
+          <Star size={10} className="fill-slate-500 text-slate-500" /> Nilai B+
+        </span>
+      );
+    } else if (part.match(/^Nilai:\s*B$/)) {
+      return (
+        <span key={index} className="inline-flex items-center gap-0.5 bg-orange-100 text-orange-800 px-1.5 py-px rounded-full text-[10px] sm:text-[11px] font-black mx-0.5 shadow-sm shadow-orange-200 border border-orange-300 align-baseline leading-none">
+          <Star size={10} className="fill-orange-600 text-orange-600" /> Nilai B
+        </span>
+      );
+    }
+    return part;
+  });
+};
 
 const ExpandableText = ({ text }) => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -15,7 +69,7 @@ const ExpandableText = ({ text }) => {
   return (
     <div className="flex flex-col items-start w-full">
       <div className={`${textSizeClass} font-bold text-gray-800 whitespace-pre-wrap ${!isExpanded && isLong ? 'line-clamp-2 print:line-clamp-none' : ''}`}>
-        {safeText}
+        {renderTextWithHighlights(safeText)}
       </div>
       {isLong && (
         <button 
@@ -39,8 +93,26 @@ const jurnalKeys = {
   af: 'jurnalAyatTahfidz',
   fNilai: 'jurnalTahfidzNilai',
   m: 'jurnalMurojaah',
-  c: 'jurnalCatatan'
+  c: 'jurnalCatatan',
+  cT: 'jurnalCatatanTahsin',
+  cF: 'jurnalCatatanTahfidz'
 };
+
+const renderCatatanDetail = (valC, valCT, valCF) => {
+  const hasC = valC && valC !== '-';
+  const hasCT = valCT && valCT !== '-';
+  const hasCF = valCF && valCF !== '-';
+  
+  if (!hasC && !hasCT && !hasCF) return <ExpandableText text="-" />;
+  
+  return (
+    <div className="flex flex-col gap-1.5 w-full">
+      {hasCT && <div><span className="text-[9px] font-black text-blue-500 uppercase tracking-widest block mb-0.5">Tahsin:</span><ExpandableText text={valCT} /></div>}
+      {hasCF && <div><span className="text-[9px] font-black text-purple-500 uppercase tracking-widest block mb-0.5">Tahfidz:</span><ExpandableText text={valCF} /></div>}
+      {hasC && <div><span className="text-[9px] font-black text-orange-500 uppercase tracking-widest block mb-0.5">Umum:</span><ExpandableText text={valC} /></div>}
+    </div>
+  );
+}
 
 const hasMeaningfulValue = (value) => {
   if (value === undefined || value === null) return false;
@@ -323,7 +395,11 @@ const HomeView = ({
       if (!tahsin && !halAyat && !nilaiCat) return <span className="text-xs sm:text-sm text-gray-300 font-medium">-</span>;
       if (tahsin === '-' && halAyat === '-' && nilaiCat === '-') return <span className="text-xs sm:text-sm text-gray-300 font-medium">-</span>;
 
-      const catBadge = (nilaiCat && nilaiCat !== '-') ? <div className="mt-1 inline-flex items-center justify-center bg-[#0f4c5c] text-white text-[12px] font-black px-2.5 py-1 rounded-full shadow-sm w-max leading-none">{String(nilaiCat)}</div> : null;
+      const isExcellent = String(nilaiCat).trim() === 'A';
+      const isGood = String(nilaiCat).trim() === 'B+';
+      const isFair = String(nilaiCat).trim() === 'B';
+      const badgeBg = isExcellent ? 'bg-amber-400 text-amber-900 shadow-amber-200' : isGood ? 'bg-slate-200 text-slate-700 shadow-slate-300 border border-slate-300' : isFair ? 'bg-orange-100 text-orange-800 shadow-orange-200 border border-orange-300' : 'bg-[#0f4c5c] text-white shadow-sm';
+      const catBadge = (nilaiCat && nilaiCat !== '-') ? <div className={`mt-1 inline-flex items-center justify-center ${badgeBg} text-[12px] font-black px-2.5 py-1 rounded-full w-max leading-none gap-1`}>{(isExcellent || isGood || isFair) && <Star size={10} className={isExcellent ? "fill-amber-900" : isGood ? "fill-slate-500" : "fill-orange-600"} />}{String(nilaiCat)}</div> : null;
 
       if (!tahsin || tahsin === '-' || typeof tahsin !== 'string') return <div className="flex flex-col items-center justify-center w-full min-w-0"><span className="text-[13px] md:text-[14px] font-bold text-gray-700 break-words text-center">{halAyat !== '-' ? String(halAyat) : ''}</span>{catBadge}</div>;
 
@@ -345,7 +421,11 @@ const HomeView = ({
             {sList.length > 0 && sList.map((s, i) => {
               const a = aList[i]; const combined = (a && a !== '-' && a !== 'Semua Ayat') ? s + ' ' + a : s;
               const n = nList[i] && nList[i] !== '-' ? nList[i] : null;
-              const sBadge = n ? <div className="mt-1 inline-flex items-center justify-center bg-[#0f4c5c] text-white text-[11px] font-black px-2.5 py-1 rounded-full shadow-sm w-max leading-none">{n}</div> : null;
+              const isExcellentN = String(n).trim() === 'A';
+              const isGoodN = String(n).trim() === 'B+';
+              const isFairN = String(n).trim() === 'B';
+              const badgeBgN = isExcellentN ? 'bg-amber-400 text-amber-900 shadow-amber-200' : isGoodN ? 'bg-slate-200 text-slate-700 shadow-slate-300 border border-slate-300' : isFairN ? 'bg-orange-100 text-orange-800 shadow-orange-200 border border-orange-300' : 'bg-[#0f4c5c] text-white shadow-sm';
+              const sBadge = n ? <div className={`mt-1 inline-flex items-center justify-center ${badgeBgN} text-[11px] font-black px-2.5 py-1 rounded-full w-max leading-none gap-1`}>{(isExcellentN || isGoodN || isFairN) && <Star size={10} className={isExcellentN ? "fill-amber-900" : isGoodN ? "fill-slate-500" : "fill-orange-600"} />}{n}</div> : null;
               const textSize = combined.length > 25 ? 'text-[9px] md:text-[10px]' : combined.length > 15 ? 'text-[10px] md:text-[11px]' : 'text-[11px] md:text-[12px]';
               return (
                 <div key={i} className={`${textSize} text-blue-800 bg-blue-50 px-2.5 py-2 rounded-lg border border-blue-100 flex flex-col items-center justify-center gap-1 font-bold leading-snug mt-0.5 w-fit max-w-full text-center`}>
@@ -372,7 +452,11 @@ const HomeView = ({
           {tList.map((t, i) => {
             const a = aList[i]; const combined = (a && a !== '-' && a !== 'Semua Ayat') ? t + ' ' + a : t;
             const n = nList[i] && nList[i] !== '-' ? nList[i] : null;
-            const sBadge = n ? <div className="mt-1 inline-flex items-center justify-center bg-[#0f4c5c] text-white text-[11px] font-black px-2.5 py-1 rounded-full shadow-sm w-max leading-none">{n}</div> : null;
+            const isExcellentN = String(n).trim() === 'A';
+            const isGoodN = String(n).trim() === 'B+';
+            const isFairN = String(n).trim() === 'B';
+            const badgeBgN = isExcellentN ? 'bg-amber-400 text-amber-900 shadow-amber-200' : isGoodN ? 'bg-slate-200 text-slate-700 shadow-slate-300 border border-slate-300' : isFairN ? 'bg-orange-100 text-orange-800 shadow-orange-200 border border-orange-300' : 'bg-[#0f4c5c] text-white shadow-sm';
+            const sBadge = n ? <div className={`mt-1 inline-flex items-center justify-center ${badgeBgN} text-[11px] font-black px-2.5 py-1 rounded-full w-max leading-none gap-1`}>{(isExcellentN || isGoodN || isFairN) && <Star size={10} className={isExcellentN ? "fill-amber-900" : isGoodN ? "fill-slate-500" : "fill-orange-600"} />}{n}</div> : null;
             const textSize = combined.length > 25 ? 'text-[9px] md:text-[10px]' : combined.length > 15 ? 'text-[10px] md:text-[11px]' : 'text-[11px] md:text-[12px]';
             return (
               <div key={i} className={`${textSize} font-bold text-blue-800 bg-blue-50 px-2.5 py-2 rounded-lg border border-blue-100 flex flex-col items-center justify-center gap-1 leading-snug w-fit max-w-full group relative text-center`}>
@@ -400,7 +484,11 @@ const HomeView = ({
           {tList.map((t, i) => {
             const a = aList[i]; const combined = (a && a !== '-' && a !== 'Semua Ayat') ? t + ' ' + a : t;
             const n = nList[i] && nList[i] !== '-' ? nList[i] : null;
-            const badge = n ? <div className="mt-1 inline-flex items-center justify-center bg-[#0f4c5c] text-white text-[11px] font-black px-2.5 py-1 rounded-full shadow-sm w-max leading-none">{n}</div> : null;
+            const isExcellentN = String(n).trim() === 'A';
+            const isGoodN = String(n).trim() === 'B+';
+            const isFairN = String(n).trim() === 'B';
+            const badgeBgN = isExcellentN ? 'bg-amber-400 text-amber-900 shadow-amber-200' : isGoodN ? 'bg-slate-200 text-slate-700 shadow-slate-300 border border-slate-300' : isFairN ? 'bg-orange-100 text-orange-800 shadow-orange-200 border border-orange-300' : 'bg-[#0f4c5c] text-white shadow-sm';
+            const badge = n ? <div className={`mt-1 inline-flex items-center justify-center ${badgeBgN} text-[11px] font-black px-2.5 py-1 rounded-full w-max leading-none gap-1`}>{(isExcellentN || isGoodN || isFairN) && <Star size={10} className={isExcellentN ? "fill-amber-900" : isGoodN ? "fill-slate-500" : "fill-orange-600"} />}{n}</div> : null;
             const textSize = combined.length > 25 ? 'text-[9px] md:text-[10px]' : combined.length > 15 ? 'text-[10px] md:text-[11px]' : 'text-[11px] md:text-[12px]';
             return (
               <div key={i} className={`${textSize} font-bold text-purple-800 bg-purple-50 px-2.5 py-2 rounded-lg border border-purple-100 flex flex-col items-center justify-center gap-1 leading-snug w-fit max-w-full group relative text-center`}>
@@ -440,8 +528,8 @@ const HomeView = ({
 
   // Kunci data dinamis berdasarkan tab yang aktif (Target vs Capaian)
   const k = homeTab === 'lesson_plan'
-    ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan' }
-    : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan' };
+    ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan', cT: 'catatanTahsin', cF: 'catatanTahfidz' }
+    : jurnalKeys;
 
   // MEMOISASI: Hitung data bayangan satu kali saja tiap kali tanggal/halaqoh berubah,
   // jangan dihitung ulang pada setiap re-render (seperti saat scroll atau mengetik)
@@ -449,11 +537,6 @@ const HomeView = ({
     const ghostData = {};
     const activeDateObj = new Date(activeDate);
     const activeDateDay = Number.isNaN(activeDateObj.getTime()) ? null : activeDateObj.getDay();
-    const isMondayLessonPlan = homeTab === 'lesson_plan' && activeDateDay === 1;
-    const isTueFriLessonPlan = homeTab === 'lesson_plan' && activeDateDay >= 2 && activeDateDay <= 5;
-    const ghostKeys = isMondayLessonPlan ? jurnalKeys : k;
-    const previousWeekStart = new Date(activeDateObj);
-    const previousWeekEnd = new Date(activeDateObj);
 
     const currentWeekStart = new Date(activeDateObj);
     if (activeDateDay !== null) {
@@ -462,35 +545,30 @@ const HomeView = ({
       currentWeekStart.setHours(0, 0, 0, 0);
     }
 
-    if (isMondayLessonPlan) {
-      previousWeekStart.setDate(previousWeekStart.getDate() - 7);
-      previousWeekEnd.setDate(previousWeekEnd.getDate() - 3);
-    }
-
     filteredStudents.forEach(s => {
       const recordedDates = Object.keys(s.records || {})
         .map(d => new Date(d))
-        .filter(d => {
-          if (isMondayLessonPlan) return d >= previousWeekStart && d <= previousWeekEnd;
-          if (isTueFriLessonPlan) return d >= currentWeekStart && d < activeDateObj;
-          return d < activeDateObj;
-        })
+        .filter(d => d < activeDateObj)
         .sort((a, b) => b - a); // Urutkan descending
 
       for (const d of recordedDates) {
         const dStr = getDateString(d);
         const rec = s.records[dStr];
+        
+        const isFromPreviousWeek = d < currentWeekStart;
+        const searchKeys = (homeTab === 'lesson_plan' && isFromPreviousWeek) ? jurnalKeys : k;
+
         if (rec && (
-          hasMeaningfulValue(rec[ghostKeys.t]) || hasMeaningfulValue(rec[ghostKeys.f]) || hasMeaningfulValue(rec[ghostKeys.m])
+          hasMeaningfulValue(rec[searchKeys.t]) || hasMeaningfulValue(rec[searchKeys.f]) || hasMeaningfulValue(rec[searchKeys.m])
         )) {
-          const catatan = String(rec[ghostKeys.c] || '').toLowerCase();
-          if (catatan.includes('libur')) continue;
+          const catatan = String(rec[searchKeys.c] || '').toLowerCase();
+          if (catatan.includes('libur') || catatan.includes('sakit') || catatan.includes('izin') || catatan.includes('alpa') || catatan.includes('tidak hadir')) continue;
 
           let ghostRecord;
-          if (isMondayLessonPlan) {
-            ghostRecord = { ...rec, tahsin: rec[jurnalKeys.t], halAyatTahsin: rec[jurnalKeys.h], tahsinNilai: '-', tahsinSuratNilai: '-', tahfidz: rec[jurnalKeys.f], ayatTahfidz: rec[jurnalKeys.af], tahfidzNilai: '-', murojaah: rec[jurnalKeys.m], catatan: '-' };
+          if (homeTab === 'lesson_plan' && isFromPreviousWeek) {
+            ghostRecord = { ...rec, tahsin: rec[jurnalKeys.t], halAyatTahsin: rec[jurnalKeys.h], tahsinNilai: '-', tahsinSuratNilai: '-', tahfidz: rec[jurnalKeys.f], ayatTahfidz: rec[jurnalKeys.af], tahfidzNilai: '-', murojaah: rec[jurnalKeys.m], catatan: '-', catatanTahsin: '-', catatanTahfidz: '-' };
           } else {
-            ghostRecord = { ...rec, [k.c]: '-' };
+            ghostRecord = { ...rec, [k.c]: '-', [k.cT]: '-', [k.cF]: '-' };
             if (homeTab === 'lesson_plan') {
               ghostRecord.tahsinNilai = '-';
               ghostRecord.tahsinSuratNilai = '-';
@@ -518,7 +596,7 @@ const HomeView = ({
       const r = s.records?.[dateStr];
       return r && (
         (r[k.t] && r[k.t] !== '-') || (r[k.f] && r[k.f] !== '-') ||
-        (r[k.m] && r[k.m] !== '-') || (r[k.c] && r[k.c] !== '-')
+        (r[k.m] && r[k.m] !== '-') || (r[k.c] && r[k.c] !== '-') || (r[k.cT] && r[k.cT] !== '-') || (r[k.cF] && r[k.cF] !== '-')
       );
     }).length;
 
@@ -645,17 +723,21 @@ const HomeView = ({
                           const valF = rec?.[k.f] || '-';
                           const valAF = rec?.[k.af] || '-';
                           const valFNilai = rec?.[k.fNilai] || '-';
+                          
+                          const valC = rec?.[k.c] && rec?.[k.c] !== '-' ? String(rec[k.c]) : '';
+                          const valCT = rec?.[k.cT] && rec?.[k.cT] !== '-' ? String(rec[k.cT]) : '';
+                          const valCF = rec?.[k.cF] && rec?.[k.cF] !== '-' ? String(rec[k.cF]) : '';
 
                           return (
                             <React.Fragment key={dateStr + '-data'}>
                               <td className="p-1.5 text-center text-[9px] font-bold text-emerald-600 whitespace-pre-wrap leading-snug bg-white align-top">
-                                {formatPrintData(valM, '-', null, null)}
+                                {renderTextWithHighlights(formatPrintData(valM, '-', null, null))}
                               </td>
                               <td className="p-1.5 text-center text-[9px] font-bold text-blue-600 whitespace-pre-wrap leading-snug bg-white align-top">
-                                {formatPrintData(valT, valH, valTNilai, valTSNilai)}
+                                {renderTextWithHighlights(formatPrintData(valT, valH, valTNilai, valTSNilai))}
                               </td>
                               <td className="p-1.5 text-center text-[9px] font-bold text-purple-600 whitespace-pre-wrap leading-snug bg-white align-top">
-                                {formatPrintData(valF, valAF, null, valFNilai)}
+                                {renderTextWithHighlights(formatPrintData(valF, valAF, null, valFNilai))}
                               </td>
                             </React.Fragment>
                           );
@@ -667,11 +749,18 @@ const HomeView = ({
                           const dateStr = getDateString(dateObj);
                           const rec = student?.records?.[dateStr] || {};
                           const valC = rec?.[k.c] && rec?.[k.c] !== '-' ? String(rec[k.c]) : '';
+                          const valCT = rec?.[k.cT] && rec?.[k.cT] !== '-' ? String(rec[k.cT]) : '';
+                          const valCF = rec?.[k.cF] && rec?.[k.cF] !== '-' ? String(rec[k.cF]) : '';
+                          const hasPrintCatatan = valC || valCT || valCF;
 
                           return (
                             <td key={dateStr + '-note'} colSpan={3} className="px-2 py-0.5 text-[7px] text-center bg-white h-auto align-middle">
-                              {valC ? (
-                                <span className="text-red-600 font-bold"><span className="text-orange-500 font-black">Catatan:</span> {valC}</span>
+                              {hasPrintCatatan ? (
+                                <div className="flex flex-wrap justify-center gap-x-3 gap-y-0.5 w-full">
+                                  {valCT && valCT !== '-' && <span><span className="text-blue-600 font-black">Tahsin:</span> <span className="text-gray-700 font-bold">{renderTextWithHighlights(valCT)}</span></span>}
+                                  {valCF && valCF !== '-' && <span><span className="text-purple-600 font-black">Tahfidz:</span> <span className="text-gray-700 font-bold">{renderTextWithHighlights(valCF)}</span></span>}
+                                  {valC && valC !== '-' && <span><span className="text-orange-500 font-black">Umum:</span> <span className="text-red-600 font-bold">{renderTextWithHighlights(valC)}</span></span>}
+                                </div>
                               ) : (
                                 <span className="text-transparent">-</span>
                               )}
@@ -777,8 +866,10 @@ const HomeView = ({
                             const valT = formatPrintData(rec?.[k.t], rec?.[k.h], rec?.[k.tNilai], rec?.[k.tsNilai]);
                             const valF = formatPrintData(rec?.[k.f], rec?.[k.af], null, rec?.[k.fNilai]);
                             const valC = rec?.[k.c] && rec?.[k.c] !== '-' ? String(rec[k.c]) : '';
+                            const valCT = rec?.[k.cT] && rec?.[k.cT] !== '-' ? String(rec[k.cT]) : '';
+                            const valCF = rec?.[k.cF] && rec?.[k.cF] !== '-' ? String(rec[k.cF]) : '';
 
-                            const hasData = valM !== '-' || valT !== '-' || valF !== '-' || valC !== '';
+                            const hasData = valM !== '-' || valT !== '-' || valF !== '-' || valC !== '' || valCT !== '' || valCF !== '';
                             if (!hasData) return null;
 
                             return (
@@ -788,24 +879,31 @@ const HomeView = ({
                                   {valM !== '-' && (
                                     <div>
                                       <div className="text-[9px] text-emerald-500 font-black uppercase tracking-widest mb-0.5">Murojaah</div>
-                                      <div className="text-[11px] font-bold text-slate-700 leading-snug whitespace-pre-wrap">{valM}</div>
+                                      <div className="text-[11px] font-bold text-slate-700 leading-snug whitespace-pre-wrap">{renderTextWithHighlights(valM)}</div>
                                     </div>
                                   )}
                                   {valT !== '-' && (
                                     <div>
                                       <div className="text-[9px] text-blue-500 font-black uppercase tracking-widest mb-0.5">Tahsin</div>
-                                      <div className="text-[11px] font-bold text-slate-700 leading-snug whitespace-pre-wrap">{valT}</div>
+                                      <div className="text-[11px] font-bold text-slate-700 leading-snug whitespace-pre-wrap">{renderTextWithHighlights(valT)}</div>
                                     </div>
                                   )}
                                   {valF !== '-' && (
                                     <div>
                                       <div className="text-[9px] text-purple-500 font-black uppercase tracking-widest mb-0.5">Tahfidz</div>
-                                      <div className="text-[11px] font-bold text-slate-700 leading-snug whitespace-pre-wrap">{valF}</div>
+                                      <div className="text-[11px] font-bold text-slate-700 leading-snug whitespace-pre-wrap">{renderTextWithHighlights(valF)}</div>
                                     </div>
                                   )}
-                                  {valC && (
-                                    <div className="mt-1 text-[10px] text-red-600 font-bold leading-snug"><span className="text-orange-500 font-black uppercase tracking-widest text-[9px]">Catatan:</span><br/> {valC}</div>
-                                  )}
+                                  {valC || valCT || valCF ? (
+                                    <div className="col-span-full mt-1">
+                                      <div className="text-[9px] text-orange-500 font-black uppercase tracking-widest mb-1">Catatan</div>
+                                      <div className="flex flex-col gap-1.5">
+                                        {valCT && <div><span className="text-[10px] text-blue-600 font-bold">Tahsin:</span> <span className="text-[11px] font-bold text-slate-700 whitespace-pre-wrap">{renderTextWithHighlights(valCT)}</span></div>}
+                                        {valCF && <div><span className="text-[10px] text-purple-600 font-bold">Tahfidz:</span> <span className="text-[11px] font-bold text-slate-700 whitespace-pre-wrap">{renderTextWithHighlights(valCF)}</span></div>}
+                                        {valC && <div><span className="text-[10px] text-orange-600 font-bold">Umum:</span> <span className="text-[11px] font-bold text-slate-700 whitespace-pre-wrap">{renderTextWithHighlights(valC)}</span></div>}
+                                      </div>
+                                    </div>
+                                  ) : null}
                                 </div>
                               </div>
                             );
@@ -813,7 +911,7 @@ const HomeView = ({
                           
                           {workDays.every(d => {
                             const rec = student?.records?.[getDateString(d)] || {};
-                            return !(rec[k.m] && rec[k.m] !== '-') && !(rec[k.t] && rec[k.t] !== '-') && !(rec[k.f] && rec[k.f] !== '-') && !(rec[k.c] && rec[k.c] !== '-');
+                            return !(rec[k.m] && rec[k.m] !== '-') && !(rec[k.t] && rec[k.t] !== '-') && !(rec[k.f] && rec[k.f] !== '-') && !(rec[k.c] && rec[k.c] !== '-') && !(rec[k.cT] && rec[k.cT] !== '-') && !(rec[k.cF] && rec[k.cF] !== '-');
                           }) && (
                             <div className="text-center py-4 text-slate-400 text-[11px] font-bold italic">
                               Belum ada rekaman pekan ini.
@@ -943,7 +1041,9 @@ const HomeView = ({
                 const valM = formatPrintData(rec?.[k.m], '-', null, null);
                 const valT = formatPrintData(rec?.[k.t], rec?.[k.h], rec?.[k.tNilai], rec?.[k.tsNilai]);
                 const valF = formatPrintData(rec?.[k.f], rec?.[k.af], null, rec?.[k.fNilai]);
-                const valC = rec?.[k.c] && rec?.[k.c] !== '-' ? String(rec[k.c]) : '-';
+                const valC = rec?.[k.c] && rec?.[k.c] !== '-' ? String(rec[k.c]) : '';
+                const valCT = rec?.[k.cT] && rec?.[k.cT] !== '-' ? String(rec[k.cT]) : '';
+                const valCF = rec?.[k.cF] && rec?.[k.cF] !== '-' ? String(rec[k.cF]) : '';
 
                 return (
                   <div key={dateStr} className="bg-white border border-gray-100 rounded-[20px] sm:rounded-[24px] p-4 sm:p-5 shadow-sm print:break-inside-avoid transition-colors">
@@ -974,7 +1074,7 @@ const HomeView = ({
                       {/* Info CATATAN */}
                       <div className="bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent h-full flex flex-col">
                         <div className="flex items-center gap-1.5 mb-1.5 text-orange-500"><FileText size={14} /><span className="text-[10px] sm:text-xs font-black uppercase tracking-wider">Catatan</span></div>
-                        <ExpandableText text={valC} />
+                        {renderCatatanDetail(valC, valCT, valCF)}
                       </div>
                     </div>
                   </div>
@@ -1155,12 +1255,28 @@ const HomeView = ({
               </div>
             )}
 
-          {/* PROGRESS BAR PENGISIAN JURNAL */}
+          {/* PROGRESS BAR PENGISIAN JURNAL & RINGKASAN KEHADIRAN */}
           {activeHalaqoh && filteredStudents.length > 0 && (() => {
             const { count } = getDateStatus(activeDate);
             const total = filteredStudents.length;
             const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
             const isComplete = count === total && total > 0;
+
+            let absenCount = 0;
+            let liburCount = 0;
+            
+            filteredStudents.forEach(student => {
+              const record = student?.records?.[activeDate] || {};
+              const valC = record?.[k.c] || '-';
+              const isCatatanEmpty = valC === '-';
+              const isAbsent = !isCatatanEmpty && ['alpa', 'sakit', 'izin', 'tidak hadir'].some(keyword => String(valC).toLowerCase().includes(keyword));
+              const isLibur = !isCatatanEmpty && String(valC).toLowerCase().includes('libur');
+              
+              if (isLibur) liburCount++;
+              else if (isAbsent) absenCount++;
+            });
+            
+            const hadirCount = total - absenCount - liburCount;
 
             return (
               <div className="w-full flex flex-col gap-1.5 mb-3 mt-1 px-1 animate-in fade-in duration-500">
@@ -1173,7 +1289,7 @@ const HomeView = ({
                     {percentage}% <span className="text-[10px] text-slate-400 font-bold ml-1">({count}/{total})</span>
                   </span>
                 </div>
-                <div className="w-full h-2.5 sm:h-3 bg-slate-200/70 rounded-full overflow-hidden shadow-inner">
+                <div className="w-full h-2.5 sm:h-3 bg-slate-200/70 rounded-full overflow-hidden shadow-inner mb-1">
                   <div 
                     className={`h-full rounded-full transition-all duration-1000 ease-out relative ${isComplete ? 'bg-[#00e676] shadow-[0_0_10px_rgba(0,230,118,0.5)]' : 'bg-gradient-to-r from-emerald-400 to-emerald-500'}`}
                     style={{ width: `${percentage}%` }}
@@ -1182,6 +1298,26 @@ const HomeView = ({
                       <div className="absolute inset-0 bg-white/20 w-full h-full"></div>
                     )}
                   </div>
+                </div>
+                
+                {/* Ringkasan Kehadiran */}
+                <div className="flex flex-wrap items-center gap-2 text-[10px] sm:text-[11px] font-black tracking-wide mt-0.5">
+                  <div className="flex items-center gap-1.5 text-emerald-700 bg-emerald-50/80 px-2.5 py-1 rounded-md border border-emerald-100">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    Hadir: {hadirCount}
+                  </div>
+                  {absenCount > 0 && (
+                    <div className="flex items-center gap-1.5 text-red-600 bg-red-50/80 px-2.5 py-1 rounded-md border border-red-100">
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                      Tidak Hadir: {absenCount}
+                    </div>
+                  )}
+                  {liburCount > 0 && (
+                    <div className="flex items-center gap-1.5 text-blue-600 bg-blue-50/80 px-2.5 py-1 rounded-md border border-blue-100">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                      Libur: {liburCount}
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -1254,6 +1390,8 @@ const HomeView = ({
 
                           const valM = record?.[k.m] || '-';
                           const valC = record?.[k.c] || '-';
+                          const valCT = record?.[k.cT] || '-';
+                          const valCF = record?.[k.cF] || '-';
 
                           // Jurnal Check for Target Achieved
                           const jT = record?.jurnalTahsin || '-';
@@ -1281,26 +1419,28 @@ const HomeView = ({
                           const hasGhostMurojaah = isMurojaahEmpty && lastRec && lastRec[k.m] && lastRec[k.m] !== '-';
                           const hasGhostCatatan = isCatatanEmpty && lastRec && lastRec[k.c] && lastRec[k.c] !== '-';
                           const isAbsent = !isCatatanEmpty && ['alpa', 'sakit', 'izin', 'tidak hadir'].some(keyword => String(valC).toLowerCase().includes(keyword));
+                          const isLibur = !isCatatanEmpty && String(valC).toLowerCase().includes('libur');
+                          const isUjian = !isCatatanEmpty && String(valC).toLowerCase().includes('ujian kenaikan jilid');
                           return (
                             <tr
                               /* Perbaikan Error Warning Key: Hindari Math.random() pada loop render */
                               key={student?.id || `student-row-${index}`}
-                              className={`relative transition-all duration-300 group ${!isLoading ? 'animate-row-slide-in' : ''} hover:bg-white hover:shadow-xl hover:z-20`}
+                              className={`relative transition-all duration-300 group ${!isLoading ? 'animate-row-slide-in' : ''} hover:shadow-xl hover:z-20 ${isUjian ? 'bg-emerald-50/50' : 'hover:bg-white'}`}
                               style={!isLoading ? { animationDelay: `${index * 0.05}s` } : {}}
                             >
-                              <td className="text-center text-xs font-bold text-slate-400 p-2 sticky left-0 z-20 bg-white group-hover:bg-[#f4f7fa] transition-colors">{index + 1}</td>
-                              <td onClick={() => setActiveStudentId(student.id)} className="p-2.5 sm:p-3 pl-2 text-left sticky left-[40px] sm:left-[50px] z-10 shadow-[4px_0_12px_rgba(0,0,0,0.03)] transition-all border-r cursor-pointer border-l-4 border-transparent group-hover:border-l-green-500 bg-white border-gray-50 group-hover:bg-[#f4f7fa]">
+                              <td className={`text-center text-xs font-bold p-2 sticky left-0 z-20 group-hover:bg-[#f4f7fa] transition-colors ${isUjian ? 'bg-emerald-50 text-emerald-600' : 'bg-white text-slate-400'}`}>{index + 1}</td>
+                              <td onClick={() => setActiveStudentId(student.id)} className={`p-2.5 sm:p-3 pl-2 text-left sticky left-[40px] sm:left-[50px] z-10 shadow-[4px_0_12px_rgba(0,0,0,0.03)] transition-all border-r cursor-pointer border-l-4 border-gray-50 group-hover:bg-[#f4f7fa] ${isUjian ? 'bg-emerald-50 border-l-emerald-500' : 'bg-white border-transparent group-hover:border-l-green-500'}`}>
                                 <div className="flex items-center gap-2 sm:gap-3">
                                   {student?.photo ? (
-                                    <img src={student.photo} alt={student?.name || ''} className={`w-7 h-7 sm:w-9 sm:h-9 rounded-full object-cover border border-gray-200 shrink-0 shadow-sm transition-all ${isAbsent ? 'grayscale opacity-50' : ''}`} />
+                                    <img src={student.photo} alt={student?.name || ''} className={`w-7 h-7 sm:w-9 sm:h-9 rounded-full object-cover border border-gray-200 shrink-0 shadow-sm transition-all ${(isAbsent || isLibur) ? 'grayscale opacity-50' : isUjian ? 'ring-2 ring-emerald-400 ring-offset-1' : ''}`} />
                                   ) : (
-                                    <div className={`w-7 h-7 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-[9px] sm:text-[11px] font-black shrink-0 border transition-all ${isAbsent ? 'bg-gray-100 text-gray-400 border-gray-200 grayscale opacity-50' : 'bg-blue-50 text-blue-700 border-blue-100'}`}>
+                                    <div className={`w-7 h-7 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-[9px] sm:text-[11px] font-black shrink-0 border transition-all ${(isAbsent || isLibur) ? 'bg-gray-100 text-gray-400 border-gray-200 grayscale opacity-50' : isUjian ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-100'}`}>
                                       {initials}
                                     </div>
                                   )}
                                   <div className="flex flex-col min-w-0">
-                                    <span className={`font-extrabold transition-colors ${(student?.name || '').length > 24 ? 'text-[10px] sm:text-[11px] leading-tight break-words whitespace-normal line-clamp-2' : (student?.name || '').length > 18 ? 'text-[11px] sm:text-xs leading-tight break-words whitespace-normal line-clamp-2' : 'text-[13px] sm:text-sm truncate'} ${isAbsent ? 'text-gray-400' : 'text-gray-800 group-hover:text-slate-950'}`}>{String(student?.name || 'Unknown')}</span>
-                                    <span className={`text-[10px] font-bold uppercase transition-colors ${isAbsent ? 'text-gray-300' : 'text-gray-400 group-hover:text-slate-600'}`}>Kelas {String(student?.kelas || '-')}</span>
+                                    <span className={`font-extrabold transition-colors ${(student?.name || '').length > 24 ? 'text-[10px] sm:text-[11px] leading-tight break-words whitespace-normal line-clamp-2' : (student?.name || '').length > 18 ? 'text-[11px] sm:text-xs leading-tight break-words whitespace-normal line-clamp-2' : 'text-[13px] sm:text-sm truncate'} ${(isAbsent || isLibur) ? 'text-gray-400' : isUjian ? 'text-emerald-700 group-hover:text-emerald-800' : 'text-gray-800 group-hover:text-slate-950'}`}>{String(student?.name || 'Unknown')}</span>
+                                    <span className={`text-[10px] font-bold uppercase transition-colors ${(isAbsent || isLibur) ? 'text-gray-300' : isUjian ? 'text-emerald-500 group-hover:text-emerald-600' : 'text-gray-400 group-hover:text-slate-600'}`}>Kelas {String(student?.kelas || '-')}</span>
                                   </div>
                                 </div>
                               </td>
@@ -1376,17 +1516,24 @@ const HomeView = ({
                               </td>
 
                               <td className="p-2">
-                                <div onClick={() => { setActiveStudentId(student.id); handleOpenModal(student, 'catatan', homeTab); }} className={`min-h-[60px] flex flex-col items-center justify-center border rounded-xl cursor-pointer relative group/cell transition-colors active:bg-gray-50 ${isAbsent ? 'bg-red-50/60 border-red-100 hover:bg-red-100/60' : 'border-transparent hover:border-gray-200'}`}>
+                                <div onClick={() => { setActiveStudentId(student.id); handleOpenModal(student, 'catatan', homeTab); }} className={`min-h-[60px] flex flex-col items-center justify-center border rounded-xl cursor-pointer relative group/cell transition-colors active:bg-gray-50 ${isAbsent ? 'bg-red-50/60 border-red-100 hover:bg-red-100/60' : isLibur ? 'bg-emerald-50/60 border-emerald-100 hover:bg-emerald-100/60' : isUjian ? 'bg-emerald-100/50 border-emerald-200 hover:bg-emerald-200/50' : 'border-transparent hover:border-gray-200'}`}>
                                   {!isCatatanEmpty ? (
-                                    <span className={`text-xs text-center ${getStatusColor(valC)}`}>{String(valC)}</span>
-                                  ) : hasGhostCatatan ? (
-                                <div className="pointer-events-none opacity-30 grayscale blur-[0.5px] italic scale-90 origin-center transition-all group-hover/cell:opacity-70 group-hover/cell:blur-none group-hover/cell:grayscale-0" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>
-                                    <div className="flex items-center justify-center gap-1 text-[10px] text-gray-400">
-                                      <History size={10} /> <span>{String(lastRec[k.c])}</span>
+                                    <div className="flex flex-col gap-1 w-full px-2 py-1.5">
+                                      {valCT !== '-' && <div className="text-[10px] leading-tight text-left"><span className="text-blue-500 font-black">Tahsin:</span> <span className="font-bold text-gray-700">{renderTextWithHighlights(valCT)}</span></div>}
+                                      {valCF !== '-' && <div className="text-[10px] leading-tight text-left"><span className="text-purple-500 font-black">Tahfidz:</span> <span className="font-bold text-gray-700">{renderTextWithHighlights(valCF)}</span></div>}
+                                      {valC !== '-' && <div className={`text-[10px] leading-tight text-center ${getStatusColor(valC)}`}>{renderTextWithHighlights(String(valC))}</div>}
                                     </div>
+                                  ) : hasGhostCatatan ? (
+                                    <div className="pointer-events-none opacity-30 grayscale blur-[0.5px] italic scale-90 origin-center transition-all group-hover/cell:opacity-70 group-hover/cell:blur-none group-hover/cell:grayscale-0" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>
+                                      <div className="flex flex-col items-center justify-center gap-1 text-[10px] text-gray-400 w-full px-2 py-1 text-center">
+                                        <div className="flex items-center gap-1 font-black uppercase tracking-tighter mb-0.5"><History size={10} /> {ghostLabel}</div>
+                                        {lastRec[k.cT] && lastRec[k.cT] !== '-' && <div className="leading-tight line-clamp-1 w-full"><span className="font-black">T:</span> {lastRec[k.cT]}</div>}
+                                        {lastRec[k.cF] && lastRec[k.cF] !== '-' && <div className="leading-tight line-clamp-1 w-full"><span className="font-black">F:</span> {lastRec[k.cF]}</div>}
+                                        {lastRec[k.c] && lastRec[k.c] !== '-' && <div className="leading-tight line-clamp-1 w-full">{lastRec[k.c]}</div>}
+                                      </div>
                                     </div>
                                   ) : <span className="text-gray-300 group-hover:text-slate-400 transition-colors">-</span>}
-                                  {valC !== '-' ? (
+                                  {!isCatatanEmpty ? (
                                     <button onClick={(e) => handleRemoveData(e, student?.id, activeDate, 'catatan', homeTab)} className="absolute right-1 top-1 text-red-500 opacity-0 lg:group-hover/cell:opacity-100 transition-opacity"><X size={12} /></button>
                                   ) : (
                                     <button className="absolute top-1 right-1 opacity-0 lg:group-hover/cell:opacity-100 text-orange-500 bg-orange-50 p-1 rounded-md transition-opacity"><Plus size={12} /></button>
@@ -1394,7 +1541,7 @@ const HomeView = ({
                                 </div>
                               </td>
 
-                              <td className="p-2.5 sm:p-3 sticky right-0 z-10 transition-all border-l shadow-[-10px_0_15px_rgba(0,0,0,0.02)] bg-white border-gray-200 group-hover:bg-gray-50">
+                              <td className={`p-2.5 sm:p-3 sticky right-0 z-10 transition-all border-l shadow-[-10px_0_15px_rgba(0,0,0,0.02)] border-gray-200 group-hover:bg-gray-50 ${isUjian ? 'bg-emerald-50' : 'bg-white'}`}>
                                 <div className="flex items-center justify-center gap-0.5 sm:gap-1">
                                   <button
                                     onClick={() => handleOpenModal(student, 'full_edit', homeTab)}
@@ -1440,6 +1587,8 @@ const HomeView = ({
                       const valFNilai = record?.[k.fNilai] || '-';
                       const valM = record?.[k.m] || '-';
                       const valC = record?.[k.c] || '-';
+                      const valCT = record?.[k.cT] || '-';
+                      const valCF = record?.[k.cF] || '-';
 
                       const jT = record?.jurnalTahsin || '-';
                       const jF = record?.jurnalTahfidz || '-';
@@ -1450,7 +1599,7 @@ const HomeView = ({
                       const isTahsinEmpty = valT === '-' && valH === '-' && valTNilai === '-';
                       const isTahfidzEmpty = valF === '-' && valAF === '-' && valFNilai === '-';
                       const isMurojaahEmpty = valM === '-';
-                      const isCatatanEmpty = valC === '-';
+                      const isCatatanEmpty = valC === '-' && valCT === '-' && valCF === '-';
 
                       const isTahsinAchieved = homeTab === 'lesson_plan' && !isTahsinEmpty && jT !== '-';
                       const isTahfidzAchieved = homeTab === 'lesson_plan' && !isTahfidzEmpty && jF !== '-';
@@ -1458,23 +1607,28 @@ const HomeView = ({
                       const hasGhostTahsin = isTahsinEmpty && lastRec && lastRec[k.t] && lastRec[k.t] !== '-';
                       const hasGhostTahfidz = isTahfidzEmpty && lastRec && lastRec[k.f] && lastRec[k.f] !== '-';
                       const hasGhostMurojaah = isMurojaahEmpty && lastRec && lastRec[k.m] && lastRec[k.m] !== '-';
-                      const hasGhostCatatan = isCatatanEmpty && lastRec && lastRec[k.c] && lastRec[k.c] !== '-';
+                      const hasGhostCatatan = isCatatanEmpty && lastRec && (lastRec[k.c] !== '-' || lastRec[k.cT] !== '-' || lastRec[k.cF] !== '-');
                       const isAbsent = !isCatatanEmpty && ['alpa', 'sakit', 'izin', 'tidak hadir'].some(keyword => String(valC).toLowerCase().includes(keyword));
+                      const isLibur = !isCatatanEmpty && String(valC).toLowerCase().includes('libur');
+                      const isUjian = !isCatatanEmpty && String(valC).toLowerCase().includes('ujian kenaikan jilid');
 
                       return (
-                        <div key={student.id} className="p-4 bg-white flex flex-col gap-4 animate-row-slide-in" style={{ animationDelay: `${index * 0.05}s` }}>
+                        <div key={student.id} className={`p-4 flex flex-col gap-4 animate-row-slide-in ${isUjian ? 'bg-emerald-50/80 border-t border-emerald-300 shadow-sm relative' : 'bg-white'}`} style={{ animationDelay: `${index * 0.05}s` }}>
+                          {isUjian && (
+                            <div className="absolute top-0 right-4 bg-emerald-500 text-white text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-b-md shadow-sm">Ujian Jilid</div>
+                          )}
                           {/* Info Siswa & Aksi Cepat */}
                           <div className="flex justify-between items-start">
                             <div className="flex items-center gap-2">
                               <span className="text-sm font-bold text-slate-400 w-6 text-center">{index + 1}.</span>
                               {student?.photo ? (
-                                <img src={student.photo} className={`w-10 h-10 rounded-full object-cover border transition-all ${isAbsent ? 'grayscale opacity-50' : ''}`} alt="" />
+                                <img src={student.photo} className={`w-10 h-10 rounded-full object-cover border transition-all ${(isAbsent || isLibur) ? 'grayscale opacity-50' : isUjian ? 'ring-2 ring-emerald-400 ring-offset-1' : ''}`} alt="" />
                               ) : (
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-xs border transition-all ${isAbsent ? 'bg-gray-100 text-gray-400 border-gray-200 grayscale opacity-50' : 'bg-blue-50 text-blue-700 border-blue-100'}`}>{getInitials(student?.name)}</div>
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-xs border transition-all ${(isAbsent || isLibur) ? 'bg-gray-100 text-gray-400 border-gray-200 grayscale opacity-50' : isUjian ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-100'}`}>{getInitials(student?.name)}</div>
                               )}
                               <div>
-                                <h4 className={`font-extrabold leading-tight transition-colors ${student.name.length > 24 ? 'text-[11px]' : student.name.length > 18 ? 'text-[13px]' : 'text-sm md:text-base'} ${isAbsent ? 'text-gray-400' : 'text-gray-800'}`}>{student.name}</h4>
-                                <p className={`text-[10px] font-bold uppercase transition-colors ${isAbsent ? 'text-gray-300' : 'text-gray-400'}`}>Kelas {student.kelas}</p>
+                                <h4 className={`font-extrabold leading-tight transition-colors ${student.name.length > 24 ? 'text-[11px]' : student.name.length > 18 ? 'text-[13px]' : 'text-sm md:text-base'} ${(isAbsent || isLibur) ? 'text-gray-400' : isUjian ? 'text-emerald-700' : 'text-gray-800'}`}>{student.name}</h4>
+                                <p className={`text-[10px] font-bold uppercase transition-colors ${(isAbsent || isLibur) ? 'text-gray-300' : isUjian ? 'text-emerald-500' : 'text-gray-400'}`}>Kelas {student.kelas}</p>
                               </div>
                             </div>
                             <div className="flex items-center gap-1">
@@ -1533,8 +1687,8 @@ const HomeView = ({
                             </div>
 
                             {/* Catatan */}
-                            <div onClick={() => handleOpenModal(student, 'catatan', homeTab)} className={`p-3 border rounded-2xl flex flex-col items-center justify-center min-h-[90px] h-full text-center active:scale-95 transition-all relative ${isAbsent ? 'bg-red-50/80 border-red-200' : 'bg-orange-50/30 border-orange-100'}`}>
-                              <div className={`flex items-center gap-1 mb-1.5 font-black uppercase text-[8px] tracking-widest ${isAbsent ? 'text-red-500' : 'text-orange-500'}`}><FileText size={12} /> Catatan</div>
+                            <div onClick={() => handleOpenModal(student, 'catatan', homeTab)} className={`p-3 border rounded-2xl flex flex-col items-center justify-center min-h-[90px] h-full text-center active:scale-95 transition-all relative ${isAbsent ? 'bg-red-50/80 border-red-200' : isLibur ? 'bg-emerald-50/80 border-emerald-200' : 'bg-orange-50/30 border-orange-100'}`}>
+                              <div className={`flex items-center gap-1 mb-1.5 font-black uppercase text-[8px] tracking-widest ${isAbsent ? 'text-red-500' : isLibur ? 'text-emerald-500' : 'text-orange-500'}`}><FileText size={12} /> Catatan</div>
                               {!isCatatanEmpty ? (<span className={`text-[10px] leading-tight ${getStatusColor(valC)}`}>{String(valC)}</span>) : (hasGhostCatatan ? <span className="pointer-events-none text-[10px] text-gray-400 opacity-40 blur-[0.5px] italic line-clamp-2 transition-all" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>{String(lastRec[k.c])}</span> : <span className="text-gray-300">-</span>)}
 
                               {!isCatatanEmpty && (

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { BookOpen, User, Menu, Home, Users, BarChart3, Settings, LogOut, Loader2, Edit3, Mic, Repeat, FileText, X, AlertTriangle } from 'lucide-react';
+import { BookOpen, User, Menu, Home, Users, BarChart3, Settings, LogOut, Loader2, Edit3, Mic, Repeat, FileText, X, AlertTriangle, Link, Filter } from 'lucide-react';
 
 // Imports
 import { supabase } from './supabase';
@@ -41,6 +41,7 @@ const MainApp = ({ currentUser, onLogout }) => {
   const [activeHalaqoh, setActiveHalaqoh] = useState('');
   const [students, setStudents] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showUnfilledOnly, setShowUnfilledOnly] = useState(false);
 
   const [weekStart, setWeekStart] = useState(getMonday(new Date())); // Tetap mulai dari Senin
   const [activeDate, setActiveDate] = useState(formatDateObj(new Date())); // Tapi tanggal aktif adalah hari ini
@@ -75,7 +76,7 @@ const MainApp = ({ currentUser, onLogout }) => {
   const [selectedStudents, setSelectedStudents] = useState([]);
 
   const emptySurat = () => ({ id: Date.now() + Math.random(), surat: '', ayatStart: '', ayatEnd: '', nilai: '' });
-  const [lessonPlans, setLessonPlans] = useState([{ id: 1, tanggal: '', murojaah: [emptySurat()], tahsinKategori: '', tahsinSuratList: [emptySurat()], tahsinHalaman: [], tahsinBaris: [], tahsinMateri: [], tahsinHalamanTg: [], tahfidzSuratList: [emptySurat()], lainLain: '', tahsinNilai: '' }]);
+  const [lessonPlans, setLessonPlans] = useState([{ id: 1, tanggal: '', murojaah: [emptySurat()], tahsinKategori: '', tahsinSuratList: [emptySurat()], tahsinHalaman: [], tahsinBaris: [], tahsinMateri: [], tahsinHalamanTg: [], tahfidzSuratList: [emptySurat()], lainLain: '', catatanTahsin: '', catatanTahfidz: '', tahsinNilai: '' }]);
 
   // -- STATE UNGGAH FOTO & CROP --
   const [isCropModalOpen, setIsCropModalOpen] = useState(false);
@@ -184,7 +185,7 @@ const MainApp = ({ currentUser, onLogout }) => {
     setIsLoading(true);
     const timer = setTimeout(() => setIsLoading(false), 500);
     return () => clearTimeout(timer);
-  }, [activeHalaqoh, activeDate, homeTab]);
+  }, [activeHalaqoh, activeDate, homeTab, showUnfilledOnly]);
 
   useEffect(() => {
     if (!isSuperAdmin) {
@@ -275,14 +276,31 @@ const MainApp = ({ currentUser, onLogout }) => {
     const isSearchMatch = (s?.name || '').toLowerCase().includes((searchQuery || '').toLowerCase());
     const isInActiveHalaqoh = !activeHalaqoh || (s?.halaqoh && String(s.halaqoh).trim() === String(activeHalaqoh).trim());
 
+    let isUnfilledMatch = true;
+    if (showUnfilledOnly && currentView === 'home') {
+      const keys = homeTab === 'lesson_plan'
+        ? { t: 'tahsin', f: 'tahfidz', m: 'murojaah', c: 'catatan', cT: 'catatanTahsin', cF: 'catatanTahfidz' }
+        : { t: 'jurnalTahsin', f: 'jurnalTahfidz', m: 'jurnalMurojaah', c: 'jurnalCatatan', cT: 'jurnalCatatanTahsin', cF: 'jurnalCatatanTahfidz' };
+      const r = s.records?.[activeDate];
+      const hasData = r && (
+        (r[keys.t] && r[keys.t] !== '-') ||
+        (r[keys.f] && r[keys.f] !== '-') ||
+        (r[keys.m] && r[keys.m] !== '-') ||
+        (r[keys.c] && r[keys.c] !== '-') ||
+        (r[keys.cT] && r[keys.cT] !== '-') ||
+        (r[keys.cF] && r[keys.cF] !== '-')
+      );
+      isUnfilledMatch = !hasData;
+    }
+
     if (!isSuperAdmin) {
       const searchName = currentUser?.name?.trim().toLowerCase() || "";
       const guruKey = Object.keys(guruHalaqohData).find(k => k.trim().toLowerCase() === searchName);
       const myHalaqohs = guruKey ? (guruHalaqohData[guruKey] || []) : [];
 
-      return isInActiveHalaqoh && (myHalaqohs.includes(activeHalaqoh) || !activeHalaqoh) && isSearchMatch;
+      return isInActiveHalaqoh && (myHalaqohs.includes(activeHalaqoh) || !activeHalaqoh) && isSearchMatch && isUnfilledMatch;
     }
-    return isInActiveHalaqoh && isSearchMatch;
+    return isInActiveHalaqoh && isSearchMatch && isUnfilledMatch;
   });
 
   // Hitung jumlah siswa di halaqoh aktif (sebelum difilter oleh pencarian) untuk placeholder
@@ -474,11 +492,11 @@ const MainApp = ({ currentUser, onLogout }) => {
     // ... (Logika internal untuk memodifikasi objek 'rec' tetap sama)
       const student = students.find(s => s.id === studentId); if (!student) return;
       const rec = student.records[dateStr] ? { ...student.records[dateStr] } : {};
-      const k = homeTab === 'lesson_plan' ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan' } : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan' };
+      const k = homeTab === 'lesson_plan' ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan', cT: 'catatanTahsin', cF: 'catatanTahfidz' } : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan', cT: 'jurnalCatatanTahsin', cF: 'jurnalCatatanTahfidz' };
 
       for (let key of Object.values(k)) if (!rec[key]) rec[key] = '-';
 
-      if (type === 'catatan') { rec[k.c] = '-'; }
+      if (type === 'catatan') { rec[k.c] = '-'; rec[k.cT] = '-'; rec[k.cF] = '-'; }
       else if (type === 'tahsin_all') { rec[k.t] = '-'; rec[k.h] = '-'; rec[k.tNilai] = '-'; rec[k.tsNilai] = '-'; }
       else if (type === 'tahfidz_all') { rec[k.f] = '-'; rec[k.af] = '-'; rec[k.fNilai] = '-'; }
       else if (type === 'murojaah_all') { rec[k.m] = '-'; }
@@ -524,10 +542,10 @@ const MainApp = ({ currentUser, onLogout }) => {
     e.preventDefault(); e.stopPropagation();
     if (window.confirm('Yakin ingin mengosongkan data pada tanggal ini?')) {
       const student = students.find(s => s.id === studentId); if (!student) return;
-      const k = homeTab === 'lesson_plan' ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan' } : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan' };
+      const k = homeTab === 'lesson_plan' ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan', cT: 'catatanTahsin', cF: 'catatanTahfidz' } : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan', cT: 'jurnalCatatanTahsin', cF: 'jurnalCatatanTahfidz' };
       const newRecords = { ...student.records };
       const dayRec = newRecords[dateStr] ? { ...newRecords[dateStr] } : {};
-      dayRec[k.t] = '-'; dayRec[k.h] = '-'; dayRec[k.tNilai] = '-'; dayRec[k.tsNilai] = '-'; dayRec[k.f] = '-'; dayRec[k.af] = '-'; dayRec[k.fNilai] = '-'; dayRec[k.m] = '-'; dayRec[k.c] = '-';
+      dayRec[k.t] = '-'; dayRec[k.h] = '-'; dayRec[k.tNilai] = '-'; dayRec[k.tsNilai] = '-'; dayRec[k.f] = '-'; dayRec[k.af] = '-'; dayRec[k.fNilai] = '-'; dayRec[k.m] = '-'; dayRec[k.c] = '-'; dayRec[k.cT] = '-'; dayRec[k.cF] = '-';
       newRecords[dateStr] = dayRec;
 
       const { error } = await supabase.from('students').update({ records: newRecords }).eq('id', studentId);
@@ -546,13 +564,13 @@ const MainApp = ({ currentUser, onLogout }) => {
       message: `Yakin ingin mengosongkan semua data ${typeName} untuk SELURUH SISWA yang tampil saat ini pada tanggal ${formatShortDate(new Date(dateStr))}? Tindakan ini tidak dapat dibatalkan.`,
       onConfirm: async () => {
         setIsLoading(true);
-        const k = tab === 'lesson_plan' ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan' } : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan' };
+        const k = tab === 'lesson_plan' ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan', cT: 'catatanTahsin', cF: 'catatanTahfidz' } : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan', cT: 'jurnalCatatanTahsin', cF: 'jurnalCatatanTahfidz' };
         
         try {
           const updates = filteredStudents.map(student => {
             const newRecords = { ...student.records };
             const dayRec = newRecords[dateStr] ? { ...newRecords[dateStr] } : {};
-            dayRec[k.t] = '-'; dayRec[k.h] = '-'; dayRec[k.tNilai] = '-'; dayRec[k.tsNilai] = '-'; dayRec[k.f] = '-'; dayRec[k.af] = '-'; dayRec[k.fNilai] = '-'; dayRec[k.m] = '-'; dayRec[k.c] = '-';
+            dayRec[k.t] = '-'; dayRec[k.h] = '-'; dayRec[k.tNilai] = '-'; dayRec[k.tsNilai] = '-'; dayRec[k.f] = '-'; dayRec[k.af] = '-'; dayRec[k.fNilai] = '-'; dayRec[k.m] = '-'; dayRec[k.c] = '-'; dayRec[k.cT] = '-'; dayRec[k.cF] = '-';
             newRecords[dateStr] = dayRec;
             return { ...student, records: newRecords };
           });
@@ -585,6 +603,23 @@ const MainApp = ({ currentUser, onLogout }) => {
 
   const setSharingStudent = (student) => { showToast("Fitur Share Gambar akan segera diaktifkan."); };
 
+  const handleCopyPortalLink = () => {
+    if (!activeHalaqoh) {
+      showToast('Pilih halaqoh terlebih dahulu!');
+      return;
+    }
+    const baseUrl = window.location.origin + window.location.pathname;
+    const shareUrl = `${baseUrl}?portalHalaqoh=${encodeURIComponent(activeHalaqoh)}`;
+    const textToCopy = `Assalamu'alaikum Warahmatullahi Wabarakatuh\n\nBerikut adalah tautan Portal Pemantauan Hafalan untuk Halaqoh *${activeHalaqoh}*:\n\n${shareUrl}\n\nSilakan klik nama Ananda untuk melihat rincian Lesson Plan dan Jurnal.\nTerima kasih.`;
+
+    navigator.clipboard.writeText(textToCopy).then(() => {
+      showToast("Link Portal Halaqoh berhasil disalin!");
+    }).catch(err => {
+      console.error('Gagal menyalin link:', err);
+      showToast("Gagal menyalin link.");
+    });
+  };
+
   // -- FUNGSI SISWA --
   const handleAssignFromMaster = async (student) => {
     const { error } = await supabase.from('students').update({ halaqoh: activeHalaqoh }).eq('id', student.id);
@@ -605,10 +640,10 @@ const MainApp = ({ currentUser, onLogout }) => {
 
         // Mencegah duplikasi nama
         const normalizedName = studentData.name.trim().toLowerCase();
-        const isDuplicate = students.some(s => s.name.trim().toLowerCase() === normalizedName);
-        if (isDuplicate) {
-          showToast('Nama siswa sudah ada di bank data!');
-          return;
+        const duplicateStudent = students.find(s => s.name.trim().toLowerCase() === normalizedName);
+        if (duplicateStudent) {
+          const proceed = window.confirm(`PERINGATAN: Siswa dengan nama "${studentData.name.trim()}" sudah terdaftar di sistem (Kelas: ${duplicateStudent.kelas || '-'}).\n\nApakah ini adalah siswa yang berbeda dan Anda yakin ingin tetap menambahkannya?`);
+          if (!proceed) return;
         }
 
       let photoUrl = null;
@@ -651,6 +686,14 @@ const MainApp = ({ currentUser, onLogout }) => {
       if (!studentData.name || studentData.name.trim() === '') {
         showToast('Nama siswa tidak boleh kosong!');
         return;
+      }
+
+      // Peringatan duplikasi nama saat edit data
+      const normalizedName = studentData.name.trim().toLowerCase();
+      const duplicateStudent = students.find(s => s.id !== id && s.name.trim().toLowerCase() === normalizedName);
+      if (duplicateStudent) {
+        const proceed = window.confirm(`PERINGATAN: Siswa dengan nama "${studentData.name.trim()}" sudah terdaftar di sistem (Kelas: ${duplicateStudent.kelas || '-'}).\n\nYakin ingin tetap mengubah namanya menjadi ini?`);
+        if (!proceed) return;
       }
 
       // Jika foto adalah base64 baru, unggah dan ganti dengan URL
@@ -956,7 +999,7 @@ const MainApp = ({ currentUser, onLogout }) => {
 
   const handleOpenModal = (student = null, mode = 'full_bulk') => {
     setActiveDropdown(null); setModalMode(mode);
-    const k = homeTab === 'lesson_plan' ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan' } : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan' };
+    const k = homeTab === 'lesson_plan' ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan', cT: 'catatanTahsin', cF: 'catatanTahfidz' } : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan', cT: 'jurnalCatatanTahsin', cF: 'jurnalCatatanTahfidz' };
 
     let initialDataForModal = {};
     let studentToProcess = student; // The student whose data we are primarily interested in
@@ -971,23 +1014,43 @@ const MainApp = ({ currentUser, onLogout }) => {
       currentWeekStart.setDate(diffToMonday);
       currentWeekStart.setHours(0, 0, 0, 0);
 
+      const jurnalKeys = { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan', cT: 'jurnalCatatanTahsin', cF: 'jurnalCatatanTahfidz' };
+
       const recordedDates = Object.keys(s.records || {})
         .map(d => new Date(d))
         .filter(d => d < activeDateObj) // Only dates before the active date
-        .filter(d => {
-          if (homeTab === 'lesson_plan' && activeDateObj.getDay() !== 1) {
-            return d >= currentWeekStart && d < activeDateObj;
-          }
-          return d < activeDateObj;
-        })
         .sort((a, b) => b - a); // Sort descending
 
       for (const d of recordedDates) {
         const dStr = formatDateObj(d);
         const rec = s.records[dStr];
-        if (rec && ((rec[k.t] && rec[k.t] !== '-') || (rec[k.f] && rec[k.f] !== '-') || (rec[k.m] && rec[k.m] !== '-'))) {
-          const catatan = String(rec[k.c] || '').toLowerCase();
-          if (catatan.includes('libur')) continue;
+          
+        const isFromPreviousWeek = d < currentWeekStart;
+        const searchKeys = (homeTab === 'lesson_plan' && isFromPreviousWeek) ? jurnalKeys : k;
+
+        if (rec && ((rec[searchKeys.t] && rec[searchKeys.t] !== '-') || (rec[searchKeys.f] && rec[searchKeys.f] !== '-') || (rec[searchKeys.m] && rec[searchKeys.m] !== '-'))) {
+          const catatan = String(rec[searchKeys.c] || '').toLowerCase();
+          if (catatan.includes('libur') || catatan.includes('sakit') || catatan.includes('izin') || catatan.includes('alpa') || catatan.includes('tidak hadir')) continue;
+          
+          if (homeTab === 'lesson_plan' && isFromPreviousWeek) {
+            return { 
+              record: {
+                ...rec,
+                tahsin: rec.jurnalTahsin,
+                halAyatTahsin: rec.jurnalHalAyatTahsin || '-',
+                tahfidz: rec.jurnalTahfidz,
+                ayatTahfidz: rec.jurnalAyatTahfidz || '-',
+                murojaah: rec.jurnalMurojaah,
+                catatan: '-',
+                catatanTahsin: '-',
+                catatanTahfidz: '-',
+                tahsinNilai: '-',
+                tahsinSuratNilai: '-',
+                tahfidzNilai: '-'
+              }, 
+              date: dStr 
+            };
+          }
           return { record: rec, date: dStr }; // Found it
         }
       }
@@ -1080,7 +1143,7 @@ const MainApp = ({ currentUser, onLogout }) => {
       } else if (tSurat && tSurat !== '-') tKategori = 'Al-Qur\'an';
 
       setLessonPlans([{
-        id: Date.now(), tanggal: activeDate, murojaah: parseMurojaahList(cleanData[k.m]), tahsinKategori: tKategori, tahsinSuratList: parseSuratAyatList(tSurat, tahsinAyatOnly, cleanData[k.tsNilai]), tahsinHalaman: tHalaman, tahsinBaris: tBaris, tahsinMateri: tMateri, tahsinHalamanTg: tHalamanTg, tahfidzSuratList: parseSuratAyatList(cleanData[k.f], cleanData[k.af], cleanData[k.fNilai]), lainLain: cleanData[k.c] && cleanData[k.c] !== '-' ? cleanData[k.c] : '', tahsinNilai: cleanData[k.tNilai] && cleanData[k.tNilai] !== '-' ? cleanData[k.tNilai] : ''
+        id: Date.now(), tanggal: activeDate, murojaah: parseMurojaahList(cleanData[k.m]), tahsinKategori: tKategori, tahsinSuratList: parseSuratAyatList(tSurat, tahsinAyatOnly, cleanData[k.tsNilai]), tahsinHalaman: tHalaman, tahsinBaris: tBaris, tahsinMateri: tMateri, tahsinHalamanTg: tHalamanTg, tahfidzSuratList: parseSuratAyatList(cleanData[k.f], cleanData[k.af], cleanData[k.fNilai]), lainLain: cleanData[k.c] && cleanData[k.c] !== '-' ? cleanData[k.c] : '', catatanTahsin: cleanData[k.cT] && cleanData[k.cT] !== '-' ? cleanData[k.cT] : '', catatanTahfidz: cleanData[k.cF] && cleanData[k.cF] !== '-' ? cleanData[k.cF] : '', tahsinNilai: cleanData[k.tNilai] && cleanData[k.tNilai] !== '-' ? cleanData[k.tNilai] : ''
       }]);
       setIsModalOpen(true); // Open modal only if there's data or it's a new bulk
     } else {
@@ -1125,7 +1188,7 @@ const MainApp = ({ currentUser, onLogout }) => {
       return;
     }
     const dateStr = lessonPlans[0].tanggal;
-    const k = homeTab === 'lesson_plan' ? { c: 'catatan' } : { c: 'jurnalCatatan', t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah' };
+    const k = homeTab === 'lesson_plan' ? { c: 'catatan', cT: 'catatanTahsin', cF: 'catatanTahfidz' } : { c: 'jurnalCatatan', cT: 'jurnalCatatanTahsin', cF: 'jurnalCatatanTahfidz', t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah' };
 
     try {
       const updates = students.reduce((acc, student) => {
@@ -1170,10 +1233,10 @@ const MainApp = ({ currentUser, onLogout }) => {
     } else if (tahsinKat === 'Al-Qur\'an') { tahsinKat = tS.surat || '-'; }
 
     const modalMurojaah = plan.murojaah.filter(m => m.surat).map(m => { const ayat = getAyatRangeOrDefault(m.surat, m.ayatStart, m.ayatEnd); return ayat === 'Semua Ayat' ? m.surat : m.surat + ' ' + ayat; }).join(', ') || '-';
-    const modalTahsin = tahsinKat || '-'; const modalHalAyatTahsin = halAyat || '-'; const modalTahfidz = fS.surat || '-'; const modalAyatTahfidz = fS.ayat || '-'; const modalCatatan = plan.lainLain || '-';
+    const modalTahsin = tahsinKat || '-'; const modalHalAyatTahsin = halAyat || '-'; const modalTahfidz = fS.surat || '-'; const modalAyatTahfidz = fS.ayat || '-'; const modalCatatan = plan.lainLain || '-'; const modalCatatanTahsin = plan.catatanTahsin || '-'; const modalCatatanTahfidz = plan.catatanTahfidz || '-';
     const modalTahsinNilai = plan.tahsinNilai || '-'; const modalTahsinSuratNilai = tS.nilai; const modalTahfidzNilai = fS.nilai;
     const isCategoryEdit = ['tahsin', 'tahfidz', 'murojaah', 'catatan'].includes(modalMode);
-    const k = homeTab === 'lesson_plan' ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan' } : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan' };
+    const k = homeTab === 'lesson_plan' ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan', cT: 'catatanTahsin', cF: 'catatanTahfidz' } : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan', cT: 'jurnalCatatanTahsin', cF: 'jurnalCatatanTahfidz' };
 
     try {
       const updates = students.reduce((acc, student) => {
@@ -1203,9 +1266,9 @@ const MainApp = ({ currentUser, onLogout }) => {
               }
             }
             if (modalMode === 'catatan' || modalMode === 'full_bulk') {
-              if (modalCatatan !== '-') {
-                finalRecord[k.c] = modalCatatan;
-              }
+              finalRecord[k.c] = modalCatatan;
+              finalRecord[k.cT] = modalCatatanTahsin;
+              finalRecord[k.cF] = modalCatatanTahfidz;
             }
           } else {
             finalRecord[k.t] = modalTahsin;
@@ -1217,6 +1280,8 @@ const MainApp = ({ currentUser, onLogout }) => {
             finalRecord[k.fNilai] = modalTahfidzNilai;
             finalRecord[k.m] = modalMurojaah;
             finalRecord[k.c] = modalCatatan;
+            finalRecord[k.cT] = modalCatatanTahsin;
+            finalRecord[k.cF] = modalCatatanTahfidz;
           }
           acc.push({
             ...student, // Bawa semua data siswa yang ada
@@ -1289,6 +1354,7 @@ const MainApp = ({ currentUser, onLogout }) => {
     const lowerText = String(text || '').toLowerCase();
     if (lowerText.includes('alpa') || lowerText.includes('tidak hadir')) return 'text-red-600 font-black italic';
     if (lowerText.includes('sakit') || lowerText.includes('izin')) return 'text-amber-500 font-black italic';
+    if (lowerText.includes('libur')) return 'text-emerald-600 font-black italic';
     if (lowerText.includes('ulang') || lowerText.includes('belum') || lowerText.includes('kurang')) return 'text-red-600 font-black';
     if (lowerText.includes('lancar') || lowerText.includes('baik') || lowerText.includes('selesai')) return 'text-green-600 font-black';
     return 'text-gray-700';
@@ -1417,6 +1483,24 @@ const MainApp = ({ currentUser, onLogout }) => {
               </div>
 
               <div className="flex items-center gap-2 flex-1 md:flex-none justify-end">
+                {currentView === 'home' && (
+                  <button
+                    onClick={() => setShowUnfilledOnly(!showUnfilledOnly)}
+                    className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-lg transition-colors border shadow-sm ${showUnfilledOnly ? 'bg-amber-50 text-amber-600 border-amber-200' : 'bg-white text-slate-500 hover:bg-slate-50 border-slate-200'}`}
+                    title={showUnfilledOnly ? "Tampilkan Semua Siswa" : "Filter Belum Mengisi"}
+                  >
+                    <Filter size={14} />
+                    <span className="text-[10px] sm:text-xs font-bold hidden md:inline">Belum Mengisi</span>
+                  </button>
+                )}
+                <button
+                  onClick={handleCopyPortalLink}
+                  className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors border border-blue-100 shadow-sm"
+                  title="Salin Link Portal Halaqoh"
+                >
+                  <Link size={14} />
+                  <span className="text-[10px] sm:text-xs font-bold hidden md:inline">Share Link</span>
+                </button>
                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest hidden sm:inline">Kelompok:</span>
                 <select value={activeHalaqoh} onChange={(e) => setActiveHalaqoh(e.target.value)} className={`bg-green-50 border border-green-200 text-green-800 rounded-lg p-1.5 font-bold w-full max-w-[140px] sm:max-w-[160px] md:w-auto md:max-w-none outline-none focus:ring-2 focus:ring-green-500/20 ${(activeHalaqoh || '').length > 20 ? 'text-[9px] sm:text-xs' : (activeHalaqoh || '').length > 15 ? 'text-[10px] sm:text-xs' : 'text-xs'}`}>
                   {(activeGuru ? (guruHalaqohData[activeGuru] || []) : Array.from(new Set(students.map(s => s.halaqoh).filter(Boolean)))).length === 0 && <option value="">Belum ada Halaqoh</option>}
@@ -1508,7 +1592,7 @@ const MainApp = ({ currentUser, onLogout }) => {
           {/* RENDER MODALS */}
           <AddStudentModal
             isOpen={isAddStudentModalOpen} onClose={() => setIsAddStudentModalOpen(false)} isSuperAdmin={isSuperAdmin} addStudentMode={addStudentMode} setAddStudentMode={setAddStudentMode}
-            masterSearchQuery={masterSearchQuery} setMasterSearchQuery={setMasterSearchQuery} students={students} activeHalaqoh={activeHalaqoh} handleAssignFromMaster={handleAssignFromMaster} newStudent={newStudent} setNewStudent={setNewStudent} handlePhotoUpload={handlePhotoUpload} kelasList={kelasList} handleSaveNewStudent={handleSaveNewStudent} getInitials={getInitials}
+            masterSearchQuery={masterSearchQuery} setMasterSearchQuery={setMasterSearchQuery} students={students.filter(s => !s.halaqoh || s.halaqoh.trim() === '')} activeHalaqoh={activeHalaqoh} handleAssignFromMaster={handleAssignFromMaster} newStudent={newStudent} setNewStudent={setNewStudent} handlePhotoUpload={handlePhotoUpload} kelasList={kelasList} handleSaveNewStudent={handleSaveNewStudent} getInitials={getInitials}
             guruHalaqohData={getFilteredHalaqohDataForEdit()}
           />
           <EditStudentModal
