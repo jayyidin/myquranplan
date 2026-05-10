@@ -1109,7 +1109,9 @@ const MainApp = ({ currentUser, onLogout }) => {
       setSelectedStudents(studentsInHalaqoh.map(s => s.id)); // Default to all selected for empty bulk
     }
 
-    if (Object.keys(initialDataForModal).length > 0 || studentToProcess || mode === 'full_bulk') { // Only open if there's data or it's a new bulk
+    const isBulkCategoryInput = !studentToProcess && ['tahsin', 'tahfidz', 'murojaah', 'catatan'].includes(mode);
+
+    if (Object.keys(initialDataForModal).length > 0 || studentToProcess || mode === 'full_bulk' || isBulkCategoryInput) { // Only open if there's data or it's a new bulk
       // FIX: Create a 'clean' data object for the modal.
       // This ensures that only data relevant to the current tab (Target or Jurnal) is used,
       // preventing data from the other tab from "leaking" into the modal.

@@ -114,6 +114,32 @@ const renderCatatanDetail = (valC, valCT, valCF) => {
   );
 }
 
+const hasAnyCatatan = (valC, valCT, valCF) => (
+  (valC && valC !== '-') || (valCT && valCT !== '-') || (valCF && valCF !== '-')
+);
+
+const renderCompactCatatan = (valC, valCT, valCF, getStatusColor) => (
+  <div className="flex flex-col gap-1 w-full px-2 py-1.5">
+    {valCT && valCT !== '-' && (
+      <div className="text-[10px] leading-tight text-left">
+        <span className="text-blue-500 font-black">Tahsin:</span>{' '}
+        <span className="font-bold text-gray-700">{renderTextWithHighlights(String(valCT))}</span>
+      </div>
+    )}
+    {valCF && valCF !== '-' && (
+      <div className="text-[10px] leading-tight text-left">
+        <span className="text-purple-500 font-black">Tahfidz:</span>{' '}
+        <span className="font-bold text-gray-700">{renderTextWithHighlights(String(valCF))}</span>
+      </div>
+    )}
+    {valC && valC !== '-' && (
+      <div className={`text-[10px] leading-tight text-center ${getStatusColor(valC)}`}>
+        {renderTextWithHighlights(String(valC))}
+      </div>
+    )}
+  </div>
+);
+
 const hasMeaningfulValue = (value) => {
   if (value === undefined || value === null) return false;
   const normalized = String(value).trim();
@@ -1408,7 +1434,7 @@ const HomeView = ({
                           const isTahsinEmpty = valT === '-' && valH === '-' && valTNilai === '-';
                           const isTahfidzEmpty = valF === '-' && valAF === '-' && valFNilai === '-';
                           const isMurojaahEmpty = valM === '-';
-                          const isCatatanEmpty = valC === '-';
+                          const isCatatanEmpty = !hasAnyCatatan(valC, valCT, valCF);
 
                           const isTahsinAchieved = homeTab === 'lesson_plan' && !isTahsinEmpty && jT !== '-';
                           const isTahfidzAchieved = homeTab === 'lesson_plan' && !isTahfidzEmpty && jF !== '-';
@@ -1417,7 +1443,7 @@ const HomeView = ({
                           const hasGhostTahsin = isTahsinEmpty && lastRec && lastRec[k.t] && lastRec[k.t] !== '-';
                           const hasGhostTahfidz = isTahfidzEmpty && lastRec && lastRec[k.f] && lastRec[k.f] !== '-';
                           const hasGhostMurojaah = isMurojaahEmpty && lastRec && lastRec[k.m] && lastRec[k.m] !== '-';
-                          const hasGhostCatatan = isCatatanEmpty && lastRec && lastRec[k.c] && lastRec[k.c] !== '-';
+                          const hasGhostCatatan = isCatatanEmpty && lastRec && hasAnyCatatan(lastRec[k.c], lastRec[k.cT], lastRec[k.cF]);
                           const isAbsent = !isCatatanEmpty && ['alpa', 'sakit', 'izin', 'tidak hadir'].some(keyword => String(valC).toLowerCase().includes(keyword));
                           const isLibur = !isCatatanEmpty && String(valC).toLowerCase().includes('libur');
                           const isUjian = !isCatatanEmpty && String(valC).toLowerCase().includes('ujian kenaikan jilid');
@@ -1518,11 +1544,7 @@ const HomeView = ({
                               <td className="p-2">
                                 <div onClick={() => { setActiveStudentId(student.id); handleOpenModal(student, 'catatan', homeTab); }} className={`min-h-[60px] flex flex-col items-center justify-center border rounded-xl cursor-pointer relative group/cell transition-colors active:bg-gray-50 ${isAbsent ? 'bg-red-50/60 border-red-100 hover:bg-red-100/60' : isLibur ? 'bg-emerald-50/60 border-emerald-100 hover:bg-emerald-100/60' : isUjian ? 'bg-emerald-100/50 border-emerald-200 hover:bg-emerald-200/50' : 'border-transparent hover:border-gray-200'}`}>
                                   {!isCatatanEmpty ? (
-                                    <div className="flex flex-col gap-1 w-full px-2 py-1.5">
-                                      {valCT !== '-' && <div className="text-[10px] leading-tight text-left"><span className="text-blue-500 font-black">Tahsin:</span> <span className="font-bold text-gray-700">{renderTextWithHighlights(valCT)}</span></div>}
-                                      {valCF !== '-' && <div className="text-[10px] leading-tight text-left"><span className="text-purple-500 font-black">Tahfidz:</span> <span className="font-bold text-gray-700">{renderTextWithHighlights(valCF)}</span></div>}
-                                      {valC !== '-' && <div className={`text-[10px] leading-tight text-center ${getStatusColor(valC)}`}>{renderTextWithHighlights(String(valC))}</div>}
-                                    </div>
+                                    renderCompactCatatan(valC, valCT, valCF, getStatusColor)
                                   ) : hasGhostCatatan ? (
                                     <div className="pointer-events-none opacity-30 grayscale blur-[0.5px] italic scale-90 origin-center transition-all group-hover/cell:opacity-70 group-hover/cell:blur-none group-hover/cell:grayscale-0" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>
                                       <div className="flex flex-col items-center justify-center gap-1 text-[10px] text-gray-400 w-full px-2 py-1 text-center">
@@ -1689,7 +1711,15 @@ const HomeView = ({
                             {/* Catatan */}
                             <div onClick={() => handleOpenModal(student, 'catatan', homeTab)} className={`p-3 border rounded-2xl flex flex-col items-center justify-center min-h-[90px] h-full text-center active:scale-95 transition-all relative ${isAbsent ? 'bg-red-50/80 border-red-200' : isLibur ? 'bg-emerald-50/80 border-emerald-200' : 'bg-orange-50/30 border-orange-100'}`}>
                               <div className={`flex items-center gap-1 mb-1.5 font-black uppercase text-[8px] tracking-widest ${isAbsent ? 'text-red-500' : isLibur ? 'text-emerald-500' : 'text-orange-500'}`}><FileText size={12} /> Catatan</div>
-                              {!isCatatanEmpty ? (<span className={`text-[10px] leading-tight ${getStatusColor(valC)}`}>{String(valC)}</span>) : (hasGhostCatatan ? <span className="pointer-events-none text-[10px] text-gray-400 opacity-40 blur-[0.5px] italic line-clamp-2 transition-all" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>{String(lastRec[k.c])}</span> : <span className="text-gray-300">-</span>)}
+                              {!isCatatanEmpty ? (
+                                renderCompactCatatan(valC, valCT, valCF, getStatusColor)
+                              ) : (hasGhostCatatan ? (
+                                <div className="pointer-events-none text-[10px] text-gray-400 opacity-40 blur-[0.5px] italic line-clamp-2 transition-all" title={`Dari tgl ${formatShortDate(new Date(lastRec.date))}`}>
+                                  {lastRec[k.cT] && lastRec[k.cT] !== '-' && <div><span className="font-black">T:</span> {lastRec[k.cT]}</div>}
+                                  {lastRec[k.cF] && lastRec[k.cF] !== '-' && <div><span className="font-black">F:</span> {lastRec[k.cF]}</div>}
+                                  {lastRec[k.c] && lastRec[k.c] !== '-' && <div>{lastRec[k.c]}</div>}
+                                </div>
+                              ) : <span className="text-gray-300">-</span>)}
 
                               {!isCatatanEmpty && (
                                 <button

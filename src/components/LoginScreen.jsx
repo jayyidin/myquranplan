@@ -577,13 +577,15 @@ const LoginScreen = ({ onLogin }) => {
                   const rec = publicStudent.records?.[dateStr] || {};
                   
                   // Cek apakah ada data di hari tersebut
-                  const hasData = (rec[k.t] && rec[k.t] !== '-') || (rec[k.f] && rec[k.f] !== '-') || (rec[k.m] && rec[k.m] !== '-') || (rec[k.c] && rec[k.c] !== '-');
+                  const hasData = (rec[k.t] && rec[k.t] !== '-') || (rec[k.f] && rec[k.f] !== '-') || (rec[k.m] && rec[k.m] !== '-') || (rec[k.c] && rec[k.c] !== '-') || (rec[k.cT] && rec[k.cT] !== '-') || (rec[k.cF] && rec[k.cF] !== '-');
                   if (!hasData) return null;
                   
                   const valT = formatPrintData(rec[k.t], rec[k.h], rec[k.tNilai], rec[k.tsNilai]);
                   const valF = formatPrintData(rec[k.f], rec[k.af], null, rec[k.fNilai]);
                   const valM = formatPrintData(rec[k.m], '-', null, null);
                   const valC = rec[k.c] && rec[k.c] !== '-' ? String(rec[k.c]) : '-';
+                  const valCT = rec[k.cT] && rec[k.cT] !== '-' ? String(rec[k.cT]) : '-';
+                  const valCF = rec[k.cF] && rec[k.cF] !== '-' ? String(rec[k.cF]) : '-';
 
                   return (
                     <div key={dateStr} className="bg-white border border-gray-100 rounded-[20px] sm:rounded-[24px] p-4 sm:p-5 shadow-sm print:break-inside-avoid transition-colors">
