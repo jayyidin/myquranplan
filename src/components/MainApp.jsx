@@ -1178,10 +1178,32 @@ const MainApp = ({ currentUser, onLogout }) => {
     }
   };
 
-  const handleCloseModal = () => { setIsModalOpen(false); setEditingId(null); setActiveDropdown(null); setModalMode('full_bulk'); };
-  const toggleStudent = (id) => { if (id === 'ALL') { setSelectedStudents(studentsInHalaqoh.length === selectedStudents.length ? [] : studentsInHalaqoh.map(s => s.id)) } else { setSelectedStudents(prev => prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]); } };
+  const isInactiveAttendanceStatus = (value) => {
+    const text = String(value || '').toLowerCase();
+    return ['sakit', 'izin', 'alpa', 'tidak hadir'].some(keyword => text.includes(keyword));
+  };
 
-  const handlePlanChange = (id, field, value) => { setLessonPlans(plans => plans.map(p => { if (p.id === id) { let finalValue = (field === 'tahsinNilai' && p[field] === value) ? '' : value; let u = { ...p, [field]: finalValue }; if (field === 'tahsinKategori') { u.tahsinHalaman = []; u.tahsinBaris = []; u.tahsinMateri = []; u.tahsinSuratList = [emptySurat()]; } return u; } return p; })); };
+  const shouldRestrictApplyToOthers = (catatan = lessonPlans[0]?.lainLain) => (
+    homeTab === 'jurnal' && editingId && isInactiveAttendanceStatus(catatan)
+  );
+
+  const handleCloseModal = () => { setIsModalOpen(false); setEditingId(null); setActiveDropdown(null); setModalMode('full_bulk'); };
+  const toggleStudent = (id) => {
+    if (shouldRestrictApplyToOthers()) {
+      setSelectedStudents([editingId]);
+      return;
+    }
+
+    if (id === 'ALL') { setSelectedStudents(studentsInHalaqoh.length === selectedStudents.length ? [] : studentsInHalaqoh.map(s => s.id)) } else { setSelectedStudents(prev => prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]); }
+  };
+
+  const handlePlanChange = (id, field, value) => {
+    if (field === 'lainLain' && shouldRestrictApplyToOthers(value)) {
+      setSelectedStudents([editingId]);
+    }
+
+    setLessonPlans(plans => plans.map(p => { if (p.id === id) { let finalValue = (field === 'tahsinNilai' && p[field] === value) ? '' : value; let u = { ...p, [field]: finalValue }; if (field === 'tahsinKategori') { u.tahsinHalaman = []; u.tahsinBaris = []; u.tahsinMateri = []; u.tahsinSuratList = [emptySurat()]; } return u; } return p; }));
+  };
   const handleToggleArray = (planId, field, value) => { setLessonPlans(plans => plans.map(p => { if (p.id === planId) { const arr = p[field] || []; let newArr = arr.includes(value) ? arr.filter(x => x !== value) : [...arr, value]; if (field === 'tahsinBaris' || field === 'tahsinHalaman') newArr.sort((a, b) => Number(a) - Number(b)); return { ...p, [field]: newArr }; } return p; })); };
   const handleAddSurat = (planId, listName) => setLessonPlans(plans => plans.map(p => p.id === planId ? { ...p, [listName]: [...p[listName], emptySurat()] } : p));
   const handleRemoveSurat = (planId, listName, suratId) => setLessonPlans(plans => plans.map(p => p.id === planId ? { ...p, [listName]: p[listName].filter(m => m.id !== suratId) } : p));
@@ -1210,7 +1232,9 @@ const MainApp = ({ currentUser, onLogout }) => {
   const getAyatRangeOrDefault = (surat, start, end) => start && end ? (start === end ? start : start + '-' + end) : start || end || (surahList.find(s => s.no + '. ' + s.name === surat) ? '1-' + surahList.find(s => s.no + '. ' + s.name === surat).ayat : 'Semua Ayat');
 
   const handleMarkAbsent = async (status = 'Alpa') => {
-    if (selectedStudents.length === 0) {
+    const targetStudentIds = homeTab === 'jurnal' && editingId && isInactiveAttendanceStatus(status) ? [editingId] : selectedStudents;
+
+    if (targetStudentIds.length === 0) {
       showToast('Pilih minimal 1 siswa!');
       return;
     }
@@ -1219,7 +1243,7 @@ const MainApp = ({ currentUser, onLogout }) => {
 
     try {
       const updates = students.reduce((acc, student) => {
-        if (selectedStudents.includes(student.id)) {
+        if (targetStudentIds.includes(student.id)) {
           const existingRecord = student.records[dateStr] || {};
           let finalRecord = { ...existingRecord };
 
@@ -1242,7 +1266,7 @@ const MainApp = ({ currentUser, onLogout }) => {
       });
 
       handleCloseModal();
-      showToast(`${selectedStudents.length} siswa ditandai ${status.toLowerCase()}.`);
+      showToast(`${targetStudentIds.length} siswa ditandai ${status.toLowerCase()}.`);
     } catch (e) { console.error(e); showToast(`Gagal menandai ${status.toLowerCase()}.`); }
   };
 
@@ -1264,10 +1288,11 @@ const MainApp = ({ currentUser, onLogout }) => {
     const modalTahsinNilai = plan.tahsinNilai || '-'; const modalTahsinSuratNilai = tS.nilai; const modalTahfidzNilai = fS.nilai;
     const isCategoryEdit = ['tahsin', 'tahfidz', 'murojaah', 'catatan'].includes(modalMode);
     const k = homeTab === 'lesson_plan' ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan', cT: 'catatanTahsin', cF: 'catatanTahfidz' } : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan', cT: 'jurnalCatatanTahsin', cF: 'jurnalCatatanTahfidz' };
+    const targetStudentIds = shouldRestrictApplyToOthers(modalCatatan) ? [editingId] : selectedStudents;
 
     try {
       const updates = students.reduce((acc, student) => {
-        if (selectedStudents.includes(student.id)) {
+        if (targetStudentIds.includes(student.id)) {
           const existingRecord = student.records[plan.tanggal] || {}; let finalRecord = { ...existingRecord };
           for (let key of Object.values(k)) if (!finalRecord[key]) finalRecord[key] = '-';
 

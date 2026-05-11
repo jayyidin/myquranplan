@@ -15,6 +15,9 @@ export const JurnalModal = ({
   const [isAbsentMenuOpen, setIsAbsentMenuOpen] = useState(false);
 
   const gradeOptions = ['A', 'B+', 'B', 'B-', 'C'];
+  const applyToOthersDisabled = homeTab === 'jurnal' && editingId && ['sakit', 'izin', 'alpa', 'tidak hadir'].some(keyword => (
+    String(lessonPlans[0]?.lainLain || '').toLowerCase().includes(keyword)
+  ));
 
   // Filter siswa berdasarkan pencarian lokal di dalam modal
   const displayStudents = useMemo(() => {
@@ -43,6 +46,11 @@ export const JurnalModal = ({
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
                   {editingId ? 'Terapkan Juga Ke Siswa Lain' : `Pilih Siswa (${selectedStudents.length}/${filteredStudents.length})`}
                 </label>
+                {applyToOthersDisabled && (
+                  <span className="text-[10px] font-bold text-red-500 bg-red-50 border border-red-100 rounded-lg px-2 py-1">
+                    Nonaktif untuk status tidak hadir
+                  </span>
+                )}
                 <div className="flex items-center gap-2">
                   <div className="relative w-full sm:w-48">
                     <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -51,10 +59,11 @@ export const JurnalModal = ({
                       placeholder="Cari siswa..."
                       value={searchQuery}
                       onChange={e => setSearchQuery(e.target.value)}
-                      className="w-full pl-8 pr-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-gray-700"
+                      disabled={applyToOthersDisabled}
+                      className="w-full pl-8 pr-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     />
                   </div>
-                  <button type="button" onClick={() => toggleStudent('ALL')} className="shrink-0 text-[10px] text-blue-600 font-bold bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors border border-blue-100">
+                  <button type="button" onClick={() => toggleStudent('ALL')} disabled={applyToOthersDisabled} className="shrink-0 text-[10px] text-blue-600 font-bold bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors border border-blue-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-50">
                     {filteredStudents.length === selectedStudents.length ? 'Batal Semua' : 'Pilih Semua'}
                   </button>
                 </div>
@@ -63,13 +72,15 @@ export const JurnalModal = ({
                 {displayStudents.map(s => {
                   const isSelected = selectedStudents.includes(s.id);
                   const isEditing = s.id === editingId;
+                  const isStudentDisabled = applyToOthersDisabled && !isEditing;
 
                   return (
                     <button 
                       key={s.id} 
                       type="button"
-                      onClick={() => toggleStudent(s.id)} 
-                      className={`relative flex items-center justify-center gap-1.5 shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${isSelected ? (isEditing ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-[#00e676]/10 border-[#00e676] text-green-700 shadow-sm') : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300'}`}
+                      onClick={() => toggleStudent(s.id)}
+                      disabled={isStudentDisabled}
+                      className={`relative flex items-center justify-center gap-1.5 shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all disabled:opacity-40 disabled:cursor-not-allowed ${isSelected ? (isEditing ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-[#00e676]/10 border-[#00e676] text-green-700 shadow-sm') : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300'}`}
                     >
                         {isSelected && !isEditing && <Check size={12} strokeWidth={3} className="shrink-0" />}
                         <span className="truncate max-w-[110px] sm:max-w-[140px]">{s.name}</span>
