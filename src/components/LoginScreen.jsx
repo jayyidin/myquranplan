@@ -304,6 +304,8 @@ const LoginScreen = ({ onLogin }) => {
     setSuccessMsg('');
     
     const normalizedUsername = username.toLowerCase().trim();
+    // Supabase Auth membutuhkan format email, kita gunakan format dummy dengan username
+    const dummyEmail = `${normalizedUsername}@myquranplan.local`;
 
     try {
       if (isRegistering) {
@@ -318,47 +320,84 @@ const LoginScreen = ({ onLogin }) => {
          }
          
          const cleanName = fullName.trim();
-         const { data: userSnap } = await supabase.from('app_users').select('*').eq('username', normalizedUsername).maybeSingle();
+         const { data: userSnap } = await supabase.rpc('get_user_login_data', { lookup_username: normalizedUsername }).maybeSingle();
          
          if (userSnap) {
             setError('Username sudah terdaftar! Gunakan yang lain.');
          } else {
-            // Mendaftar dengan status: pending
-            await supabase.from('app_users').insert([{ 
-               username: normalizedUsername, 
-               password, 
-               name: cleanName, 
-               role: 'guru', 
-               status: 'pending'
-            }]);
-            
-            setSuccessMsg('Pendaftaran berhasil! Akun Anda sedang menunggu persetujuan dari Admin Utama.');
-            setIsRegistering(false);
-            setUsername('');
-            setPassword('');
-            setFullName('');
-            setConfirmPassword('');
+            // 1. Mendaftar menggunakan Supabase Auth
+            const { data: authData, error: authError } = await supabase.auth.signUp({
+               email: dummyEmail,
+               password: password,
+               options: {
+                  data: { name: cleanName, username: normalizedUsername, role: 'guru' }
+               }
+            });
+
+            if (authError) {
+               setError('Gagal mendaftar: ' + authError.message);
+            } else {
+               // 2. Simpan profil tambahan ke app_users dan sembunyikan password
+               await supabase.from('app_users').insert([{ 
+                  id: authData.user?.id,
+                  username: normalizedUsername, 
+                  password: '[SECURED_BY_SUPABASE]', // Dummy password agar Plaintext aman
+                  name: cleanName, 
+                  role: 'guru', 
+                  status: 'pending'
+               }]);
+               
+               // 3. Logout paksa karena akun masih pending (Supabase biasanya otomatis login setelah signUp)
+               await supabase.auth.signOut();
+
+               setSuccessMsg('Pendaftaran berhasil! Akun Anda sedang menunggu persetujuan dari Admin Utama.');
+               setIsRegistering(false);
+               setUsername('');
+               setPassword('');
+               setFullName('');
+               setConfirmPassword('');
+            }
          }
       } else {
-         // Admin Utama (Hardcoded Bypass)
-         if (normalizedUsername === 'jumanjayyidin' && password === 'offthewallba123') {
-           onLogin({ username: 'jumanjayyidin', name: 'Super Admin', role: 'superadmin', status: 'active' });
-           setIsLoading(false);
-           return;
-         }
          
-         // Cek User di Supabase
-         const { data: userData } = await supabase.from('app_users').select('*').eq('username', normalizedUsername).maybeSingle();
+         // Cek User Profil di Supabase
+         const { data: userData } = await supabase.rpc('get_user_login_data', { lookup_username: normalizedUsername }).maybeSingle();
          
          if (userData) {
-            if (userData.password === password) {
-               if (userData.role !== 'superadmin' && userData.status !== 'active') {
-                   setError('Akun Anda belum disetujui oleh Admin. Harap tunggu atau hubungi Admin.');
+            if (userData.role !== 'superadmin' && userData.status !== 'active') {
+                setError('Akun Anda belum disetujui oleh Admin. Harap tunggu atau hubungi Admin.');
+                setIsLoading(false);
+                return;
+            }
+
+            // Login menggunakan sistem autentikasi resmi Supabase Auth
+            const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+               email: dummyEmail,
+               password: password,
+            });
+
+            if (authError) {
+               // Auto-Migration: Jika user ada di database lama (Plaintext) tapi belum ada di Supabase Auth
+               if (userData.password === password && userData.password !== '[SECURED_BY_SUPABASE]') {
+                  const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+                     email: dummyEmail,
+                     password: password,
+                     options: { data: { name: userData.name, username: userData.username, role: userData.role } }
+                  });
+
+                  if (signUpError) {
+                     setError('Gagal mensinkronisasi akun lama ke sistem keamanan baru.');
+                  } else {
+                     // Update app_users: Tautkan dengan ID auth baru dan buang Plaintext Password-nya
+                     await supabase.from('app_users').update({ id: signUpData.user?.id, password: '[SECURED_BY_SUPABASE]' }).eq('username', normalizedUsername);
+                     await supabase.auth.signInWithPassword({ email: dummyEmail, password: password });
+                     if (onLogin) onLogin({ username: userData.username, name: userData.name, role: userData.role });
+                  }
                } else {
-                   onLogin({ username: userData.username, name: userData.name, role: userData.role });
+                  setError('Password yang Anda masukkan salah!');
                }
             } else {
-               setError('Password yang Anda masukkan salah!');
+               if (onLogin) onLogin({ username: userData.username, name: userData.name, role: userData.role });
             }
          } else {
             setError('Username tidak ditemukan! Silakan daftar terlebih dahulu.');
@@ -379,7 +418,7 @@ const LoginScreen = ({ onLogin }) => {
     const normalizedUsername = username.toLowerCase().trim();
 
     try {
-      const { data: userSnap } = await supabase.from('app_users').select('*').eq('username', normalizedUsername).maybeSingle();
+      const { data: userSnap } = await supabase.rpc('get_user_login_data', { lookup_username: normalizedUsername }).maybeSingle();
 
       if (userSnap) {
         await supabase.from('app_users').update({ resetrequested: true }).eq('username', normalizedUsername);
@@ -496,6 +535,31 @@ const LoginScreen = ({ onLogin }) => {
       .sort((a, b) => new Date(b) - new Date(a))
       .map(d => new Date(d));
 
+    // --- SOLUSI INPUT JARANG: Ambil Status Terakhir ---
+    let latestTahsin = null;
+    let latestTahfidz = null;
+    let latestMurojaah = null;
+    
+    const sortedAllDatesStr = Object.keys(publicStudent.records || {})
+      .sort((a, b) => new Date(b) - new Date(a));
+      
+    for (const dateStr of sortedAllDatesStr) {
+      const rec = publicStudent.records[dateStr];
+      const isAbsent = ['alpa', 'sakit', 'izin', 'tidak hadir', 'libur'].some(kw => String(rec[k.c] || '').toLowerCase().includes(kw));
+      if (isAbsent) continue;
+
+      if (!latestTahsin && ((rec[k.t] && rec[k.t] !== '-') || (rec[k.h] && rec[k.h] !== '-'))) {
+        latestTahsin = { date: dateStr, t: rec[k.t], h: rec[k.h], tNilai: rec[k.tNilai], tsNilai: rec[k.tsNilai] };
+      }
+      if (!latestTahfidz && ((rec[k.f] && rec[k.f] !== '-') || (rec[k.af] && rec[k.af] !== '-'))) {
+        latestTahfidz = { date: dateStr, f: rec[k.f], af: rec[k.af], fNilai: rec[k.fNilai] };
+      }
+      if (!latestMurojaah && (rec[k.m] && rec[k.m] !== '-')) {
+        latestMurojaah = { date: dateStr, m: rec[k.m] };
+      }
+      if (latestTahsin && latestTahfidz && latestMurojaah) break;
+    }
+
     const datesToDisplay = isPrintingAll ? allDates : weekDates;
 
     return ( // Public Student View
@@ -517,61 +581,125 @@ const LoginScreen = ({ onLogin }) => {
 
         <div className="w-full flex justify-center p-0 sm:p-4 print:p-0">
           <div id="share-report-card" className="bg-white w-full max-w-[800px] shrink-0 sm:shadow-2xl relative sm:my-8 print:shadow-none print:w-[800px] print:min-w-[800px] print:max-w-none animate-in fade-in slide-in-from-bottom-4 duration-700 transition-colors rounded-none sm:rounded-[32px] overflow-hidden">
+            
             {/* Header Laporan */}
-            <div className="bg-[#f2fdf5] p-6 sm:p-8 border-b border-green-100 flex flex-col-reverse sm:flex-row justify-between items-center gap-4 transition-colors text-center sm:text-left">
-               <div className="w-full sm:w-auto">
-                  <h1 className="text-2xl sm:text-3xl font-black text-[#111827] mb-1 sm:mb-2">{publicTab === 'lesson_plan' ? "Lesson Plan Al-Qur'an" : "Jurnal Harian Al-Qur'an"}</h1>
-                  <p className="text-[#00e676] font-bold text-xs sm:text-sm italic">SDIT Al-Fityan School Bogor</p>
+            <div className="bg-gradient-to-br from-emerald-50 via-white to-teal-50 p-6 sm:p-10 border-b border-gray-100 flex flex-col-reverse sm:flex-row justify-between items-center gap-6 text-center sm:text-left relative overflow-hidden">
+               <div className="w-full sm:w-auto relative z-10">
+                  <h1 className="text-2xl sm:text-4xl font-black text-slate-800 mb-1 sm:mb-2 tracking-tight">
+                    {publicTab === 'lesson_plan' ? "Lesson Plan Al-Qur'an" : "Jurnal Harian Al-Qur'an"}
+                  </h1>
+                  <p className="text-emerald-600 font-bold text-sm sm:text-base tracking-wide uppercase">Laporan Pemantauan Hafalan</p>
                </div>
-               <div className="w-20 h-20 sm:w-32 sm:h-32 flex items-center justify-center shrink-0">
-                  {institutionLogo ? <img src={institutionLogo} alt="Logo Instansi" className="w-full h-full object-contain transition-all" /> : <BookOpen size={64} className="text-green-600 sm:w-16 sm:h-16" />}
+               <div className="w-20 h-20 sm:w-28 sm:h-28 flex items-center justify-center shrink-0 bg-white rounded-[1.5rem] shadow-sm border border-emerald-100/50 p-3 sm:p-4 relative z-10">
+                  {institutionLogo ? <img src={institutionLogo} alt="Logo Instansi" className="w-full h-full object-contain" /> : <BookOpen size={48} className="text-emerald-500" />}
                </div> 
+               
+               {/* Decorative Shapes */}
+               <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-emerald-100/40 rounded-full blur-3xl pointer-events-none"></div>
+               <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-64 h-64 bg-teal-100/40 rounded-full blur-3xl pointer-events-none"></div>
             </div>
 
             {/* Info Siswa */}
-            <div className="p-6 sm:p-8 flex flex-col sm:flex-row justify-between items-center gap-6 border-b border-gray-50 transition-colors text-center sm:text-left">
-               <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-5 w-full sm:w-auto">
-               <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full bg-[#e6fbf0] border-4 sm:border-[5px] border-[#00e676] text-[#00e676] flex items-center justify-center text-4xl sm:text-5xl font-black shrink-0 overflow-hidden shadow-inner">
-                  {publicStudent.photo ? <img src={publicStudent.photo} alt={publicStudent.name} className="w-full h-full object-cover" /> : <span>{getInitials(publicStudent.name)}</span>}
+            <div className="p-6 sm:p-10 flex flex-col sm:flex-row justify-between items-center gap-6 border-b border-gray-50 text-center sm:text-left bg-white z-10 relative">
+               <div className="flex flex-col sm:flex-row items-center gap-5 sm:gap-6 w-full sm:w-auto">
+                 <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-emerald-50 border-[6px] sm:border-[8px] border-emerald-100 text-emerald-600 flex items-center justify-center text-4xl sm:text-5xl font-black shrink-0 overflow-hidden shadow-lg relative">
+                    {publicStudent.photo ? <img src={publicStudent.photo} alt={publicStudent.name} className="w-full h-full object-cover" /> : <span>{getInitials(publicStudent.name)}</span>}
+                 </div>
+                 <div>
+                    <h2 className={`font-black text-slate-800 mb-3 sm:mb-4 ${publicStudent.name.length > 24 ? 'text-xl sm:text-2xl' : publicStudent.name.length > 18 ? 'text-2xl sm:text-3xl' : 'text-3xl sm:text-4xl'} tracking-tight`}>{publicStudent.name}</h2>
+                    <div className="flex flex-wrap justify-center sm:justify-start gap-2">
+                       <span className="bg-slate-100 text-slate-600 px-4 sm:px-5 py-1.5 sm:py-2 rounded-xl font-black text-[10px] sm:text-xs uppercase tracking-widest border border-slate-200/60 shadow-sm">Kelas {publicStudent.kelas || '-'}</span>
+                       <span className="bg-emerald-50 text-emerald-700 px-4 sm:px-5 py-1.5 sm:py-2 rounded-xl font-black text-[10px] sm:text-xs uppercase tracking-widest border border-emerald-100/60 shadow-sm">Klp: {publicStudent.halaqoh || '-'}</span>
+                    </div>
+                 </div>
                </div>
-               <div>
-                  <h2 className={`font-black text-gray-800 mb-2 sm:mb-3 ${publicStudent.name.length > 24 ? 'text-lg sm:text-xl' : publicStudent.name.length > 18 ? 'text-xl sm:text-2xl' : 'text-2xl sm:text-3xl'}`}>{publicStudent.name}</h2>
-                  <div className="flex flex-wrap justify-center sm:justify-start gap-2 mt-1 sm:mt-0">
-                     <span className={`bg-[#e6fbf0] text-green-800 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full font-bold uppercase tracking-widest ${String(publicStudent.kelas || '-').length > 10 ? 'text-[9px] sm:text-xs' : 'text-[10px] sm:text-xs'}`}>Kelas {publicStudent.kelas || '-'}</span>
-                     <span className={`bg-[#e6fbf0] text-green-800 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full font-bold uppercase tracking-widest ${String(publicStudent.halaqoh || '-').length > 20 ? 'text-[8px] sm:text-[10px]' : String(publicStudent.halaqoh || '-').length > 15 ? 'text-[9px] sm:text-[11px]' : 'text-[10px] sm:text-xs'}`}>Kelompok {publicStudent.halaqoh || '-'}</span>
-                  </div>
-               </div>
-               </div>
-            </div>
-
-            {/* Navigasi Arsip Mingguan */}
-            <div className="bg-white border-b border-gray-100 px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center print:hidden transition-colors">
-               <button onClick={() => changePublicWeek(-7)} className="p-2 sm:p-3 bg-slate-50 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-emerald-500" title="Pekan Sebelumnya"><ChevronLeft size={20} className="sm:w-6 sm:h-6"/></button>
-               <div className="flex flex-col items-center text-slate-700">
-                  <span className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Periode Laporan</span>
-                  <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-black text-slate-700"><Calendar size={14} className="text-emerald-500 sm:w-4 sm:h-4"/> {formatPeriode(weekDates[0], weekDates[4])}</div>
-                  
-                  {/* Tombol Kembali ke Pekan Ini */}
-                  {formatDateObj(weekStart) !== formatDateObj(getMonday(new Date())) && !isPrintingAll && (
-                    <button 
-                      onClick={() => setPublicWeekStart(getMonday(new Date()))}
-                      className="mt-1 sm:mt-1.5 text-[9px] font-bold text-emerald-600 hover:text-emerald-700 underline transition-colors animate-in fade-in slide-in-from-top-1 duration-300"
-                    >
-                      Kembali ke Pekan Ini
-                    </button>
-                  )}
-               </div> 
-               <button onClick={() => changePublicWeek(7)} className="p-2 sm:p-3 bg-slate-50 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-emerald-500" title="Pekan Selanjutnya"><ChevronRight size={20} className="sm:w-6 sm:h-6"/></button>
             </div>
             
-            {/* Tab Toggle untuk Target / Capaian */}
-            <div className="bg-slate-50 border-b border-gray-100 px-4 sm:px-6 py-3 sm:py-4 flex gap-2 sm:gap-3 print:hidden transition-colors">
-               <button onClick={() => setPublicTab('lesson_plan')} className={`flex-1 py-2.5 sm:py-3 text-[10px] sm:text-xs font-black rounded-xl transition-all ${publicTab === 'lesson_plan' ? 'bg-emerald-500 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-500 hover:bg-emerald-50'}`}>Target (Lesson Plan)</button>
-               <button onClick={() => setPublicTab('jurnal')} className={`flex-1 py-2.5 sm:py-3 text-[10px] sm:text-xs font-black rounded-xl transition-all ${publicTab === 'jurnal' ? 'bg-blue-500 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-500 hover:bg-blue-50'}`}>Capaian (Jurnal)</button>
+            {/* STATUS TERAKHIR (LATEST PROGRESS) - Solusi input jarang */}
+            {(latestTahsin || latestTahfidz || latestMurojaah) && !isPrintingAll && (
+              <div className="p-6 sm:p-10 bg-slate-50 border-b border-slate-100 print:hidden">
+                 <div className="flex items-center gap-2 mb-6">
+                    <div className="w-2 h-6 bg-amber-400 rounded-full"></div>
+                    <h3 className="text-sm sm:text-base font-black text-slate-700 uppercase tracking-widest">Status Terakhir <span className="text-slate-400 normal-case text-[10px] sm:text-xs font-bold ml-1">(Pembaruan Terkini)</span></h3>
+                 </div>
+                 
+                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Latest Tahsin */}
+                    {latestTahsin && (
+                      <div className="bg-white p-4 rounded-2xl border border-blue-100 shadow-sm relative overflow-hidden">
+                         <div className="absolute top-0 right-0 bg-blue-50 text-blue-500 text-[9px] font-black px-2 py-1 rounded-bl-xl border-b border-l border-blue-100">{formatShortDate(new Date(latestTahsin.date))}</div>
+                         <div className="flex items-center gap-2 mb-3 mt-1 sm:mt-0">
+                           <div className="p-1.5 bg-blue-100 text-blue-600 rounded-lg"><BookOpen size={14} strokeWidth={2.5} /></div>
+                           <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-blue-700">Tahsin</span>
+                         </div>
+                         <div className="pl-1"><ExpandableText text={formatPrintData(latestTahsin.t, latestTahsin.h, latestTahsin.tNilai, latestTahsin.tsNilai)} /></div>
+                      </div>
+                    )}
+                    
+                    {/* Latest Tahfidz */}
+                    {latestTahfidz && (
+                      <div className="bg-white p-4 rounded-2xl border border-purple-100 shadow-sm relative overflow-hidden">
+                         <div className="absolute top-0 right-0 bg-purple-50 text-purple-500 text-[9px] font-black px-2 py-1 rounded-bl-xl border-b border-l border-purple-100">{formatShortDate(new Date(latestTahfidz.date))}</div>
+                         <div className="flex items-center gap-2 mb-3 mt-1 sm:mt-0">
+                           <div className="p-1.5 bg-purple-100 text-purple-600 rounded-lg"><Mic size={14} strokeWidth={2.5} /></div>
+                           <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-purple-700">Tahfidz</span>
+                         </div>
+                         <div className="pl-1"><ExpandableText text={formatPrintData(latestTahfidz.f, latestTahfidz.af, null, latestTahfidz.fNilai)} /></div>
+                      </div>
+                    )}
+                    
+                    {/* Latest Murojaah */}
+                    {latestMurojaah && (
+                      <div className="bg-white p-4 rounded-2xl border border-emerald-100 shadow-sm relative overflow-hidden">
+                         <div className="absolute top-0 right-0 bg-emerald-50 text-emerald-500 text-[9px] font-black px-2 py-1 rounded-bl-xl border-b border-l border-emerald-100">{formatShortDate(new Date(latestMurojaah.date))}</div>
+                         <div className="flex items-center gap-2 mb-3 mt-1 sm:mt-0">
+                           <div className="p-1.5 bg-emerald-100 text-emerald-600 rounded-lg"><Repeat size={14} strokeWidth={2.5} /></div>
+                           <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-emerald-700">Murojaah</span>
+                         </div>
+                         <div className="pl-1"><ExpandableText text={formatPrintData(latestMurojaah.m, '-', null, null)} /></div>
+                      </div>
+                    )}
+                 </div>
+                 
+                 <p className="text-[10px] sm:text-xs text-slate-400 mt-4 sm:mt-5 font-bold italic text-center sm:text-left bg-white px-4 py-2 rounded-xl border border-slate-100">
+                   💡 <span className="text-amber-500">Tips:</span> Menampilkan batas capaian hafalan/bacaan terakhir Ananda. Guru cukup mengisi jurnal sekali waktu saja, dan status terkini akan otomatis tampil di sini.
+                 </p>
+              </div>
+            )}
+
+            {/* Navigasi & Tab (Segmented Control style) */}
+            <div className="bg-slate-50/80 px-4 sm:px-10 py-5 flex flex-col lg:flex-row justify-between items-center gap-5 print:hidden border-b border-slate-100">
+               {/* Navigasi Arsip Mingguan */}
+               <div className="flex items-center justify-between w-full lg:w-auto bg-white rounded-2xl shadow-sm border border-slate-200/60 p-1.5">
+                  <button onClick={() => changePublicWeek(-7)} className="p-2 sm:p-2.5 bg-slate-50 hover:bg-emerald-50 rounded-xl transition-colors text-slate-400 hover:text-emerald-500"><ChevronLeft size={20} /></button>
+                  <div className="flex flex-col items-center px-4 sm:px-6 min-w-[140px]">
+                     <span className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Periode Laporan</span>
+                     <span className="text-xs sm:text-sm font-black text-slate-700">{formatPeriode(weekDates[0], weekDates[4])}</span>
+                  </div> 
+                  <button onClick={() => changePublicWeek(7)} className="p-2 sm:p-2.5 bg-slate-50 hover:bg-emerald-50 rounded-xl transition-colors text-slate-400 hover:text-emerald-500"><ChevronRight size={20} /></button>
+               </div>
+               
+               {/* Tab Toggle */}
+               <div className="flex w-full lg:w-auto bg-slate-200/50 p-1.5 rounded-2xl">
+                  <button onClick={() => setPublicTab('lesson_plan')} className={`flex-1 lg:flex-none py-2.5 sm:py-3 px-6 text-[11px] sm:text-xs font-black rounded-xl transition-all duration-300 ${publicTab === 'lesson_plan' ? 'bg-white text-emerald-600 shadow-sm ring-1 ring-slate-900/5' : 'text-slate-500 hover:text-slate-700'}`}>Target (Lesson Plan)</button>
+                  <button onClick={() => setPublicTab('jurnal')} className={`flex-1 lg:flex-none py-2.5 sm:py-3 px-6 text-[11px] sm:text-xs font-black rounded-xl transition-all duration-300 ${publicTab === 'jurnal' ? 'bg-white text-blue-600 shadow-sm ring-1 ring-slate-900/5' : 'text-slate-500 hover:text-slate-700'}`}>Capaian (Jurnal)</button>
+               </div>
             </div>
 
+            {/* Kembali ke pekan ini */}
+            {formatDateObj(weekStart) !== formatDateObj(getMonday(new Date())) && !isPrintingAll && (
+              <div className="bg-amber-50/50 text-center py-2 border-b border-amber-100 print:hidden">
+                <button 
+                  onClick={() => setPublicWeekStart(getMonday(new Date()))}
+                  className="text-[11px] sm:text-xs font-black text-amber-600 hover:text-amber-700 transition-colors flex items-center justify-center gap-1.5 mx-auto"
+                >
+                  <RotateCcw size={14} /> Kembali ke Pekan Ini
+                </button>
+              </div>
+            )}
+
             {/* Daftar Hari */}
-            <div className="p-4 sm:p-8 flex flex-col gap-4 sm:gap-5 bg-gray-50/50">
+            <div className="p-4 sm:p-10 flex flex-col gap-5 sm:gap-6 bg-[#f8fafc]">
                {datesToDisplay.map((dateObj) => {
                   const dateStr = formatDateObj(dateObj);
                   const rec = publicStudent.records?.[dateStr] || {};
@@ -588,27 +716,58 @@ const LoginScreen = ({ onLogin }) => {
                   const valCF = rec[k.cF] && rec[k.cF] !== '-' ? String(rec[k.cF]) : '-';
 
                   return (
-                    <div key={dateStr} className="bg-white border border-gray-100 rounded-[20px] sm:rounded-[24px] p-4 sm:p-5 shadow-sm print:break-inside-avoid transition-colors">
-                       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 sm:gap-0 mb-4 sm:mb-5 border-b border-gray-50 pb-3 sm:pb-4">
-                          <span className="bg-[#00e676] text-white px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-widest w-max shadow-sm"> {['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'][dateObj.getDay()]}</span>
-                          <span className="text-gray-400 dark:text-gray-400 font-bold italic text-xs sm:text-sm">{formatShortDate(dateObj)}</span>
+                    <div key={dateStr} className="bg-white border border-slate-200/60 rounded-[20px] sm:rounded-[2rem] p-5 sm:p-6 shadow-sm hover:shadow-md transition-all duration-300 print:break-inside-avoid relative overflow-hidden group">
+                       
+                       {/* Indicator Line */}
+                       <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-emerald-400 opacity-80"></div>
+
+                       <div className="flex justify-between items-center mb-5 sm:mb-6 border-b border-slate-100 pb-4 pl-3">
+                          <div className="flex items-center gap-3">
+                             <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                               <Calendar size={20} />
+                             </div>
+                             <div className="flex flex-col">
+                               <span className="text-xs sm:text-sm font-black text-slate-800 uppercase tracking-wider"> {['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'][dateObj.getDay()]}</span>
+                               <span className="text-[10px] sm:text-xs font-bold text-slate-400">{formatShortDate(dateObj)}</span>
+                             </div>
+                          </div>
                        </div>
-                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 sm:gap-y-6 gap-x-4 sm:gap-x-6">
-                              <div className="bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent h-full flex flex-col">
-                             <div className="flex items-center gap-1.5 mb-1.5 text-blue-500"><BookOpen size={14} /><span className="text-[10px] sm:text-xs font-black uppercase tracking-wider">Tahsin</span></div>
-                                <ExpandableText text={valT} />
+                       
+                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 pl-2 sm:pl-3">
+                          {/* Tahsin */}
+                          <div className="bg-blue-50/40 p-4 rounded-2xl border border-blue-100/50 hover:bg-blue-50/80 transition-colors flex flex-col">
+                             <div className="flex items-center gap-2 mb-2 sm:mb-3">
+                               <div className="p-1.5 bg-blue-100 text-blue-600 rounded-lg"><BookOpen size={14} strokeWidth={2.5} /></div>
+                               <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-blue-700">Tahsin</span>
+                             </div>
+                             <div className="pl-1"><ExpandableText text={valT} /></div>
                           </div>
-                              <div className="bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent h-full flex flex-col">
-                             <div className="flex items-center gap-1.5 mb-1.5 text-purple-500"><Mic size={14} /><span className="text-[10px] sm:text-xs font-black uppercase tracking-wider">Tahfidz</span></div>
-                                <ExpandableText text={valF} />
+
+                          {/* Tahfidz */}
+                          <div className="bg-purple-50/40 p-4 rounded-2xl border border-purple-100/50 hover:bg-purple-50/80 transition-colors flex flex-col">
+                             <div className="flex items-center gap-2 mb-2 sm:mb-3">
+                               <div className="p-1.5 bg-purple-100 text-purple-600 rounded-lg"><Mic size={14} strokeWidth={2.5} /></div>
+                               <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-purple-700">Tahfidz</span>
+                             </div>
+                             <div className="pl-1"><ExpandableText text={valF} /></div>
                           </div>
-                              <div className="bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent h-full flex flex-col">
-                             <div className="flex items-center gap-1.5 mb-1.5 text-emerald-500"><Repeat size={14} /><span className="text-[10px] sm:text-xs font-black uppercase tracking-wider">Murojaah</span></div>
-                                <ExpandableText text={valM} />
+
+                          {/* Murojaah */}
+                          <div className="bg-emerald-50/40 p-4 rounded-2xl border border-emerald-100/50 hover:bg-emerald-50/80 transition-colors flex flex-col">
+                             <div className="flex items-center gap-2 mb-2 sm:mb-3">
+                               <div className="p-1.5 bg-emerald-100 text-emerald-600 rounded-lg"><Repeat size={14} strokeWidth={2.5} /></div>
+                               <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-emerald-700">Murojaah</span>
+                             </div>
+                             <div className="pl-1"><ExpandableText text={valM} /></div>
                           </div>
-                              <div className="bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent h-full flex flex-col">
-                             <div className="flex items-center gap-1.5 mb-1.5 text-orange-500"><FileText size={14} /><span className="text-[10px] sm:text-xs font-black uppercase tracking-wider">Catatan</span></div>
-                                {renderCatatanDetail(valC, valCT, valCF)}
+
+                          {/* Catatan */}
+                          <div className="bg-orange-50/40 p-4 rounded-2xl border border-orange-100/50 hover:bg-orange-50/80 transition-colors flex flex-col">
+                             <div className="flex items-center gap-2 mb-2 sm:mb-3">
+                               <div className="p-1.5 bg-orange-100 text-orange-600 rounded-lg"><FileText size={14} strokeWidth={2.5} /></div>
+                               <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-orange-700">Catatan</span>
+                             </div>
+                             <div className="pl-1">{renderCatatanDetail(valC, valCT, valCF)}</div>
                           </div>
                        </div>
                     </div>
@@ -629,14 +788,21 @@ const LoginScreen = ({ onLogin }) => {
             </div>
 
             {/* Footer Laporan */}
-            <div className="bg-[#111827] p-5 sm:p-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-white text-center sm:text-left">
-               <div className="flex items-center justify-center sm:justify-start gap-3 w-full sm:w-auto">
-                  <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"><Users size={14} /></div>
-                  <span className="text-xs sm:text-sm font-medium text-gray-400">Ustadz/ah: <strong className="text-white inline ml-1">{publicTeacher || '-'}</strong></span>
+            <div className="bg-slate-900 p-6 sm:p-10 flex flex-col sm:flex-row justify-between items-center gap-5 text-white text-center sm:text-left relative overflow-hidden">
+               <div className="absolute inset-0 opacity-10" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff'%3E%3Cpath d='M50 5 L62 38 L95 50 L62 62 L50 95 L38 62 L5 50 L38 38 Z' /%3E%3C/g%3E%3C/svg%3E")`, backgroundSize: '40px 40px' }}></div>
+               <div className="flex items-center justify-center sm:justify-start gap-4 w-full sm:w-auto relative z-10">
+                  <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center backdrop-blur-sm border border-white/10 shadow-inner"><Users size={20} className="text-emerald-400" /></div>
+                  <div className="flex flex-col">
+                    <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest mb-0.5">Guru / Pembimbing</span>
+                    <strong className="text-sm sm:text-base font-black text-white">{publicTeacher || '-'}</strong>
+                  </div>
                </div> 
-               <div className="flex items-center justify-center sm:justify-start gap-3 w-full sm:w-auto">
-                  <div className="w-8 h-8 rounded-full bg-[#00e676]/20 flex items-center justify-center"><Calendar size={14} className="text-[#00e676]" /></div>
-                  <span className="text-xs sm:text-sm font-medium text-gray-400">Periode: <strong className="text-white inline ml-1">{formatPeriode(weekDates[0], weekDates[4])}</strong></span>
+               <div className="flex items-center justify-center sm:justify-start gap-4 w-full sm:w-auto relative z-10">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 flex items-center justify-center backdrop-blur-sm border border-emerald-500/20 shadow-inner"><Calendar size={20} className="text-emerald-400" /></div>
+                  <div className="flex flex-col">
+                    <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest mb-0.5">Periode Evaluasi</span>
+                    <strong className="text-sm sm:text-base font-black text-white">{formatPeriode(weekDates[0], weekDates[4])}</strong>
+                  </div>
                </div>
             </div>
           </div>

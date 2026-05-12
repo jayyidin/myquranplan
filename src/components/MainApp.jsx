@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { BookOpen, User, Menu, Home, Users, BarChart3, Settings, LogOut, Loader2, Edit3, Mic, Repeat, FileText, X, AlertTriangle, Link, Filter } from 'lucide-react';
+import { BookOpen, User, Menu, Home, Users, BarChart3, PieChart, Settings, LogOut, Loader2, Edit3, Mic, Repeat, FileText, X, AlertTriangle, Link, Filter, Activity, Moon, Sun } from 'lucide-react';
 
 // Imports
 import { supabase } from './supabase';
@@ -11,13 +11,19 @@ import HomeView from './views/HomeView';
 import StudentView from './views/StudentView';
 import ReportView from './views/ReportView';
 import SettingsView from './views/SettingsView';
+import ActivityLogView from './views/ActivityLogView';
+import ProgressChartView from './views/ProgressChartView';
 
 // Modals
 import { AddStudentModal, EditStudentModal } from './modals/StudentModals';
 import { JurnalModal } from './modals/JurnalModal';
 import ImageCropModal from './modals/ImageCropModal';
+import AppHeader from './AppHeader';
+import MobileMenu from './MobileMenu';
+import FilterBar from './FilterBar';
+import { useSupabaseSync } from './useSupabaseSync';
 
-const MainApp = ({ currentUser, onLogout }) => {
+const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
   const isSuperAdmin = currentUser?.role === 'superadmin';
 
   // -- STATE UTAMA --
@@ -86,99 +92,18 @@ const MainApp = ({ currentUser, onLogout }) => {
   const [uploadProgress, setUploadProgress] = useState(0);
 
   // -- EFEK INIT --
-  useEffect(() => {
-    // Fungsi untuk mengambil data awal dari Supabase
-    async function fetchInitialData() {
-      // 1. Ambil data pengaturan
-      const { data: settingsData, error: settingsError } = await supabase
-        .from('settings')
-        .select('*')
-        .limit(1)
-        .maybeSingle();
-
-      if (settingsError) console.error('Error Settings:', settingsError);
-      if (settingsData) {
-        setGuruHalaqohData(settingsData.guruhalaqohdata || settingsData.guruHalaqohData || {});
-        setKelasList(settingsData.kelaslist || settingsData.kelasList || []);
-        setInstitutionName(settingsData.institutionname || settingsData.institutionName || 'Nama Sekolah Anda');
-        setInstitutionLogo(settingsData.institutionlogo || settingsData.institutionLogo || 'logo.png');
-        setTargetReguler(settingsData.targetreguler || settingsData.targetReguler || '2 Juz');
-        setTargetAlQuran(settingsData.targetalquran || settingsData.targetAlQuran || '');
-      }
-
-      // 2. Ambil data siswa
-      const { data: studentsData, error: studentsError } = await supabase
-        .from('students')
-        .select('*');
-      if (studentsError) console.error('Error Students:', studentsError);
-
-      if (studentsData) {
-        // Filter nama ganda secara global dan bersihkan otomatis di database
-        const uniqueStudentsMap = new Map();
-        const duplicateIdsToDelete = [];
-        const studentsToUpdateMap = new Map();
-
-        studentsData.forEach(s => {
-          const nameKey = (s?.name || '').trim().toLowerCase();
-          if (!uniqueStudentsMap.has(nameKey)) {
-             uniqueStudentsMap.set(nameKey, s);
-          } else {
-             const existing = uniqueStudentsMap.get(nameKey);
-             // Gabungkan riwayat catatan (records) agar progres lama tidak hilang
-             const mergedRecords = { ...(existing.records || {}), ...(s.records || {}) };
-             
-             if (!existing.halaqoh && s.halaqoh) {
-                duplicateIdsToDelete.push(existing.id);
-                const keptStudent = { ...s, records: mergedRecords };
-                uniqueStudentsMap.set(nameKey, keptStudent);
-                studentsToUpdateMap.set(keptStudent.id, keptStudent);
-             } else {
-                duplicateIdsToDelete.push(s.id);
-                const keptStudent = { ...existing, records: mergedRecords };
-                uniqueStudentsMap.set(nameKey, keptStudent);
-                studentsToUpdateMap.set(keptStudent.id, keptStudent);
-             }
-          }
-        });
-        
-        // Urutkan berdasarkan kolom sort_order secara lokal agar aman
-        setStudents(Array.from(uniqueStudentsMap.values()).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)));
-
-        // Eksekusi pembersihan duplikat di latar belakang
-        if (duplicateIdsToDelete.length > 0) {
-          supabase.from('students').delete().in('id', duplicateIdsToDelete).then();
-          studentsToUpdateMap.forEach(student => {
-             supabase.from('students').update({ records: student.records }).eq('id', student.id).then();
-          });
-        }
-      }
-
-      // 3. Ambil data pengguna (jika superadmin)
-      if (isSuperAdmin) {
-        const { data: usersData, error: usersError } = await supabase
-          .from('app_users')
-          .select('*');
-        if (usersData) setAppUsers(usersData);
-      }
-
-      setIsDbReady(true);
-    }
-
-    fetchInitialData();
-
-    // Setup listener real-time untuk tabel siswa
-    const studentsSubscription = supabase.channel('public:students')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, payload => {
-        console.log('Perubahan data siswa terdeteksi!', payload);
-        fetchInitialData(); // Cara paling sederhana: ambil ulang semua data jika ada perubahan
-      })
-      .subscribe();
-
-    // Cleanup subscription saat komponen di-unmount
-    return () => {
-      supabase.removeChannel(studentsSubscription);
-    };
-  }, [isSuperAdmin]);
+  useSupabaseSync({
+    isSuperAdmin,
+    setGuruHalaqohData,
+    setKelasList,
+    setInstitutionName,
+    setInstitutionLogo,
+    setTargetReguler,
+    setTargetAlQuran,
+    setStudents,
+    setAppUsers,
+    setIsDbReady
+  });
 
   // Efek Loading saat ganti filter halaqoh, tanggal, atau tab
   useEffect(() => {
@@ -329,14 +254,41 @@ const MainApp = ({ currentUser, onLogout }) => {
       showToast('Gagal menyetujui akun.');
     } else {
       showToast(`Akun ${user.name} berhasil disetujui!`);
+
+      // --- LOG AKTIVITAS ---
+      try {
+        await supabase.from('activity_logs').insert([{
+          guru_name: currentUser?.name || 'System / Unknown',
+          action: 'Menyetujui Pendaftaran Guru',
+          details: `Akun: ${user.name} (@${user.username})`
+        }]);
+      } catch (logErr) {
+        console.error('Gagal mencatat log aktivitas:', logErr);
+      }
+      // ---------------------
     }
   };
 
   const handleRejectUser = async (userId) => {
     if (window.confirm('Yakin ingin menolak dan menghapus pendaftaran guru ini?')) {
       try {
+        const userToReject = appUsers.find(u => u.id === userId);
         await supabase.from('app_users').delete().eq('id', userId);
         showToast('Pendaftaran ditolak & dihapus.');
+
+        // --- LOG AKTIVITAS ---
+        if (userToReject) {
+          try {
+            await supabase.from('activity_logs').insert([{
+              guru_name: currentUser?.name || 'System / Unknown',
+              action: 'Menolak Pendaftaran Guru',
+              details: `Akun: ${userToReject.name} (@${userToReject.username})`
+            }]);
+          } catch (logErr) {
+            console.error('Gagal mencatat log aktivitas:', logErr);
+          }
+        }
+        // ---------------------
       } catch (error) {
         showToast('Gagal menolak pendaftaran.');
       }
@@ -417,6 +369,7 @@ const MainApp = ({ currentUser, onLogout }) => {
   const handleAddKelas = async () => {
     if (!newKelasName.trim() || kelasList.includes(newKelasName.trim())) return;
     const updated = [...kelasList, newKelasName.trim()];
+    setKelasList(updated);
     await updateMasterDataCloud({ kelasList: updated });
     setNewKelasName('');
     showToast('Kelas ditambahkan!');
@@ -425,14 +378,21 @@ const MainApp = ({ currentUser, onLogout }) => {
   const handleDeleteKelas = async (kelas) => {
     if (window.confirm(`Hapus kelas ${kelas}?`)) {
       const updated = kelasList.filter(k => k !== kelas);
+      setKelasList(updated);
       await updateMasterDataCloud({ kelasList: updated });
       showToast('Kelas dihapus!');
     }
   };
 
+  const handleReorderKelas = async (reorderedList) => {
+    setKelasList(reorderedList);
+    await updateMasterDataCloud({ kelasList: reorderedList });
+  };
+
   const handleAddGuru = async () => {
     if (!newGuruName.trim() || guruList.includes(newGuruName.trim())) return;
     const updated = { ...guruHalaqohData, [newGuruName.trim()]: [] };
+    setGuruHalaqohData(updated);
     await updateMasterDataCloud({ guruHalaqohData: updated });
     setNewGuruName('');
     showToast('Pengajar ditambahkan!');
@@ -443,6 +403,7 @@ const MainApp = ({ currentUser, onLogout }) => {
     const currentHalaqohs = guruHalaqohData[selectedGuruForHalaqoh] || [];
     if (currentHalaqohs.includes(newHalaqohName.trim())) return;
     const updated = { ...guruHalaqohData, [selectedGuruForHalaqoh]: [...currentHalaqohs, newHalaqohName.trim()] };
+    setGuruHalaqohData(updated);
     await updateMasterDataCloud({ guruHalaqohData: updated });
     setNewHalaqohName('');
     showToast('Halaqoh ditambahkan!');
@@ -453,6 +414,7 @@ const MainApp = ({ currentUser, onLogout }) => {
     const updated = { ...guruHalaqohData };
     updated[editingGuru.newName.trim()] = updated[editingGuru.oldName];
     delete updated[editingGuru.oldName];
+    setGuruHalaqohData(updated);
     await updateMasterDataCloud({ guruHalaqohData: updated });
     setEditingGuru(null);
     showToast('Nama pengajar diubah!');
@@ -462,6 +424,7 @@ const MainApp = ({ currentUser, onLogout }) => {
     if (window.confirm(`Hapus pengajar ${guru} beserta seluruh halaqohnya?`)) {
       const updated = { ...guruHalaqohData };
       delete updated[guru];
+      setGuruHalaqohData(updated);
       await updateMasterDataCloud({ guruHalaqohData: updated });
       showToast('Pengajar dihapus!');
     }
@@ -472,7 +435,14 @@ const MainApp = ({ currentUser, onLogout }) => {
     const updated = { ...guruHalaqohData };
     const halaqohs = updated[editingHalaqoh.guruName];
     updated[editingHalaqoh.guruName] = halaqohs.map(h => h === editingHalaqoh.oldName ? editingHalaqoh.newName.trim() : h);
+    setGuruHalaqohData(updated);
     await updateMasterDataCloud({ guruHalaqohData: updated });
+
+    // Sinkronisasi: Perbarui nama halaqoh pada seluruh siswa terkait di database
+    await supabase.from('students').update({ halaqoh: editingHalaqoh.newName.trim() }).eq('halaqoh', editingHalaqoh.oldName);
+    // Perbarui state lokal agar siswa tidak hilang dari layar
+    setStudents(prev => prev.map(s => s.halaqoh === editingHalaqoh.oldName ? { ...s, halaqoh: editingHalaqoh.newName.trim() } : s));
+
     setEditingHalaqoh(null);
     showToast('Nama halaqoh diubah!');
   };
@@ -481,9 +451,16 @@ const MainApp = ({ currentUser, onLogout }) => {
     if (window.confirm(`Hapus halaqoh ${halaqoh} dari pengajar ${guru}?`)) {
       const updated = { ...guruHalaqohData };
       updated[guru] = updated[guru].filter(h => h !== halaqoh);
+      setGuruHalaqohData(updated);
       await updateMasterDataCloud({ guruHalaqohData: updated });
       showToast('Halaqoh dihapus!');
     }
+  };
+
+  const handleReorderHalaqoh = async (guru, reorderedList) => {
+    const updated = { ...guruHalaqohData, [guru]: reorderedList };
+    setGuruHalaqohData(updated);
+    await updateMasterDataCloud({ guruHalaqohData: updated });
   };
 
   // -- FUNGSI HAPUS & KOSONGKAN DATA (Tabel) --
@@ -535,6 +512,23 @@ const MainApp = ({ currentUser, onLogout }) => {
       showToast('Gagal menghapus data.');
     } else {
       setStudents(prev => prev.map(s => s.id === studentId ? { ...s, records: updatedRecords } : s));
+
+      // --- LOG AKTIVITAS KHUSUS JURNAL ---
+      try {
+        const typeName = homeTab === 'lesson_plan' ? 'Target (Lesson Plan)' : 'Capaian (Jurnal)';
+        let detailMsg = `Tanggal: ${formatShortDate(new Date(dateStr))}\n`;
+        detailMsg += `Siswa: ${student.name}\n`;
+        detailMsg += `Kategori Hapus: ${type}`;
+        
+        await supabase.from('activity_logs').insert([{
+          guru_name: currentUser?.name || 'System / Unknown',
+          action: `Menghapus Sebagian Item ${typeName}`,
+          details: detailMsg.trim()
+        }]);
+      } catch (logErr) {
+        console.error('Gagal mencatat log aktivitas hapus data:', logErr);
+      }
+      // ------------------------------------
     }
   };
 
@@ -552,6 +546,22 @@ const MainApp = ({ currentUser, onLogout }) => {
       if (error) { showToast('Gagal mengosongkan data.'); } else { 
         setStudents(prev => prev.map(s => s.id === studentId ? { ...s, records: newRecords } : s));
         showToast('Data dikosongkan!'); 
+
+        // --- LOG AKTIVITAS KHUSUS JURNAL ---
+        try {
+          const typeName = homeTab === 'lesson_plan' ? 'Target (Lesson Plan)' : 'Capaian (Jurnal)';
+          let detailMsg = `Tanggal: ${formatShortDate(new Date(dateStr))}\n`;
+          detailMsg += `Siswa: ${student.name}`;
+          
+          await supabase.from('activity_logs').insert([{
+            guru_name: currentUser?.name || 'System / Unknown',
+            action: `Mengosongkan Data ${typeName}`,
+            details: detailMsg.trim()
+          }]);
+        } catch (logErr) {
+          console.error('Gagal mencatat log aktivitas kosongkan data:', logErr);
+        }
+        // ------------------------------------
       }
     }
   };
@@ -720,6 +730,13 @@ const MainApp = ({ currentUser, onLogout }) => {
         isOpen: true,
         message: `Yakin ingin menghapus "${student.name}" secara permanen dari sistem? Data tidak dapat dikembalikan!`,
         onConfirm: () => {
+          // Bersihkan file foto dari Supabase Storage (Mencegah Storage Leak)
+          if (student.photo) {
+            const match = student.photo.match(/student_photos\/(.+?)(\?|$)/);
+            if (match && match[1]) {
+              supabase.storage.from('student_photos').remove([match[1]]).catch(console.error);
+            }
+          }
           supabase.from('students').delete().eq('id', student.id).then(() => {
             setStudents(prev => prev.filter(s => s.id !== student.id));
             showToast('Dihapus.');
@@ -747,6 +764,16 @@ const MainApp = ({ currentUser, onLogout }) => {
         isOpen: true,
         message: `Yakin ingin menghapus ${studentIds.length} siswa secara permanen dari sistem? Awas, tindakan ini tidak bisa dibatalkan!`,
         onConfirm: () => {
+          // Bersihkan file foto secara massal
+          const pathsToRemove = students
+            .filter(s => studentIds.includes(s.id) && s.photo)
+            .map(s => {
+              const match = s.photo.match(/student_photos\/(.+?)(\?|$)/);
+              return match ? match[1] : null;
+            })
+            .filter(Boolean);
+          if (pathsToRemove.length > 0) supabase.storage.from('student_photos').remove(pathsToRemove).catch(console.error);
+
           supabase.from('students').delete().in('id', studentIds).then(() => {
             setStudents(prev => prev.filter(s => !studentIds.includes(s.id)));
             showToast(`${studentIds.length} siswa dihapus.`);
@@ -934,7 +961,7 @@ const MainApp = ({ currentUser, onLogout }) => {
 
     try {
       // Nama file unik untuk menghindari cache
-      const fileName = `${studentId || 'new'}/${Date.now()}_photo.jpg`;
+      const fileName = `${studentId || 'new'}/photo.jpg`;
 
       // Unggah file ke Supabase Storage
       const { data, error } = await supabase.storage
@@ -1318,9 +1345,9 @@ const MainApp = ({ currentUser, onLogout }) => {
               }
             }
             if (modalMode === 'catatan' || modalMode === 'full_bulk') {
-              finalRecord[k.c] = modalCatatan;
-              finalRecord[k.cT] = modalCatatanTahsin;
-              finalRecord[k.cF] = modalCatatanTahfidz;
+              if (modalCatatan !== '-' || modalMode === 'catatan') finalRecord[k.c] = modalCatatan;
+              if (modalCatatanTahsin !== '-' || modalMode === 'catatan') finalRecord[k.cT] = modalCatatanTahsin;
+              if (modalCatatanTahfidz !== '-' || modalMode === 'catatan') finalRecord[k.cF] = modalCatatanTahfidz;
             }
           } else {
             finalRecord[k.t] = modalTahsin;
@@ -1346,6 +1373,31 @@ const MainApp = ({ currentUser, onLogout }) => {
       // Lakukan operasi 'upsert' di Supabase
       const { error } = await supabase.from('students').upsert(updates);
       if (error) throw error;
+
+      // --- LOG AKTIVITAS KHUSUS JURNAL ---
+      try {
+        const typeName = homeTab === 'lesson_plan' ? 'Target (Lesson Plan)' : 'Capaian (Jurnal)';
+        const studentNames = students.filter(s => targetStudentIds.includes(s.id)).map(s => s.name).join(', ');
+        
+        let detailMsg = `Tanggal: ${formatShortDate(new Date(plan.tanggal))}\n`;
+        detailMsg += `Siswa (${targetStudentIds.length}): ${studentNames}\n\n`;
+        
+        if (modalTahsin !== '-' || modalHalAyatTahsin !== '-') detailMsg += `Tahsin: ${modalTahsin} ${modalHalAyatTahsin !== '-' ? '- ' + modalHalAyatTahsin : ''}\n`;
+        if (modalTahfidz !== '-' || modalAyatTahfidz !== '-') detailMsg += `Tahfidz: ${modalTahfidz} ${modalAyatTahfidz !== '-' ? '- ' + modalAyatTahfidz : ''}\n`;
+        if (modalMurojaah !== '-') detailMsg += `Murojaah: ${modalMurojaah}\n`;
+        if (modalCatatan !== '-') detailMsg += `Catatan Umum: ${modalCatatan}\n`;
+        if (modalCatatanTahsin !== '-') detailMsg += `Catatan Tahsin: ${modalCatatanTahsin}\n`;
+        if (modalCatatanTahfidz !== '-') detailMsg += `Catatan Tahfidz: ${modalCatatanTahfidz}\n`;
+
+        await supabase.from('activity_logs').insert([{
+          guru_name: currentUser?.name || 'System / Unknown',
+          action: `Menyimpan Data ${typeName}`,
+          details: detailMsg.trim()
+        }]);
+      } catch (logErr) {
+        console.error('Gagal mencatat log aktivitas jurnal:', logErr);
+      }
+      // ------------------------------------
 
       // Update state lokal seketika agar data langsung muncul tanpa perlu di-refresh
       setStudents(prev => {
@@ -1431,136 +1483,13 @@ const MainApp = ({ currentUser, onLogout }) => {
       `}} />
 
       {/* Header */}
-      <header className="bg-white border-b border-gray-100 shrink-0 z-[60] w-full shadow-sm print:hidden sticky top-0 transition-all duration-500">
-        <div className="max-w-7xl mx-auto px-3 md:px-6 h-14 sm:h-28 flex items-center justify-between">
-          {/* Left: Logo & Title */}
-          <div className="flex items-center gap-1.5 sm:gap-4">
-            <div className="w-10 h-10 sm:w-16 sm:h-16 flex items-center justify-center shrink-0 transition-transform hover:scale-105">
-              {institutionLogo && institutionLogo !== 'logo.png' ? (
-                <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain" />
-              ) : (
-                <BookOpen className="w-8 h-8 sm:w-12 sm:h-12 text-[#0f4c5c]" />
-              )}
-            </div>
-            <div className="flex flex-col items-start">
-              <span className="font-arabic tracking-tight leading-tight transition-all text-xl sm:text-3xl text-green-600">MyQuranPlan</span>
-              <div className="h-0.5 w-full bg-gradient-to-r from-transparent via-amber-500 to-transparent opacity-80 -mt-1 sm:-mt-2"></div>
-              <span className="font-extrabold tracking-tight leading-tight transition-all text-slate-800 text-base sm:text-xl">{institutionName}</span>
-            </div>
-          </div>
+      <AppHeader institutionLogo={institutionLogo} institutionName={institutionName} currentView={currentView} setCurrentView={setCurrentView} isSuperAdmin={isSuperAdmin} currentUser={currentUser} onLogout={onLogout} theme={theme} setTheme={setTheme} mobileMenuOpen={mobileMenuOpen} setMobileMenuOpen={setMobileMenuOpen} />
 
-          {/* Center: Nav */}
-          <nav className="hidden md:flex items-center gap-6 font-bold text-sm text-gray-500">
-            <button onClick={() => setCurrentView('home')} className={`relative pb-1 group transition-colors ${currentView === 'home' ? 'text-green-600' : 'hover:text-green-600'}`}>
-              Beranda
-              <span className={`absolute bottom-0 left-0 h-0.5 transition-all duration-300 ${currentView === 'home' ? 'w-full' : 'w-0 group-hover:w-full'} bg-green-600`}></span>
-            </button>
-            <button onClick={() => setCurrentView('siswa')} className={`relative pb-1 group transition-colors ${currentView === 'siswa' ? 'text-green-600' : 'hover:text-green-600'}`}>
-              Data Siswa
-              <span className={`absolute bottom-0 left-0 h-0.5 bg-green-600 transition-all duration-300 ${currentView === 'siswa' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
-            </button>
-            <button onClick={() => setCurrentView('laporan')} className={`relative pb-1 group transition-colors ${currentView === 'laporan' ? 'text-green-600' : 'hover:text-green-600'}`}>
-              Laporan
-              <span className={`absolute bottom-0 left-0 h-0.5 bg-green-600 transition-all duration-300 ${currentView === 'laporan' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
-            </button>
-            <button onClick={() => setCurrentView('pengaturan')} className={`relative pb-1 group transition-colors ${currentView === 'pengaturan' ? 'text-green-600' : 'hover:text-green-600'}`}>
-              Pengaturan
-              <span className={`absolute bottom-0 left-0 h-0.5 bg-green-600 transition-all duration-300 ${currentView === 'pengaturan' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
-            </button>
-          </nav>
+      {/* MOBILE MENU OVERLAY (Drawer untuk HP) */}
+      <MobileMenu mobileMenuOpen={mobileMenuOpen} setMobileMenuOpen={setMobileMenuOpen} currentUser={currentUser} theme={theme} setTheme={setTheme} currentView={currentView} setCurrentView={setCurrentView} isSuperAdmin={isSuperAdmin} onLogout={onLogout} />
 
-          {/* Right: User actions */}
-          <div className="flex items-center gap-3">
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-xl border">
-              <User size={14} className="text-gray-400" />
-              <span className="text-xs font-bold text-gray-600">{currentUser.name}</span>
-            </div>
-            <button onClick={onLogout} className="p-2 text-gray-400 hover:text-red-500 bg-gray-50 rounded-xl hidden md:block"><LogOut size={18} /></button>
-            <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 text-gray-600 bg-gray-50 rounded-lg"><Menu size={18} /></button>
-          </div>
-        </div>
-      </header>
-
-          {/* MOBILE MENU OVERLAY (Drawer untuk HP) */}
-          {mobileMenuOpen && (
-            <div className="md:hidden fixed inset-0 z-[150] flex justify-end animate-in fade-in duration-300">
-              <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)}></div>
-              <div className="relative w-72 h-full bg-white shadow-2xl flex flex-col p-6 animate-in slide-in-from-right duration-300">
-                <div className="flex justify-between items-center mb-8">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center text-green-600">
-                      <User size={20} />
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-sm font-black text-slate-800 leading-none">{currentUser.name}</span>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{currentUser.role}</span>
-                    </div>
-                  </div>
-                  <button onClick={() => setMobileMenuOpen(false)} className="p-2 bg-slate-50 text-slate-400 rounded-xl"><X size={20} /></button>
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest ml-4 mb-2">Navigasi Cepat</p>
-                  <button onClick={() => { setCurrentView('home'); setMobileMenuOpen(false); }} className={`flex items-center gap-3 p-4 rounded-2xl font-bold transition-all ${currentView === 'home' ? 'bg-green-50 text-green-600' : 'text-slate-600 hover:bg-slate-50'}`}><Home size={20} /> Beranda</button>
-                  <button onClick={() => { setCurrentView('siswa'); setMobileMenuOpen(false); }} className={`flex items-center gap-3 p-4 rounded-2xl font-bold transition-all ${currentView === 'siswa' ? 'bg-green-50 text-green-600' : 'text-slate-600 hover:bg-slate-50'}`}><Users size={20} /> Data Siswa</button>
-                  <button onClick={() => { setCurrentView('laporan'); setMobileMenuOpen(false); }} className={`flex items-center gap-3 p-4 rounded-2xl font-bold transition-all ${currentView === 'laporan' ? 'bg-green-50 text-green-600' : 'text-slate-600 hover:bg-slate-50'}`}><BarChart3 size={20} /> Laporan</button>
-                  <button onClick={() => { setCurrentView('pengaturan'); setMobileMenuOpen(false); }} className={`flex items-center gap-3 p-4 rounded-2xl font-bold transition-all ${currentView === 'pengaturan' ? 'bg-green-50 text-green-600' : 'text-slate-600 hover:bg-slate-50'}`}><Settings size={20} /> Pengaturan</button>
-                </div>
-
-                <button
-                  onClick={() => { onLogout(); setMobileMenuOpen(false); }}
-                  className="mt-auto flex items-center gap-3 p-4 bg-red-50 text-red-600 rounded-2xl font-black transition-all active:scale-95 shadow-sm border border-red-100"
-                >
-                  <LogOut size={20} /> Keluar Aplikasi
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Area Filter Halaqoh & Guru */}
-          {currentView !== 'pengaturan' && (
-            <div className="bg-white/95 border-gray-200 border-b px-2 sm:px-3 md:px-6 py-1 flex justify-between items-center shrink-0 z-50 print:hidden h-11 shadow-sm transition-all duration-500 backdrop-blur-md sticky top-[56px] sm:top-[112px]">
-              <div className="flex items-center gap-2 flex-1 md:flex-none mr-2">
-                {isSuperAdmin ? (
-                  <select value={activeGuru} onChange={(e) => { setActiveGuru(e.target.value); setActiveHalaqoh(''); }} className={`bg-gray-50 border rounded-lg p-1.5 font-bold w-full max-w-[140px] sm:max-w-[160px] md:w-auto md:max-w-none outline-none focus:ring-2 focus:ring-green-500/20 ${(activeGuru || '').length > 20 ? 'text-[9px] sm:text-xs' : (activeGuru || '').length > 15 ? 'text-[10px] sm:text-xs' : 'text-xs'}`}>
-                    {guruList.length === 0 && <option value="">Belum ada Guru</option>}
-                    {guruList.map(g => <option key={g} value={g}>{g}</option>)}
-                  </select>
-                ) : (
-                  <div className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg border border-blue-100 shadow-sm w-full max-w-[140px] sm:max-w-[160px] md:w-auto md:max-w-none overflow-hidden">
-                    <User size={14} className="shrink-0" />
-                    <span className={`font-black truncate w-full ${(currentUser?.name || '').length > 20 ? 'text-[9px] sm:text-xs' : (currentUser?.name || '').length > 15 ? 'text-[10px] sm:text-xs' : 'text-xs'}`}>{currentUser.name}</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2 flex-1 md:flex-none justify-end">
-                {currentView === 'home' && (
-                  <button
-                    onClick={() => setShowUnfilledOnly(!showUnfilledOnly)}
-                    className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-lg transition-colors border shadow-sm ${showUnfilledOnly ? 'bg-amber-50 text-amber-600 border-amber-200' : 'bg-white text-slate-500 hover:bg-slate-50 border-slate-200'}`}
-                    title={showUnfilledOnly ? "Tampilkan Semua Siswa" : "Filter Belum Mengisi"}
-                  >
-                    <Filter size={14} />
-                    <span className="text-[10px] sm:text-xs font-bold hidden md:inline">Belum Mengisi</span>
-                  </button>
-                )}
-                <button
-                  onClick={handleCopyPortalLink}
-                  className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors border border-blue-100 shadow-sm"
-                  title="Salin Link Portal Halaqoh"
-                >
-                  <Link size={14} />
-                  <span className="text-[10px] sm:text-xs font-bold hidden md:inline">Share Link</span>
-                </button>
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest hidden sm:inline">Kelompok:</span>
-                <select value={activeHalaqoh} onChange={(e) => setActiveHalaqoh(e.target.value)} className={`bg-green-50 border border-green-200 text-green-800 rounded-lg p-1.5 font-bold w-full max-w-[140px] sm:max-w-[160px] md:w-auto md:max-w-none outline-none focus:ring-2 focus:ring-green-500/20 ${(activeHalaqoh || '').length > 20 ? 'text-[9px] sm:text-xs' : (activeHalaqoh || '').length > 15 ? 'text-[10px] sm:text-xs' : 'text-xs'}`}>
-                  {(activeGuru ? (guruHalaqohData[activeGuru] || []) : Array.from(new Set(students.map(s => s.halaqoh).filter(Boolean)))).length === 0 && <option value="">Belum ada Halaqoh</option>}
-                  {(activeGuru ? (guruHalaqohData[activeGuru] || []) : Array.from(new Set(students.map(s => s.halaqoh).filter(Boolean)))).map(h => <option key={h} value={h}>{h}</option>)}
-                </select>
-              </div>
-            </div>
-          )}
+      {/* Area Filter Halaqoh & Guru */}
+      <FilterBar currentView={currentView} isSuperAdmin={isSuperAdmin} activeGuru={activeGuru} setActiveGuru={setActiveGuru} setActiveHalaqoh={setActiveHalaqoh} guruList={guruList} currentUser={currentUser} showUnfilledOnly={showUnfilledOnly} setShowUnfilledOnly={setShowUnfilledOnly} handleCopyPortalLink={handleCopyPortalLink} activeHalaqoh={activeHalaqoh} guruHalaqohData={guruHalaqohData} students={students} />
 
           {/* Main Content Area */}
           <main className="flex-1 w-full max-w-7xl mx-auto overflow-hidden relative flex flex-col min-h-0 transition-colors duration-500">
@@ -1629,15 +1558,24 @@ const MainApp = ({ currentUser, onLogout }) => {
                 handleApproveUser={handleApproveUser} handleRejectUser={handleRejectUser} handleUpdateUserAccount={handleUpdateUserAccount}
                 institutionName={institutionName} setInstitutionName={setInstitutionName} institutionLogo={institutionLogo} handleInstitutionLogoUpload={handleInstitutionLogoUpload} setInstitutionLogo={setInstitutionLogo} updateMasterDataCloud={updateMasterDataCloud} showToast={showToast}
                 targetReguler={targetReguler} setTargetReguler={setTargetReguler} targetAlQuran={targetAlQuran} setTargetAlQuran={setTargetAlQuran}
-                kelasList={kelasList} newKelasName={newKelasName} setNewKelasName={setNewKelasName} handleAddKelas={handleAddKelas} handleDeleteKelas={handleDeleteKelas}
+                kelasList={kelasList} newKelasName={newKelasName} setNewKelasName={setNewKelasName} handleAddKelas={handleAddKelas} handleDeleteKelas={handleDeleteKelas} handleReorderKelas={handleReorderKelas}
                 newGuruName={newGuruName} setNewGuruName={setNewGuruName} handleAddGuru={handleAddGuru} guruList={isSuperAdmin ? guruList : [currentUser.name]}
                 selectedGuruForHalaqoh={selectedGuruForHalaqoh} setSelectedGuruForHalaqoh={setSelectedGuruForHalaqoh} newHalaqohName={newHalaqohName} setNewHalaqohName={setNewHalaqohName} handleAddHalaqoh={handleAddHalaqoh}
                 currentUser={currentUser} guruHalaqohData={guruHalaqohData} editingGuru={editingGuru} setEditingGuru={setEditingGuru} handleSaveEditGuru={handleSaveEditGuru} requestDeleteGuru={requestDeleteGuru}
-                editingHalaqoh={editingHalaqoh} setEditingHalaqoh={setEditingHalaqoh} handleSaveEditHalaqoh={handleSaveEditHalaqoh} requestDeleteHalaqoh={requestDeleteHalaqoh}
+                editingHalaqoh={editingHalaqoh} setEditingHalaqoh={setEditingHalaqoh} handleSaveEditHalaqoh={handleSaveEditHalaqoh} requestDeleteHalaqoh={requestDeleteHalaqoh} handleReorderHalaqoh={handleReorderHalaqoh}
                 students={students} openEditStudentModal={(s) => { setEditStudentData({ id: s.id, name: s.name, kelas: s.kelas, halaqoh: s.halaqoh, photo: s.photo || null }); setIsEditStudentModalOpen(true); }}
                 requestDeleteStudent={requestDeleteStudent} requestBulkDeleteStudents={requestBulkDeleteStudents} requestBulkEditStudents={requestBulkEditStudents} handleBulkSaveStudents={handleBulkSaveStudents} onLogout={onLogout}
                 handleCleanLessonPlanValues={handleCleanLessonPlanValues}
               />
+            )}
+            {currentView === 'statistik' && (
+              <ProgressChartView 
+                students={filteredStudents}
+                activeHalaqoh={activeHalaqoh}
+              />
+            )}
+            {currentView === 'log' && isSuperAdmin && (
+              <ActivityLogView />
             )}
           </main>
 
@@ -1702,6 +1640,10 @@ const MainApp = ({ currentUser, onLogout }) => {
             <button onClick={() => setCurrentView('home')} className={`flex flex-col items-center gap-1 ${currentView === 'home' ? 'text-green-600' : 'text-gray-400'}`}><Home size={20} /><span className="text-[9px] font-bold">Beranda</span></button>
             <button onClick={() => setCurrentView('siswa')} className={`flex flex-col items-center gap-1 ${currentView === 'siswa' ? 'text-green-600' : 'text-gray-400'}`}><Users size={20} /><span className="text-[9px] font-bold">Siswa</span></button>
             <button onClick={() => setCurrentView('laporan')} className={`flex flex-col items-center gap-1 ${currentView === 'laporan' ? 'text-green-600' : 'text-gray-400'}`}><BarChart3 size={20} /><span className="text-[9px] font-bold">Laporan</span></button>
+            <button onClick={() => setCurrentView('statistik')} className={`flex flex-col items-center gap-1 ${currentView === 'statistik' ? 'text-green-600' : 'text-gray-400'}`}><PieChart size={20} /><span className="text-[9px] font-bold">Grafik</span></button>
+            {isSuperAdmin && (
+              <button onClick={() => setCurrentView('log')} className={`flex flex-col items-center gap-1 ${currentView === 'log' ? 'text-green-600' : 'text-gray-400'}`}><Activity size={20} /><span className="text-[9px] font-bold">Log</span></button>
+            )}
             <button onClick={() => setCurrentView('pengaturan')} className={`flex flex-col items-center gap-1 ${currentView === 'pengaturan' ? 'text-green-600' : 'text-gray-400'}`}><Settings size={20} /><span className="text-[9px] font-bold">Setelan</span></button>
           </nav>
         </div>

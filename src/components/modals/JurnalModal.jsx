@@ -41,16 +41,24 @@ export const JurnalModal = ({
         <div className="p-4 sm:p-6 flex-1 flex flex-col gap-4 overflow-y-auto custom-scrollbar bg-gray-50 pb-24 sm:pb-6">
           
           {/* Bagian Pilih Siswa - Selalu Tampil untuk memungkinkan input massal dari form manapun */}
-          <div className="bg-white p-4 sm:p-5 rounded-3xl shadow-sm border border-gray-100 shrink-0 flex flex-col gap-3 transition-all">
+          <div className={`relative bg-white p-4 sm:p-5 rounded-3xl shadow-sm border shrink-0 flex flex-col gap-3 transition-all overflow-hidden ${applyToOthersDisabled ? 'border-red-100' : 'border-gray-100'}`}>
+            
+            {/* Overlay Pengunci Panel saat Siswa Absen */}
+            {applyToOthersDisabled && (
+              <div 
+                className="absolute inset-0 z-20 bg-white/70 backdrop-blur-[2px] flex items-center justify-center cursor-not-allowed"
+                onClick={() => window.alert("Silakan hapus keterangan absen pada kolom 'Catatan Umum / Lainnya' di bawah terlebih dahulu untuk mengaktifkan kembali fitur ini.")}
+              >
+                <div className="bg-red-50 text-red-600 border border-red-200 px-4 py-2.5 rounded-2xl font-black text-xs flex items-center gap-2 shadow-sm animate-in zoom-in-95 duration-200 pointer-events-none">
+                  <UserX size={16} /> Fitur dinonaktifkan karena Ananda absen
+                </div>
+              </div>
+            )}
+
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2.5">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
                   {editingId ? 'Terapkan Juga Ke Siswa Lain' : `Pilih Siswa (${selectedStudents.length}/${filteredStudents.length})`}
                 </label>
-                {applyToOthersDisabled && (
-                  <span className="text-[10px] font-bold text-red-500 bg-red-50 border border-red-100 rounded-lg px-2 py-1">
-                    Nonaktif untuk status tidak hadir
-                  </span>
-                )}
                 <div className="flex items-center gap-2">
                   <div className="relative w-full sm:w-48">
                     <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -255,6 +263,19 @@ export const JurnalModal = ({
                           </div>
                         )}
 
+                        {/* Catatan Tahsin */}
+                        <div className="border-t border-gray-100 pt-4 mt-2">
+                          <label className="block text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1.5">Catatan Khusus Tahsin</label>
+                          <textarea rows="2" placeholder="Ketikkan catatan khusus tahsin..." value={plan.catatanTahsin || ''} onChange={e => handlePlanChange(plan.id, 'catatanTahsin', e.target.value)} className="w-full bg-blue-50/50 border border-blue-100 focus:border-blue-400 rounded-2xl p-3 text-sm font-bold outline-none resize-none text-gray-800 transition-colors focus:ring-2 focus:ring-blue-400/20"></textarea>
+                          <div className="mt-2 flex overflow-x-auto gap-2 pb-1 custom-scrollbar">
+                              {['Sangat Baik', 'Lancar', 'Perlu Murojaah', 'Bacaan Dengung', 'Makharijul Huruf', 'Panjang Pendek (Mad)', 'Ulangi Besok'].map(note => (
+                                <button type="button" key={note} onClick={() => handlePlanChange(plan.id, 'catatanTahsin', (plan.catatanTahsin ? plan.catatanTahsin + ', ' : '') + note)} className="shrink-0 bg-white border border-blue-200 text-blue-600 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg text-[10px] font-black transition-colors shadow-sm">
+                                  + {note}
+                                </button>
+                              ))}
+                          </div>
+                        </div>
+
                     </div>
                   </div>
               )}
@@ -318,6 +339,19 @@ export const JurnalModal = ({
                           </div>
                         ))}
                         <button type="button" onClick={() => handleAddSurat(plan.id, 'tahfidzSuratList')} className="text-xs font-black bg-purple-50 hover:bg-purple-100 text-purple-600 py-3 rounded-xl flex justify-center items-center gap-1.5 transition-colors border border-purple-200/50 mt-1"><Plus size={16}/> TAMBAH SURAT HAFALAN</button>
+
+                        {/* Catatan Tahfidz */}
+                        <div className="border-t border-gray-100 pt-4 mt-2">
+                          <label className="block text-[10px] font-black text-purple-500 uppercase tracking-widest mb-1.5">Catatan Khusus Tahfidz</label>
+                          <textarea rows="2" placeholder="Ketikkan catatan khusus tahfidz..." value={plan.catatanTahfidz || ''} onChange={e => handlePlanChange(plan.id, 'catatanTahfidz', e.target.value)} className="w-full bg-purple-50/50 border border-purple-100 focus:border-purple-400 rounded-2xl p-3 text-sm font-bold outline-none resize-none text-gray-800 transition-colors focus:ring-2 focus:ring-purple-400/20"></textarea>
+                          <div className="mt-2 flex overflow-x-auto gap-2 pb-1 custom-scrollbar">
+                              {['Sangat Baik', 'Lancar', 'Kelancaran Hafalan', 'Sering Lupa', 'Perlu Murojaah', 'Kurang Lancar', 'Ulangi Besok'].map(note => (
+                                <button type="button" key={note} onClick={() => handlePlanChange(plan.id, 'catatanTahfidz', (plan.catatanTahfidz ? plan.catatanTahfidz + ', ' : '') + note)} className="shrink-0 bg-white border border-purple-200 text-purple-600 hover:bg-purple-50 px-2.5 py-1.5 rounded-lg text-[10px] font-black transition-colors shadow-sm">
+                                  + {note}
+                                </button>
+                              ))}
+                          </div>
+                        </div>
                     </div>
                   </div>
               )}
@@ -372,30 +406,6 @@ export const JurnalModal = ({
                     <h3 className="font-black text-gray-800 text-sm mb-4 flex items-center gap-2"><FileText size={18} className="text-orange-500"/> {homeTab === 'lesson_plan' ? 'Catatan Target Guru' : 'Catatan Capaian / Nilai Jurnal'}</h3>
                     
                     <div className="flex flex-col gap-4">
-                      <div>
-                        <label className="block text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1.5">Catatan Tahsin</label>
-                        <textarea rows="2" placeholder="Ketikkan catatan khusus tahsin..." value={plan.catatanTahsin || ''} onChange={e => handlePlanChange(plan.id, 'catatanTahsin', e.target.value)} className="w-full bg-blue-50/50 border border-blue-100 focus:border-blue-400 rounded-2xl p-3 text-sm font-bold outline-none resize-none text-gray-800 transition-colors focus:ring-2 focus:ring-blue-400/20"></textarea>
-                        <div className="mt-2 flex overflow-x-auto gap-2 pb-1 custom-scrollbar">
-                            {['Sangat Baik', 'Lancar', 'Perlu Murojaah', 'Bacaan Dengung', 'Makharijul Huruf', 'Panjang Pendek (Mad)', 'Ulangi Besok'].map(note => (
-                              <button type="button" key={note} onClick={() => handlePlanChange(plan.id, 'catatanTahsin', (plan.catatanTahsin ? plan.catatanTahsin + ', ' : '') + note)} className="shrink-0 bg-white border border-blue-200 text-blue-600 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg text-[10px] font-black transition-colors shadow-sm">
-                                + {note}
-                              </button>
-                            ))}
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] font-black text-purple-500 uppercase tracking-widest mb-1.5">Catatan Tahfidz</label>
-                        <textarea rows="2" placeholder="Ketikkan catatan khusus tahfidz..." value={plan.catatanTahfidz || ''} onChange={e => handlePlanChange(plan.id, 'catatanTahfidz', e.target.value)} className="w-full bg-purple-50/50 border border-purple-100 focus:border-purple-400 rounded-2xl p-3 text-sm font-bold outline-none resize-none text-gray-800 transition-colors focus:ring-2 focus:ring-purple-400/20"></textarea>
-                        <div className="mt-2 flex overflow-x-auto gap-2 pb-1 custom-scrollbar">
-                            {['Sangat Baik', 'Lancar', 'Kelancaran Hafalan', 'Sering Lupa', 'Perlu Murojaah', 'Kurang Lancar', 'Ulangi Besok'].map(note => (
-                              <button type="button" key={note} onClick={() => handlePlanChange(plan.id, 'catatanTahfidz', (plan.catatanTahfidz ? plan.catatanTahfidz + ', ' : '') + note)} className="shrink-0 bg-white border border-purple-200 text-purple-600 hover:bg-purple-50 px-2.5 py-1.5 rounded-lg text-[10px] font-black transition-colors shadow-sm">
-                                + {note}
-                              </button>
-                            ))}
-                        </div>
-                      </div>
-
                       <div>
                         <label className="block text-[10px] font-black text-orange-500 uppercase tracking-widest mb-1.5">Catatan Umum / Lainnya</label>
                         <textarea rows="2" placeholder="Ketikkan catatan lainnya (contoh: Sakit, Izin, Libur, dll)..." value={plan.lainLain || ''} onChange={e => handlePlanChange(plan.id, 'lainLain', e.target.value)} className="w-full bg-orange-50/30 border border-orange-100 focus:border-orange-400 rounded-2xl p-3 text-sm font-bold outline-none resize-none text-gray-800 transition-colors focus:ring-2 focus:ring-orange-400/20"></textarea>

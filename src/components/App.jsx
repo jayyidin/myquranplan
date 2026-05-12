@@ -7,6 +7,7 @@ import { Loader2 } from 'lucide-react';
 function App() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
 
   useEffect(() => {
     // 1. Cek sesi yang sudah ada saat aplikasi dimuat
@@ -24,6 +25,15 @@ function App() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Efek untuk mengubah tema
+  useEffect(() => {
+    const root = window.document.documentElement;
+    root.classList.remove('light', 'dark');
+    root.classList.add(theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
   };
@@ -40,7 +50,9 @@ function App() {
   // Jika tidak ada sesi (belum login), tampilkan halaman login.
   // Jika ada sesi, tampilkan aplikasi utama.
   return (
-    !session ? <AuthView /> : <MainApp currentUser={{ id: session.user.id, email: session.user.email, ...session.user.user_metadata }} onLogout={handleLogout} />
+    !session 
+      ? <AuthView /> 
+      : <MainApp currentUser={{ id: session.user.id, email: session.user.email, ...session.user.user_metadata }} onLogout={handleLogout} theme={theme} setTheme={setTheme} />
   );
 }
 

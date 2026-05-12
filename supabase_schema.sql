@@ -36,18 +36,122 @@ CREATE TABLE students (
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now())
 );
 
+-- 4. TABEL ACTIVITY LOGS (Untuk Log Aktifitas Guru)
+CREATE TABLE activity_logs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  guru_name text NOT NULL,
+  action text NOT NULL,
+  details text,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now())
+);
+
 -- BUCKET UNTUK FOTO SISWA (Hanya bisa dibuat via SQL jika punya permission, disarankan buat via UI)
 -- insert into storage.buckets (id, name, public) values ('student_photos', 'student_photos', true) on conflict (id) do nothing;
 
 -- KEBIJAKAN KEAMANAN (Row Level Security)
+
+-- 0. Buat fungsi Bypass RLS khusus untuk verifikasi login
+CREATE OR REPLACE FUNCTION get_user_login_data(lookup_username text)
+RETURNS TABLE (id uuid, username text, name text, password text, role text, status text)
+SECURITY DEFINER LANGUAGE sql AS $$
+  SELECT id, username, name, password, role, status 
+  FROM public.app_users 
+  WHERE username = lookup_username;
+$$;
+
 ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Enable all for anon settings" ON settings FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Publik bisa melihat settings" ON settings FOR SELECT USING (true);
+CREATE POLICY "Hanya user login bisa ubah settings" ON settings FOR UPDATE USING (auth.role() = 'authenticated');
 
 ALTER TABLE app_users ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Enable all for anon app_users" ON app_users FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Hanya user login bisa akses app_users" ON app_users FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
 
 ALTER TABLE students ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Enable all for anon students" ON students FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Publik bisa melihat students" ON students FOR SELECT USING (true);
+CREATE POLICY "Hanya user login bisa insert students" ON students FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Hanya user login bisa update students" ON students FOR UPDATE USING (auth.role() = 'authenticated');
+CREATE POLICY "Hanya user login bisa delete students" ON students FOR DELETE USING (auth.role() = 'authenticated');
+
+ALTER TABLE activity_logs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Hanya user login bisa akses activity_logs" ON activity_logs FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+
+-- KEBIJAKAN KEAMANAN UNTUK PENYIMPANAN FOTO (STORAGE)
+CREATE POLICY "Publik bisa melihat foto" ON storage.objects FOR SELECT USING (bucket_id = 'student_photos');
+CREATE POLICY "User login bisa upload foto" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'student_photos' AND auth.role() = 'authenticated');
+CREATE POLICY "User login bisa update foto" ON storage.objects FOR UPDATE USING (bucket_id = 'student_photos' AND auth.role() = 'authenticated');
+CREATE POLICY "User login bisa hapus foto" ON storage.objects FOR DELETE USING (bucket_id = 'student_photos' AND auth.role() = 'authenticated');
+
+-- =========================================================================
+-- 5. TRIGGER OTOMATIS UNTUK LOG AKTIFITAS
+-- =========================================================================
+CREATE OR REPLACE FUNCTION log_activity_function()
+RETURNS TRIGGER AS $$
+DECLARE
+  current_user_name TEXT;
+  action_text TEXT;
+  detail_text TEXT;
+  record_id TEXT;
+  changed_fields TEXT;
+BEGIN
+  -- Mengambil nama user yang sedang login menggunakan auth.uid() bawaan Supabase
+  SELECT name INTO current_user_name FROM public.app_users WHERE id = auth.uid();
+  
+  IF current_user_name IS NULL THEN
+    current_user_name := 'System / Unknown';
+  END IF;
+
+  -- Menentukan record ID yang dimodifikasi
+  IF TG_OP = 'DELETE' THEN
+    record_id := OLD.id::text;
+  ELSE
+    record_id := NEW.id::text;
+  END IF;
+
+  -- Menyusun deskripsi log
+  IF TG_OP = 'INSERT' THEN
+    action_text := 'Menambahkan data ke tabel ' || TG_TABLE_NAME;
+    detail_text := 'Data baru dengan ID: ' || record_id;
+  ELSIF TG_OP = 'UPDATE' THEN
+    action_text := 'Memperbarui data di tabel ' || TG_TABLE_NAME;
+    
+    -- Mencari detail kolom yang berubah dengan membandingkan OLD dan NEW menggunakan JSONB
+    SELECT string_agg(
+             CASE 
+               WHEN key IN ('records', 'guruhalaqohdata', 'kelaslist') THEN key || ': [Data JSON Diperbarui]'
+               ELSE key || ': ' || COALESCE(o.value, 'null') || ' -> ' || COALESCE(n.value, 'null')
+             END,
+             E'\n'
+           )
+    INTO changed_fields
+    FROM jsonb_each_text(to_jsonb(OLD)) o
+    JOIN jsonb_each_text(to_jsonb(NEW)) n USING (key)
+    WHERE o.value IS DISTINCT FROM n.value AND key != 'created_at';
+
+    detail_text := 'Memperbarui data dengan ID: ' || record_id;
+    IF changed_fields IS NOT NULL AND changed_fields != '' THEN
+      detail_text := detail_text || E'\nPerubahan:\n' || changed_fields;
+    END IF;
+  ELSIF TG_OP = 'DELETE' THEN
+    action_text := 'Menghapus data dari tabel ' || TG_TABLE_NAME;
+    detail_text := 'Menghapus data dengan ID: ' || record_id;
+  END IF;
+
+  -- Menyimpan ke activity_logs
+  INSERT INTO public.activity_logs (guru_name, action, details)
+  VALUES (current_user_name, action_text, detail_text);
+
+  IF TG_OP = 'DELETE' THEN
+    RETURN OLD;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Pasang trigger ke tabel students
+DROP TRIGGER IF EXISTS students_activity_trigger ON students;
+CREATE TRIGGER students_activity_trigger
+AFTER INSERT OR UPDATE OR DELETE ON students
+FOR EACH ROW EXECUTE FUNCTION log_activity_function();
 
 -- ENABLE REALTIME UNTUK STUDENTS (Penting untuk MainApp.jsx baris 128)
 -- Aktifkan Realtime di dashboard Supabase (Database -> Replication -> Source -> Centang `students`)
@@ -61,3 +165,4 @@ begin;
 commit;
 
 alter publication supabase_realtime add table students;
+alter publication supabase_realtime add table settings;

@@ -6,12 +6,12 @@ import { getStorage } from 'firebase/storage';
 
 // Konfigurasi Firebase milikmu
 const firebaseConfig = {
-  apiKey: "AIzaSyDmlufgIku6oN7eFTRP7tlRDGrIVmICTiM",
-  authDomain: "myquranplan.firebaseapp.com",
-  projectId: "myquranplan",
-  storageBucket: "myquranplan.firebasestorage.app",
-  messagingSenderId: "896025622141",
-  appId: "1:896025622141:web:1a6964fcfe3bfea827e314"
+  apiKey: "REMOVED_FOR_SECURITY",
+  authDomain: "REMOVED_FOR_SECURITY",
+  projectId: "REMOVED_FOR_SECURITY",
+  storageBucket: "REMOVED_FOR_SECURITY",
+  messagingSenderId: "REMOVED_FOR_SECURITY",
+  appId: "REMOVED_FOR_SECURITY"
 };
 
 // Inisialisasi Firebase
