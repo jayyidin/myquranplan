@@ -5,10 +5,10 @@ import { formatShortDate, getInitials, formatPeriode, formatPrintData } from '..
 
 const renderTextWithHighlights = (txt) => {
   if (typeof txt !== 'string') return txt;
-  
+
   const regex = /(Sangat Baik|\(A\)|\(B\+\)|\(B\)|Nilai:\s*A|Nilai:\s*B\+|Nilai:\s*B)/g;
   const parts = txt.split(regex);
-  
+
   return parts.map((part, index) => {
     if (part === 'Sangat Baik') {
       return (
@@ -60,7 +60,7 @@ const renderTextWithHighlights = (txt) => {
 const ExpandableText = ({ text }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   if (!text || text === '-') return <div className="text-xs sm:text-sm font-bold text-gray-800">-</div>;
-  
+
   // Perbaikan TypeError: Pastikan text diolah sebagai string sebelum membaca properti length
   const safeText = String(text);
   const isLong = safeText.length > 50 || safeText.split('\n').length > 2;
@@ -72,7 +72,7 @@ const ExpandableText = ({ text }) => {
         {renderTextWithHighlights(safeText)}
       </div>
       {isLong && (
-        <button 
+        <button
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsExpanded(!isExpanded); }}
           className="text-[9px] sm:text-[10px] font-black text-emerald-500 hover:text-emerald-600 mt-1 active:scale-95 transition-all bg-emerald-50 px-2 py-0.5 rounded-md print:hidden"
           data-html2canvas-ignore="true"
@@ -102,9 +102,9 @@ const renderCatatanDetail = (valC, valCT, valCF) => {
   const hasC = valC && valC !== '-';
   const hasCT = valCT && valCT !== '-';
   const hasCF = valCF && valCF !== '-';
-  
+
   if (!hasC && !hasCT && !hasCF) return <ExpandableText text="-" />;
-  
+
   return (
     <div className="flex flex-col gap-1.5 w-full">
       {hasCT && <div><span className="text-[9px] font-black text-blue-500 uppercase tracking-widest block mb-0.5">Tahsin:</span><ExpandableText text={valCT} /></div>}
@@ -437,7 +437,7 @@ const HomeView = ({
       if (tahsin.includes('Tajwid') || tahsin.includes('Ghorib') || tahsin.includes('Gharib')) {
         const parts = tahsin.split(','); const category = parts[0].trim(); const suratListStr = parts.slice(1).join(',').trim();
         let halMat = halAyat !== '-' ? String(halAyat) : '', ayatListStr = '';
-        if (halMat.includes(' / ')) { const splitDetails = halMat.split(' / '); halMat = splitDetails[0].trim(); ayatListStr = splitDetails.slice(1).join(' / ').trim(); } else if (!halMat.includes('Hal') && !halMat.includes('-') && !halMat.includes('|')) { ayatListStr = halMat; halMat = ''; }
+        if (halMat.includes(' / ')) { const splitDetails = halMat.split(' / '); halMat = splitDetails[0].trim(); ayatListStr = splitDetails.slice(1).join(' / ').trim(); } else if (/^[0-9\-, ]+$/.test(halMat)) { ayatListStr = halMat; halMat = ''; } else if (!halMat.includes('Hal') && !halMat.includes('-') && !halMat.includes('|')) { ayatListStr = halMat; halMat = ''; }
         const sList = suratListStr ? suratListStr.split(',').map(s => s.trim()) : [];
         const aList = ayatListStr ? ayatListStr.split(',').map(s => s.trim()) : [];
         const nList = nilaiSuratStr && nilaiSuratStr !== '-' ? String(nilaiSuratStr).split(',').map(s => s.trim()) : [];
@@ -450,7 +450,7 @@ const HomeView = ({
             </div>
             {halMat && halMat !== '-' && <span className="text-[12px] font-bold text-gray-700 leading-snug break-words whitespace-normal max-w-full text-center mt-0.5">{halMat}</span>}
             {sList.length > 0 && sList.map((s, i) => {
-              const a = aList[i]; const combined = (a && a !== '-' && a !== 'Semua Ayat') ? s + ' ' + a : s;
+              const a = aList[i]; const combined = (a && a !== '-' && a !== 'Semua Ayat' && !s.includes(a)) ? s + ' ' + a : s;
               const n = nList[i] && nList[i] !== '-' ? nList[i] : null;
               const isExcellentN = String(n).trim() === 'A';
               const isGoodN = String(n).trim() === 'B+';
@@ -481,7 +481,7 @@ const HomeView = ({
       return (
         <div className="flex flex-col items-center justify-center gap-1 w-full min-w-0">
           {tList.map((t, i) => {
-            const a = aList[i]; const combined = (a && a !== '-' && a !== 'Semua Ayat') ? t + ' ' + a : t;
+            const a = aList[i]; const combined = (a && a !== '-' && a !== 'Semua Ayat' && !t.includes(a)) ? t + ' ' + a : t;
             const n = nList[i] && nList[i] !== '-' ? nList[i] : null;
             const isExcellentN = String(n).trim() === 'A';
             const isGoodN = String(n).trim() === 'B+';
@@ -600,11 +600,12 @@ const HomeView = ({
       const hasTahsinGhost = () => hasMeaningfulValue(ghostRecord[k.t]) || hasMeaningfulValue(ghostRecord[k.h]);
       const hasTahfidzGhost = () => hasMeaningfulValue(ghostRecord[k.f]) || hasMeaningfulValue(ghostRecord[k.af]);
       const hasMurojaahGhost = () => hasMeaningfulValue(ghostRecord[k.m]);
+      const hasCatatanGhost = () => hasMeaningfulValue(ghostRecord[k.cT]) || hasMeaningfulValue(ghostRecord[k.cF]);
 
       for (const d of recordedDates) {
         const dStr = getDateString(d);
         const rec = s.records[dStr];
-        
+
         const isFromPreviousWeek = d < currentWeekStart;
         const searchKeys = (homeTab === 'lesson_plan' && isFromPreviousWeek) ? jurnalKeys : k;
 
@@ -632,20 +633,26 @@ const HomeView = ({
             ghostRecord.__dates.murojaah = dStr;
           }
 
-          if (hasTahsinGhost() && hasTahfidzGhost() && hasMurojaahGhost()) break;
+          if (!hasCatatanGhost() && (hasMeaningfulValue(rec[searchKeys.cT]) || hasMeaningfulValue(rec[searchKeys.cF]))) {
+            ghostRecord[k.cT] = rec[searchKeys.cT] || '-';
+            ghostRecord[k.cF] = rec[searchKeys.cF] || '-';
+            ghostRecord.__dates.catatan = dStr;
+          }
+
+          if (hasTahsinGhost() && hasTahfidzGhost() && hasMurojaahGhost() && hasCatatanGhost()) break;
         }
       }
 
-      if (hasTahsinGhost() || hasTahfidzGhost() || hasMurojaahGhost()) {
+      if (hasTahsinGhost() || hasTahfidzGhost() || hasMurojaahGhost() || hasCatatanGhost()) {
         ghostData[s.id] = {
           ...ghostRecord,
-          date: ghostRecord.__dates.tahsin || ghostRecord.__dates.tahfidz || ghostRecord.__dates.murojaah
+          date: ghostRecord.__dates.tahsin || ghostRecord.__dates.tahfidz || ghostRecord.__dates.murojaah || ghostRecord.__dates.catatan
         };
       }
     });
     return ghostData;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredStudents, activeDate, homeTab]); 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredStudents, activeDate, homeTab]);
   // Catatan: K object sengaja diabaikan di deps untuk mencegah render loop.
 
   // Sinkronisasikan ke window untuk kebutuhan MainApp.jsx
@@ -786,7 +793,7 @@ const HomeView = ({
                           const valF = rec?.[k.f] || '-';
                           const valAF = rec?.[k.af] || '-';
                           const valFNilai = rec?.[k.fNilai] || '-';
-                          
+
                           const valC = rec?.[k.c] && rec?.[k.c] !== '-' ? String(rec[k.c]) : '';
                           const valCT = rec?.[k.cT] && rec?.[k.cT] !== '-' ? String(rec[k.cT]) : '';
                           const valCF = rec?.[k.cF] && rec?.[k.cF] !== '-' ? String(rec[k.cF]) : '';
@@ -851,7 +858,8 @@ const HomeView = ({
 
   return (
     <>
-      <style type="text/css" media="print" dangerouslySetInnerHTML={{__html: `
+      <style type="text/css" media="print" dangerouslySetInnerHTML={{
+        __html: `
         @page { size: portrait; margin: 0; }
         body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         /* Sembunyikan semua elemen di halaman secara default saat mencetak */
@@ -900,7 +908,7 @@ const HomeView = ({
 
                 {/* Konten Laporan */}
                 <div className="w-full flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar flex flex-col md:items-center p-0 md:p-4 print:p-0 print:overflow-visible relative">
-                  
+
                   {/* MOBILE VIEW (CARD-BASED) */}
                   <div className="md:hidden w-full flex flex-col gap-4 print:hidden px-4 py-4 pb-24">
                     {filteredStudents.map((student, idx) => (
@@ -919,12 +927,12 @@ const HomeView = ({
                             <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Kelas {student?.kelas || '-'}</div>
                           </div>
                         </div>
-                        
+
                         <div className="flex flex-col gap-2">
                           {workDays.map((dateObj) => {
                             const dateStr = getDateString(dateObj);
                             const rec = student?.records?.[dateStr] || {};
-                            
+
                             const valM = formatPrintData(rec?.[k.m], '-', null, null);
                             const valT = formatPrintData(rec?.[k.t], rec?.[k.h], rec?.[k.tNilai], rec?.[k.tsNilai]);
                             const valF = formatPrintData(rec?.[k.f], rec?.[k.af], null, rec?.[k.fNilai]);
@@ -971,15 +979,15 @@ const HomeView = ({
                               </div>
                             );
                           })}
-                          
+
                           {workDays.every(d => {
                             const rec = student?.records?.[getDateString(d)] || {};
                             return !(rec[k.m] && rec[k.m] !== '-') && !(rec[k.t] && rec[k.t] !== '-') && !(rec[k.f] && rec[k.f] !== '-') && !(rec[k.c] && rec[k.c] !== '-') && !(rec[k.cT] && rec[k.cT] !== '-') && !(rec[k.cF] && rec[k.cF] !== '-');
                           }) && (
-                            <div className="text-center py-4 text-slate-400 text-[11px] font-bold italic">
-                              Belum ada rekaman pekan ini.
-                            </div>
-                          )}
+                              <div className="text-center py-4 text-slate-400 text-[11px] font-bold italic">
+                                Belum ada rekaman pekan ini.
+                              </div>
+                            )}
                         </div>
                       </div>
                     ))}
@@ -1014,14 +1022,14 @@ const HomeView = ({
           {/* Tombol Aksi Web (Floating Bottom on Mobile) */}
           <div className="fixed bottom-6 right-6 sm:bottom-auto sm:top-6 sm:right-6 flex flex-col-reverse sm:flex-row gap-3 z-[100000] print:hidden" data-html2canvas-ignore="true">
             <button onClick={handleCopyShareLink} className="bg-blue-600 text-white w-14 h-14 sm:w-auto sm:h-auto sm:px-5 sm:py-2.5 rounded-full sm:rounded-xl font-bold flex items-center justify-center gap-2 shadow-xl hover:bg-blue-700 transition-colors" title="Salin Link Orang Tua">
-              <Link size={20} className="sm:w-[18px] sm:h-[18px]"/> <span className="hidden sm:inline">Salin Link Orang Tua</span>
+              <Link size={20} className="sm:w-[18px] sm:h-[18px]" /> <span className="hidden sm:inline">Salin Link Orang Tua</span>
             </button>
             <button onClick={handleDownloadImage} disabled={isDownloading} className="bg-[#00e676] text-white w-14 h-14 sm:w-auto sm:h-auto sm:px-5 sm:py-2.5 rounded-full sm:rounded-xl font-bold flex items-center justify-center gap-2 shadow-xl hover:bg-green-600 transition-colors disabled:opacity-50" title="Unduh (JPG)">
-              {isDownloading ? <span className="animate-spin text-sm">⏳</span> : <Download size={20} className="sm:w-[18px] sm:h-[18px]"/>}
+              {isDownloading ? <span className="animate-spin text-sm">⏳</span> : <Download size={20} className="sm:w-[18px] sm:h-[18px]" />}
               <span className="hidden sm:inline">{isDownloading ? 'Memproses...' : 'Unduh (JPG)'}</span>
             </button>
             <button onClick={handleDownloadPdf} disabled={isDownloading} className="bg-white text-gray-800 w-14 h-14 sm:w-auto sm:h-auto sm:px-5 sm:py-2.5 rounded-full sm:rounded-xl font-bold flex items-center justify-center gap-2 shadow-xl hover:bg-gray-50 transition-colors disabled:opacity-50 border border-slate-100" title="Download PDF">
-              {isDownloading ? <span className="animate-spin text-sm">⏳</span> : <FileText size={20} className="sm:w-[18px] sm:h-[18px]"/>}
+              {isDownloading ? <span className="animate-spin text-sm">⏳</span> : <FileText size={20} className="sm:w-[18px] sm:h-[18px]" />}
               <span className="hidden sm:inline">{isDownloading ? 'Memproses...' : 'Download PDF'}</span>
             </button>
             <button onClick={() => setShareStudent(null)} className="bg-slate-800 text-white w-14 h-14 sm:w-auto sm:h-auto sm:p-3 flex items-center justify-center rounded-full sm:rounded-xl shadow-xl hover:bg-slate-900 transition-colors mb-2 sm:mb-0" title="Tutup">
@@ -1033,129 +1041,129 @@ const HomeView = ({
           <div className="w-full flex justify-center p-0 sm:p-4 print:p-0">
             <div id="share-report-card" className="bg-white w-full max-w-[800px] print:w-[800px] print:min-w-[800px] print:max-w-none shrink-0 sm:shadow-2xl relative sm:my-8 print:shadow-none rounded-none sm:rounded-[32px] overflow-hidden transition-colors">
 
-            {/* HEADER LAPORAN */}
-            <div className="bg-[#f2fdf5] p-6 sm:p-8 border-b border-green-100 flex flex-col-reverse sm:flex-row justify-between items-center gap-4 text-center sm:text-left">
-              <div className="w-full sm:w-auto">
-                <h1 className="text-2xl sm:text-3xl font-black text-[#111827] mb-1 sm:mb-2">
-                  {homeTab === 'lesson_plan' ? "Lesson Plan Al-Qur'an" : "Jurnal Harian Al-Qur'an"}
-                </h1>
-                <p className="text-[#00e676] font-bold text-xs sm:text-sm italic">SDIT Al-Fityan School Bogor</p>
-              </div>
-              <div className="w-20 h-20 sm:w-32 sm:h-32 flex items-center justify-center shrink-0">
-                {institutionLogo && institutionLogo !== 'logo.png' ? (
-                  <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain" />
-                ) : (
-                  <BookOpen size={64} className="text-green-600 sm:w-16 sm:h-16" />
-                )}
-              </div>
-            </div>
-
-            {/* INFO SISWA */}
-            <div className="p-6 sm:p-8 flex flex-col sm:flex-row justify-between items-center gap-6 border-b border-gray-50 text-center sm:text-left">
-              <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-5 w-full sm:w-auto">
-                <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full bg-[#e6fbf0] border-4 sm:border-[5px] border-[#00e676] text-[#00e676] flex items-center justify-center text-4xl sm:text-5xl font-black relative shrink-0 shadow-inner">
-                  {shareStudent?.photo ? (
-                    <img src={shareStudent.photo} alt={shareStudent?.name || ''} className="w-full h-full rounded-full object-cover" />
+              {/* HEADER LAPORAN */}
+              <div className="bg-[#f2fdf5] p-6 sm:p-8 border-b border-green-100 flex flex-col-reverse sm:flex-row justify-between items-center gap-4 text-center sm:text-left">
+                <div className="w-full sm:w-auto">
+                  <h1 className="text-2xl sm:text-3xl font-black text-[#111827] mb-1 sm:mb-2">
+                    {homeTab === 'lesson_plan' ? "Lesson Plan Al-Qur'an" : "Jurnal Harian Al-Qur'an"}
+                  </h1>
+                  <p className="text-[#00e676] font-bold text-xs sm:text-sm italic">SDIT Al-Fityan School Bogor</p>
+                </div>
+                <div className="w-20 h-20 sm:w-32 sm:h-32 flex items-center justify-center shrink-0">
+                  {institutionLogo && institutionLogo !== 'logo.png' ? (
+                    <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain" />
                   ) : (
-                    <span>{getInitials(shareStudent?.name)}</span>
+                    <BookOpen size={64} className="text-green-600 sm:w-16 sm:h-16" />
                   )}
-                  <div className="absolute bottom-0 right-0 sm:bottom-1 sm:right-1 bg-white rounded-full p-1 text-[#00e676] shadow-sm">
-                    <div className="w-6 h-6 sm:w-7 sm:h-7 bg-[#00e676] rounded-full flex items-center justify-center text-white">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <h2 className={`font-black text-gray-800 mb-2 sm:mb-3 ${(shareStudent?.name || '').length > 24 ? 'text-lg sm:text-xl' : (shareStudent?.name || '').length > 18 ? 'text-xl sm:text-2xl' : 'text-2xl sm:text-3xl'}`}>{String(shareStudent?.name || 'Siswa')}</h2>
-                  <div className="flex flex-wrap justify-center sm:justify-start gap-2 mt-1 sm:mt-0">
-                    <span className={`bg-[#e6fbf0] text-green-800 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full font-bold uppercase tracking-widest ${String(shareStudent?.kelas || '-').length > 10 ? 'text-[9px] sm:text-xs' : 'text-[10px] sm:text-xs'}`}>Kelas {String(shareStudent?.kelas || '-')}</span>
-                    <span className={`bg-[#e6fbf0] text-green-800 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full font-bold uppercase tracking-widest ${String(activeHalaqoh || '-').length > 20 ? 'text-[8px] sm:text-[10px]' : String(activeHalaqoh || '-').length > 15 ? 'text-[9px] sm:text-[11px]' : 'text-[10px] sm:text-xs'}`}>Kelompok {String(activeHalaqoh || '-')}</span>
-                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* DAFTAR HARI / JURNAL SISWA */}
-            <div className="p-4 sm:p-8 flex flex-col gap-4 sm:gap-5 bg-gray-50/50">
-              {weekDates.every((dateObj) => {
-                if (!dateObj || typeof dateObj.getDay !== 'function') return true;
-                if (dateObj.getDay() === 0 || dateObj.getDay() === 6) return true;
-                const dateStr = getDateString(dateObj);
-                const rec = shareStudent?.records?.[dateStr] || {};
-                return !(rec?.[k.t] && rec?.[k.t] !== '-') && !(rec?.[k.f] && rec?.[k.f] !== '-') && !(rec?.[k.m] && rec?.[k.m] !== '-') && !(rec?.[k.c] && rec?.[k.c] !== '-');
-              }) && (
-                <div className="py-12 text-center flex flex-col items-center gap-3 opacity-40">
-                   <Calendar size={48} />
-                   <p className="font-bold">Belum ada data rekaman pada pekan ini.</p>
-                </div>
-              )}
-              {weekDates.map((dateObj) => {
-                if (!dateObj || typeof dateObj.getDay !== 'function') return null;
-                if (dateObj.getDay() === 0 || dateObj.getDay() === 6) return null;
-                const dateStr = getDateString(dateObj);
-                const dayName = getDayName(dateObj).toUpperCase();
-                const displayDate = `${dateObj.getDate()} ${['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'][dateObj.getMonth()]} ${dateObj.getFullYear()}`;
-
-                const rec = shareStudent?.records?.[dateStr] || {};
-                
-                const hasData = (rec?.[k.t] && rec?.[k.t] !== '-') || (rec?.[k.f] && rec?.[k.f] !== '-') || (rec?.[k.m] && rec?.[k.m] !== '-') || (rec?.[k.c] && rec?.[k.c] !== '-');
-                if (!hasData) return null;
-
-                const valM = formatPrintData(rec?.[k.m], '-', null, null);
-                const valT = formatPrintData(rec?.[k.t], rec?.[k.h], rec?.[k.tNilai], rec?.[k.tsNilai]);
-                const valF = formatPrintData(rec?.[k.f], rec?.[k.af], null, rec?.[k.fNilai]);
-                const valC = rec?.[k.c] && rec?.[k.c] !== '-' ? String(rec[k.c]) : '';
-                const valCT = rec?.[k.cT] && rec?.[k.cT] !== '-' ? String(rec[k.cT]) : '';
-                const valCF = rec?.[k.cF] && rec?.[k.cF] !== '-' ? String(rec[k.cF]) : '';
-
-                return (
-                  <div key={dateStr} className="bg-white border border-gray-100 rounded-[20px] sm:rounded-[24px] p-4 sm:p-5 shadow-sm print:break-inside-avoid transition-colors">
-                    <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 sm:gap-0 mb-4 sm:mb-5 border-b border-gray-50 pb-3 sm:pb-4">
-                      <span className="bg-[#00e676] text-white px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-black tracking-widest uppercase shadow-sm w-max">{dayName}</span>
-                      <span className="text-gray-400 font-bold italic text-xs sm:text-sm">{displayDate}</span>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 sm:gap-y-6 gap-x-4 sm:gap-x-6">
-                      {/* Info TAHSIN */}
-                      <div className="bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent h-full flex flex-col">
-                        <div className="flex items-center gap-1.5 mb-1.5 text-blue-500"><BookOpen size={14} /><span className="text-[10px] sm:text-xs font-black uppercase tracking-wider">Tahsin</span></div>
-                        <ExpandableText text={valT} />
-                      </div>
-
-                      {/* Info TAHFIDZ */}
-                      <div className="bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent h-full flex flex-col">
-                        <div className="flex items-center gap-1.5 mb-1.5 text-purple-500"><Mic size={14} /><span className="text-[10px] sm:text-xs font-black uppercase tracking-wider">Tahfidz</span></div>
-                        <ExpandableText text={valF} />
-                      </div>
-
-                      {/* Info MUROJAAH */}
-                      <div className="bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent h-full flex flex-col">
-                        <div className="flex items-center gap-1.5 mb-1.5 text-emerald-500"><Repeat size={14} /><span className="text-[10px] sm:text-xs font-black uppercase tracking-wider">Murojaah</span></div>
-                        <ExpandableText text={valM} />
-                      </div>
-
-                      {/* Info CATATAN */}
-                      <div className="bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent h-full flex flex-col">
-                        <div className="flex items-center gap-1.5 mb-1.5 text-orange-500"><FileText size={14} /><span className="text-[10px] sm:text-xs font-black uppercase tracking-wider">Catatan</span></div>
-                        {renderCatatanDetail(valC, valCT, valCF)}
+              {/* INFO SISWA */}
+              <div className="p-6 sm:p-8 flex flex-col sm:flex-row justify-between items-center gap-6 border-b border-gray-50 text-center sm:text-left">
+                <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-5 w-full sm:w-auto">
+                  <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full bg-[#e6fbf0] border-4 sm:border-[5px] border-[#00e676] text-[#00e676] flex items-center justify-center text-4xl sm:text-5xl font-black relative shrink-0 shadow-inner">
+                    {shareStudent?.photo ? (
+                      <img src={shareStudent.photo} alt={shareStudent?.name || ''} className="w-full h-full rounded-full object-cover" />
+                    ) : (
+                      <span>{getInitials(shareStudent?.name)}</span>
+                    )}
+                    <div className="absolute bottom-0 right-0 sm:bottom-1 sm:right-1 bg-white rounded-full p-1 text-[#00e676] shadow-sm">
+                      <div className="w-6 h-6 sm:w-7 sm:h-7 bg-[#00e676] rounded-full flex items-center justify-center text-white">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                       </div>
                     </div>
                   </div>
-                );
-              })}
-            </div>
+                  <div>
+                    <h2 className={`font-black text-gray-800 mb-2 sm:mb-3 ${(shareStudent?.name || '').length > 24 ? 'text-lg sm:text-xl' : (shareStudent?.name || '').length > 18 ? 'text-xl sm:text-2xl' : 'text-2xl sm:text-3xl'}`}>{String(shareStudent?.name || 'Siswa')}</h2>
+                    <div className="flex flex-wrap justify-center sm:justify-start gap-2 mt-1 sm:mt-0">
+                      <span className={`bg-[#e6fbf0] text-green-800 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full font-bold uppercase tracking-widest ${String(shareStudent?.kelas || '-').length > 10 ? 'text-[9px] sm:text-xs' : 'text-[10px] sm:text-xs'}`}>Kelas {String(shareStudent?.kelas || '-')}</span>
+                      <span className={`bg-[#e6fbf0] text-green-800 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full font-bold uppercase tracking-widest ${String(activeHalaqoh || '-').length > 20 ? 'text-[8px] sm:text-[10px]' : String(activeHalaqoh || '-').length > 15 ? 'text-[9px] sm:text-[11px]' : 'text-[10px] sm:text-xs'}`}>Kelompok {String(activeHalaqoh || '-')}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-            {/* FOOTER LAPORAN */}
-            <div className="bg-[#111827] p-5 sm:p-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-white text-center sm:text-left">
-              <div className="flex items-center justify-center sm:justify-start gap-3 w-full sm:w-auto">
-                <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0"><Users size={14} className="text-gray-300" /></div>
-                <span className="text-xs sm:text-sm font-medium text-gray-400">Ustadz/ah: <strong className="text-white inline ml-1">{String(activeGuru || '-')}</strong></span>
+              {/* DAFTAR HARI / JURNAL SISWA */}
+              <div className="p-4 sm:p-8 flex flex-col gap-4 sm:gap-5 bg-gray-50/50">
+                {weekDates.every((dateObj) => {
+                  if (!dateObj || typeof dateObj.getDay !== 'function') return true;
+                  if (dateObj.getDay() === 0 || dateObj.getDay() === 6) return true;
+                  const dateStr = getDateString(dateObj);
+                  const rec = shareStudent?.records?.[dateStr] || {};
+                  return !(rec?.[k.t] && rec?.[k.t] !== '-') && !(rec?.[k.f] && rec?.[k.f] !== '-') && !(rec?.[k.m] && rec?.[k.m] !== '-') && !(rec?.[k.c] && rec?.[k.c] !== '-');
+                }) && (
+                    <div className="py-12 text-center flex flex-col items-center gap-3 opacity-40">
+                      <Calendar size={48} />
+                      <p className="font-bold">Belum ada data rekaman pada pekan ini.</p>
+                    </div>
+                  )}
+                {weekDates.map((dateObj) => {
+                  if (!dateObj || typeof dateObj.getDay !== 'function') return null;
+                  if (dateObj.getDay() === 0 || dateObj.getDay() === 6) return null;
+                  const dateStr = getDateString(dateObj);
+                  const dayName = getDayName(dateObj).toUpperCase();
+                  const displayDate = `${dateObj.getDate()} ${['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'][dateObj.getMonth()]} ${dateObj.getFullYear()}`;
+
+                  const rec = shareStudent?.records?.[dateStr] || {};
+
+                  const hasData = (rec?.[k.t] && rec?.[k.t] !== '-') || (rec?.[k.f] && rec?.[k.f] !== '-') || (rec?.[k.m] && rec?.[k.m] !== '-') || (rec?.[k.c] && rec?.[k.c] !== '-');
+                  if (!hasData) return null;
+
+                  const valM = formatPrintData(rec?.[k.m], '-', null, null);
+                  const valT = formatPrintData(rec?.[k.t], rec?.[k.h], rec?.[k.tNilai], rec?.[k.tsNilai]);
+                  const valF = formatPrintData(rec?.[k.f], rec?.[k.af], null, rec?.[k.fNilai]);
+                  const valC = rec?.[k.c] && rec?.[k.c] !== '-' ? String(rec[k.c]) : '';
+                  const valCT = rec?.[k.cT] && rec?.[k.cT] !== '-' ? String(rec[k.cT]) : '';
+                  const valCF = rec?.[k.cF] && rec?.[k.cF] !== '-' ? String(rec[k.cF]) : '';
+
+                  return (
+                    <div key={dateStr} className="bg-white border border-gray-100 rounded-[20px] sm:rounded-[24px] p-4 sm:p-5 shadow-sm print:break-inside-avoid transition-colors">
+                      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 sm:gap-0 mb-4 sm:mb-5 border-b border-gray-50 pb-3 sm:pb-4">
+                        <span className="bg-[#00e676] text-white px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-black tracking-widest uppercase shadow-sm w-max">{dayName}</span>
+                        <span className="text-gray-400 font-bold italic text-xs sm:text-sm">{displayDate}</span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 sm:gap-y-6 gap-x-4 sm:gap-x-6">
+                        {/* Info TAHSIN */}
+                        <div className="bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent h-full flex flex-col">
+                          <div className="flex items-center gap-1.5 mb-1.5 text-blue-500"><BookOpen size={14} /><span className="text-[10px] sm:text-xs font-black uppercase tracking-wider">Tahsin</span></div>
+                          <ExpandableText text={valT} />
+                        </div>
+
+                        {/* Info TAHFIDZ */}
+                        <div className="bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent h-full flex flex-col">
+                          <div className="flex items-center gap-1.5 mb-1.5 text-purple-500"><Mic size={14} /><span className="text-[10px] sm:text-xs font-black uppercase tracking-wider">Tahfidz</span></div>
+                          <ExpandableText text={valF} />
+                        </div>
+
+                        {/* Info MUROJAAH */}
+                        <div className="bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent h-full flex flex-col">
+                          <div className="flex items-center gap-1.5 mb-1.5 text-emerald-500"><Repeat size={14} /><span className="text-[10px] sm:text-xs font-black uppercase tracking-wider">Murojaah</span></div>
+                          <ExpandableText text={valM} />
+                        </div>
+
+                        {/* Info CATATAN */}
+                        <div className="bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent h-full flex flex-col">
+                          <div className="flex items-center gap-1.5 mb-1.5 text-orange-500"><FileText size={14} /><span className="text-[10px] sm:text-xs font-black uppercase tracking-wider">Catatan</span></div>
+                          {renderCatatanDetail(valC, valCT, valCF)}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              <div className="flex items-center justify-center sm:justify-start gap-3 w-full sm:w-auto">
-                <div className="w-8 h-8 rounded-full bg-[#00e676]/20 flex items-center justify-center shrink-0"><Calendar size={14} className="text-[#00e676]" /></div>
-                <span className="text-xs sm:text-sm font-medium text-gray-400">Periode: <strong className="text-white inline ml-1">{formatPeriode(weekDates[0], weekDates[weekDates.length - 1] || weekDates[0])}</strong></span>
+
+              {/* FOOTER LAPORAN */}
+              <div className="bg-[#111827] p-5 sm:p-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-white text-center sm:text-left">
+                <div className="flex items-center justify-center sm:justify-start gap-3 w-full sm:w-auto">
+                  <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0"><Users size={14} className="text-gray-300" /></div>
+                  <span className="text-xs sm:text-sm font-medium text-gray-400">Ustadz/ah: <strong className="text-white inline ml-1">{String(activeGuru || '-')}</strong></span>
+                </div>
+                <div className="flex items-center justify-center sm:justify-start gap-3 w-full sm:w-auto">
+                  <div className="w-8 h-8 rounded-full bg-[#00e676]/20 flex items-center justify-center shrink-0"><Calendar size={14} className="text-[#00e676]" /></div>
+                  <span className="text-xs sm:text-sm font-medium text-gray-400">Periode: <strong className="text-white inline ml-1">{formatPeriode(weekDates[0], weekDates[weekDates.length - 1] || weekDates[0])}</strong></span>
+                </div>
               </div>
-            </div>
 
             </div>
           </div>
@@ -1191,13 +1199,13 @@ const HomeView = ({
                   <span className="flex items-center gap-1.5 min-w-0">
                     <span className="shrink-0">Ustadz/ah:</span> <strong className={`text-blue-700 bg-blue-50 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md border border-blue-100 transition-colors whitespace-normal break-words ${(activeGuru || '').length > 20 ? 'text-[8px] sm:text-[10px] leading-tight' : (activeGuru || '').length > 15 ? 'text-[9px] sm:text-[11px] leading-tight' : ''}`}>{String(activeGuru || '-')}</strong>
                   </span>
-                <span className="hidden md:inline text-gray-300 shrink-0">•</span>
-                <span className="flex items-center gap-1.5 min-w-0" title="Target Hafalan Sekolah">
-                  <span className="shrink-0">Target:</span> 
-                  <strong className="text-amber-700 bg-amber-50 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md border border-amber-100 transition-colors whitespace-normal break-words">
-                    {targetReguler || '2 Juz'} {targetAlQuran ? `/ ${targetAlQuran}` : ''}
-                  </strong>
-                </span>
+                  <span className="hidden md:inline text-gray-300 shrink-0">•</span>
+                  <span className="flex items-center gap-1.5 min-w-0" title="Target Hafalan Sekolah">
+                    <span className="shrink-0">Target:</span>
+                    <strong className="text-amber-700 bg-amber-50 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md border border-amber-100 transition-colors whitespace-normal break-words">
+                      {targetReguler || '2 Juz'} {targetAlQuran ? `/ ${targetAlQuran}` : ''}
+                    </strong>
+                  </span>
                 </div>
               </div>
             </div>
@@ -1234,14 +1242,14 @@ const HomeView = ({
                 <span className="sm:hidden">Jurnal</span>
                 <span className="hidden sm:inline">Capaian (Jurnal)</span>
               </button>
-              <button 
+              <button
                 onClick={() => setIsSearchVisible(!isSearchVisible)}
                 className={`flex items-center justify-center px-2.5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl shadow-sm border transition-all ${isSearchVisible || searchQuery ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-white text-slate-500 hover:text-emerald-600 border-gray-200/50'}`}
                 title="Pencarian Siswa"
               >
                 <Search size={18} />
               </button>
-              <button 
+              <button
                 onClick={() => setIsHeaderVisible(!isHeaderVisible)}
                 className="flex items-center justify-center px-2.5 py-1.5 sm:py-2 bg-white text-slate-500 hover:text-emerald-600 rounded-lg sm:rounded-xl shadow-sm border border-gray-200/50 transition-all"
                 title={isHeaderVisible ? "Sembunyikan Header Atas" : "Tampilkan Header Atas"}
@@ -1294,14 +1302,16 @@ const HomeView = ({
                   <input
                     autoFocus
                     type="text"
+                    inputMode="search"
+                    enterKeyHint="search"
                     placeholder={activeHalaqoh ? `Cari nama siswa... (${studentsInHalaqohCount} siswa)` : 'Pilih halaqoh terlebih dahulu'}
-                value={localSearch}
-                onChange={(e) => setLocalSearch(e.target.value)}
+                    value={localSearch}
+                    onChange={(e) => setLocalSearch(e.target.value)}
                     disabled={!activeHalaqoh}
                     className="w-full bg-white border border-gray-200/80 rounded-xl pl-10 pr-10 py-2.5 sm:py-3 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 text-sm font-bold text-slate-700 transition-all shadow-sm disabled:bg-slate-50 disabled:cursor-not-allowed"
                   />
                   <button
-                onClick={() => { setIsSearchVisible(false); setLocalSearch(''); setSearchQuery(''); }}
+                    onClick={() => { setIsSearchVisible(false); setLocalSearch(''); setSearchQuery(''); }}
                     className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors"
                   >
                     <X size={16} />
@@ -1318,73 +1328,73 @@ const HomeView = ({
               </div>
             )}
 
-          {/* PROGRESS BAR PENGISIAN JURNAL & RINGKASAN KEHADIRAN */}
-          {activeHalaqoh && filteredStudents.length > 0 && (() => {
-            const { count } = getDateStatus(activeDate);
-            const total = filteredStudents.length;
-            const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
-            const isComplete = count === total && total > 0;
+            {/* PROGRESS BAR PENGISIAN JURNAL & RINGKASAN KEHADIRAN */}
+            {activeHalaqoh && filteredStudents.length > 0 && (() => {
+              const { count } = getDateStatus(activeDate);
+              const total = filteredStudents.length;
+              const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
+              const isComplete = count === total && total > 0;
 
-            let absenCount = 0;
-            let liburCount = 0;
-            
-            filteredStudents.forEach(student => {
-              const record = student?.records?.[activeDate] || {};
-              const valC = record?.[k.c] || '-';
-              const isCatatanEmpty = valC === '-';
-              const isAbsent = !isCatatanEmpty && ['alpa', 'sakit', 'izin', 'tidak hadir'].some(keyword => String(valC).toLowerCase().includes(keyword));
-              const isLibur = !isCatatanEmpty && String(valC).toLowerCase().includes('libur');
-              
-              if (isLibur) liburCount++;
-              else if (isAbsent) absenCount++;
-            });
-            
-            const hadirCount = total - absenCount - liburCount;
+              let absenCount = 0;
+              let liburCount = 0;
 
-            return (
-              <div className="w-full flex flex-col gap-1.5 mb-3 mt-1 px-1 animate-in fade-in duration-500">
-                <div className="flex justify-between items-end">
-                  <span className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                    Progres {homeTab === 'lesson_plan' ? 'Target' : 'Capaian'} Hari Ini
-                    {isComplete && <Check size={14} className="text-[#00e676]" strokeWidth={3} />}
-                  </span>
-                  <span className={`text-xs sm:text-sm font-black ${isComplete ? 'text-[#00e676]' : 'text-emerald-500'}`}>
-                    {percentage}% <span className="text-[10px] text-slate-400 font-bold ml-1">({count}/{total})</span>
-                  </span>
-                </div>
-                <div className="w-full h-2.5 sm:h-3 bg-slate-200/70 rounded-full overflow-hidden shadow-inner mb-1">
-                  <div 
-                    className={`h-full rounded-full transition-all duration-1000 ease-out relative ${isComplete ? 'bg-[#00e676] shadow-[0_0_10px_rgba(0,230,118,0.5)]' : 'bg-gradient-to-r from-emerald-400 to-emerald-500'}`}
-                    style={{ width: `${percentage}%` }}
-                  >
-                    {isComplete && (
-                      <div className="absolute inset-0 bg-white/20 w-full h-full"></div>
+              filteredStudents.forEach(student => {
+                const record = student?.records?.[activeDate] || {};
+                const valC = record?.[k.c] || '-';
+                const isCatatanEmpty = valC === '-';
+                const isAbsent = !isCatatanEmpty && ['alpa', 'sakit', 'izin', 'tidak hadir'].some(keyword => String(valC).toLowerCase().includes(keyword));
+                const isLibur = !isCatatanEmpty && String(valC).toLowerCase().includes('libur');
+
+                if (isLibur) liburCount++;
+                else if (isAbsent) absenCount++;
+              });
+
+              const hadirCount = total - absenCount - liburCount;
+
+              return (
+                <div className="w-full flex flex-col gap-1.5 mb-3 mt-1 px-1 animate-in fade-in duration-500">
+                  <div className="flex justify-between items-end">
+                    <span className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                      Progres {homeTab === 'lesson_plan' ? 'Target' : 'Capaian'} Hari Ini
+                      {isComplete && <Check size={14} className="text-[#00e676]" strokeWidth={3} />}
+                    </span>
+                    <span className={`text-xs sm:text-sm font-black ${isComplete ? 'text-[#00e676]' : 'text-emerald-500'}`}>
+                      {percentage}% <span className="text-[10px] text-slate-400 font-bold ml-1">({count}/{total})</span>
+                    </span>
+                  </div>
+                  <div className="w-full h-2.5 sm:h-3 bg-slate-200/70 rounded-full overflow-hidden shadow-inner mb-1">
+                    <div
+                      className={`h-full rounded-full transition-all duration-1000 ease-out relative ${isComplete ? 'bg-[#00e676] shadow-[0_0_10px_rgba(0,230,118,0.5)]' : 'bg-gradient-to-r from-emerald-400 to-emerald-500'}`}
+                      style={{ width: `${percentage}%` }}
+                    >
+                      {isComplete && (
+                        <div className="absolute inset-0 bg-white/20 w-full h-full"></div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Ringkasan Kehadiran */}
+                  <div className="flex flex-wrap items-center gap-2 text-[10px] sm:text-[11px] font-black tracking-wide mt-0.5">
+                    <div className="flex items-center gap-1.5 text-emerald-700 bg-emerald-50/80 px-2.5 py-1 rounded-md border border-emerald-100">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                      Hadir: {hadirCount}
+                    </div>
+                    {absenCount > 0 && (
+                      <div className="flex items-center gap-1.5 text-red-600 bg-red-50/80 px-2.5 py-1 rounded-md border border-red-100">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                        Tidak Hadir: {absenCount}
+                      </div>
+                    )}
+                    {liburCount > 0 && (
+                      <div className="flex items-center gap-1.5 text-blue-600 bg-blue-50/80 px-2.5 py-1 rounded-md border border-blue-100">
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                        Libur: {liburCount}
+                      </div>
                     )}
                   </div>
                 </div>
-                
-                {/* Ringkasan Kehadiran */}
-                <div className="flex flex-wrap items-center gap-2 text-[10px] sm:text-[11px] font-black tracking-wide mt-0.5">
-                  <div className="flex items-center gap-1.5 text-emerald-700 bg-emerald-50/80 px-2.5 py-1 rounded-md border border-emerald-100">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                    Hadir: {hadirCount}
-                  </div>
-                  {absenCount > 0 && (
-                    <div className="flex items-center gap-1.5 text-red-600 bg-red-50/80 px-2.5 py-1 rounded-md border border-red-100">
-                      <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
-                      Tidak Hadir: {absenCount}
-                    </div>
-                  )}
-                  {liburCount > 0 && (
-                    <div className="flex items-center gap-1.5 text-blue-600 bg-blue-50/80 px-2.5 py-1 rounded-md border border-blue-100">
-                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                      Libur: {liburCount}
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })()}
+              );
+            })()}
 
             {/* TABEL DATA WEB (TIDAK LAGI FIXED HEIGHT, SEKARANG MEMANJANG BEBAS) */}
             <div key={homeTab} className="rounded-2xl shadow-sm border overflow-visible relative flex-1 flex flex-col animate-tab-content transition-colors bg-white border-gray-200 shadow-slate-200/50">
@@ -1518,10 +1528,10 @@ const HomeView = ({
                                   {!isTahsinEmpty ? (
                                     renderTahsinCard(valT, valH, student?.id, activeDate, valTNilai, valTSNilai)
                                   ) : hasGhostTahsin ? (
-                                <div className="pointer-events-none opacity-30 grayscale blur-[0.5px] scale-90 origin-center transition-all group-hover/cell:opacity-70 group-hover/cell:blur-none group-hover/cell:grayscale-0" title={`Dari tgl ${getGhostDateLabel(lastRec, 'tahsin')}`}>
-                                    <div className="flex items-center justify-center gap-1 text-[9px] font-black text-gray-400 uppercase tracking-tighter mb-0.5">
-                                      <History size={10} /> {ghostLabel}
-                                    </div>
+                                    <div className="pointer-events-none opacity-30 grayscale blur-[0.5px] scale-90 origin-center transition-all group-hover/cell:opacity-70 group-hover/cell:blur-none group-hover/cell:grayscale-0" title={`Dari tgl ${getGhostDateLabel(lastRec, 'tahsin')}`}>
+                                      <div className="flex items-center justify-center gap-1 text-[9px] font-black text-gray-400 uppercase tracking-tighter mb-0.5">
+                                        <History size={10} /> {ghostLabel}
+                                      </div>
                                       {renderTahsinCard(lastRec[k.t], lastRec[k.h], student?.id, 'ghost', lastRec[k.tNilai], lastRec[k.tsNilai])}
                                     </div>
                                   ) : <span className="text-gray-300 group-hover:text-slate-400 transition-colors">-</span>}
@@ -1543,10 +1553,10 @@ const HomeView = ({
                                   {!isTahfidzEmpty ? (
                                     renderTahfidzCard(valF, valAF, student?.id, activeDate, valFNilai)
                                   ) : hasGhostTahfidz ? (
-                                <div className="pointer-events-none opacity-30 grayscale blur-[0.5px] scale-90 origin-center transition-all group-hover/cell:opacity-70 group-hover/cell:blur-none group-hover/cell:grayscale-0" title={`Dari tgl ${getGhostDateLabel(lastRec, 'tahfidz')}`}>
-                                    <div className="flex items-center justify-center gap-1 text-[9px] font-black text-gray-400 uppercase tracking-tighter mb-0.5">
-                                      <History size={10} /> {ghostLabel}
-                                    </div>
+                                    <div className="pointer-events-none opacity-30 grayscale blur-[0.5px] scale-90 origin-center transition-all group-hover/cell:opacity-70 group-hover/cell:blur-none group-hover/cell:grayscale-0" title={`Dari tgl ${getGhostDateLabel(lastRec, 'tahfidz')}`}>
+                                      <div className="flex items-center justify-center gap-1 text-[9px] font-black text-gray-400 uppercase tracking-tighter mb-0.5">
+                                        <History size={10} /> {ghostLabel}
+                                      </div>
                                       {renderTahfidzCard(lastRec[k.f], lastRec[k.af], student?.id, 'ghost', lastRec[k.fNilai])}
                                     </div>
                                   ) : <span className="text-gray-300 group-hover:text-slate-400 transition-colors">-</span>}
@@ -1563,10 +1573,10 @@ const HomeView = ({
                                   {!isMurojaahEmpty ? (
                                     renderMurojaahCard(valM, student?.id, activeDate)
                                   ) : hasGhostMurojaah ? (
-                                <div className="pointer-events-none opacity-30 grayscale blur-[0.5px] scale-90 origin-center transition-all group-hover/cell:opacity-70 group-hover/cell:blur-none group-hover/cell:grayscale-0" title={`Dari tgl ${getGhostDateLabel(lastRec, 'murojaah')}`}>
-                                    <div className="flex items-center justify-center gap-1 text-[9px] font-black text-gray-400 uppercase tracking-tighter mb-0.5">
-                                      <History size={10} /> {ghostLabel}
-                                    </div>
+                                    <div className="pointer-events-none opacity-30 grayscale blur-[0.5px] scale-90 origin-center transition-all group-hover/cell:opacity-70 group-hover/cell:blur-none group-hover/cell:grayscale-0" title={`Dari tgl ${getGhostDateLabel(lastRec, 'murojaah')}`}>
+                                      <div className="flex items-center justify-center gap-1 text-[9px] font-black text-gray-400 uppercase tracking-tighter mb-0.5">
+                                        <History size={10} /> {ghostLabel}
+                                      </div>
                                       {renderMurojaahCard(lastRec[k.m], student?.id, 'ghost')}
                                     </div>
                                   ) : <span className="text-gray-300 group-hover:text-slate-400 transition-colors">-</span>}

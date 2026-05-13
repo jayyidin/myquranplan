@@ -121,7 +121,7 @@ export const JurnalModal = ({
                         </div>
                         
                         {/* Materi Tajwid / Ghorib */}
-                        {['Ghorib', 'Tajwid'].includes(plan.tahsinKategori) && (
+                        {(plan.tahsinKategori === 'Ghorib' || plan.tahsinKategori === 'Gharib' || plan.tahsinKategori === 'Tajwid') && (
                           <div className="relative">
                               <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Materi Pokok</label>
                               <div className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold flex justify-between items-center cursor-pointer transition-shadow hover:border-blue-300" onClick={() => setActiveDropdown(activeDropdown === `mat` ? null : `mat`)}>
@@ -130,10 +130,10 @@ export const JurnalModal = ({
                               </div>
                               {activeDropdown === `mat` && (
                                 <div className="bg-white border border-gray-200 rounded-xl mt-2 max-h-48 overflow-y-auto p-2 flex flex-col gap-1 shadow-xl absolute z-20 w-full left-0 top-full">
-                                    {(plan.tahsinKategori === 'Ghorib' ? ghoribList : tajwidList).map((materi, i) => (
+                                    {((plan.tahsinKategori === 'Ghorib' || plan.tahsinKategori === 'Gharib') ? ghoribList : tajwidList).map((materi, i) => (
                                       <label key={i} className="flex items-start gap-3 p-3 bg-gray-50 hover:bg-blue-50 rounded-lg cursor-pointer transition-colors">
                                           <input type="checkbox" checked={(plan.tahsinMateri || []).includes(materi)} onChange={() => handleToggleArray(plan.id, 'tahsinMateri', materi)} className="w-4 h-4 mt-0.5 text-blue-600 rounded cursor-pointer shrink-0" />
-                                          <span className={`text-sm font-bold text-gray-700 flex-1 leading-snug ${plan.tahsinKategori === 'Ghorib' ? 'font-arabic text-lg text-right' : 'text-left'}`} dir={plan.tahsinKategori === 'Ghorib' ? "rtl" : "ltr"}>{materi}</span>
+                                          <span className={`text-sm font-bold text-gray-700 flex-1 leading-snug ${(plan.tahsinKategori === 'Ghorib' || plan.tahsinKategori === 'Gharib') ? 'font-arabic text-lg text-right' : 'text-left'}`} dir={(plan.tahsinKategori === 'Ghorib' || plan.tahsinKategori === 'Gharib') ? "rtl" : "ltr"}>{materi}</span>
                                       </label>
                                     ))}
                                 </div>
@@ -142,7 +142,7 @@ export const JurnalModal = ({
                         )}
 
                         {/* Pilihan Halaman */}
-                        {['Jilid 1', 'Jilid 2', 'Jilid 3', 'Jilid 4', 'Jilid 5', 'Jilid 6', 'Tajwid', 'Ghorib'].includes(plan.tahsinKategori) && (
+                        {['Jilid 1', 'Jilid 2', 'Jilid 3', 'Jilid 4', 'Jilid 5', 'Jilid 6', 'Tajwid', 'Ghorib', 'Gharib'].includes(plan.tahsinKategori) && (
                           <div className="bg-blue-50/30 p-3 sm:p-4 rounded-2xl border border-blue-100/50">
                               <div className="flex items-center justify-between mb-3">
                                 <label className="block text-[10px] font-black text-blue-600 uppercase tracking-widest">Halaman</label>
@@ -159,7 +159,7 @@ export const JurnalModal = ({
                         )}
 
                         {/* Pilihan Baris */}
-                        {['Jilid 1', 'Jilid 2', 'Jilid 3', 'Jilid 4', 'Jilid 5', 'Jilid 6'].includes(plan.tahsinKategori) && (
+                        {['Jilid 1', 'Jilid 2', 'Jilid 3', 'Jilid 4', 'Jilid 5', 'Jilid 6'].includes(plan.tahsinKategori) && plan.tahsinHalaman.length > 0 && (
                           <div className="bg-blue-50/30 p-3 sm:p-4 rounded-2xl border border-blue-100/50">
                               <div className="flex items-center justify-between mb-3">
                                 <label className="block text-[10px] font-black text-blue-600 uppercase tracking-widest">Baris</label>
@@ -176,7 +176,7 @@ export const JurnalModal = ({
                         )}
 
                         {/* Nilai Kategori Keseluruhan (Muncul persis setelah Jilid / Materi, Hanya di Tab Jurnal) */}
-                        {homeTab === 'jurnal' && ['Jilid 1', 'Jilid 2', 'Jilid 3', 'Jilid 4', 'Jilid 5', 'Jilid 6', 'Tajwid', 'Ghorib'].includes(plan.tahsinKategori) && (
+                        {homeTab === 'jurnal' && ['Jilid 1', 'Jilid 2', 'Jilid 3', 'Jilid 4', 'Jilid 5', 'Jilid 6', 'Tajwid', 'Ghorib', 'Gharib'].includes(plan.tahsinKategori) && (
                           <div className="mt-1 mb-2 bg-blue-50/40 p-3 rounded-2xl border border-blue-100/50">
                               <label className="block text-[10px] font-black text-blue-600 uppercase tracking-widest mb-2">
                                 Nilai {plan.tahsinKategori.includes('Jilid') ? 'Jilid' : plan.tahsinKategori}
@@ -197,7 +197,7 @@ export const JurnalModal = ({
                         )}
 
                         {/* Pilihan Surat & Ayat Tahsin */}
-                        {['Al-Qur\'an', 'Tajwid', 'Ghorib'].includes(plan.tahsinKategori) && (
+                        {(plan.tahsinKategori === 'Al-Qur\'an' || (['Tajwid', 'Ghorib', 'Gharib'].includes(plan.tahsinKategori) && plan.tahsinHalaman.length > 0)) && (
                           <div className="flex flex-col gap-3 border-t border-gray-100 pt-4 mt-2">
                               <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">
                                 Surat & Ayat {plan.tahsinKategori !== 'Al-Qur\'an' ? '(Aplikasi / Tilawah)' : ''}

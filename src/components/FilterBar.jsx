@@ -2,7 +2,7 @@ import React from 'react';
 import { User, Filter, Link } from 'lucide-react';
 
 const FilterBar = ({ currentView, isSuperAdmin, activeGuru, setActiveGuru, setActiveHalaqoh, guruList, currentUser, showUnfilledOnly, setShowUnfilledOnly, handleCopyPortalLink, activeHalaqoh, guruHalaqohData, students }) => {
-  if (['pengaturan', 'log', 'statistik'].includes(currentView)) return null;
+  if (['pengaturan', 'log', 'statistik', 'arsip'].includes(currentView)) return null;
   
   return (
     <div className="bg-white/95 border-gray-200 border-b px-2 sm:px-3 md:px-6 py-1 flex justify-between items-center shrink-0 z-50 print:hidden h-11 shadow-sm transition-all duration-500 backdrop-blur-md sticky top-[56px] sm:top-[112px]">

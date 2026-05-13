@@ -2,7 +2,7 @@
 import React, { useState, useRef } from 'react';
 import {
   UserCheck, CheckCircle2, X, ImageIcon, Camera,
-  GraduationCap, Plus, User, Edit3, Trash2, Save, Users, Search, ShieldCheck, Database, LayoutGrid, LogOut, ArrowUp, ChevronDown, Wrench, UserPlus, FolderPlus, GripVertical
+  GraduationCap, Plus, User, Edit3, Trash2, Save, Users, Search, ShieldCheck, Database, LayoutGrid, LogOut, ArrowUp, ChevronDown, Wrench, UserPlus, FolderPlus, GripVertical, AlertTriangle, Download
 } from 'lucide-react';
 
 const SectionHeader = ({ accent = 'bg-slate-500', title, description, icon: Icon }) => (
@@ -54,10 +54,18 @@ const SettingsView = ({
   selectedGuruForHalaqoh, setSelectedGuruForHalaqoh, newHalaqohName, setNewHalaqohName, handleAddHalaqoh,
   currentUser, guruHalaqohData = {}, editingGuru, setEditingGuru, handleSaveEditGuru, requestDeleteGuru,
   editingHalaqoh, setEditingHalaqoh, handleSaveEditHalaqoh, requestDeleteHalaqoh, handleReorderHalaqoh,
-  students = [], openEditStudentModal, requestDeleteStudent, requestBulkDeleteStudents, requestBulkEditStudents, handleBulkSaveStudents, onLogout, handleCleanLessonPlanValues
+  students = [], openEditStudentModal, requestDeleteStudent, requestBulkDeleteStudents, requestBulkEditStudents, handleBulkSaveStudents, onLogout, handleCleanLessonPlanValues, handleCloseSemester, handleBackupData
 }) => {
   const [studentSearch, setStudentSearch] = useState('');
   const [editingAccount, setEditingAccount] = useState(null);
+
+  // --- DEBOUNCE PENCARIAN (MENGURANGI LAG DI HP) ---
+  const [localStudentSearch, setLocalStudentSearch] = useState('');
+  React.useEffect(() => {
+    const timer = setTimeout(() => setStudentSearch(localStudentSearch), 300);
+    return () => clearTimeout(timer);
+  }, [localStudentSearch]);
+
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(20);
   const [bulkData, setBulkData] = useState('');
@@ -93,11 +101,11 @@ const SettingsView = ({
     const rows = bulkData.split(/\r?\n/).filter(row => row.trim() !== '');
     const parsed = rows.map(row => {
       const parts = row.split(/[,\t]/).map(p => p.trim());
-      return { name: parts[0], kelas: parts[1] || 'N/A', halaqoh: parts[2] || 'Unassigned' };
+      return { name: parts[0], kelas: parts[1] || '', halaqoh: parts[2] || '' };
     }).filter(s => s.name);
 
     if (parsed.length === 0) {
-      showToast('Data tidak valid! Gunakan format: Nama, Kelas, Halaqoh');
+      showToast('Data tidak valid! Pastikan minimal memasukkan Nama Siswa.');
       return;
     }
 
@@ -271,8 +279,8 @@ const SettingsView = ({
 
   const handleExecuteBulkEdit = () => {
     const updates = {};
-    if (bulkEditData.kelas) updates.kelas = bulkEditData.kelas;
-    if (bulkEditData.halaqoh) updates.halaqoh = bulkEditData.halaqoh;
+    if (bulkEditData.kelas) updates.kelas = bulkEditData.kelas === 'CLEAR_KELAS' ? '' : bulkEditData.kelas;
+    if (bulkEditData.halaqoh) updates.halaqoh = bulkEditData.halaqoh === 'CLEAR_HALAQOH' ? '' : bulkEditData.halaqoh;
 
     if (Object.keys(updates).length === 0) {
       showToast('Pilih minimal kelas atau halaqoh baru.');
@@ -284,6 +292,19 @@ const SettingsView = ({
       setIsBulkEditOpen(false);
       setBulkEditData({ kelas: '', halaqoh: '' });
     });
+  };
+
+  const handleExportCSV = () => {
+    const headers = ['Nama Siswa', 'Kelas', 'Halaqoh'];
+    const csvContent = [
+      headers.join(','),
+      ...filteredStudentsMaster.map(s => `"${s.name}","${s.kelas || ''}","${s.halaqoh || ''}"`)
+    ].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `Data_Siswa_MyQuranPlan_${new Date().getTime()}.csv`;
+    link.click();
   };
 
   const searchName = currentUser?.name?.trim().toLowerCase() || '';
@@ -745,9 +766,11 @@ const SettingsView = ({
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                     <input
                       type="text"
+                      inputMode="search"
+                      enterKeyHint="search"
                       placeholder="Cari nama atau halaqoh..."
-                      value={studentSearch}
-                      onChange={(e) => setStudentSearch(e.target.value)}
+                      value={localStudentSearch}
+                      onChange={(e) => setLocalStudentSearch(e.target.value)}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3.5 pl-11 pr-4 text-sm font-bold text-slate-800 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 outline-none transition-all placeholder:text-slate-400"
                     />
                   </div>
@@ -776,6 +799,13 @@ const SettingsView = ({
                         {kelasList.map(k => <option key={k} value={k}>Kelas {k}</option>)}
                       </select>
                     </SelectShell>
+                  <button
+                    onClick={handleExportCSV}
+                    className="px-4 py-3.5 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 font-black text-xs uppercase tracking-widest border border-emerald-200"
+                    title="Ekspor data siswa ke CSV"
+                  >
+                    <Download size={18} strokeWidth={3} />
+                  </button>
                     {isSuperAdmin && (
                       <button
                         onClick={() => setIsBulkImportOpen(!isBulkImportOpen)}
@@ -792,11 +822,11 @@ const SettingsView = ({
               <div className="p-4 sm:p-5 bg-slate-50">
                 {isBulkImportOpen && (
                   <div className="mb-4 p-4 bg-white border border-purple-100 rounded-2xl animate-in zoom-in-95 duration-300">
-                    <FieldLabel>Input Massal (Format: Nama, Kelas, Halaqoh)</FieldLabel>
+                    <FieldLabel>Input Massal (Bisa nama saja, atau Format: Nama, Kelas, Halaqoh)</FieldLabel>
                     <textarea
                       value={bulkData}
                       onChange={(e) => setBulkData(e.target.value)}
-                      placeholder="Ahmad, 1A, Abu Bakar&#10;Siti, 1B, Khadijah&#10;..."
+                      placeholder="Ahmad&#10;Siti&#10;Umar, 1A, Abu Bakar&#10;..."
                       className="w-full h-36 bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm font-bold text-slate-800 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 outline-none transition-all placeholder:text-slate-400 resize-none mb-3"
                     />
                     <div className="flex flex-col sm:flex-row justify-end gap-2">
@@ -852,6 +882,7 @@ const SettingsView = ({
                               className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-3 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none appearance-none cursor-pointer transition-shadow"
                             >
                               <option value="">-- Jangan Ubah Kelas --</option>
+                          <option value="CLEAR_KELAS">-- Kosongkan Kelas --</option>
                               {kelasList.map(k => <option key={k} value={k}>Kelas {k}</option>)}
                             </select>
                           </SelectShell>
@@ -862,6 +893,7 @@ const SettingsView = ({
                               className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-3 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none appearance-none cursor-pointer transition-shadow"
                             >
                               <option value="">-- Jangan Ubah Halaqoh --</option>
+                          <option value="CLEAR_HALAQOH">-- Kosongkan Halaqoh --</option>
                               {allHalaqohs.map(h => <option key={h} value={h}>{h}</option>)}
                             </select>
                           </SelectShell>
@@ -933,15 +965,35 @@ const SettingsView = ({
                 description="Aksi perawatan untuk memperbaiki data yang tersimpan tidak sesuai."
                 icon={Wrench}
               />
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 flex flex-col gap-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4 sm:pb-6">
                   <div>
                     <h3 className="text-lg font-black text-slate-800 mb-1">Bersihkan Nilai Lesson Plan</h3>
                     <p className="text-sm text-slate-500 font-medium">Hapus semua data nilai yang tidak sengaja tersimpan pada mode Target (Lesson Plan).</p>
                   </div>
-                  <button onClick={handleCleanLessonPlanValues} className="w-full md:w-auto px-6 py-3 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700 rounded-xl font-black uppercase tracking-widest text-xs transition-colors flex items-center justify-center gap-2">
+              <button onClick={handleCleanLessonPlanValues} className="w-full md:w-auto px-6 py-3 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700 rounded-xl font-black uppercase tracking-widest text-xs transition-colors flex items-center justify-center gap-2 shrink-0">
                     <Wrench size={16} /> Bersihkan Sekarang
                   </button>
+            </div>
+
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4 sm:pb-6">
+              <div>
+                <h3 className="text-lg font-black text-slate-800 mb-1">Backup Database Siswa</h3>
+                <p className="text-sm text-slate-500 font-medium">Unduh seluruh data riwayat siswa ke format JSON sebagai cadangan lokal (sangat disarankan sebelum tutup semester).</p>
+              </div>
+              <button onClick={handleBackupData} className="w-full md:w-auto px-6 py-3 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white border border-blue-200 hover:border-blue-600 rounded-xl font-black uppercase tracking-widest text-xs transition-colors flex items-center justify-center gap-2 shrink-0">
+                <Database size={16} /> Unduh JSON
+              </button>
+            </div>
+
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-black text-red-600 mb-1">Tutup Semester / Kenaikan Kelas</h3>
+                <p className="text-sm text-slate-500 font-medium">Mengosongkan seluruh riwayat jurnal dan target untuk semua siswa. Lakukan hanya saat pergantian semester.</p>
+              </div>
+              <button onClick={handleCloseSemester} className="w-full md:w-auto px-6 py-3 bg-red-100 text-red-600 hover:bg-red-600 hover:text-white border border-red-200 hover:border-red-600 rounded-xl font-black uppercase tracking-widest text-xs transition-colors flex items-center justify-center gap-2 shrink-0">
+                <AlertTriangle size={16} /> Mulai Semester Baru
+              </button>
                 </div>
               </div>
             </section>

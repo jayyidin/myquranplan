@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { BookOpen, User, Menu, Home, Users, BarChart3, PieChart, Settings, LogOut, Loader2, Edit3, Mic, Repeat, FileText, X, AlertTriangle, Link, Filter, Activity, Moon, Sun } from 'lucide-react';
+import { BookOpen, User, Menu, Home, Users, BarChart3, PieChart, Settings, LogOut, Loader2, Edit3, Mic, Repeat, FileText, X, AlertTriangle, Link, Filter, Activity, Moon, Sun, Archive } from 'lucide-react';
 
 // Imports
 import { supabase } from './supabase';
@@ -13,6 +13,7 @@ import ReportView from './views/ReportView';
 import SettingsView from './views/SettingsView';
 import ActivityLogView from './views/ActivityLogView';
 import ProgressChartView from './views/ProgressChartView';
+import ArchiveView from './views/ArchiveView';
 
 // Modals
 import { AddStudentModal, EditStudentModal } from './modals/StudentModals';
@@ -195,7 +196,8 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
   };
 
   // Filter siswa yang sangat ketat: Jika bukan SuperAdmin, hanya tampilkan siswa yang ada di halaqoh guru tersebut
-  const filteredStudents = students.filter(s => {
+  const filteredStudents = useMemo(() => {
+    return students.filter(s => {
     // Dengan RLS, 'students' sudah berisi data yang diizinkan untuk user.
     // Kita hanya perlu filter berdasarkan UI (halaqoh aktif dan pencarian).
     const isSearchMatch = (s?.name || '').toLowerCase().includes((searchQuery || '').toLowerCase());
@@ -223,13 +225,16 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       const guruKey = Object.keys(guruHalaqohData).find(k => k.trim().toLowerCase() === searchName);
       const myHalaqohs = guruKey ? (guruHalaqohData[guruKey] || []) : [];
 
-      return isInActiveHalaqoh && (myHalaqohs.includes(activeHalaqoh) || !activeHalaqoh) && isSearchMatch && isUnfilledMatch;
+      const isMyStudent = activeHalaqoh ? isInActiveHalaqoh : myHalaqohs.includes(s?.halaqoh?.trim());
+      return isMyStudent && isSearchMatch && isUnfilledMatch;
     }
     return isInActiveHalaqoh && isSearchMatch && isUnfilledMatch;
   });
+  }, [students, searchQuery, activeHalaqoh, showUnfilledOnly, currentView, homeTab, activeDate, isSuperAdmin, currentUser?.name, guruHalaqohData]);
 
   // Hitung jumlah siswa di halaqoh aktif (sebelum difilter oleh pencarian) untuk placeholder
-  const studentsInHalaqoh = students.filter(s => {
+  const studentsInHalaqoh = useMemo(() => {
+    return students.filter(s => {
     // Logika ini juga disederhanakan karena RLS sudah bekerja.
     const isInActiveHalaqoh = !activeHalaqoh || (s?.halaqoh && String(s.halaqoh).trim() === String(activeHalaqoh).trim());
 
@@ -238,10 +243,12 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       const guruKey = Object.keys(guruHalaqohData).find(k => k.trim().toLowerCase() === searchName);
       const myHalaqohs = guruKey ? (guruHalaqohData[guruKey] || []) : [];
 
-      return isInActiveHalaqoh && (myHalaqohs.includes(activeHalaqoh) || !activeHalaqoh);
+      const isMyStudent = activeHalaqoh ? isInActiveHalaqoh : myHalaqohs.includes(s?.halaqoh?.trim());
+      return isMyStudent;
     }
     return isInActiveHalaqoh;
   });
+  }, [students, activeHalaqoh, isSuperAdmin, currentUser?.name, guruHalaqohData]);
 
   // -- FUNGSI PENGATURAN (SETTINGS) --
   const handleApproveUser = async (user) => {
@@ -297,7 +304,9 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
 
   const handleUpdateUserAccount = async (userId, updatedData) => {
     try {
-      await supabase.from('app_users').update(updatedData).eq('id', userId);
+      const { error } = await supabase.from('app_users').update(updatedData).eq('id', userId);
+      if (error) throw error;
+      setAppUsers(prev => prev.map(u => u.id === userId ? { ...u, ...updatedData } : u));
       showToast('Akun berhasil diperbarui!');
     } catch (error) {
       showToast('Gagal update akun.');
@@ -340,13 +349,21 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
           };
         });
         
-        const { data, error } = await supabase.from('students').insert(studentsToInsert).select();
-        if (error) { showToast('Gagal mengimpor data.'); } else {
-          if (data) {
-             setStudents(prev => [...prev, ...data]);
-          }
-          showToast(`${uniqueInput.length} siswa berhasil diimpor!`);
-          if (onSuccess) onSuccess();
+        // PENGAMANAN SKALA BESAR: Pecah insert menjadi beberapa bagian (Chunking) 
+        // agar API Supabase tidak menolak payload yang terlalu besar
+        const CHUNK_SIZE = 250;
+        let allInserted = [];
+        for (let i = 0; i < studentsToInsert.length; i += CHUNK_SIZE) {
+          const chunk = studentsToInsert.slice(i, i + CHUNK_SIZE);
+          const { data, error } = await supabase.from('students').insert(chunk).select();
+          if (error) { showToast('Gagal mengimpor sebagian data.'); break; }
+          if (data) allInserted = [...allInserted, ...data];
+        }
+
+        if (allInserted.length > 0) {
+           setStudents(prev => [...prev, ...allInserted]);
+           showToast(`${allInserted.length} siswa berhasil diimpor!`);
+           if (onSuccess) onSuccess();
         }
       }
     });
@@ -356,11 +373,29 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64String = reader.result;
-        setInstitutionLogo(base64String);
-        await updateMasterDataCloud({ institutionLogo: base64String });
-        showToast('Logo berhasil diperbarui!');
+      reader.onloadend = () => {
+        const img = new Image();
+        img.onload = async () => {
+          const canvas = document.createElement('canvas');
+          const MAX_SIZE = 300; // Kompres ukuran maksimal 300px (Sangat ringan untuk Base64)
+          let width = img.width;
+          let height = img.height;
+          if (width > height) {
+            if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; }
+          } else {
+            if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedBase64 = canvas.toDataURL('image/png', 0.9);
+          
+          setInstitutionLogo(compressedBase64);
+          await updateMasterDataCloud({ institutionLogo: compressedBase64 });
+          showToast('Logo berhasil diperbarui & dikompresi!');
+        };
+        img.src = reader.result;
       };
       reader.readAsDataURL(file);
     }
@@ -380,6 +415,11 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       const updated = kelasList.filter(k => k !== kelas);
       setKelasList(updated);
       await updateMasterDataCloud({ kelasList: updated });
+      
+      // Sinkronisasi: Kosongkan kelas siswa yang terkait agar tidak terbengkalai
+      await supabase.from('students').update({ kelas: '' }).eq('kelas', kelas);
+      setStudents(prev => prev.map(s => s.kelas === kelas ? { ...s, kelas: '' } : s));
+      
       showToast('Kelas dihapus!');
     }
   };
@@ -416,6 +456,14 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
     delete updated[editingGuru.oldName];
     setGuruHalaqohData(updated);
     await updateMasterDataCloud({ guruHalaqohData: updated });
+    
+    // Sinkronisasi: Perbarui juga nama di tabel app_users agar sesi login guru tidak rusak
+    await supabase.from('app_users').update({ name: editingGuru.newName.trim() }).eq('name', editingGuru.oldName);
+    setAppUsers(prev => prev.map(u => u.name === editingGuru.oldName ? { ...u, name: editingGuru.newName.trim() } : u));
+    
+    // Perbaiki filter jika guru yang sedang aktif adalah guru yang diedit
+    if (activeGuru === editingGuru.oldName) setActiveGuru(editingGuru.newName.trim());
+
     setEditingGuru(null);
     showToast('Nama pengajar diubah!');
   };
@@ -423,9 +471,20 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
   const requestDeleteGuru = async (guru) => {
     if (window.confirm(`Hapus pengajar ${guru} beserta seluruh halaqohnya?`)) {
       const updated = { ...guruHalaqohData };
+      const halaqohsToDelete = updated[guru] || [];
       delete updated[guru];
       setGuruHalaqohData(updated);
       await updateMasterDataCloud({ guruHalaqohData: updated });
+      
+      // Sinkronisasi: Keluarkan siswa dari halaqoh yang ikut terhapus
+      if (halaqohsToDelete.length > 0) {
+        await supabase.from('students').update({ halaqoh: '' }).in('halaqoh', halaqohsToDelete);
+        setStudents(prev => prev.map(s => halaqohsToDelete.includes(s.halaqoh) ? { ...s, halaqoh: '' } : s));
+      }
+      
+      // Reset filter aktif jika guru yang dihapus sedang dipilih
+      if (activeGuru === guru) setActiveGuru('');
+
       showToast('Pengajar dihapus!');
     }
   };
@@ -453,6 +512,11 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       updated[guru] = updated[guru].filter(h => h !== halaqoh);
       setGuruHalaqohData(updated);
       await updateMasterDataCloud({ guruHalaqohData: updated });
+      
+      // Sinkronisasi: Keluarkan siswa dari halaqoh yang terhapus
+      await supabase.from('students').update({ halaqoh: '' }).eq('halaqoh', halaqoh);
+      setStudents(prev => prev.map(s => s.halaqoh === halaqoh ? { ...s, halaqoh: '' } : s));
+      
       showToast('Halaqoh dihapus!');
     }
   };
@@ -590,8 +654,13 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
             return;
           }
 
-          const { error } = await supabase.from('students').upsert(updates);
-          if (error) throw error;
+          // PENGAMANAN SKALA BESAR: Chunking Upsert
+          const CHUNK_SIZE = 250;
+          for (let i = 0; i < updates.length; i += CHUNK_SIZE) {
+             const chunk = updates.slice(i, i + CHUNK_SIZE);
+             const { error } = await supabase.from('students').upsert(chunk);
+             if (error) throw error;
+          }
 
           setStudents(prev => {
             const newStudents = [...prev];
@@ -632,6 +701,10 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
 
   // -- FUNGSI SISWA --
   const handleAssignFromMaster = async (student) => {
+    if (!activeHalaqoh) {
+      showToast('Pilih halaqoh tujuan terlebih dahulu di kanan atas!');
+      return;
+    }
     const { error } = await supabase.from('students').update({ halaqoh: activeHalaqoh }).eq('id', student.id);
     if (error) { showToast('Gagal.'); } else { 
       setStudents(prev => prev.map(s => s.id === student.id ? { ...s, halaqoh: activeHalaqoh } : s));
@@ -656,22 +729,11 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
           if (!proceed) return;
         }
 
-      let photoUrl = null;
-
-      // 1. Jika ada foto, unggah dulu ke Supabase Storage
-      if (photo && photo.startsWith('data:image')) {
-        const imageBlob = dataURLtoBlob(photo);
-        if (imageBlob) {
-          photoUrl = await handleUploadStudentPhoto(null, imageBlob); // Dapatkan URL
-        }
-      }
-
-      // 2. Masukkan data siswa baru ke tabel, termasuk URL foto jika ada
       const maxSortOrder = students.length > 0 ? Math.max(...students.map(s => s.sort_order || 0)) : 0;
       const newStudentObj = {
         ...studentData,
         initial: getInitials(studentData.name),
-        photo: photoUrl,
+        photo: null,
         records: {},
         sort_order: maxSortOrder + 1
       };
@@ -681,7 +743,22 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       if (error) throw error;
 
       if (data && data.length > 0) {
-        setStudents(prev => [...prev, data[0]]);
+        let insertedStudent = data[0];
+
+        // Jika ada foto, unggah SETELAH kita mendapatkan ID siswa yang baru dari database
+        if (photo && photo.startsWith('data:image')) {
+          const imageBlob = dataURLtoBlob(photo);
+          if (imageBlob) {
+            const photoUrl = await handleUploadStudentPhoto(insertedStudent.id, imageBlob);
+            if (photoUrl) {
+              // Perbarui database dengan URL foto yang benar (berdasarkan ID siswa)
+              await supabase.from('students').update({ photo: photoUrl }).eq('id', insertedStudent.id);
+              insertedStudent.photo = photoUrl;
+            }
+          }
+        }
+        
+        setStudents(prev => [...prev, insertedStudent]);
       }
       setIsAddStudentModalOpen(false);
       setNewStudent({ name: '', kelas: kelasList.length > 0 ? kelasList[0] : '', halaqoh: activeHalaqoh, photo: null });
@@ -868,6 +945,91 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
         setIsLoading(false);
       }
     });
+  };
+
+  const handleCloseSemester = async () => {
+    if (!isSuperAdmin) {
+      showToast('Hanya Super Admin yang dapat melakukan Tutup Semester.');
+      return;
+    }
+    
+    const semesterName = window.prompt('Masukkan nama semester yang akan diarsipkan (Contoh: Semester Ganjil 2026/2027):');
+    if (!semesterName || semesterName.trim() === '') {
+      return; // Dibatalkan atau kosong
+    }
+
+    setConfirmDialog({
+      isOpen: true,
+      message: `PERHATIAN PENTING!\n\nFitur "Tutup Semester" akan MENGHAPUS SELURUH RIWAYAT Jurnal dan Target untuk SEMUA SISWA dan memindahkannya ke dalam Arsip "${semesterName.trim()}".\n\nYakin ingin memulai semester baru?`,
+      onConfirm: async () => {
+        setIsLoading(true);
+        try {
+          const archiveData = {
+            semester_name: semesterName.trim(),
+            data: students
+          };
+          const { error: archiveError } = await supabase.from('archived_semesters').insert([archiveData]);
+          if (archiveError) throw archiveError;
+
+          const updates = students.map(student => ({ ...student, records: {} }));
+
+          if (updates.length === 0) {
+            showToast('Tidak ada siswa untuk di-reset.');
+            setIsLoading(false);
+            return;
+          }
+
+          // PENGAMANAN SKALA BESAR: Chunking Upsert
+          const CHUNK_SIZE = 250;
+          for (let i = 0; i < updates.length; i += CHUNK_SIZE) {
+             const chunk = updates.slice(i, i + CHUNK_SIZE);
+             const { error } = await supabase.from('students').upsert(chunk);
+             if (error) throw error;
+          }
+
+          setStudents(prev => prev.map(s => ({ ...s, records: {} })));
+          
+          try {
+            await supabase.from('activity_logs').insert([{
+              guru_name: currentUser?.name || 'System / Unknown',
+              action: `Tutup Semester`,
+              details: `Mengarsipkan data ke "${semesterName.trim()}" dan mengosongkan riwayat ${updates.length} siswa.`
+            }]);
+          } catch (logErr) {
+            console.error('Gagal mencatat log aktivitas:', logErr);
+          }
+
+          // Panggil fungsi pembersihan log usang di database
+          await supabase.rpc('delete_old_activity_logs');
+
+          showToast(`Berhasil memulai semester baru! Data diarsipkan.`);
+        } catch (e) {
+          console.error(e);
+          showToast('Gagal menutup semester.');
+        }
+        setIsLoading(false);
+      }
+    });
+  };
+
+  const handleBackupData = () => {
+    try {
+      const backupData = {
+        tanggal_backup: new Date().toISOString(),
+        total_siswa: students.length,
+        data_siswa: students
+      };
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData));
+      const downloadAnchorNode = document.createElement('a');
+      downloadAnchorNode.setAttribute("href", dataStr);
+      downloadAnchorNode.setAttribute("download", `backup_myquranplan_${formatDateObj(new Date())}.json`);
+      document.body.appendChild(downloadAnchorNode);
+      downloadAnchorNode.click();
+      downloadAnchorNode.remove();
+      showToast('Backup berhasil diunduh!');
+    } catch (err) {
+      showToast('Gagal membuat backup data.');
+    }
   };
 
   const handleReorderStudents = (reorderedList) => {
@@ -1066,6 +1228,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       const hasTahsin = () => hasValue(combinedRecord[k.t]) || hasValue(combinedRecord[k.h]);
       const hasTahfidz = () => hasValue(combinedRecord[k.f]) || hasValue(combinedRecord[k.af]);
       const hasMurojaah = () => hasValue(combinedRecord[k.m]);
+      const hasCatatanTfTs = () => hasValue(combinedRecord[k.cT]) || hasValue(combinedRecord[k.cF]);
 
       for (const d of recordedDates) {
         const dStr = formatDateObj(d);
@@ -1098,14 +1261,20 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
             combinedRecord.__dates.murojaah = dStr;
           }
 
-          if (hasTahsin() && hasTahfidz() && hasMurojaah()) break;
+          if (!hasCatatanTfTs() && (hasValue(rec[searchKeys.cT]) || hasValue(rec[searchKeys.cF]))) {
+            combinedRecord[k.cT] = rec[searchKeys.cT] || '-';
+            combinedRecord[k.cF] = rec[searchKeys.cF] || '-';
+            combinedRecord.__dates.catatan = dStr;
+          }
+
+          if (hasTahsin() && hasTahfidz() && hasMurojaah() && hasCatatanTfTs()) break;
         }
       }
 
-      if (!hasTahsin() && !hasTahfidz() && !hasMurojaah()) return null;
+      if (!hasTahsin() && !hasTahfidz() && !hasMurojaah() && !hasCatatanTfTs()) return null;
       return {
         record: combinedRecord,
-        date: combinedRecord.__dates.tahsin || combinedRecord.__dates.tahfidz || combinedRecord.__dates.murojaah
+        date: combinedRecord.__dates.tahsin || combinedRecord.__dates.tahfidz || combinedRecord.__dates.murojaah || combinedRecord.__dates.catatan
       };
     };
 
@@ -1185,14 +1354,22 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
         const halMatch = rawTahsinAyat.match(/Hal\. ([\d, ]+)/); if (halMatch) tHalaman = halMatch[1].split(',').map(s => s.trim());
         const brsMatch = rawTahsinAyat.match(/Brs ([\d, ]+)/); if (brsMatch) tBaris = brsMatch[1].split(',').map(s => s.trim());
         tahsinAyatOnly = '';
-      } else if (tSurat.includes('Tajwid') || tSurat.includes('Ghorib') || tSurat === 'Gharib') {
-        tKategori = tSurat.includes('Tajwid') ? 'Tajwid' : 'Ghorib'; tSurat = tSurat.replace(tKategori + ', ', '').replace(tKategori, '').trim();
+      } else if (tSurat.includes('Tajwid') || tSurat.includes('Ghorib') || tSurat.includes('Gharib')) {
+        tKategori = tSurat.includes('Tajwid') ? 'Tajwid' : 'Ghorib'; 
+        tSurat = tSurat.replace(/Tajwid,?\s*/gi, '').replace(/Ghorib,?\s*/gi, '').replace(/Gharib,?\s*/gi, '').trim();
+        if (tSurat === '-') tSurat = '';
         const parts = rawTahsinAyat.split('/');
         if (parts.length > 0) {
-          let halMatStr = parts[0].trim(); const tgHalMatch = halMatStr.match(/Hal\.\s+([\d,\s]+)/);
+          let halMatStr = parts[0].trim(); 
+          if (/^[0-9\-, ]+$/.test(halMatStr) || halMatStr.includes('Semua Ayat')) {
+            tahsinAyatOnly = halMatStr;
+            halMatStr = '';
+          } else {
+            tahsinAyatOnly = parts.length > 1 ? parts.slice(1).join('/').trim() : '';
+          }
+          const tgHalMatch = halMatStr.match(/Hal\.\s+([\d,\s]+)/);
           if (tgHalMatch) { tHalaman = tgHalMatch[1].split(',').map(s => s.trim()); halMatStr = halMatStr.replace(tgHalMatch[0], '').replace(/^[\s-]+|[\s-]+$/g, ''); }
           if (halMatStr) { tMateri = halMatStr.split('|').map(s => s.trim()).filter(Boolean); }
-          tahsinAyatOnly = parts.length > 1 ? parts.slice(1).join('/').trim() : '';
         }
       } else if (tSurat && tSurat !== '-') tKategori = 'Al-Qur\'an';
 
@@ -1305,9 +1482,18 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
     let tahsinKat = plan.tahsinKategori, halAyat = tS.ayat;
 
     if (['Jilid 1', 'Jilid 2', 'Jilid 3', 'Jilid 4', 'Jilid 5', 'Jilid 6'].includes(tahsinKat)) {
-      let res = []; const sortedHal = [...plan.tahsinHalaman].sort((a, b) => Number(a) - Number(b)); if (sortedHal.length > 0) res.push('Hal. ' + sortedHal.join(', ')); if (plan.tahsinBaris.length > 0) res.push('Brs ' + plan.tahsinBaris.join(', ')); halAyat = res.length > 0 ? res.join(' ') : '-';
-    } else if (['Tajwid', 'Ghorib'].includes(tahsinKat)) {
-      const sortedHal = [...plan.tahsinHalaman].sort((a, b) => Number(a) - Number(b)); const hStr = sortedHal.length > 0 ? 'Hal. ' + sortedHal.join(', ') : ''; const mStr = (plan.tahsinMateri || []).length > 0 ? plan.tahsinMateri.join(' | ') : ''; const hm = [hStr, mStr].filter(Boolean).join(' - '); halAyat = (hm && tS.ayat !== '-') ? hm + ' / ' + tS.ayat : hm || tS.ayat; tahsinKat = tS.surat !== '-' ? tahsinKat + ', ' + tS.surat : tahsinKat;
+      let res = []; const sortedHal = [...plan.tahsinHalaman].sort((a, b) => Number(a) - Number(b)); 
+      if (sortedHal.length === 0) plan.tahsinBaris = [];
+      if (sortedHal.length > 0) res.push('Hal. ' + sortedHal.join(', ')); if (plan.tahsinBaris.length > 0) res.push('Brs ' + plan.tahsinBaris.join(', ')); halAyat = res.length > 0 ? res.join(' ') : '-';
+    } else if (['Tajwid', 'Ghorib', 'Gharib'].includes(tahsinKat)) {
+      const sortedHal = [...plan.tahsinHalaman].sort((a, b) => Number(a) - Number(b)); 
+      // BUGS FIXED: Do not clear surah if halaman is empty, users might want to save surah without halaman
+      // if (sortedHal.length === 0) {
+      //   tS.surat = '-';
+      //   tS.ayat = '-';
+      //   tS.nilai = '-';
+      // }
+      const hStr = sortedHal.length > 0 ? 'Hal. ' + sortedHal.join(', ') : ''; const mStr = (plan.tahsinMateri || []).length > 0 ? plan.tahsinMateri.join(' | ') : ''; const hm = [hStr, mStr].filter(Boolean).join(' - '); halAyat = (hm && tS.ayat !== '-') ? hm + ' / ' + tS.ayat : hm || tS.ayat; tahsinKat = tS.surat !== '-' ? tahsinKat + ', ' + tS.surat : tahsinKat;
     } else if (tahsinKat === 'Al-Qur\'an') { tahsinKat = tS.surat || '-'; }
 
     const modalMurojaah = plan.murojaah.filter(m => m.surat).map(m => { const ayat = getAyatRangeOrDefault(m.surat, m.ayatStart, m.ayatEnd); return ayat === 'Semua Ayat' ? m.surat : m.surat + ' ' + ayat; }).join(', ') || '-';
@@ -1331,6 +1517,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
                 finalRecord[k.tNilai] = modalTahsinNilai;
                 finalRecord[k.tsNilai] = modalTahsinSuratNilai;
               }
+              if (modalCatatanTahsin !== '-' || modalMode === 'tahsin') finalRecord[k.cT] = modalCatatanTahsin;
             }
             if (modalMode === 'tahfidz' || modalMode === 'full_bulk') {
               if (modalTahfidz !== '-' || modalAyatTahfidz !== '-') {
@@ -1338,6 +1525,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
                 finalRecord[k.af] = modalAyatTahfidz;
                 finalRecord[k.fNilai] = modalTahfidzNilai;
               }
+              if (modalCatatanTahfidz !== '-' || modalMode === 'tahfidz') finalRecord[k.cF] = modalCatatanTahfidz;
             }
             if (modalMode === 'murojaah' || modalMode === 'full_bulk') {
               if (modalMurojaah !== '-') {
@@ -1346,8 +1534,6 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
             }
             if (modalMode === 'catatan' || modalMode === 'full_bulk') {
               if (modalCatatan !== '-' || modalMode === 'catatan') finalRecord[k.c] = modalCatatan;
-              if (modalCatatanTahsin !== '-' || modalMode === 'catatan') finalRecord[k.cT] = modalCatatanTahsin;
-              if (modalCatatanTahfidz !== '-' || modalMode === 'catatan') finalRecord[k.cF] = modalCatatanTahfidz;
             }
           } else {
             finalRecord[k.t] = modalTahsin;
@@ -1521,7 +1707,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
               />
             )}
             {currentView === 'siswa' && (
-              <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar bg-slate-50">
+              <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar bg-slate-50 pb-24 md:pb-0">
                 <StudentView
                   activeHalaqoh={activeHalaqoh} filteredStudents={filteredStudents}
                   openAddStudentModal={() => {
@@ -1540,14 +1726,24 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
               </div>
             )}
             {currentView === 'laporan' && (
-              <ReportView
-                activeHalaqoh={activeHalaqoh}
-                activeGuru={activeGuru}
-                activeDate={activeDate}
-                setActiveDate={setActiveDate}
-                weekDates={weekDates}
-                changeWeek={changeWeek}
-                filteredStudents={filteredStudents}
+              <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar bg-slate-50 pb-24 md:pb-0">
+                <ReportView
+                  activeHalaqoh={activeHalaqoh}
+                  activeGuru={activeGuru}
+                  activeDate={activeDate}
+                  setActiveDate={setActiveDate}
+                  weekDates={weekDates}
+                  changeWeek={changeWeek}
+                  filteredStudents={filteredStudents}
+                  institutionLogo={institutionLogo}
+                  guruHalaqohData={guruHalaqohData}
+                />
+              </div>
+            )}
+            {currentView === 'arsip' && (
+              <ArchiveView 
+                isSuperAdmin={isSuperAdmin}
+                currentUser={currentUser}
                 institutionLogo={institutionLogo}
                 guruHalaqohData={guruHalaqohData}
               />
@@ -1566,16 +1762,22 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
                 students={students} openEditStudentModal={(s) => { setEditStudentData({ id: s.id, name: s.name, kelas: s.kelas, halaqoh: s.halaqoh, photo: s.photo || null }); setIsEditStudentModalOpen(true); }}
                 requestDeleteStudent={requestDeleteStudent} requestBulkDeleteStudents={requestBulkDeleteStudents} requestBulkEditStudents={requestBulkEditStudents} handleBulkSaveStudents={handleBulkSaveStudents} onLogout={onLogout}
                 handleCleanLessonPlanValues={handleCleanLessonPlanValues}
+                handleCloseSemester={handleCloseSemester}
+                handleBackupData={handleBackupData}
               />
             )}
             {currentView === 'statistik' && (
-              <ProgressChartView 
-                students={filteredStudents}
-                activeHalaqoh={activeHalaqoh}
-              />
+              <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar bg-slate-50 pb-24 md:pb-0">
+                <ProgressChartView 
+                  students={filteredStudents}
+                  activeHalaqoh={activeHalaqoh}
+                />
+              </div>
             )}
             {currentView === 'log' && isSuperAdmin && (
-              <ActivityLogView />
+              <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar bg-slate-50 pb-24 md:pb-0">
+                <ActivityLogView />
+              </div>
             )}
           </main>
 
@@ -1640,6 +1842,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
             <button onClick={() => setCurrentView('home')} className={`flex flex-col items-center gap-1 ${currentView === 'home' ? 'text-green-600' : 'text-gray-400'}`}><Home size={20} /><span className="text-[9px] font-bold">Beranda</span></button>
             <button onClick={() => setCurrentView('siswa')} className={`flex flex-col items-center gap-1 ${currentView === 'siswa' ? 'text-green-600' : 'text-gray-400'}`}><Users size={20} /><span className="text-[9px] font-bold">Siswa</span></button>
             <button onClick={() => setCurrentView('laporan')} className={`flex flex-col items-center gap-1 ${currentView === 'laporan' ? 'text-green-600' : 'text-gray-400'}`}><BarChart3 size={20} /><span className="text-[9px] font-bold">Laporan</span></button>
+            <button onClick={() => setCurrentView('arsip')} className={`flex flex-col items-center gap-1 ${currentView === 'arsip' ? 'text-green-600' : 'text-gray-400'}`}><Archive size={20} /><span className="text-[9px] font-bold">Arsip</span></button>
             <button onClick={() => setCurrentView('statistik')} className={`flex flex-col items-center gap-1 ${currentView === 'statistik' ? 'text-green-600' : 'text-gray-400'}`}><PieChart size={20} /><span className="text-[9px] font-bold">Grafik</span></button>
             {isSuperAdmin && (
               <button onClick={() => setCurrentView('log')} className={`flex flex-col items-center gap-1 ${currentView === 'log' ? 'text-green-600' : 'text-gray-400'}`}><Activity size={20} /><span className="text-[9px] font-bold">Log</span></button>

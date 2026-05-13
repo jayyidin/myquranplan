@@ -45,6 +45,17 @@ CREATE TABLE activity_logs (
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now())
 );
 
+-- 5. TABEL ARCHIVED SEMESTERS
+CREATE TABLE archived_semesters (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  semester_name text NOT NULL,
+  data jsonb DEFAULT '[]'::jsonb,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now())
+);
+
+-- INDEX: Mempercepat query pengurutan secara drastis saat Super Admin membuka halaman Log Aktifitas
+CREATE INDEX idx_activity_logs_created_at ON activity_logs (created_at DESC);
+
 -- BUCKET UNTUK FOTO SISWA (Hanya bisa dibuat via SQL jika punya permission, disarankan buat via UI)
 -- insert into storage.buckets (id, name, public) values ('student_photos', 'student_photos', true) on conflict (id) do nothing;
 
@@ -74,6 +85,11 @@ CREATE POLICY "Hanya user login bisa delete students" ON students FOR DELETE USI
 
 ALTER TABLE activity_logs ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Hanya user login bisa akses activity_logs" ON activity_logs FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+
+ALTER TABLE archived_semesters ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "User login bisa melihat arsip" ON archived_semesters FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "User login bisa insert arsip" ON archived_semesters FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "User login bisa hapus arsip" ON archived_semesters FOR DELETE USING (auth.role() = 'authenticated');
 
 -- KEBIJAKAN KEAMANAN UNTUK PENYIMPANAN FOTO (STORAGE)
 CREATE POLICY "Publik bisa melihat foto" ON storage.objects FOR SELECT USING (bucket_id = 'student_photos');
@@ -166,3 +182,11 @@ commit;
 
 alter publication supabase_realtime add table students;
 alter publication supabase_realtime add table settings;
+
+-- FUNGSI PEMBERSIHAN LOG USANG (Dipanggil saat Tutup Semester)
+CREATE OR REPLACE FUNCTION delete_old_activity_logs()
+RETURNS void
+SECURITY DEFINER LANGUAGE sql AS $$
+  -- Menghapus log yang usianya lebih dari 6 bulan
+  DELETE FROM public.activity_logs WHERE created_at < NOW() - INTERVAL '6 months';
+$$;

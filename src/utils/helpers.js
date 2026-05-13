@@ -97,7 +97,7 @@ export const formatPrintData = (text, detail, gradeCat, gradeSurat) => {
            const splitDetails = halMat.split(' / ');
            halMat = splitDetails[0].trim();
            ayatListStr = splitDetails.slice(1).join(' / ').trim();
-        } else if (!halMat.includes('Hal') && !halMat.includes('-') && !halMat.includes('|')) {
+           } else if (/^[0-9\-, ]+$/.test(halMat) || halMat.includes('Semua Ayat')) {
            ayatListStr = halMat; halMat = '';
         }
         if (halMat) res += `\n${halMat}`;

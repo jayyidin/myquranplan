@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, Home, Users, BarChart3, PieChart, Activity, Settings, LogOut, X, Moon, Sun } from 'lucide-react';
+import { User, Home, Users, BarChart3, PieChart, Activity, Settings, LogOut, X, Moon, Sun, Archive } from 'lucide-react';
 
 const MobileMenu = ({ mobileMenuOpen, setMobileMenuOpen, currentUser, theme, setTheme, currentView, setCurrentView, isSuperAdmin, onLogout }) => {
   if (!mobileMenuOpen) return null;
@@ -25,6 +25,7 @@ const MobileMenu = ({ mobileMenuOpen, setMobileMenuOpen, currentUser, theme, set
           <button onClick={() => { setCurrentView('home'); setMobileMenuOpen(false); }} className={`flex items-center gap-3 p-4 rounded-2xl font-bold transition-all ${currentView === 'home' ? 'bg-green-50 text-green-600' : 'text-slate-600 hover:bg-slate-50'}`}><Home size={20} /> Beranda</button>
           <button onClick={() => { setCurrentView('siswa'); setMobileMenuOpen(false); }} className={`flex items-center gap-3 p-4 rounded-2xl font-bold transition-all ${currentView === 'siswa' ? 'bg-green-50 text-green-600' : 'text-slate-600 hover:bg-slate-50'}`}><Users size={20} /> Data Siswa</button>
           <button onClick={() => { setCurrentView('laporan'); setMobileMenuOpen(false); }} className={`flex items-center gap-3 p-4 rounded-2xl font-bold transition-all ${currentView === 'laporan' ? 'bg-green-50 text-green-600' : 'text-slate-600 hover:bg-slate-50'}`}><BarChart3 size={20} /> Laporan</button>
+          <button onClick={() => { setCurrentView('arsip'); setMobileMenuOpen(false); }} className={`flex items-center gap-3 p-4 rounded-2xl font-bold transition-all ${currentView === 'arsip' ? 'bg-green-50 text-green-600' : 'text-slate-600 hover:bg-slate-50'}`}><Archive size={20} /> Arsip Semester</button>
           <button onClick={() => { setCurrentView('statistik'); setMobileMenuOpen(false); }} className={`flex items-center gap-3 p-4 rounded-2xl font-bold transition-all ${currentView === 'statistik' ? 'bg-green-50 text-green-600' : 'text-slate-600 hover:bg-slate-50'}`}><PieChart size={20} /> Statistik</button>
           {isSuperAdmin && (
             <button onClick={() => { setCurrentView('log'); setMobileMenuOpen(false); }} className={`flex items-center gap-3 p-4 rounded-2xl font-bold transition-all ${currentView === 'log' ? 'bg-green-50 text-green-600' : 'text-slate-600 hover:bg-slate-50'}`}><Activity size={20} /> Log Aktifitas</button>

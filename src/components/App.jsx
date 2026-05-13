@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabase';
 import MainApp from './MainApp';
-import AuthView from './views/AuthView';
+import LoginScreen from './LoginScreen';
 import { Loader2 } from 'lucide-react';
 
 function App() {
@@ -50,8 +50,8 @@ function App() {
   // Jika tidak ada sesi (belum login), tampilkan halaman login.
   // Jika ada sesi, tampilkan aplikasi utama.
   return (
-    !session 
-      ? <AuthView /> 
+    !session
+      ? <LoginScreen />
       : <MainApp currentUser={{ id: session.user.id, email: session.user.email, ...session.user.user_metadata }} onLogout={handleLogout} theme={theme} setTheme={setTheme} />
   );
 }

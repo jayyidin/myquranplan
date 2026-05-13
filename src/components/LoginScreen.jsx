@@ -1,6 +1,6 @@
 // File: src/components/LoginScreen.jsx
 import React, { useState, useEffect } from 'react';
-import { 
+import {
   BookOpen, UserPlus, GraduationCap, User, Lock, Calendar, Mic, Repeat, FileText,
   Eye, EyeOff, Loader2, ShieldAlert, CheckCircle2, HelpCircle, Download, Printer, Users,
   ChevronLeft, ChevronRight, Search, SearchCode, RotateCcw, LayoutGrid, X, Link, Star
@@ -10,10 +10,10 @@ import { formatShortDate, getInitials, formatPeriode, formatPrintData, getMonday
 
 const renderTextWithHighlights = (txt) => {
   if (typeof txt !== 'string') return txt;
-  
+
   const regex = /(Sangat Baik|\(A\)|\(B\+\)|\(B\)|Nilai:\s*A|Nilai:\s*B\+|Nilai:\s*B)/g;
   const parts = txt.split(regex);
-  
+
   return parts.map((part, index) => {
     if (part === 'Sangat Baik') {
       return (
@@ -65,7 +65,7 @@ const renderTextWithHighlights = (txt) => {
 const ExpandableText = ({ text }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   if (!text || text === '-') return <div className="text-xs sm:text-sm font-bold text-gray-800">-</div>;
-  
+
   const safeText = String(text);
   const isLong = safeText.length > 50 || safeText.split('\n').length > 2;
   const textSizeClass = safeText.length > 40 ? 'text-[10px] sm:text-xs leading-snug' : safeText.length > 25 ? 'text-[11px] sm:text-[13px] leading-snug' : 'text-xs sm:text-sm leading-relaxed';
@@ -76,7 +76,7 @@ const ExpandableText = ({ text }) => {
         {renderTextWithHighlights(safeText)}
       </div>
       {isLong && (
-        <button 
+        <button
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsExpanded(!isExpanded); }}
           className="text-[9px] sm:text-[10px] font-black text-emerald-500 hover:text-emerald-600 mt-1 active:scale-95 transition-all bg-emerald-50 px-2 py-0.5 rounded-md print:hidden"
           data-html2canvas-ignore="true"
@@ -92,9 +92,9 @@ const renderCatatanDetail = (valC, valCT, valCF) => {
   const hasC = valC && valC !== '-';
   const hasCT = valCT && valCT !== '-';
   const hasCF = valCF && valCF !== '-';
-  
+
   if (!hasC && !hasCT && !hasCF) return <ExpandableText text="-" />;
-  
+
   return (
     <div className="flex flex-col gap-1.5 w-full">
       {hasCT && <div><span className="text-[9px] font-black text-blue-500 uppercase tracking-widest block mb-0.5">Tahsin:</span><ExpandableText text={valCT} /></div>}
@@ -114,14 +114,23 @@ const LoginScreen = ({ onLogin }) => {
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [institutionLogo, setInstitutionLogo] = useState(null);
 
-  
+
   // State khusus Public View
   const [isParentPortal, setIsParentPortal] = useState(true);
   const [allStudents, setAllStudents] = useState([]);
   const [portalSearch, setPortalSearch] = useState('');
+
+  // --- DEBOUNCE PENCARIAN (MENGURANGI LAG DI HP) ---
+  const [localPortalSearch, setLocalPortalSearch] = useState('');
+  useEffect(() => {
+    const timer = setTimeout(() => setPortalSearch(localPortalSearch), 300);
+    return () => clearTimeout(timer);
+  }, [localPortalSearch]);
+
   const [kelasList, setKelasList] = useState([]);
   const [portalGuruFilter, setPortalGuruFilter] = useState('');
   const [portalKelasFilter, setPortalKelasFilter] = useState('');
@@ -134,7 +143,7 @@ const LoginScreen = ({ onLogin }) => {
     return !!params.get('portalHalaqoh');
   });
   const [guruHalaqohMap, setGuruHalaqohMap] = useState({});
-  
+
   const [publicStudent, setPublicStudent] = useState(null);
   const [publicTeacher, setPublicTeacher] = useState('');
   const [isPublicLoading, setIsPublicLoading] = useState(false);
@@ -191,12 +200,12 @@ const LoginScreen = ({ onLogin }) => {
         if (data.institutionlogo || data.institutionLogo) setInstitutionLogo(data.institutionlogo || data.institutionLogo);
         setGuruHalaqohMap(data.guruhalaqohdata || data.guruHalaqohData || {});
         if (data.kelaslist || data.kelasList) setKelasList(data.kelaslist || data.kelasList);
-        
+
         if (shareId && !publicStudent) {
-           fetchPublicData(shareId, data.guruhalaqohdata || data.guruHalaqohData || {});
+          fetchPublicData(shareId, data.guruhalaqohdata || data.guruHalaqohData || {});
         }
         if (shareClass && !publicClassHalaqoh) {
-           fetchPublicClassData(shareClass, data.guruhalaqohdata || data.guruHalaqohData || {});
+          fetchPublicClassData(shareClass, data.guruhalaqohdata || data.guruHalaqohData || {});
         }
       }
     };
@@ -206,7 +215,7 @@ const LoginScreen = ({ onLogin }) => {
     const sub = supabase.channel('public:settings_login')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, fetchSettings)
       .subscribe();
-      
+
     return () => {
       isMounted = false;
       supabase.removeChannel(sub);
@@ -220,7 +229,7 @@ const LoginScreen = ({ onLogin }) => {
 
     if (isParentPortal && allStudents.length === 0) {
       setIsPublicLoading(true);
-      
+
       const fetchStudents = async () => {
         const { data } = await supabase.from('students').select('*');
         if (data && isMounted) {
@@ -228,9 +237,9 @@ const LoginScreen = ({ onLogin }) => {
         }
         if (isMounted) setIsPublicLoading(false);
       };
-      
+
       fetchStudents();
-      
+
       sub = supabase.channel('public:students_login')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, fetchStudents)
         .subscribe();
@@ -243,7 +252,7 @@ const LoginScreen = ({ onLogin }) => {
 
   const handleSelectStudent = (student) => {
     setPublicStudent(student);
-    
+
     // Cari nama guru secara otomatis
     let foundTeacher = '-';
     for (const [guru, halaqohs] of Object.entries(guruHalaqohMap)) {
@@ -261,7 +270,7 @@ const LoginScreen = ({ onLogin }) => {
       const { data: sData } = await supabase.from('students').select('*').eq('id', studentId).maybeSingle();
       if (sData) {
         setPublicStudent(sData);
-        
+
         // Cari guru berdasarkan halaqoh
         for (const [guru, halaqohs] of Object.entries(guruData)) {
           if (Array.isArray(halaqohs) && halaqohs.includes(sData.halaqoh)) {
@@ -302,110 +311,151 @@ const LoginScreen = ({ onLogin }) => {
     setIsLoading(true);
     setError('');
     setSuccessMsg('');
-    
+
     const normalizedUsername = username.toLowerCase().trim();
-    // Supabase Auth membutuhkan format email, kita gunakan format dummy dengan username
-    const dummyEmail = `${normalizedUsername}@myquranplan.local`;
+    const rawUsername = username.trim();
 
     try {
       if (isRegistering) {
-         if (!normalizedUsername || !password || !fullName || !confirmPassword) {
-            setError('Lengkapi semua data!'); setIsLoading(false); return;
-         }
-         if (normalizedUsername === 'jumanjayyidin' || normalizedUsername === 'admin') {
-            setError('Username ini tidak dapat digunakan.'); setIsLoading(false); return;
-         }
-         if (password !== confirmPassword) {
-            setError('Konfirmasi password tidak cocok!'); setIsLoading(false); return;
-         }
-         
-         const cleanName = fullName.trim();
-         const { data: userSnap } = await supabase.rpc('get_user_login_data', { lookup_username: normalizedUsername }).maybeSingle();
-         
-         if (userSnap) {
-            setError('Username sudah terdaftar! Gunakan yang lain.');
-         } else {
-            // 1. Mendaftar menggunakan Supabase Auth
-            const { data: authData, error: authError } = await supabase.auth.signUp({
-               email: dummyEmail,
-               password: password,
-               options: {
-                  data: { name: cleanName, username: normalizedUsername, role: 'guru' }
-               }
-            });
+        if (!normalizedUsername || !password || !fullName || !confirmPassword) {
+          setError('Lengkapi semua data!'); setIsLoading(false); return;
+        }
+        if (normalizedUsername === 'jumanjayyidin' || normalizedUsername === 'admin') {
+          setError('Username ini tidak dapat digunakan.'); setIsLoading(false); return;
+        }
+        if (password !== confirmPassword) {
+          setError('Konfirmasi password tidak cocok!'); setIsLoading(false); return;
+        }
+        if (password.length < 8) {
+          setError('Password minimal harus terdiri dari 8 karakter!'); setIsLoading(false); return;
+        }
 
-            if (authError) {
-               setError('Gagal mendaftar: ' + authError.message);
-            } else {
-               // 2. Simpan profil tambahan ke app_users dan sembunyikan password
-               await supabase.from('app_users').insert([{ 
-                  id: authData.user?.id,
-                  username: normalizedUsername, 
-                  password: '[SECURED_BY_SUPABASE]', // Dummy password agar Plaintext aman
-                  name: cleanName, 
-                  role: 'guru', 
-                  status: 'pending'
-               }]);
-               
-               // 3. Logout paksa karena akun masih pending (Supabase biasanya otomatis login setelah signUp)
-               await supabase.auth.signOut();
+        const cleanName = fullName.trim();
 
-               setSuccessMsg('Pendaftaran berhasil! Akun Anda sedang menunggu persetujuan dari Admin Utama.');
-               setIsRegistering(false);
-               setUsername('');
-               setPassword('');
-               setFullName('');
-               setConfirmPassword('');
+        let { data: userSnap } = await supabase.rpc('get_user_login_data', { lookup_username: normalizedUsername }).maybeSingle();
+        if (!userSnap && rawUsername !== normalizedUsername) {
+          const { data: altSnap } = await supabase.rpc('get_user_login_data', { lookup_username: rawUsername }).maybeSingle();
+          if (altSnap) userSnap = altSnap;
+        }
+
+        if (userSnap) {
+          setError('Username sudah terdaftar! Gunakan yang lain.');
+        } else {
+          // Supabase Auth membutuhkan format email, kita gunakan format dummy dengan username
+          const dummyEmail = `${normalizedUsername}@myquranplan.local`;
+          // 1. Mendaftar menggunakan Supabase Auth
+          const { data: authData, error: authError } = await supabase.auth.signUp({
+            email: dummyEmail,
+            password: password,
+            options: {
+              data: { name: cleanName, username: normalizedUsername, role: 'guru' }
             }
-         }
+          });
+
+          if (authError) {
+            setError('Gagal mendaftar: ' + authError.message);
+          } else {
+            // 2. Simpan profil tambahan ke app_users dan sembunyikan password
+            const { error: insertError } = await supabase.from('app_users').insert([{
+              id: authData.user?.id,
+              username: normalizedUsername,
+              password: '[SECURED_BY_SUPABASE]', // Dummy password agar Plaintext aman
+              name: cleanName,
+              role: 'guru',
+              status: 'pending'
+            }]);
+
+            if (insertError) {
+              setError('Gagal menyimpan profil: ' + insertError.message);
+              setIsLoading(false);
+              return;
+            }
+
+            // 3. Logout paksa karena akun masih pending (Supabase biasanya otomatis login setelah signUp)
+            await supabase.auth.signOut();
+
+            setSuccessMsg('Pendaftaran berhasil! Akun Anda sedang menunggu persetujuan dari Admin Utama.');
+            setIsRegistering(false);
+            setUsername('');
+            setPassword('');
+            setFullName('');
+            setConfirmPassword('');
+          }
+        }
       } else {
-         
-         // Cek User Profil di Supabase
-         const { data: userData } = await supabase.rpc('get_user_login_data', { lookup_username: normalizedUsername }).maybeSingle();
-         
-         if (userData) {
-            if (userData.role !== 'superadmin' && userData.status !== 'active') {
-                setError('Akun Anda belum disetujui oleh Admin. Harap tunggu atau hubungi Admin.');
-                setIsLoading(false);
-                return;
-            }
 
-            // Login menggunakan sistem autentikasi resmi Supabase Auth
-            const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-               email: dummyEmail,
-               password: password,
-            });
+        // Cek User Profil di Supabase
+        let { data: userData } = await supabase.rpc('get_user_login_data', { lookup_username: normalizedUsername }).maybeSingle();
+        if (!userData && rawUsername !== normalizedUsername) {
+          const { data: altData } = await supabase.rpc('get_user_login_data', { lookup_username: rawUsername }).maybeSingle();
+          if (altData) userData = altData;
+        }
 
-            if (authError) {
-               // Auto-Migration: Jika user ada di database lama (Plaintext) tapi belum ada di Supabase Auth
-               if (userData.password === password && userData.password !== '[SECURED_BY_SUPABASE]') {
-                  const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-                     email: dummyEmail,
-                     password: password,
-                     options: { data: { name: userData.name, username: userData.username, role: userData.role } }
-                  });
+        if (userData) {
+          if (userData.role !== 'superadmin' && userData.status !== 'active') {
+            setError('Akun Anda belum disetujui oleh Admin. Harap tunggu atau hubungi Admin.');
+            setIsLoading(false);
+            return;
+          }
 
-                  if (signUpError) {
-                     setError('Gagal mensinkronisasi akun lama ke sistem keamanan baru.');
-                  } else {
-                     // Update app_users: Tautkan dengan ID auth baru dan buang Plaintext Password-nya
-                     await supabase.from('app_users').update({ id: signUpData.user?.id, password: '[SECURED_BY_SUPABASE]' }).eq('username', normalizedUsername);
-                     await supabase.auth.signInWithPassword({ email: dummyEmail, password: password });
-                     if (onLogin) onLogin({ username: userData.username, name: userData.name, role: userData.role });
-                  }
-               } else {
-                  setError('Password yang Anda masukkan salah!');
-               }
+          const loginEmail = `${userData.username.toLowerCase()}@myquranplan.local`;
+
+          // Login menggunakan sistem autentikasi resmi Supabase Auth
+          const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+            email: loginEmail,
+            password: password,
+          });
+
+          if (authError) {
+            // Auto-Migration: Jika user ada di DB lama (Plaintext) tapi belum ada di Supabase Auth
+            if (userData.password === password && userData.password !== '[SECURED_BY_SUPABASE]') {
+              const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+                email: loginEmail,
+                password: password,
+                options: { data: { name: userData.name, username: userData.username, role: userData.role } }
+              });
+
+              if (signUpError) {
+                if (signUpError.message.toLowerCase().includes('already registered')) {
+                  setError('Inkonsistensi data: Akun sudah ada di Supabase Auth tapi passwordnya berbeda. Solusi: Hapus user tersebut dari menu Authentication di Supabase, lalu coba login kembali.');
+                } else {
+                  setError('Gagal sinkronisasi akun: ' + signUpError.message);
+                }
+              } else {
+                // PENTING: Update app_users untuk menyelesaikan migrasi SEBELUM redirect
+                await supabase.from('app_users').update({ id: signUpData.user?.id, password: '[SECURED_BY_SUPABASE]' }).eq('username', userData.username);
+
+                // Paksa login untuk memastikan sesi terbuat (berjaga-jaga jika signUp tertahan oleh email)
+                const { error: signInErr } = await supabase.auth.signInWithPassword({
+                  email: loginEmail,
+                  password: password,
+                });
+                if (signInErr) setError("Migrasi sukses, tapi auto-login gagal. Pastikan pengaturan 'Confirm email' di Supabase dalam keadaan OFF, lalu coba login lagi.");
+                else if (onLogin) onLogin({ username: userData.username, name: userData.name, role: userData.role });
+              }
             } else {
-               if (onLogin) onLogin({ username: userData.username, name: userData.name, role: userData.role });
+              if (authError.message.toLowerCase().includes('invalid login credentials')) {
+                setError('Password yang Anda masukkan salah!');
+              } else {
+                setError(`Gagal Login: ${authError.message}`);
+              }
             }
-         } else {
-            setError('Username tidak ditemukan! Silakan daftar terlebih dahulu.');
-         }
+          } else {
+            // BERHASIL LOGIN NORMAL
+            // Perbaiki ID & Password jika sebelumnya Auth sukses tapi app_users gagal diupdate
+            if (userData.password !== '[SECURED_BY_SUPABASE]') {
+              await supabase.from('app_users').update({ id: authData.user?.id, password: '[SECURED_BY_SUPABASE]' }).eq('username', userData.username);
+            }
+            if (onLogin) onLogin({ username: userData.username, name: userData.name, role: userData.role });
+            else window.location.reload(); // Berjaga-jaga jika menggunakan komponen App versi lain
+          }
+        } else {
+          setError('Username tidak ditemukan! Silakan daftar terlebih dahulu.');
+        }
       }
-    } catch(err) {
-       console.error(err);
-       setError('Terjadi kesalahan jaringan. Cek koneksi Anda.');
+    } catch (err) {
+      console.error(err);
+      setError('Terjadi kesalahan jaringan. Cek koneksi Anda.');
     }
     setIsLoading(false);
   };
@@ -416,12 +466,17 @@ const LoginScreen = ({ onLogin }) => {
     setError('');
     setSuccessMsg('');
     const normalizedUsername = username.toLowerCase().trim();
+    const rawUsername = username.trim();
 
     try {
-      const { data: userSnap } = await supabase.rpc('get_user_login_data', { lookup_username: normalizedUsername }).maybeSingle();
+      let { data: userSnap } = await supabase.rpc('get_user_login_data', { lookup_username: normalizedUsername }).maybeSingle();
+      if (!userSnap && rawUsername !== normalizedUsername) {
+        const { data: altSnap } = await supabase.rpc('get_user_login_data', { lookup_username: rawUsername }).maybeSingle();
+        if (altSnap) userSnap = altSnap;
+      }
 
       if (userSnap) {
-        await supabase.from('app_users').update({ resetrequested: true }).eq('username', normalizedUsername);
+        await supabase.from('app_users').update({ resetrequested: true }).eq('username', userSnap.username);
         setSuccessMsg('Permintaan reset password terkirim! Silakan hubungi Admin Utama.');
         setIsForgotPassword(false);
         setUsername('');
@@ -457,26 +512,26 @@ const LoginScreen = ({ onLogin }) => {
 
   if (publicClassHalaqoh && !publicStudent) {
     const weekStart = publicWeekStart;
-    const weekDates = Array.from({length: 5}).map((_, i) => { const d = new Date(weekStart); d.setDate(d.getDate() + i); return d; });
+    const weekDates = Array.from({ length: 5 }).map((_, i) => { const d = new Date(weekStart); d.setDate(d.getDate() + i); return d; });
     const workDays = weekDates.filter(d => d && d.getDay() !== 0 && d.getDay() !== 6);
     const totalPages = workDays.length > 3 ? 2 : 1;
 
     return (
       <div className="min-h-screen bg-slate-900 text-gray-800 flex flex-col p-0 md:p-6 printable-area print:!static print:p-0 print:m-0 transition-all duration-500">
-        
+
         {/* Header Navigasi & Aksi (Sticky Top) */}
         <div className="bg-slate-800/95 backdrop-blur-md sticky top-0 z-[100000] print:hidden flex flex-col xl:flex-row justify-between items-center p-4 sm:p-6 gap-4 shadow-2xl w-full border-b border-slate-700" data-html2canvas-ignore="true">
-          
+
           {/* Bagian Kiri: Tab & Minggu */}
           <div className="flex flex-col sm:flex-row items-center gap-3 w-full xl:w-auto">
             <div className="flex gap-2 w-full sm:w-auto">
-               <button onClick={() => setPublicTab('lesson_plan')} className={`flex-1 sm:flex-none px-5 py-3 sm:py-2.5 text-xs sm:text-sm font-black rounded-xl transition-all shadow-md ${publicTab === 'lesson_plan' ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>Target (Lesson Plan)</button>
-               <button onClick={() => setPublicTab('jurnal')} className={`flex-1 sm:flex-none px-5 py-3 sm:py-2.5 text-xs sm:text-sm font-black rounded-xl transition-all shadow-md ${publicTab === 'jurnal' ? 'bg-blue-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>Capaian (Jurnal)</button>
+              <button onClick={() => setPublicTab('lesson_plan')} className={`flex-1 sm:flex-none px-5 py-3 sm:py-2.5 text-xs sm:text-sm font-black rounded-xl transition-all shadow-md ${publicTab === 'lesson_plan' ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>Target (Lesson Plan)</button>
+              <button onClick={() => setPublicTab('jurnal')} className={`flex-1 sm:flex-none px-5 py-3 sm:py-2.5 text-xs sm:text-sm font-black rounded-xl transition-all shadow-md ${publicTab === 'jurnal' ? 'bg-blue-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>Capaian (Jurnal)</button>
             </div>
             <div className="flex items-center justify-between bg-slate-700 rounded-xl px-2 py-1.5 shadow-md w-full sm:w-auto">
-               <button onClick={() => changePublicWeek(-7)} className="p-2 sm:p-2.5 text-slate-400 hover:text-emerald-400 transition-colors"><ChevronLeft size={18}/></button>
-               <span className="text-xs sm:text-sm font-bold whitespace-nowrap px-4 text-white">{formatPeriode(weekDates[0], weekDates[4])}</span>
-               <button onClick={() => changePublicWeek(7)} className="p-2 sm:p-2.5 text-slate-400 hover:text-emerald-400 transition-colors"><ChevronRight size={18}/></button>
+              <button onClick={() => changePublicWeek(-7)} className="p-2 sm:p-2.5 text-slate-400 hover:text-emerald-400 transition-colors"><ChevronLeft size={18} /></button>
+              <span className="text-xs sm:text-sm font-bold whitespace-nowrap px-4 text-white">{formatPeriode(weekDates[0], weekDates[4])}</span>
+              <button onClick={() => changePublicWeek(7)} className="p-2 sm:p-2.5 text-slate-400 hover:text-emerald-400 transition-colors"><ChevronRight size={18} /></button>
             </div>
           </div>
 
@@ -494,26 +549,26 @@ const LoginScreen = ({ onLogin }) => {
 
         {/* Kontainer Tabel */}
         <div className="w-full flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar flex flex-col md:items-center p-0 md:p-6 print:p-0 print:m-0 print:overflow-visible relative">
-          
+
           {/* TAMPILAN NAMA SISWA */}
           <div className="w-full max-w-5xl px-4 py-6 print:hidden">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {publicClassStudents.map((student, idx) => (
-              <button key={student.id} onClick={() => handleSelectStudent(student)} className="flex items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-100 hover:border-emerald-300 hover:shadow-md transition-all group text-left">
+              {publicClassStudents.map((student, idx) => (
+                <button key={student.id} onClick={() => handleSelectStudent(student)} className="flex items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-100 hover:border-emerald-300 hover:shadow-md transition-all group text-left">
                   <div className="w-12 h-12 rounded-full bg-emerald-50 border-2 border-emerald-100 flex items-center justify-center text-emerald-600 font-black shrink-0 group-hover:bg-emerald-100 transition-colors overflow-hidden">
-                  {student?.photo && student.photo !== '' ? (
-                    <img src={student.photo} alt={student?.name} className="w-full h-full object-cover" />
-                  ) : (
-                    getInitials(student?.name)
-                  )}
+                    {student?.photo && student.photo !== '' ? (
+                      <img src={student.photo} alt={student?.name} className="w-full h-full object-cover" />
+                    ) : (
+                      getInitials(student?.name)
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="font-black text-slate-800 group-hover:text-emerald-600 text-sm truncate transition-colors">{student?.name || 'Unknown'}</div>
                     <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Kelas {student?.kelas || '-'}</div>
                   </div>
                   <ChevronRight size={18} className="text-slate-300 group-hover:text-emerald-500 transition-colors" />
-              </button>
-            ))}
+                </button>
+              ))}
             </div>
           </div>
         </div>
@@ -523,7 +578,7 @@ const LoginScreen = ({ onLogin }) => {
 
   if (publicStudent) {
     const weekStart = publicWeekStart;
-    const weekDates = Array.from({length: 5}).map((_, i) => { const d = new Date(weekStart); d.setDate(d.getDate() + i); return d; });
+    const weekDates = Array.from({ length: 5 }).map((_, i) => { const d = new Date(weekStart); d.setDate(d.getDate() + i); return d; });
     const k = publicTab === 'lesson_plan' ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan', cT: 'catatanTahsin', cF: 'catatanTahfidz' } : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan', cT: 'jurnalCatatanTahsin', cF: 'jurnalCatatanTahfidz' };
 
     // Mengambil seluruh tanggal yang memiliki rekaman untuk mode cetak riwayat lengkap
@@ -539,10 +594,10 @@ const LoginScreen = ({ onLogin }) => {
     let latestTahsin = null;
     let latestTahfidz = null;
     let latestMurojaah = null;
-    
+
     const sortedAllDatesStr = Object.keys(publicStudent.records || {})
       .sort((a, b) => new Date(b) - new Date(a));
-      
+
     for (const dateStr of sortedAllDatesStr) {
       const rec = publicStudent.records[dateStr];
       const isAbsent = ['alpa', 'sakit', 'izin', 'tidak hadir', 'libur'].some(kw => String(rec[k.c] || '').toLowerCase().includes(kw));
@@ -565,131 +620,131 @@ const LoginScreen = ({ onLogin }) => {
     return ( // Public Student View
       <div className="min-h-screen bg-slate-100 text-gray-800 flex flex-col items-center p-0 md:p-6 overflow-y-auto transition-all duration-500">
         <div className="fixed bottom-6 right-6 sm:top-6 sm:right-6 sm:bottom-auto z-[100] flex flex-col-reverse sm:flex-row gap-3 print:hidden">
-           <button onClick={handleDownloadImage} className="bg-emerald-500 text-white w-14 h-14 sm:w-auto sm:h-auto sm:px-5 sm:py-3 rounded-full sm:rounded-xl shadow-xl hover:bg-emerald-600 transition-all flex items-center justify-center gap-2" title="Unduh Gambar (JPG)">
-             <Download size={24} className="sm:w-[20px] sm:h-[20px]" /> <span className="hidden sm:inline text-sm font-bold">Unduh JPG</span>
-           </button>
-           <button onClick={handlePrintAll} className="bg-blue-600 text-white w-14 h-14 sm:w-auto sm:h-auto sm:px-5 sm:py-3 rounded-full sm:rounded-xl shadow-xl hover:bg-blue-700 transition-all flex items-center justify-center gap-2" title="Unduh Riwayat Lengkap">
-             <FileText size={24} className="sm:w-[20px] sm:h-[20px]" /> <span className="hidden sm:inline text-sm font-bold">Riwayat PDF</span>
-           </button>
-           <button onClick={() => window.print()} className="bg-slate-800 text-white w-14 h-14 sm:w-auto sm:h-auto sm:px-5 sm:py-3 rounded-full sm:rounded-xl shadow-xl hover:bg-slate-900 transition-all flex items-center justify-center gap-2 border border-slate-700" title="Cetak">
-             <Printer size={24} className="sm:w-[20px] sm:h-[20px]" /> <span className="hidden sm:inline text-sm font-bold">Cetak</span>
-           </button>
-           <button onClick={() => setPublicStudent(null)} className="bg-white text-slate-600 border border-slate-200 w-14 h-14 sm:w-auto sm:h-auto sm:p-3 rounded-full sm:rounded-xl shadow-xl hover:bg-slate-100 transition-all flex items-center justify-center gap-2 mb-2 sm:mb-0" title="Tutup">
-             <X size={24} className="sm:w-[20px] sm:h-[20px]" />
-           </button>
+          <button onClick={handleDownloadImage} className="bg-emerald-500 text-white w-14 h-14 sm:w-auto sm:h-auto sm:px-5 sm:py-3 rounded-full sm:rounded-xl shadow-xl hover:bg-emerald-600 transition-all flex items-center justify-center gap-2" title="Unduh Gambar (JPG)">
+            <Download size={24} className="sm:w-[20px] sm:h-[20px]" /> <span className="hidden sm:inline text-sm font-bold">Unduh JPG</span>
+          </button>
+          <button onClick={handlePrintAll} className="bg-blue-600 text-white w-14 h-14 sm:w-auto sm:h-auto sm:px-5 sm:py-3 rounded-full sm:rounded-xl shadow-xl hover:bg-blue-700 transition-all flex items-center justify-center gap-2" title="Unduh Riwayat Lengkap">
+            <FileText size={24} className="sm:w-[20px] sm:h-[20px]" /> <span className="hidden sm:inline text-sm font-bold">Riwayat PDF</span>
+          </button>
+          <button onClick={() => window.print()} className="bg-slate-800 text-white w-14 h-14 sm:w-auto sm:h-auto sm:px-5 sm:py-3 rounded-full sm:rounded-xl shadow-xl hover:bg-slate-900 transition-all flex items-center justify-center gap-2 border border-slate-700" title="Cetak">
+            <Printer size={24} className="sm:w-[20px] sm:h-[20px]" /> <span className="hidden sm:inline text-sm font-bold">Cetak</span>
+          </button>
+          <button onClick={() => setPublicStudent(null)} className="bg-white text-slate-600 border border-slate-200 w-14 h-14 sm:w-auto sm:h-auto sm:p-3 rounded-full sm:rounded-xl shadow-xl hover:bg-slate-100 transition-all flex items-center justify-center gap-2 mb-2 sm:mb-0" title="Tutup">
+            <X size={24} className="sm:w-[20px] sm:h-[20px]" />
+          </button>
         </div>
 
         <div className="w-full flex justify-center p-0 sm:p-4 print:p-0">
           <div id="share-report-card" className="bg-white w-full max-w-[800px] shrink-0 sm:shadow-2xl relative sm:my-8 print:shadow-none print:w-[800px] print:min-w-[800px] print:max-w-none animate-in fade-in slide-in-from-bottom-4 duration-700 transition-colors rounded-none sm:rounded-[32px] overflow-hidden">
-            
+
             {/* Header Laporan */}
             <div className="bg-gradient-to-br from-emerald-50 via-white to-teal-50 p-6 sm:p-10 border-b border-gray-100 flex flex-col-reverse sm:flex-row justify-between items-center gap-6 text-center sm:text-left relative overflow-hidden">
-               <div className="w-full sm:w-auto relative z-10">
-                  <h1 className="text-2xl sm:text-4xl font-black text-slate-800 mb-1 sm:mb-2 tracking-tight">
-                    {publicTab === 'lesson_plan' ? "Lesson Plan Al-Qur'an" : "Jurnal Harian Al-Qur'an"}
-                  </h1>
-                  <p className="text-emerald-600 font-bold text-sm sm:text-base tracking-wide uppercase">Laporan Pemantauan Hafalan</p>
-               </div>
-               <div className="w-20 h-20 sm:w-28 sm:h-28 flex items-center justify-center shrink-0 bg-white rounded-[1.5rem] shadow-sm border border-emerald-100/50 p-3 sm:p-4 relative z-10">
-                  {institutionLogo ? <img src={institutionLogo} alt="Logo Instansi" className="w-full h-full object-contain" /> : <BookOpen size={48} className="text-emerald-500" />}
-               </div> 
-               
-               {/* Decorative Shapes */}
-               <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-emerald-100/40 rounded-full blur-3xl pointer-events-none"></div>
-               <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-64 h-64 bg-teal-100/40 rounded-full blur-3xl pointer-events-none"></div>
+              <div className="w-full sm:w-auto relative z-10">
+                <h1 className="text-2xl sm:text-4xl font-black text-slate-800 mb-1 sm:mb-2 tracking-tight">
+                  {publicTab === 'lesson_plan' ? "Lesson Plan Al-Qur'an" : "Jurnal Harian Al-Qur'an"}
+                </h1>
+                <p className="text-emerald-600 font-bold text-sm sm:text-base tracking-wide uppercase">Laporan Pemantauan Hafalan</p>
+              </div>
+              <div className="w-20 h-20 sm:w-28 sm:h-28 flex items-center justify-center shrink-0 bg-white rounded-[1.5rem] shadow-sm border border-emerald-100/50 p-3 sm:p-4 relative z-10">
+                {institutionLogo ? <img src={institutionLogo} alt="Logo Instansi" className="w-full h-full object-contain" /> : <BookOpen size={48} className="text-emerald-500" />}
+              </div>
+
+              {/* Decorative Shapes */}
+              <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-emerald-100/40 rounded-full blur-3xl pointer-events-none"></div>
+              <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-64 h-64 bg-teal-100/40 rounded-full blur-3xl pointer-events-none"></div>
             </div>
 
             {/* Info Siswa */}
             <div className="p-6 sm:p-10 flex flex-col sm:flex-row justify-between items-center gap-6 border-b border-gray-50 text-center sm:text-left bg-white z-10 relative">
-               <div className="flex flex-col sm:flex-row items-center gap-5 sm:gap-6 w-full sm:w-auto">
-                 <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-emerald-50 border-[6px] sm:border-[8px] border-emerald-100 text-emerald-600 flex items-center justify-center text-4xl sm:text-5xl font-black shrink-0 overflow-hidden shadow-lg relative">
-                    {publicStudent.photo ? <img src={publicStudent.photo} alt={publicStudent.name} className="w-full h-full object-cover" /> : <span>{getInitials(publicStudent.name)}</span>}
-                 </div>
-                 <div>
-                    <h2 className={`font-black text-slate-800 mb-3 sm:mb-4 ${publicStudent.name.length > 24 ? 'text-xl sm:text-2xl' : publicStudent.name.length > 18 ? 'text-2xl sm:text-3xl' : 'text-3xl sm:text-4xl'} tracking-tight`}>{publicStudent.name}</h2>
-                    <div className="flex flex-wrap justify-center sm:justify-start gap-2">
-                       <span className="bg-slate-100 text-slate-600 px-4 sm:px-5 py-1.5 sm:py-2 rounded-xl font-black text-[10px] sm:text-xs uppercase tracking-widest border border-slate-200/60 shadow-sm">Kelas {publicStudent.kelas || '-'}</span>
-                       <span className="bg-emerald-50 text-emerald-700 px-4 sm:px-5 py-1.5 sm:py-2 rounded-xl font-black text-[10px] sm:text-xs uppercase tracking-widest border border-emerald-100/60 shadow-sm">Klp: {publicStudent.halaqoh || '-'}</span>
-                    </div>
-                 </div>
-               </div>
+              <div className="flex flex-col sm:flex-row items-center gap-5 sm:gap-6 w-full sm:w-auto">
+                <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-emerald-50 border-[6px] sm:border-[8px] border-emerald-100 text-emerald-600 flex items-center justify-center text-4xl sm:text-5xl font-black shrink-0 overflow-hidden shadow-lg relative">
+                  {publicStudent.photo ? <img src={publicStudent.photo} alt={publicStudent.name} className="w-full h-full object-cover" /> : <span>{getInitials(publicStudent.name)}</span>}
+                </div>
+                <div>
+                  <h2 className={`font-black text-slate-800 mb-3 sm:mb-4 ${publicStudent.name.length > 24 ? 'text-xl sm:text-2xl' : publicStudent.name.length > 18 ? 'text-2xl sm:text-3xl' : 'text-3xl sm:text-4xl'} tracking-tight`}>{publicStudent.name}</h2>
+                  <div className="flex flex-wrap justify-center sm:justify-start gap-2">
+                    <span className="bg-slate-100 text-slate-600 px-4 sm:px-5 py-1.5 sm:py-2 rounded-xl font-black text-[10px] sm:text-xs uppercase tracking-widest border border-slate-200/60 shadow-sm">Kelas {publicStudent.kelas || '-'}</span>
+                    <span className="bg-emerald-50 text-emerald-700 px-4 sm:px-5 py-1.5 sm:py-2 rounded-xl font-black text-[10px] sm:text-xs uppercase tracking-widest border border-emerald-100/60 shadow-sm">Klp: {publicStudent.halaqoh || '-'}</span>
+                  </div>
+                </div>
+              </div>
             </div>
-            
+
             {/* STATUS TERAKHIR (LATEST PROGRESS) - Solusi input jarang */}
             {(latestTahsin || latestTahfidz || latestMurojaah) && !isPrintingAll && (
               <div className="p-6 sm:p-10 bg-slate-50 border-b border-slate-100 print:hidden">
-                 <div className="flex items-center gap-2 mb-6">
-                    <div className="w-2 h-6 bg-amber-400 rounded-full"></div>
-                    <h3 className="text-sm sm:text-base font-black text-slate-700 uppercase tracking-widest">Status Terakhir <span className="text-slate-400 normal-case text-[10px] sm:text-xs font-bold ml-1">(Pembaruan Terkini)</span></h3>
-                 </div>
-                 
-                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {/* Latest Tahsin */}
-                    {latestTahsin && (
-                      <div className="bg-white p-4 rounded-2xl border border-blue-100 shadow-sm relative overflow-hidden">
-                         <div className="absolute top-0 right-0 bg-blue-50 text-blue-500 text-[9px] font-black px-2 py-1 rounded-bl-xl border-b border-l border-blue-100">{formatShortDate(new Date(latestTahsin.date))}</div>
-                         <div className="flex items-center gap-2 mb-3 mt-1 sm:mt-0">
-                           <div className="p-1.5 bg-blue-100 text-blue-600 rounded-lg"><BookOpen size={14} strokeWidth={2.5} /></div>
-                           <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-blue-700">Tahsin</span>
-                         </div>
-                         <div className="pl-1"><ExpandableText text={formatPrintData(latestTahsin.t, latestTahsin.h, latestTahsin.tNilai, latestTahsin.tsNilai)} /></div>
+                <div className="flex items-center gap-2 mb-6">
+                  <div className="w-2 h-6 bg-amber-400 rounded-full"></div>
+                  <h3 className="text-sm sm:text-base font-black text-slate-700 uppercase tracking-widest">Status Terakhir <span className="text-slate-400 normal-case text-[10px] sm:text-xs font-bold ml-1">(Pembaruan Terkini)</span></h3>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Latest Tahsin */}
+                  {latestTahsin && (
+                    <div className="bg-white p-4 rounded-2xl border border-blue-100 shadow-sm relative overflow-hidden">
+                      <div className="absolute top-0 right-0 bg-blue-50 text-blue-500 text-[9px] font-black px-2 py-1 rounded-bl-xl border-b border-l border-blue-100">{formatShortDate(new Date(latestTahsin.date))}</div>
+                      <div className="flex items-center gap-2 mb-3 mt-1 sm:mt-0">
+                        <div className="p-1.5 bg-blue-100 text-blue-600 rounded-lg"><BookOpen size={14} strokeWidth={2.5} /></div>
+                        <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-blue-700">Tahsin</span>
                       </div>
-                    )}
-                    
-                    {/* Latest Tahfidz */}
-                    {latestTahfidz && (
-                      <div className="bg-white p-4 rounded-2xl border border-purple-100 shadow-sm relative overflow-hidden">
-                         <div className="absolute top-0 right-0 bg-purple-50 text-purple-500 text-[9px] font-black px-2 py-1 rounded-bl-xl border-b border-l border-purple-100">{formatShortDate(new Date(latestTahfidz.date))}</div>
-                         <div className="flex items-center gap-2 mb-3 mt-1 sm:mt-0">
-                           <div className="p-1.5 bg-purple-100 text-purple-600 rounded-lg"><Mic size={14} strokeWidth={2.5} /></div>
-                           <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-purple-700">Tahfidz</span>
-                         </div>
-                         <div className="pl-1"><ExpandableText text={formatPrintData(latestTahfidz.f, latestTahfidz.af, null, latestTahfidz.fNilai)} /></div>
+                      <div className="pl-1"><ExpandableText text={formatPrintData(latestTahsin.t, latestTahsin.h, latestTahsin.tNilai, latestTahsin.tsNilai)} /></div>
+                    </div>
+                  )}
+
+                  {/* Latest Tahfidz */}
+                  {latestTahfidz && (
+                    <div className="bg-white p-4 rounded-2xl border border-purple-100 shadow-sm relative overflow-hidden">
+                      <div className="absolute top-0 right-0 bg-purple-50 text-purple-500 text-[9px] font-black px-2 py-1 rounded-bl-xl border-b border-l border-purple-100">{formatShortDate(new Date(latestTahfidz.date))}</div>
+                      <div className="flex items-center gap-2 mb-3 mt-1 sm:mt-0">
+                        <div className="p-1.5 bg-purple-100 text-purple-600 rounded-lg"><Mic size={14} strokeWidth={2.5} /></div>
+                        <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-purple-700">Tahfidz</span>
                       </div>
-                    )}
-                    
-                    {/* Latest Murojaah */}
-                    {latestMurojaah && (
-                      <div className="bg-white p-4 rounded-2xl border border-emerald-100 shadow-sm relative overflow-hidden">
-                         <div className="absolute top-0 right-0 bg-emerald-50 text-emerald-500 text-[9px] font-black px-2 py-1 rounded-bl-xl border-b border-l border-emerald-100">{formatShortDate(new Date(latestMurojaah.date))}</div>
-                         <div className="flex items-center gap-2 mb-3 mt-1 sm:mt-0">
-                           <div className="p-1.5 bg-emerald-100 text-emerald-600 rounded-lg"><Repeat size={14} strokeWidth={2.5} /></div>
-                           <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-emerald-700">Murojaah</span>
-                         </div>
-                         <div className="pl-1"><ExpandableText text={formatPrintData(latestMurojaah.m, '-', null, null)} /></div>
+                      <div className="pl-1"><ExpandableText text={formatPrintData(latestTahfidz.f, latestTahfidz.af, null, latestTahfidz.fNilai)} /></div>
+                    </div>
+                  )}
+
+                  {/* Latest Murojaah */}
+                  {latestMurojaah && (
+                    <div className="bg-white p-4 rounded-2xl border border-emerald-100 shadow-sm relative overflow-hidden">
+                      <div className="absolute top-0 right-0 bg-emerald-50 text-emerald-500 text-[9px] font-black px-2 py-1 rounded-bl-xl border-b border-l border-emerald-100">{formatShortDate(new Date(latestMurojaah.date))}</div>
+                      <div className="flex items-center gap-2 mb-3 mt-1 sm:mt-0">
+                        <div className="p-1.5 bg-emerald-100 text-emerald-600 rounded-lg"><Repeat size={14} strokeWidth={2.5} /></div>
+                        <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-emerald-700">Murojaah</span>
                       </div>
-                    )}
-                 </div>
-                 
-                 <p className="text-[10px] sm:text-xs text-slate-400 mt-4 sm:mt-5 font-bold italic text-center sm:text-left bg-white px-4 py-2 rounded-xl border border-slate-100">
-                   💡 <span className="text-amber-500">Tips:</span> Menampilkan batas capaian hafalan/bacaan terakhir Ananda. Guru cukup mengisi jurnal sekali waktu saja, dan status terkini akan otomatis tampil di sini.
-                 </p>
+                      <div className="pl-1"><ExpandableText text={formatPrintData(latestMurojaah.m, '-', null, null)} /></div>
+                    </div>
+                  )}
+                </div>
+
+                <p className="text-[10px] sm:text-xs text-slate-400 mt-4 sm:mt-5 font-bold italic text-center sm:text-left bg-white px-4 py-2 rounded-xl border border-slate-100">
+                  💡 <span className="text-amber-500">Tips:</span> Menampilkan batas capaian hafalan/bacaan terakhir Ananda. Guru cukup mengisi jurnal sekali waktu saja, dan status terkini akan otomatis tampil di sini.
+                </p>
               </div>
             )}
 
             {/* Navigasi & Tab (Segmented Control style) */}
             <div className="bg-slate-50/80 px-4 sm:px-10 py-5 flex flex-col lg:flex-row justify-between items-center gap-5 print:hidden border-b border-slate-100">
-               {/* Navigasi Arsip Mingguan */}
-               <div className="flex items-center justify-between w-full lg:w-auto bg-white rounded-2xl shadow-sm border border-slate-200/60 p-1.5">
-                  <button onClick={() => changePublicWeek(-7)} className="p-2 sm:p-2.5 bg-slate-50 hover:bg-emerald-50 rounded-xl transition-colors text-slate-400 hover:text-emerald-500"><ChevronLeft size={20} /></button>
-                  <div className="flex flex-col items-center px-4 sm:px-6 min-w-[140px]">
-                     <span className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Periode Laporan</span>
-                     <span className="text-xs sm:text-sm font-black text-slate-700">{formatPeriode(weekDates[0], weekDates[4])}</span>
-                  </div> 
-                  <button onClick={() => changePublicWeek(7)} className="p-2 sm:p-2.5 bg-slate-50 hover:bg-emerald-50 rounded-xl transition-colors text-slate-400 hover:text-emerald-500"><ChevronRight size={20} /></button>
-               </div>
-               
-               {/* Tab Toggle */}
-               <div className="flex w-full lg:w-auto bg-slate-200/50 p-1.5 rounded-2xl">
-                  <button onClick={() => setPublicTab('lesson_plan')} className={`flex-1 lg:flex-none py-2.5 sm:py-3 px-6 text-[11px] sm:text-xs font-black rounded-xl transition-all duration-300 ${publicTab === 'lesson_plan' ? 'bg-white text-emerald-600 shadow-sm ring-1 ring-slate-900/5' : 'text-slate-500 hover:text-slate-700'}`}>Target (Lesson Plan)</button>
-                  <button onClick={() => setPublicTab('jurnal')} className={`flex-1 lg:flex-none py-2.5 sm:py-3 px-6 text-[11px] sm:text-xs font-black rounded-xl transition-all duration-300 ${publicTab === 'jurnal' ? 'bg-white text-blue-600 shadow-sm ring-1 ring-slate-900/5' : 'text-slate-500 hover:text-slate-700'}`}>Capaian (Jurnal)</button>
-               </div>
+              {/* Navigasi Arsip Mingguan */}
+              <div className="flex items-center justify-between w-full lg:w-auto bg-white rounded-2xl shadow-sm border border-slate-200/60 p-1.5">
+                <button onClick={() => changePublicWeek(-7)} className="p-2 sm:p-2.5 bg-slate-50 hover:bg-emerald-50 rounded-xl transition-colors text-slate-400 hover:text-emerald-500"><ChevronLeft size={20} /></button>
+                <div className="flex flex-col items-center px-4 sm:px-6 min-w-[140px]">
+                  <span className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Periode Laporan</span>
+                  <span className="text-xs sm:text-sm font-black text-slate-700">{formatPeriode(weekDates[0], weekDates[4])}</span>
+                </div>
+                <button onClick={() => changePublicWeek(7)} className="p-2 sm:p-2.5 bg-slate-50 hover:bg-emerald-50 rounded-xl transition-colors text-slate-400 hover:text-emerald-500"><ChevronRight size={20} /></button>
+              </div>
+
+              {/* Tab Toggle */}
+              <div className="flex w-full lg:w-auto bg-slate-200/50 p-1.5 rounded-2xl">
+                <button onClick={() => setPublicTab('lesson_plan')} className={`flex-1 lg:flex-none py-2.5 sm:py-3 px-6 text-[11px] sm:text-xs font-black rounded-xl transition-all duration-300 ${publicTab === 'lesson_plan' ? 'bg-white text-emerald-600 shadow-sm ring-1 ring-slate-900/5' : 'text-slate-500 hover:text-slate-700'}`}>Target (Lesson Plan)</button>
+                <button onClick={() => setPublicTab('jurnal')} className={`flex-1 lg:flex-none py-2.5 sm:py-3 px-6 text-[11px] sm:text-xs font-black rounded-xl transition-all duration-300 ${publicTab === 'jurnal' ? 'bg-white text-blue-600 shadow-sm ring-1 ring-slate-900/5' : 'text-slate-500 hover:text-slate-700'}`}>Capaian (Jurnal)</button>
+              </div>
             </div>
 
             {/* Kembali ke pekan ini */}
             {formatDateObj(weekStart) !== formatDateObj(getMonday(new Date())) && !isPrintingAll && (
               <div className="bg-amber-50/50 text-center py-2 border-b border-amber-100 print:hidden">
-                <button 
+                <button
                   onClick={() => setPublicWeekStart(getMonday(new Date()))}
                   className="text-[11px] sm:text-xs font-black text-amber-600 hover:text-amber-700 transition-colors flex items-center justify-center gap-1.5 mx-auto"
                 >
@@ -700,119 +755,119 @@ const LoginScreen = ({ onLogin }) => {
 
             {/* Daftar Hari */}
             <div className="p-4 sm:p-10 flex flex-col gap-5 sm:gap-6 bg-[#f8fafc]">
-               {datesToDisplay.map((dateObj) => {
-                  const dateStr = formatDateObj(dateObj);
-                  const rec = publicStudent.records?.[dateStr] || {};
-                  
-                  // Cek apakah ada data di hari tersebut
-                  const hasData = (rec[k.t] && rec[k.t] !== '-') || (rec[k.f] && rec[k.f] !== '-') || (rec[k.m] && rec[k.m] !== '-') || (rec[k.c] && rec[k.c] !== '-') || (rec[k.cT] && rec[k.cT] !== '-') || (rec[k.cF] && rec[k.cF] !== '-');
-                  if (!hasData) return null;
-                  
-                  const valT = formatPrintData(rec[k.t], rec[k.h], rec[k.tNilai], rec[k.tsNilai]);
-                  const valF = formatPrintData(rec[k.f], rec[k.af], null, rec[k.fNilai]);
-                  const valM = formatPrintData(rec[k.m], '-', null, null);
-                  const valC = rec[k.c] && rec[k.c] !== '-' ? String(rec[k.c]) : '-';
-                  const valCT = rec[k.cT] && rec[k.cT] !== '-' ? String(rec[k.cT]) : '-';
-                  const valCF = rec[k.cF] && rec[k.cF] !== '-' ? String(rec[k.cF]) : '-';
+              {datesToDisplay.map((dateObj) => {
+                const dateStr = formatDateObj(dateObj);
+                const rec = publicStudent.records?.[dateStr] || {};
 
-                  return (
-                    <div key={dateStr} className="bg-white border border-slate-200/60 rounded-[20px] sm:rounded-[2rem] p-5 sm:p-6 shadow-sm hover:shadow-md transition-all duration-300 print:break-inside-avoid relative overflow-hidden group">
-                       
-                       {/* Indicator Line */}
-                       <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-emerald-400 opacity-80"></div>
+                // Cek apakah ada data di hari tersebut
+                const hasData = (rec[k.t] && rec[k.t] !== '-') || (rec[k.f] && rec[k.f] !== '-') || (rec[k.m] && rec[k.m] !== '-') || (rec[k.c] && rec[k.c] !== '-') || (rec[k.cT] && rec[k.cT] !== '-') || (rec[k.cF] && rec[k.cF] !== '-');
+                if (!hasData) return null;
 
-                       <div className="flex justify-between items-center mb-5 sm:mb-6 border-b border-slate-100 pb-4 pl-3">
-                          <div className="flex items-center gap-3">
-                             <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                               <Calendar size={20} />
-                             </div>
-                             <div className="flex flex-col">
-                               <span className="text-xs sm:text-sm font-black text-slate-800 uppercase tracking-wider"> {['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'][dateObj.getDay()]}</span>
-                               <span className="text-[10px] sm:text-xs font-bold text-slate-400">{formatShortDate(dateObj)}</span>
-                             </div>
-                          </div>
-                       </div>
-                       
-                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 pl-2 sm:pl-3">
-                          {/* Tahsin */}
-                          <div className="bg-blue-50/40 p-4 rounded-2xl border border-blue-100/50 hover:bg-blue-50/80 transition-colors flex flex-col">
-                             <div className="flex items-center gap-2 mb-2 sm:mb-3">
-                               <div className="p-1.5 bg-blue-100 text-blue-600 rounded-lg"><BookOpen size={14} strokeWidth={2.5} /></div>
-                               <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-blue-700">Tahsin</span>
-                             </div>
-                             <div className="pl-1"><ExpandableText text={valT} /></div>
-                          </div>
+                const valT = formatPrintData(rec[k.t], rec[k.h], rec[k.tNilai], rec[k.tsNilai]);
+                const valF = formatPrintData(rec[k.f], rec[k.af], null, rec[k.fNilai]);
+                const valM = formatPrintData(rec[k.m], '-', null, null);
+                const valC = rec[k.c] && rec[k.c] !== '-' ? String(rec[k.c]) : '-';
+                const valCT = rec[k.cT] && rec[k.cT] !== '-' ? String(rec[k.cT]) : '-';
+                const valCF = rec[k.cF] && rec[k.cF] !== '-' ? String(rec[k.cF]) : '-';
 
-                          {/* Tahfidz */}
-                          <div className="bg-purple-50/40 p-4 rounded-2xl border border-purple-100/50 hover:bg-purple-50/80 transition-colors flex flex-col">
-                             <div className="flex items-center gap-2 mb-2 sm:mb-3">
-                               <div className="p-1.5 bg-purple-100 text-purple-600 rounded-lg"><Mic size={14} strokeWidth={2.5} /></div>
-                               <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-purple-700">Tahfidz</span>
-                             </div>
-                             <div className="pl-1"><ExpandableText text={valF} /></div>
-                          </div>
+                return (
+                  <div key={dateStr} className="bg-white border border-slate-200/60 rounded-[20px] sm:rounded-[2rem] p-5 sm:p-6 shadow-sm hover:shadow-md transition-all duration-300 print:break-inside-avoid relative overflow-hidden group">
 
-                          {/* Murojaah */}
-                          <div className="bg-emerald-50/40 p-4 rounded-2xl border border-emerald-100/50 hover:bg-emerald-50/80 transition-colors flex flex-col">
-                             <div className="flex items-center gap-2 mb-2 sm:mb-3">
-                               <div className="p-1.5 bg-emerald-100 text-emerald-600 rounded-lg"><Repeat size={14} strokeWidth={2.5} /></div>
-                               <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-emerald-700">Murojaah</span>
-                             </div>
-                             <div className="pl-1"><ExpandableText text={valM} /></div>
-                          </div>
+                    {/* Indicator Line */}
+                    <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-emerald-400 opacity-80"></div>
 
-                          {/* Catatan */}
-                          <div className="bg-orange-50/40 p-4 rounded-2xl border border-orange-100/50 hover:bg-orange-50/80 transition-colors flex flex-col">
-                             <div className="flex items-center gap-2 mb-2 sm:mb-3">
-                               <div className="p-1.5 bg-orange-100 text-orange-600 rounded-lg"><FileText size={14} strokeWidth={2.5} /></div>
-                               <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-orange-700">Catatan</span>
-                             </div>
-                             <div className="pl-1">{renderCatatanDetail(valC, valCT, valCF)}</div>
-                          </div>
-                       </div>
+                    <div className="flex justify-between items-center mb-5 sm:mb-6 border-b border-slate-100 pb-4 pl-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                          <Calendar size={20} />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-xs sm:text-sm font-black text-slate-800 uppercase tracking-wider"> {['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][dateObj.getDay()]}</span>
+                          <span className="text-[10px] sm:text-xs font-bold text-slate-400">{formatShortDate(dateObj)}</span>
+                        </div>
+                      </div>
                     </div>
-                  );
-               })}
-               
-               {/* Tampilan Jika Pekan Kosong */}
-               {datesToDisplay.every(d => { // Add dark mode styles to this empty state
-                  const ds = formatDateObj(d); // Fix: Use formatDateObj(d) instead of d
-                  const r = publicStudent.records?.[ds] || {};
-                  return !((r[k.t] && r[k.t] !== '-') || (r[k.f] && r[k.f] !== '-') || (r[k.m] && r[k.m] !== '-') || (r[k.c] && r[k.c] !== '-') || (r[k.cT] && r[k.cT] !== '-') || (r[k.cF] && r[k.cF] !== '-'));
-               }) && ( 
-                  <div className="py-20 text-center flex flex-col items-center gap-3 opacity-40">
-                     <Calendar size={48} />
-                     <p className="font-bold">{isPrintingAll ? 'Tidak ada riwayat rekaman.' : 'Tidak ada data rekaman pada pekan ini.'}</p>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 pl-2 sm:pl-3">
+                      {/* Tahsin */}
+                      <div className="bg-blue-50/40 p-4 rounded-2xl border border-blue-100/50 hover:bg-blue-50/80 transition-colors flex flex-col">
+                        <div className="flex items-center gap-2 mb-2 sm:mb-3">
+                          <div className="p-1.5 bg-blue-100 text-blue-600 rounded-lg"><BookOpen size={14} strokeWidth={2.5} /></div>
+                          <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-blue-700">Tahsin</span>
+                        </div>
+                        <div className="pl-1"><ExpandableText text={valT} /></div>
+                      </div>
+
+                      {/* Tahfidz */}
+                      <div className="bg-purple-50/40 p-4 rounded-2xl border border-purple-100/50 hover:bg-purple-50/80 transition-colors flex flex-col">
+                        <div className="flex items-center gap-2 mb-2 sm:mb-3">
+                          <div className="p-1.5 bg-purple-100 text-purple-600 rounded-lg"><Mic size={14} strokeWidth={2.5} /></div>
+                          <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-purple-700">Tahfidz</span>
+                        </div>
+                        <div className="pl-1"><ExpandableText text={valF} /></div>
+                      </div>
+
+                      {/* Murojaah */}
+                      <div className="bg-emerald-50/40 p-4 rounded-2xl border border-emerald-100/50 hover:bg-emerald-50/80 transition-colors flex flex-col">
+                        <div className="flex items-center gap-2 mb-2 sm:mb-3">
+                          <div className="p-1.5 bg-emerald-100 text-emerald-600 rounded-lg"><Repeat size={14} strokeWidth={2.5} /></div>
+                          <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-emerald-700">Murojaah</span>
+                        </div>
+                        <div className="pl-1"><ExpandableText text={valM} /></div>
+                      </div>
+
+                      {/* Catatan */}
+                      <div className="bg-orange-50/40 p-4 rounded-2xl border border-orange-100/50 hover:bg-orange-50/80 transition-colors flex flex-col">
+                        <div className="flex items-center gap-2 mb-2 sm:mb-3">
+                          <div className="p-1.5 bg-orange-100 text-orange-600 rounded-lg"><FileText size={14} strokeWidth={2.5} /></div>
+                          <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-orange-700">Catatan</span>
+                        </div>
+                        <div className="pl-1">{renderCatatanDetail(valC, valCT, valCF)}</div>
+                      </div>
+                    </div>
                   </div>
-               )}
+                );
+              })}
+
+              {/* Tampilan Jika Pekan Kosong */}
+              {datesToDisplay.every(d => { // Add dark mode styles to this empty state
+                const ds = formatDateObj(d); // Fix: Use formatDateObj(d) instead of d
+                const r = publicStudent.records?.[ds] || {};
+                return !((r[k.t] && r[k.t] !== '-') || (r[k.f] && r[k.f] !== '-') || (r[k.m] && r[k.m] !== '-') || (r[k.c] && r[k.c] !== '-') || (r[k.cT] && r[k.cT] !== '-') || (r[k.cF] && r[k.cF] !== '-'));
+              }) && (
+                  <div className="py-20 text-center flex flex-col items-center gap-3 opacity-40">
+                    <Calendar size={48} />
+                    <p className="font-bold">{isPrintingAll ? 'Tidak ada riwayat rekaman.' : 'Tidak ada data rekaman pada pekan ini.'}</p>
+                  </div>
+                )}
             </div>
 
             {/* Footer Laporan */}
             <div className="bg-slate-900 p-6 sm:p-10 flex flex-col sm:flex-row justify-between items-center gap-5 text-white text-center sm:text-left relative overflow-hidden">
-               <div className="absolute inset-0 opacity-10" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff'%3E%3Cpath d='M50 5 L62 38 L95 50 L62 62 L50 95 L38 62 L5 50 L38 38 Z' /%3E%3C/g%3E%3C/svg%3E")`, backgroundSize: '40px 40px' }}></div>
-               <div className="flex items-center justify-center sm:justify-start gap-4 w-full sm:w-auto relative z-10">
-                  <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center backdrop-blur-sm border border-white/10 shadow-inner"><Users size={20} className="text-emerald-400" /></div>
-                  <div className="flex flex-col">
-                    <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest mb-0.5">Guru / Pembimbing</span>
-                    <strong className="text-sm sm:text-base font-black text-white">{publicTeacher || '-'}</strong>
-                  </div>
-               </div> 
-               <div className="flex items-center justify-center sm:justify-start gap-4 w-full sm:w-auto relative z-10">
-                  <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 flex items-center justify-center backdrop-blur-sm border border-emerald-500/20 shadow-inner"><Calendar size={20} className="text-emerald-400" /></div>
-                  <div className="flex flex-col">
-                    <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest mb-0.5">Periode Evaluasi</span>
-                    <strong className="text-sm sm:text-base font-black text-white">{formatPeriode(weekDates[0], weekDates[4])}</strong>
-                  </div>
-               </div>
+              <div className="absolute inset-0 opacity-10" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff'%3E%3Cpath d='M50 5 L62 38 L95 50 L62 62 L50 95 L38 62 L5 50 L38 38 Z' /%3E%3C/g%3E%3C/svg%3E")`, backgroundSize: '40px 40px' }}></div>
+              <div className="flex items-center justify-center sm:justify-start gap-4 w-full sm:w-auto relative z-10">
+                <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center backdrop-blur-sm border border-white/10 shadow-inner"><Users size={20} className="text-emerald-400" /></div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest mb-0.5">Guru / Pembimbing</span>
+                  <strong className="text-sm sm:text-base font-black text-white">{publicTeacher || '-'}</strong>
+                </div>
+              </div>
+              <div className="flex items-center justify-center sm:justify-start gap-4 w-full sm:w-auto relative z-10">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 flex items-center justify-center backdrop-blur-sm border border-emerald-500/20 shadow-inner"><Calendar size={20} className="text-emerald-400" /></div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest mb-0.5">Periode Evaluasi</span>
+                  <strong className="text-sm sm:text-base font-black text-white">{formatPeriode(weekDates[0], weekDates[4])}</strong>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-        
+
         <div className="mt-8 mb-12 text-center flex flex-col items-center gap-2">
-           <div className="w-12 h-1 overflow-hidden bg-slate-200 rounded-full mb-2">
-              <div className="h-full bg-emerald-500 w-1/2 mx-auto"></div>
-           </div>
-           <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">&copy; 2026 Juman Jayyidin</p>
+          <div className="w-12 h-1 overflow-hidden bg-slate-200 rounded-full mb-2">
+            <div className="h-full bg-emerald-500 w-1/2 mx-auto"></div>
+          </div>
+          <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">&copy; 2026 Juman Jayyidin</p>
         </div>
       </div>
     );
@@ -834,165 +889,167 @@ const LoginScreen = ({ onLogin }) => {
 
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center relative overflow-hidden transition-colors duration-300">
-         {/* HEADER PORTAL - AKSES LOGIN & DAFTAR */}
-         <header className="w-full bg-white/80 border-slate-100 backdrop-blur-md border-b px-4 sm:px-8 py-4 flex justify-between items-center z-50 sticky top-0 shadow-sm transition-all duration-500">
-            <div className="flex items-center gap-2">
-               <div className="w-8 h-8 sm:w-10 sm:h-10">
-                  {institutionLogo ? <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain" /> : <BookOpen size={24} className="text-emerald-500" />}
-               </div>
-               <div className="flex flex-col">
-                  <span className="font-arabic font-bold text-slate-800 tracking-tighter text-lg sm:text-2xl transition-all leading-tight">MyQuranPlan</span>
-                  <div className="h-0.5 w-full bg-gradient-to-r from-transparent via-amber-500 to-transparent opacity-70 -mt-1"></div>
-               </div>
+        {/* HEADER PORTAL - AKSES LOGIN & DAFTAR */}
+        <header className="w-full bg-white/80 border-slate-100 backdrop-blur-md border-b px-4 sm:px-8 py-4 flex justify-between items-center z-50 sticky top-0 shadow-sm transition-all duration-500">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 sm:w-10 sm:h-10">
+              {institutionLogo ? <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain" /> : <BookOpen size={24} className="text-emerald-500" />}
             </div>
-            <div className="flex items-center gap-2 sm:gap-3">
-               <button 
-                 onClick={() => { setIsParentPortal(false); setIsRegistering(false); setIsForgotPassword(false); }}
-                 className="text-[10px] sm:text-xs font-bold text-slate-600 hover:text-emerald-600 px-3 py-2 rounded-xl transition-colors"
-               > 
-                 Masuk
-               </button>
-               <button 
-                 onClick={() => { setIsParentPortal(false); setIsRegistering(true); setIsForgotPassword(false); }}
-                 className="text-[10px] sm:text-xs font-black bg-emerald-500 text-white px-4 py-2 rounded-xl hover:bg-emerald-600 transition-all shadow-md shadow-emerald-100"
-               >
-                 Daftar Guru
-               </button>
+            <div className="flex flex-col">
+              <span className="font-arabic font-bold text-slate-800 tracking-tighter text-lg sm:text-2xl transition-all leading-tight">MyQuranPlan</span>
+              <div className="h-0.5 w-full bg-gradient-to-r from-transparent via-amber-500 to-transparent opacity-70 -mt-1"></div>
             </div>
-         </header>
+          </div>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              onClick={() => { setIsParentPortal(false); setIsRegistering(false); setIsForgotPassword(false); }}
+              className="text-[10px] sm:text-xs font-bold text-slate-600 hover:text-emerald-600 px-3 py-2 rounded-xl transition-colors"
+            >
+              Masuk
+            </button>
+            <button
+              onClick={() => { setIsParentPortal(false); setIsRegistering(true); setIsForgotPassword(false); }}
+              className="text-[10px] sm:text-xs font-black bg-emerald-500 text-white px-4 py-2 rounded-xl hover:bg-emerald-600 transition-all shadow-md shadow-emerald-100"
+            >
+              Daftar Guru
+            </button>
+          </div>
+        </header>
 
-         <div className="absolute inset-0 opacity-[0.03] pointer-events-none transition-opacity" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%2310b981'%3E%3Cpath d='M50 5 L62 38 L95 50 L62 62 L50 95 L38 62 L5 50 L38 38 Z' /%3E%3Cpath d='M50 5 L62 38 L95 50 L62 62 L50 95 L38 62 L5 50 L38 38 Z' transform='rotate(45 50 50)' /%3E%3C/g%3E%3C/svg%3E")`, backgroundSize: '100px 100px' }}></div>
-         
-         <div className="w-full max-w-4xl z-10 px-4 sm:px-8 py-8 md:py-12 flex-1">
-            <div className="flex flex-col items-center mb-6 sm:mb-8 text-center px-4">
-               <div className="w-20 h-20 sm:w-24 sm:h-24 mb-4 sm:mb-6 transition-transform hover:scale-110 duration-500">
-                  {institutionLogo ? <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain" /> : <BookOpen size={64} className="text-emerald-500" />}
-               </div>
-               <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-widest mb-3 sm:mb-4 animate-in fade-in slide-in-from-top-4 duration-1000">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                  </span>
-                  Ahlan wa Sahlan, Ayah & Bunda 
-               </div>
-               <div className="flex flex-col items-center">
-                  <h1 className="font-arabic text-3xl sm:text-4xl font-bold text-slate-800 tracking-tighter mb-1 transition-all">MyQuranPlan</h1>
-                  <div className="h-0.5 w-32 bg-gradient-to-r from-transparent via-amber-500 to-transparent mb-2"></div>
-               </div>
-               <p className="text-slate-500 font-medium max-w-md leading-relaxed">
-                  Selamat datang di platform pemantauan hafalan Ananda. Silakan cari nama Ananda untuk melihat target (Lesson Plan) serta capaian harian (Jurnal).
-               </p>
+        <div className="absolute inset-0 opacity-[0.03] pointer-events-none transition-opacity" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%2310b981'%3E%3Cpath d='M50 5 L62 38 L95 50 L62 62 L50 95 L38 62 L5 50 L38 38 Z' /%3E%3Cpath d='M50 5 L62 38 L95 50 L62 62 L50 95 L38 62 L5 50 L38 38 Z' transform='rotate(45 50 50)' /%3E%3C/g%3E%3C/svg%3E")`, backgroundSize: '100px 100px' }}></div>
+
+        <div className="w-full max-w-4xl z-10 px-4 sm:px-8 py-8 md:py-12 flex-1">
+          <div className="flex flex-col items-center mb-6 sm:mb-8 text-center px-4">
+            <div className="w-20 h-20 sm:w-24 sm:h-24 mb-4 sm:mb-6 transition-transform hover:scale-110 duration-500">
+              {institutionLogo ? <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain" /> : <BookOpen size={64} className="text-emerald-500" />}
+            </div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-widest mb-3 sm:mb-4 animate-in fade-in slide-in-from-top-4 duration-1000">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              Ahlan wa Sahlan, Ayah & Bunda
+            </div>
+            <div className="flex flex-col items-center">
+              <h1 className="font-arabic text-3xl sm:text-4xl font-bold text-slate-800 tracking-tighter mb-1 transition-all">MyQuranPlan</h1>
+              <div className="h-0.5 w-32 bg-gradient-to-r from-transparent via-amber-500 to-transparent mb-2"></div>
+            </div>
+            <p className="text-slate-500 font-medium max-w-md leading-relaxed">
+              Selamat datang di platform pemantauan hafalan Ananda. Silakan cari nama Ananda untuk melihat target (Lesson Plan) serta capaian harian (Jurnal).
+            </p>
+          </div>
+
+          <div className="bg-white border-white rounded-[2.5rem] shadow-xl border p-6 sm:p-8 transition-all duration-500">
+            <div className="relative mb-4">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+              <input
+                type="text"
+                inputMode="search"
+                enterKeyHint="search"
+                placeholder="Ketik nama Ananda..."
+                value={localPortalSearch}
+                onChange={(e) => setLocalPortalSearch(e.target.value)}
+                className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl pl-12 pr-4 py-4 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 text-lg font-bold text-slate-700 transition-all"
+              />
             </div>
 
-            <div className="bg-white border-white rounded-[2.5rem] shadow-xl border p-6 sm:p-8 transition-all duration-500">
-               <div className="relative mb-4">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                  <input 
-                    type="text" 
-                    placeholder="Ketik nama Ananda..." 
-                    value={portalSearch}
-                    onChange={(e) => setPortalSearch(e.target.value)} 
-                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl pl-12 pr-4 py-4 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 text-lg font-bold text-slate-700 transition-all"
-                  />
-               </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+              <div className="relative group">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500 transition-colors pointer-events-none" size={16} />
+                <select
+                  value={portalGuruFilter}
+                  onChange={(e) => setPortalGuruFilter(e.target.value)}
+                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl pl-10 pr-3 py-3 text-xs font-bold text-slate-600 outline-none focus:border-emerald-500 focus:bg-white transition-all cursor-pointer appearance-none"
+                >
+                  <option value="">Semua Ustadz/ah</option>
+                  {availableGurus.map(g => <option key={g} value={g}>{g}</option>)}
+                </select>
+              </div>
+              <div className="relative group">
+                <LayoutGrid className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500 transition-colors pointer-events-none" size={16} />
+                <select
+                  value={portalKelasFilter}
+                  onChange={(e) => setPortalKelasFilter(e.target.value)}
+                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl pl-10 pr-3 py-3 text-xs font-bold text-slate-600 outline-none focus:border-emerald-500 focus:bg-white transition-all cursor-pointer appearance-none"
+                >
+                  <option value="">Semua Kelas</option>
+                  {kelasList.map(k => <option key={k} value={k}>Kelas {k}</option>)}
+                </select>
+              </div>
+              <div className="relative group">
+                <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500 transition-colors pointer-events-none" size={16} />
+                <select
+                  value={portalHalaqohFilter}
+                  onChange={(e) => setPortalHalaqohFilter(e.target.value)}
+                  disabled={isHalaqohLocked}
+                  className={`w-full bg-slate-50 border-2 border-slate-100 rounded-xl pl-10 pr-3 py-3 text-xs font-bold text-slate-600 outline-none focus:border-emerald-500 focus:bg-white transition-all cursor-pointer appearance-none ${isHalaqohLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
+                >
+                  <option value="">Semua Halaqoh</option>
+                  {availableHalaqohs.map(h => <option key={h} value={h}>{h}</option>)}
+                </select>
+              </div>
+            </div>
 
-               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
-                  <div className="relative group">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500 transition-colors pointer-events-none" size={16} />
-                    <select 
-                      value={portalGuruFilter} 
-                      onChange={(e) => setPortalGuruFilter(e.target.value)}
-                      className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl pl-10 pr-3 py-3 text-xs font-bold text-slate-600 outline-none focus:border-emerald-500 focus:bg-white transition-all cursor-pointer appearance-none"
-                    >
-                      <option value="">Semua Ustadz/ah</option>
-                      {availableGurus.map(g => <option key={g} value={g}>{g}</option>)}
-                    </select>
-                  </div>
-                  <div className="relative group">
-                    <LayoutGrid className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500 transition-colors pointer-events-none" size={16} />
-                    <select 
-                      value={portalKelasFilter} 
-                      onChange={(e) => setPortalKelasFilter(e.target.value)}
-                      className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl pl-10 pr-3 py-3 text-xs font-bold text-slate-600 outline-none focus:border-emerald-500 focus:bg-white transition-all cursor-pointer appearance-none"
-                    >
-                      <option value="">Semua Kelas</option>
-                      {kelasList.map(k => <option key={k} value={k}>Kelas {k}</option>)}
-                    </select>
-                  </div>
-                  <div className="relative group">
-                    <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500 transition-colors pointer-events-none" size={16} />
-                    <select 
-                      value={portalHalaqohFilter} 
-                      onChange={(e) => setPortalHalaqohFilter(e.target.value)}
-                      disabled={isHalaqohLocked}
-                      className={`w-full bg-slate-50 border-2 border-slate-100 rounded-xl pl-10 pr-3 py-3 text-xs font-bold text-slate-600 outline-none focus:border-emerald-500 focus:bg-white transition-all cursor-pointer appearance-none ${isHalaqohLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
-                    >
-                      <option value="">Semua Halaqoh</option>
-                      {availableHalaqohs.map(h => <option key={h} value={h}>{h}</option>)}
-                    </select>
-                  </div>
-               </div>
+            {isSearching && (
+              <button
+                onClick={() => { setLocalPortalSearch(''); setPortalSearch(''); setPortalKelasFilter(''); if (!isHalaqohLocked) setPortalHalaqohFilter(''); setPortalGuruFilter(''); }}
+                className="mb-6 w-full py-3.5 bg-red-50 text-red-600 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:bg-red-100 flex items-center justify-center gap-2 animate-in fade-in slide-in-from-top-1 duration-300"
+              >
+                <RotateCcw size={14} /> Reset Pencarian
+              </button>
+            )}
 
-               {isSearching && (
-                 <button 
-                   onClick={() => { setPortalSearch(''); setPortalKelasFilter(''); if (!isHalaqohLocked) setPortalHalaqohFilter(''); setPortalGuruFilter(''); }} 
-                   className="mb-6 w-full py-3.5 bg-red-50 text-red-600 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:bg-red-100 flex items-center justify-center gap-2 animate-in fade-in slide-in-from-top-1 duration-300"
-                 >
-                   <RotateCcw size={14} /> Reset Pencarian
-                 </button>
-               )}
-
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[550px] overflow-y-auto custom-scrollbar pr-2 transition-colors">
-                  {isPublicLoading ? (
-                    <div className="col-span-full grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {[...Array(6)].map((_, i) => (
-                        <div key={i} className="flex items-center justify-between p-4 bg-slate-50/50 border border-slate-100 rounded-2xl animate-pulse">
-                          <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-full bg-slate-200"></div>
-                            <div className="flex flex-col gap-2">
-                              <div className="h-4 w-32 sm:w-48 bg-slate-200 rounded-md"></div>
-                              <div className="h-3 w-20 sm:w-32 bg-slate-100 rounded-md"></div>
-                            </div>
-                          </div>
-                          <div className="w-5 h-5 bg-slate-100 rounded-md opacity-30"></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[550px] overflow-y-auto custom-scrollbar pr-2 transition-colors">
+              {isPublicLoading ? (
+                <div className="col-span-full grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {[...Array(6)].map((_, i) => (
+                    <div key={i} className="flex items-center justify-between p-4 bg-slate-50/50 border border-slate-100 rounded-2xl animate-pulse">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-full bg-slate-200"></div>
+                        <div className="flex flex-col gap-2">
+                          <div className="h-4 w-32 sm:w-48 bg-slate-200 rounded-md"></div>
+                          <div className="h-3 w-20 sm:w-32 bg-slate-100 rounded-md"></div>
                         </div>
-                      ))}
+                      </div>
+                      <div className="w-5 h-5 bg-slate-100 rounded-md opacity-30"></div>
                     </div>
-                  ) : !isSearching ? (
-                    <div className="col-span-full py-24 text-center flex flex-col items-center gap-4 text-slate-300 animate-in fade-in duration-700">
-                       <SearchCode size={48} className="opacity-20" />
-                   <p className="font-medium italic max-w-[280px]">Silakan masukkan nama siswa atau gunakan filter di atas untuk melihat laporan.</p>
+                  ))}
+                </div>
+              ) : !isSearching ? (
+                <div className="col-span-full py-24 text-center flex flex-col items-center gap-4 text-slate-300 animate-in fade-in duration-700">
+                  <SearchCode size={48} className="opacity-20" />
+                  <p className="font-medium italic max-w-[280px]">Silakan masukkan nama siswa atau gunakan filter di atas untuk melihat laporan.</p>
+                </div>
+              ) : filtered.length > 0 ? (
+                filtered.map((s, index) => (
+                  <button
+                    key={s.id}
+                    onClick={() => handleSelectStudent(s)}
+                    className="flex items-center justify-between p-4 bg-slate-50 hover:bg-emerald-50 border border-slate-100 rounded-2xl transition-all group animate-row-slide-in"
+                    style={{ animationDelay: `${index * 0.05}s` }}
+                  >
+                    <div className="flex items-center gap-4 text-left">
+                      <div className="w-12 h-12 rounded-full bg-white border-2 border-slate-200 flex items-center justify-center text-slate-400 font-black group-hover:border-emerald-500 group-hover:text-emerald-500 transition-colors overflow-hidden">
+                        {s.photo ? <img src={s.photo} alt={s.name} className="w-full h-full object-cover" /> : getInitials(s.name)}
+                      </div>
+                      <div>
+                        <p className={`font-black text-slate-800 group-hover:text-emerald-700 transition-colors ${s.name.length > 24 ? 'text-xs sm:text-sm whitespace-normal line-clamp-2 leading-tight' : s.name.length > 18 ? 'text-sm sm:text-[15px] whitespace-normal line-clamp-2 leading-tight' : 'text-base truncate'}`}>{s.name}</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Kelas {s.kelas || '-'} • {s.halaqoh || '-'}</p>
+                      </div>
                     </div>
-                  ) : filtered.length > 0 ? (
-                    filtered.map((s, index) => (
-                      <button 
-                        key={s.id} 
-                        onClick={() => handleSelectStudent(s)} 
-                        className="flex items-center justify-between p-4 bg-slate-50 hover:bg-emerald-50 border border-slate-100 rounded-2xl transition-all group animate-row-slide-in"
-                        style={{ animationDelay: `${index * 0.05}s` }}
-                      >
-                        <div className="flex items-center gap-4 text-left">
-                           <div className="w-12 h-12 rounded-full bg-white border-2 border-slate-200 flex items-center justify-center text-slate-400 font-black group-hover:border-emerald-500 group-hover:text-emerald-500 transition-colors overflow-hidden">
-                              {s.photo ? <img src={s.photo} alt={s.name} className="w-full h-full object-cover" /> : getInitials(s.name)}
-                           </div>
-                           <div> 
-                              <p className={`font-black text-slate-800 group-hover:text-emerald-700 transition-colors ${s.name.length > 24 ? 'text-xs sm:text-sm whitespace-normal line-clamp-2 leading-tight' : s.name.length > 18 ? 'text-sm sm:text-[15px] whitespace-normal line-clamp-2 leading-tight' : 'text-base truncate'}`}>{s.name}</p>
-                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Kelas {s.kelas || '-'} • {s.halaqoh || '-'}</p>
-                           </div>
-                        </div>
-                        <ChevronRight size={20} className="text-slate-300 group-hover:text-emerald-500 transition-colors" />
-                      </button> 
-                    ))
-                  ) : (
+                    <ChevronRight size={20} className="text-slate-300 group-hover:text-emerald-500 transition-colors" />
+                  </button>
+                ))
+              ) : (
                 <div className="col-span-full py-12 text-center text-slate-400 font-bold">Siswa tidak ditemukan.</div>
-                  )}
-               </div>
+              )}
             </div>
-         </div>
-         {/* Footer for Parent Portal */} 
-         <footer className="w-full py-10 text-center z-10">
-            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">&copy; 2026 Juman Jayyidin. All rights reserved.</p>
-         </footer>
+          </div>
+        </div>
+        {/* Footer for Parent Portal */}
+        <footer className="w-full py-10 text-center z-10">
+          <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">&copy; 2026 Juman Jayyidin. All rights reserved.</p>
+        </footer>
       </div>
     );
   }
@@ -1000,9 +1057,9 @@ const LoginScreen = ({ onLogin }) => {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col justify-center items-center p-4 sm:p-6 relative overflow-hidden z-0 transition-all duration-500">
       {/* Pola Islami Samar (Islamic Geometric Pattern) */}
-      <div 
+      <div
         className="absolute inset-0 opacity-[0.03] pointer-events-none -z-20"
-        style={{ 
+        style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%2310b981'%3E%3Cpath d='M50 5 L62 38 L95 50 L62 62 L50 95 L38 62 L5 50 L38 38 Z' /%3E%3Cpath d='M50 5 L62 38 L95 50 L62 62 L50 95 L38 62 L5 50 L38 38 Z' transform='rotate(45 50 50)' /%3E%3C/g%3E%3C/svg%3E")`,
           backgroundSize: '100px 100px'
         }}
@@ -1015,22 +1072,22 @@ const LoginScreen = ({ onLogin }) => {
       <div className="w-full max-w-[420px] relative z-10 flex flex-col">
         {/* Card Login / Register */}
         <div className="bg-white/80 border-white shadow-[0_8px_30px_rgba(0,0,0,0.04)] backdrop-blur-2xl p-8 sm:p-10 rounded-[2.5rem] border flex flex-col relative overflow-hidden transition-all duration-500">
-          {/* Garis atas dekoratif */} 
+          {/* Garis atas dekoratif */}
           <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-emerald-400 to-[#00e676]"></div>
-          
+
           <div className="flex flex-col items-center mb-10 mt-2">
-             <div className="w-28 h-28 flex items-center justify-center mb-2 transition-all">
-                {institutionLogo && institutionLogo !== 'logo.png' ? (
-                  <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain animate-in fade-in zoom-in-95 duration-1000" />
-                ) : (
-                  <div className="text-emerald-500/80 animate-in fade-in duration-500">
-                    {isRegistering ? <UserPlus size={64} /> : isForgotPassword ? <HelpCircle size={64} /> : <BookOpen size={64} />}
-                  </div>
-                )}
-             </div> 
+            <div className="w-28 h-28 flex items-center justify-center mb-2 transition-all">
+              {institutionLogo && institutionLogo !== 'logo.png' ? (
+                <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain animate-in fade-in zoom-in-95 duration-1000" />
+              ) : (
+                <div className="text-emerald-500/80 animate-in fade-in duration-500">
+                  {isRegistering ? <UserPlus size={64} /> : isForgotPassword ? <HelpCircle size={64} /> : <BookOpen size={64} />}
+                </div>
+              )}
+            </div>
             <div className="flex flex-col items-center">
-               <h1 className="font-arabic text-2xl sm:text-3xl font-bold text-slate-800 tracking-tighter transition-all">MyQuranPlan</h1>
-               <div className="h-0.5 w-28 bg-gradient-to-r from-transparent via-amber-500 to-transparent mt-1"></div>
+              <h1 className="font-arabic text-2xl sm:text-3xl font-bold text-slate-800 tracking-tighter transition-all">MyQuranPlan</h1>
+              <div className="h-0.5 w-28 bg-gradient-to-r from-transparent via-amber-500 to-transparent mt-1"></div>
             </div>
             <p className="text-sm text-slate-500 font-medium mt-2 text-center">
               {isRegistering ? 'Daftar Akun Pengajar' : isForgotPassword ? 'Permintaan Reset Password' : 'Ahlan wa sahlan! Silakan masuk.'}
@@ -1041,16 +1098,16 @@ const LoginScreen = ({ onLogin }) => {
             {isRegistering && (
               <div className="group animate-in fade-in slide-in-from-top-2 duration-300">
                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 pl-1 transition-colors group-focus-within:text-emerald-500">Nama Lengkap & Gelar</label>
-                <div className="relative flex items-center"> 
+                <div className="relative flex items-center">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                     <GraduationCap size={18} className="text-slate-400 group-focus-within:text-emerald-500 transition-colors" />
                   </div>
-                  <input 
-                    type="text" 
-                    value={fullName} 
-                    onChange={(e) => {setFullName(e.target.value); setError(''); setSuccessMsg('');}} 
-                    className="w-full border-2 border-slate-100 rounded-2xl pl-11 pr-4 py-3.5 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 bg-slate-50/50 focus:bg-white text-sm font-bold text-slate-700 transition-all placeholder:text-slate-300 placeholder:font-semibold" 
-                    placeholder="Ust. / Usth. Ahmad..." 
+                  <input
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => { setFullName(e.target.value); setError(''); setSuccessMsg(''); }}
+                    className="w-full border-2 border-slate-100 rounded-2xl pl-11 pr-4 py-3.5 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 bg-slate-50/50 focus:bg-white text-sm font-bold text-slate-700 transition-all placeholder:text-slate-300 placeholder:font-semibold"
+                    placeholder="Ust. / Usth. Ahmad..."
                     required={isRegistering}
                   />
                 </div>
@@ -1059,25 +1116,25 @@ const LoginScreen = ({ onLogin }) => {
 
             <div className="group">
               <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 pl-1 transition-colors group-focus-within:text-emerald-500">Username</label>
-              <div className="relative flex items-center"> 
+              <div className="relative flex items-center">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <User size={18} className="text-slate-400 group-focus-within:text-emerald-500 transition-colors" />
                 </div>
-                <input 
-                  type="text" 
-                  value={username} 
-                  onChange={(e) => {setUsername(e.target.value); setError(''); setSuccessMsg('');}}
-                  className="w-full border-2 border-slate-100 rounded-2xl pl-11 pr-4 py-3.5 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 bg-slate-50/50 focus:bg-white text-sm font-bold text-slate-700 transition-all placeholder:text-slate-300 placeholder:font-semibold" 
-                  placeholder="Masukkan username..." 
-                  required 
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => { setUsername(e.target.value); setError(''); setSuccessMsg(''); }}
+                  className="w-full border-2 border-slate-100 rounded-2xl pl-11 pr-4 py-3.5 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 bg-slate-50/50 focus:bg-white text-sm font-bold text-slate-700 transition-all placeholder:text-slate-300 placeholder:font-semibold"
+                  placeholder="Masukkan username..."
+                  required
                 />
               </div>
             </div>
 
             {!isRegistering && !isForgotPassword && (
               <div className="text-right -mt-2">
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => { setIsForgotPassword(true); setError(''); setSuccessMsg(''); }}
                   className="text-[10px] font-bold text-emerald-600 hover:text-emerald-700 hover:underline transition-colors"
                 >
@@ -1088,21 +1145,22 @@ const LoginScreen = ({ onLogin }) => {
 
             <div className="group">
               {!isForgotPassword && (
-                <> 
+                <>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 pl-1 transition-colors group-focus-within:text-emerald-500">Password</label>
                   <div className="relative flex items-center">
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                       <Lock size={18} className="text-slate-400 group-focus-within:text-emerald-500 transition-colors" />
                     </div>
-                    <input 
-                      type={showPassword ? "text" : "password"} 
-                      value={password} 
-                      onChange={(e) => {setPassword(e.target.value); setError(''); setSuccessMsg('');}} 
-                      className="w-full border-2 border-slate-100 rounded-2xl pl-11 pr-12 py-3.5 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 bg-slate-50/50 focus:bg-white text-sm font-bold text-slate-700 transition-all placeholder:text-slate-300 placeholder:font-semibold" 
-                      placeholder="••••••••" 
-                      required 
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => { setPassword(e.target.value); setError(''); setSuccessMsg(''); }}
+                      className="w-full border-2 border-slate-100 rounded-2xl pl-11 pr-12 py-3.5 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 bg-slate-50/50 focus:bg-white text-sm font-bold text-slate-700 transition-all placeholder:text-slate-300 placeholder:font-semibold"
+                      placeholder="••••••••"
+                      required
+                      minLength={isRegistering ? 8 : undefined}
                     />
-                    <button 
+                    <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
@@ -1117,47 +1175,57 @@ const LoginScreen = ({ onLogin }) => {
 
             {isRegistering && (
               <div className="group animate-in fade-in slide-in-from-top-2 duration-300">
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 pl-1 transition-colors group-focus-within:text-emerald-500">Konfirmasi Password</label> 
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 pl-1 transition-colors group-focus-within:text-emerald-500">Konfirmasi Password</label>
                 <div className="relative flex items-center">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                     <Lock size={18} className="text-slate-400 group-focus-within:text-emerald-500 transition-colors" />
                   </div>
-                  <input 
-                    type={showPassword ? "text" : "password"} 
-                    value={confirmPassword} 
-                    onChange={(e) => {setConfirmPassword(e.target.value); setError(''); setSuccessMsg('');}} 
-                    className="w-full border-2 border-slate-100 rounded-2xl pl-11 pr-12 py-3.5 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 bg-slate-50/50 focus:bg-white text-sm font-bold text-slate-700 transition-all placeholder:text-slate-300 placeholder:font-semibold" 
-                    placeholder="Ulangi password..." 
-                    required={isRegistering} 
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={(e) => { setConfirmPassword(e.target.value); setError(''); setSuccessMsg(''); }}
+                    className="w-full border-2 border-slate-100 rounded-2xl pl-11 pr-12 py-3.5 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 bg-slate-50/50 focus:bg-white text-sm font-bold text-slate-700 transition-all placeholder:text-slate-300 placeholder:font-semibold"
+                    placeholder="Ulangi password..."
+                    required={isRegistering}
+                    minLength={isRegistering ? 8 : undefined}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+                    title={showConfirmPassword ? "Sembunyikan password" : "Lihat password"}
+                  >
+                    {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
                 </div>
               </div>
             )}
 
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               disabled={isLoading}
               className="mt-2 w-full bg-gradient-to-r from-[#00e676] to-emerald-500 hover:from-emerald-500 hover:to-[#00e676] text-white font-black py-4 rounded-2xl shadow-lg shadow-emerald-200 transition-all hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.98] flex items-center justify-center gap-2 text-sm disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {isLoading ? <Loader2 size={18} className="animate-spin" /> : isRegistering ? 'Ajukan Pendaftaran' : isForgotPassword ? 'Kirim Permintaan Reset' : 'Masuk ke Aplikasi'}
             </button>
           </form>
-          
+
           <div className="mt-6 flex flex-col gap-3 text-center border-t border-slate-100 pt-5">
-             {!isRegistering && !isForgotPassword && (
-               <button 
-                onClick={() => setIsParentPortal(true)} 
+            {!isRegistering && !isForgotPassword && (
+              <button
+                onClick={() => setIsParentPortal(true)}
                 className="w-full bg-slate-50 text-slate-500 font-black py-4 rounded-2xl hover:bg-slate-100 transition-all flex items-center justify-center gap-2 text-sm"
-               >
-                  <Search size={18} /> Kembali ke MyQuranPlan
-               </button> 
-             )}
-             <button onClick={() => { if(isForgotPassword) setIsForgotPassword(false); else setIsRegistering(!isRegistering); setError(''); setSuccessMsg(''); setConfirmPassword(''); }} className="text-xs text-emerald-600 font-bold hover:text-emerald-700 hover:underline transition-colors">
-                {isForgotPassword ? 'Batal dan Kembali ke Login' : isRegistering ? 'Sudah punya akun? Login di sini' : 'Belum punya akun? Daftar sebagai Guru'}
-             </button>
+              >
+                <Search size={18} /> Kembali ke MyQuranPlan
+              </button>
+            )}
+            <button onClick={() => { if (isForgotPassword) setIsForgotPassword(false); else setIsRegistering(!isRegistering); setError(''); setSuccessMsg(''); setConfirmPassword(''); }} className="text-xs text-emerald-600 font-bold hover:text-emerald-700 hover:underline transition-colors">
+              {isForgotPassword ? 'Batal dan Kembali ke Login' : isRegistering ? 'Sudah punya akun? Login di sini' : 'Belum punya akun? Daftar sebagai Guru'}
+            </button>
           </div>
         </div>
-        
+
         <p className="text-xs text-slate-400 font-bold mt-8 text-center drop-shadow-sm transition-colors">&copy; 2026 Juman Jayyidin. All rights reserved.</p>
       </div>
 
