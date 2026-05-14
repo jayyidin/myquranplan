@@ -160,6 +160,7 @@ const HomeView = ({
   searchQuery,
   setSearchQuery,
   studentsInHalaqohCount,
+  studentsInHalaqoh,
   targetReguler,
   targetAlQuran,
   showToast
@@ -747,8 +748,9 @@ const HomeView = ({
   }, [ghostDataMap]);
 
   const getDateStatus = (dateStr) => {
-    if (filteredStudents.length === 0) return { status: 'none', count: 0 };
-    const filledCount = filteredStudents.filter(s => {
+    const targetStudents = studentsInHalaqoh || filteredStudents;
+    if (targetStudents.length === 0) return { status: 'none', count: 0 };
+    const filledCount = targetStudents.filter(s => {
       const r = s.records?.[dateStr];
       return r && (
         (r[k.t] && r[k.t] !== '-') || (r[k.f] && r[k.f] !== '-') ||
@@ -757,7 +759,7 @@ const HomeView = ({
     }).length;
 
     if (filledCount === 0) return { status: 'none', count: 0 };
-    const status = filledCount === filteredStudents.length ? 'full' : 'partial';
+    const status = filledCount === targetStudents.length ? 'full' : 'partial';
     return { status, count: filledCount };
   };
 
@@ -1352,6 +1354,7 @@ const HomeView = ({
                 const dayName = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][dateObj.getDay()];
                 if (dateObj.getDay() === 0 || dateObj.getDay() === 6) return null;
                 const { status: dateStatus, count: filledCount } = getDateStatus(dateStr);
+                const targetStudents = studentsInHalaqoh || filteredStudents;
                 return ( // Removed dark mode styles
                   <button key={dateStr} data-active={activeDate === dateStr} onClick={() => setActiveDate(dateStr)} className={`flex-1 flex flex-col shrink-0 min-w-[70px] sm:min-w-[80px] items-center justify-center p-2 rounded-xl border transition-all snap-center relative ${activeDate === dateStr ? 'bg-[#00e676] border-[#00e676] text-white shadow-md transform scale-[1.03]' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
                     <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest mb-0.5">{dayName}</span>
@@ -1359,7 +1362,7 @@ const HomeView = ({
                     {dateStatus !== 'none' && (
                       <div
                         data-tooltip-id="home-date-tooltip"
-                        data-tooltip-content={`${filledCount} dari ${filteredStudents.length} siswa terisi`}
+                        data-tooltip-content={`${filledCount} dari ${targetStudents.length} siswa terisi`}
                         className={`absolute top-1.5 right-1.5 ${activeDate === dateStr ? 'text-white' : dateStatus === 'full' ? 'text-green-500' : 'text-amber-500'}`}
                       >
                         <Check size={12} strokeWidth={4} />
@@ -1401,16 +1404,17 @@ const HomeView = ({
             )}
 
             {/* PROGRESS BAR PENGISIAN JURNAL & RINGKASAN KEHADIRAN */}
-            {activeHalaqoh && filteredStudents.length > 0 && (() => {
+            {activeHalaqoh && (studentsInHalaqoh || filteredStudents).length > 0 && (() => {
+              const targetStudents = studentsInHalaqoh || filteredStudents;
               const { count } = getDateStatus(activeDate);
-              const total = filteredStudents.length;
+              const total = targetStudents.length;
               const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
               const isComplete = count === total && total > 0;
 
               let absenCount = 0;
               let liburCount = 0;
 
-              filteredStudents.forEach(student => {
+              targetStudents.forEach(student => {
                 const record = student?.records?.[activeDate] || {};
                 const valC = record?.[k.c] || '-';
                 const isCatatanEmpty = valC === '-';

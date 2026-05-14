@@ -1899,6 +1899,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
             studentsInHalaqohCount={studentsInHalaqoh.length}
+            studentsInHalaqoh={studentsInHalaqoh}
             isLoading={isLoading}
             targetReguler={targetReguler}
             targetAlQuran={targetAlQuran}
