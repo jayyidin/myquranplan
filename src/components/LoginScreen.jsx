@@ -985,7 +985,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
             </button>
             <button
               onClick={() => setTheme && setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className={`p-2 sm:p-2.5 rounded-xl transition-all active:scale-90 ml-1 sm:ml-2 shadow-sm border ${theme === 'dark' ? 'bg-slate-800 text-amber-400 border-slate-700 hover:text-amber-300' : 'bg-slate-50 text-slate-400 hover:text-amber-500 border-slate-100'}`}
+              className="p-2 sm:p-2.5 bg-slate-50 text-slate-400 hover:text-amber-500 rounded-xl transition-all active:scale-90 ml-1 sm:ml-2 shadow-sm border border-slate-100"
               title="Mode Gelap/Terang"
             >
               <div className={`transform transition-transform duration-500 ${theme === 'dark' ? 'rotate-180' : 'rotate-0'}`}>
@@ -1145,7 +1145,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col justify-center items-center p-4 sm:p-6 relative overflow-hidden z-0 transition-all duration-500">
 
-      <button onClick={() => setTheme && setTheme(theme === 'dark' ? 'light' : 'dark')} className={`absolute top-4 right-4 sm:top-6 sm:right-6 z-50 p-3 backdrop-blur-sm rounded-2xl shadow-sm border transition-all active:scale-90 ${theme === 'dark' ? 'bg-slate-800/80 text-amber-400 border-slate-700 hover:text-amber-300' : 'bg-white/80 text-slate-500 hover:text-amber-500 border-slate-100'}`} title="Mode Gelap/Terang">
+      <button onClick={() => setTheme && setTheme(theme === 'dark' ? 'light' : 'dark')} className="absolute top-4 right-4 sm:top-6 sm:right-6 z-50 p-3 bg-white/80 backdrop-blur-sm text-slate-500 hover:text-amber-500 rounded-2xl shadow-sm border border-slate-100 transition-all active:scale-90" title="Mode Gelap/Terang">
         <div className={`transform transition-transform duration-500 ${theme === 'dark' ? 'rotate-180' : 'rotate-0'}`}>
           {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
         </div>

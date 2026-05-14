@@ -117,7 +117,7 @@ export const JurnalModal = ({
             </div>
 
             {/* Opsi Salin Spesifik (Muncul jika > 1 siswa dipilih) */}
-            {selectedStudents.length > 1 && !['murojaah', 'catatan'].includes(modalMode) && (
+            {(selectedStudents.length > 1 || (editingId && selectedStudents.length > 0)) && !['murojaah', 'catatan'].includes(modalMode) && (
               <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-1 pt-3 border-t border-gray-100">
                 <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest shrink-0">Bagian yang disalin ke siswa lain:</span>
                 <div className="flex flex-wrap items-center gap-3">
