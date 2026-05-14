@@ -53,8 +53,8 @@ const SettingsView = ({
   newGuruName, setNewGuruName, handleAddGuru, guruList = [],
   selectedGuruForHalaqoh, setSelectedGuruForHalaqoh, newHalaqohName, setNewHalaqohName, handleAddHalaqoh,
   currentUser, guruHalaqohData = {}, editingGuru, setEditingGuru, handleSaveEditGuru, requestDeleteGuru,
-  editingHalaqoh, setEditingHalaqoh, handleSaveEditHalaqoh, requestDeleteHalaqoh, handleReorderHalaqoh,
-  students = [], openEditStudentModal, requestDeleteStudent, requestBulkDeleteStudents, requestBulkEditStudents, handleBulkSaveStudents, onLogout, handleCleanLessonPlanValues, handleCloseSemester, handleBackupData
+  editingHalaqoh, setEditingHalaqoh, handleSaveEditHalaqoh, requestDeleteHalaqoh, handleReorderHalaqoh, handleReorderGuru,
+  students = [], openEditStudentModal, requestDeleteStudent, requestBulkDeleteStudents, requestBulkEditStudents, handleBulkSaveStudents, onLogout, handleCleanLessonPlanValues, handleCloseSemester, handleBackupData, handleLinkAccount, handleResetTeacherPassword
 }) => {
   const [studentSearch, setStudentSearch] = useState('');
   const [editingAccount, setEditingAccount] = useState(null);
@@ -65,6 +65,14 @@ const SettingsView = ({
     const timer = setTimeout(() => setStudentSearch(localStudentSearch), 300);
     return () => clearTimeout(timer);
   }, [localStudentSearch]);
+
+  // --- DEBOUNCE PENCARIAN GURU ---
+  const [guruSearch, setGuruSearch] = useState('');
+  const [localGuruSearch, setLocalGuruSearch] = useState('');
+  React.useEffect(() => {
+    const timer = setTimeout(() => setGuruSearch(localGuruSearch), 300);
+    return () => clearTimeout(timer);
+  }, [localGuruSearch]);
 
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(20);
@@ -80,9 +88,11 @@ const SettingsView = ({
   const [dragOverKelasId, setDragOverKelasId] = useState(null);
   const [dragHalaqohInfo, setDragHalaqohInfo] = useState(null);
   const [dragOverHalaqohInfo, setDragOverHalaqohInfo] = useState(null);
+  const [dragGuruId, setDragGuruId] = useState(null);
+  const [dragOverGuruId, setDragOverGuruId] = useState(null);
 
   const pendingUsers = appUsers.filter(u => u.status === 'pending');
-  const allHalaqohs = Array.from(new Set(Object.values(guruHalaqohData).flat().filter(Boolean)));
+  const allHalaqohs = Array.from(new Set(Object.keys(guruHalaqohData).filter(k => k !== '_order_').flatMap(k => guruHalaqohData[k]).filter(Boolean)));
   const totalHalaqoh = allHalaqohs.length;
   const emptyStudentCount = students.filter(s => {
     const halaqoh = (s?.halaqoh || '').trim().toLowerCase();
@@ -116,16 +126,27 @@ const SettingsView = ({
   };
 
   const handleStartEditAccount = (user) => {
-    setEditingAccount({ id: user.id, name: user.name, password: user.password, role: user.role });
+    setEditingAccount({ id: user.id, name: user.name, username: user.username, password: '', role: user.role });
   };
 
   const handleSaveAccount = async () => {
-    await handleUpdateUserAccount(editingAccount.id, {
+    const originalUser = appUsers.find(u => u.id === editingAccount.id);
+    const isUsernameChanged = editingAccount.username !== originalUser?.username;
+
+    if (isUsernameChanged && !editingAccount.password && originalUser?.password === '[SECURED_BY_SUPABASE]') {
+      showToast("PENTING: Jika mengubah username, Anda WAJIB mengisi Password Baru agar akun bisa sinkronisasi ulang!");
+      return;
+    }
+
+    const updates = {
       name: editingAccount.name,
-      password: editingAccount.password,
+      username: editingAccount.username.toLowerCase().replace(/\s+/g, ''),
       role: editingAccount.role,
       resetrequested: false
-    });
+    };
+    if (editingAccount.password) updates.password = editingAccount.password;
+
+    await handleUpdateUserAccount(editingAccount.id, updates);
     setEditingAccount(null);
   };
 
@@ -208,6 +229,7 @@ const SettingsView = ({
   };
 
   const handleDragStartHalaqoh = (e, guru, halaqoh) => {
+    e.stopPropagation();
     setDragHalaqohInfo({ guru, halaqoh });
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", `${guru}|${halaqoh}`);
@@ -215,6 +237,7 @@ const SettingsView = ({
 
   const handleDragOverHalaqoh = (e, guru, halaqoh) => {
     e.preventDefault();
+    e.stopPropagation();
     if (dragHalaqohInfo?.guru === guru && dragOverHalaqohInfo?.halaqoh !== halaqoh) {
       setDragOverHalaqohInfo({ guru, halaqoh });
     }
@@ -222,6 +245,7 @@ const SettingsView = ({
 
   const handleDropHalaqoh = (e, targetGuru, targetHalaqoh) => {
     e.preventDefault();
+    e.stopPropagation();
     if (!dragHalaqohInfo || dragHalaqohInfo.guru !== targetGuru || dragHalaqohInfo.halaqoh === targetHalaqoh) {
       setDragHalaqohInfo(null); setDragOverHalaqohInfo(null);
       return;
@@ -277,6 +301,70 @@ const SettingsView = ({
     setDragHalaqohInfo(null); setDragOverHalaqohInfo(null);
   };
 
+  const handleDragStartGuru = (e, guru) => {
+    if (guruSearch || !isSuperAdmin) return;
+    setDragGuruId(guru);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", guru);
+  };
+
+  const handleDragOverGuru = (e, guru) => {
+    e.preventDefault();
+    if (guruSearch || !isSuperAdmin) return;
+    if (dragOverGuruId !== guru) setDragOverGuruId(guru);
+  };
+
+  const handleDropGuru = (e, targetGuru) => {
+    e.preventDefault();
+    if (guruSearch || !isSuperAdmin) return;
+    if (!dragGuruId || dragGuruId === targetGuru) {
+      setDragGuruId(null); setDragOverGuruId(null);
+      return;
+    }
+    const draggedIdx = guruList.indexOf(dragGuruId);
+    const targetIdx = guruList.indexOf(targetGuru);
+    if (draggedIdx !== -1 && targetIdx !== -1) {
+      const newList = [...guruList];
+      const [draggedItem] = newList.splice(draggedIdx, 1);
+      newList.splice(targetIdx, 0, draggedItem);
+      if (handleReorderGuru) handleReorderGuru(newList);
+    }
+    setDragGuruId(null); setDragOverGuruId(null);
+  };
+
+  const handleDragEndGuru = () => { setDragGuruId(null); setDragOverGuruId(null); };
+
+  const handleTouchStartGuru = (e, guru) => {
+    if (guruSearch || !isSuperAdmin) return;
+    setDragGuruId(guru);
+  };
+
+  const handleTouchMoveGuru = (e) => {
+    if (guruSearch || !isSuperAdmin || !dragGuruId) return;
+    const touch = e.touches[0];
+    const target = document.elementFromPoint(touch.clientX, touch.clientY);
+    const card = target?.closest('[data-guru-card-id]');
+    if (card) {
+      const hoverId = card.getAttribute('data-guru-card-id');
+      if (hoverId !== dragOverGuruId) setDragOverGuruId(hoverId);
+    }
+  };
+
+  const handleTouchEndGuru = () => {
+    if (guruSearch || !isSuperAdmin) return;
+    if (dragGuruId && dragOverGuruId && dragGuruId !== dragOverGuruId) {
+      const draggedIdx = guruList.indexOf(dragGuruId);
+      const targetIdx = guruList.indexOf(dragOverGuruId);
+      if (draggedIdx !== -1 && targetIdx !== -1) {
+        const newList = [...guruList];
+        const [draggedItem] = newList.splice(draggedIdx, 1);
+        newList.splice(targetIdx, 0, draggedItem);
+        if (handleReorderGuru) handleReorderGuru(newList);
+      }
+    }
+    setDragGuruId(null); setDragOverGuruId(null);
+  };
+
   const handleExecuteBulkEdit = () => {
     const updates = {};
     if (bulkEditData.kelas) updates.kelas = bulkEditData.kelas === 'CLEAR_KELAS' ? '' : bulkEditData.kelas;
@@ -308,17 +396,17 @@ const SettingsView = ({
   };
 
   const searchName = currentUser?.name?.trim().toLowerCase() || '';
-  const guruKey = Object.keys(guruHalaqohData).find(k => k.trim().toLowerCase() === searchName);
+  const guruKey = Object.keys(guruHalaqohData).find(k => k !== '_order_' && k.trim().toLowerCase() === searchName);
   const myHalaqohs = isSuperAdmin ? [] : (guruKey ? (guruHalaqohData[guruKey] || []) : []);
 
   const filteredStudentsMaster = students.filter(s => {
     const halaqoh = (s?.halaqoh || '').trim();
     const isKosong = halaqoh === '' || halaqoh.toLowerCase() === 'unassigned';
 
-    if (isSuperAdmin) {
-      if (filterStatus === 'kosong' && !isKosong) return false;
-      if (filterStatus === 'assigned' && isKosong) return false;
-    } else if (!myHalaqohs.some(h => h.trim().toLowerCase() === halaqoh.toLowerCase())) {
+    if (filterStatus === 'kosong' && !isKosong) return false;
+    if (filterStatus === 'assigned' && isKosong) return false;
+
+    if (!isSuperAdmin && !isKosong && !myHalaqohs.some(h => h.trim().toLowerCase() === halaqoh.toLowerCase())) {
       return false;
     }
 
@@ -331,6 +419,8 @@ const SettingsView = ({
   });
 
   const displayedStudents = filteredStudentsMaster.slice(0, visibleCount);
+
+  const filteredGuruList = guruList.filter(guru => guru.toLowerCase().includes(guruSearch.toLowerCase()));
 
   return (
     <div
@@ -477,17 +567,17 @@ const SettingsView = ({
                     </button>
                   </div>
                   <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto custom-scrollbar pr-1"
-                       onTouchMove={handleTouchMoveKelas}
-                       onTouchEnd={handleTouchEndKelas}>
+                    onTouchMove={handleTouchMoveKelas}
+                    onTouchEnd={handleTouchEndKelas}>
                     {kelasList.length > 0 ? kelasList.map(kelas => (
-                      <div key={kelas} 
-                           data-kelas-id={kelas}
-                           draggable
-                           onDragStart={(e) => handleDragStartKelas(e, kelas)}
-                           onDragOver={(e) => handleDragOverKelas(e, kelas)}
-                           onDrop={(e) => handleDropKelas(e, kelas)}
-                           onDragEnd={handleDragEndKelas}
-                           className={`group bg-slate-50 border ${dragOverKelasId === kelas ? 'border-emerald-500 bg-emerald-50 shadow-md scale-105' : 'border-slate-200'} pl-2 pr-1.5 py-1.5 rounded-xl flex items-center gap-1.5 transition-all hover:bg-white hover:border-emerald-200 cursor-grab active:cursor-grabbing ${dragKelasId === kelas ? 'opacity-50 grayscale' : 'opacity-100'}`}>
+                      <div key={kelas}
+                        data-kelas-id={kelas}
+                        draggable
+                        onDragStart={(e) => handleDragStartKelas(e, kelas)}
+                        onDragOver={(e) => handleDragOverKelas(e, kelas)}
+                        onDrop={(e) => handleDropKelas(e, kelas)}
+                        onDragEnd={handleDragEndKelas}
+                        className={`group bg-slate-50 border ${dragOverKelasId === kelas ? 'border-emerald-500 bg-emerald-50 shadow-md scale-105' : 'border-slate-200'} pl-2 pr-1.5 py-1.5 rounded-xl flex items-center gap-1.5 transition-all hover:bg-white hover:border-emerald-200 cursor-grab active:cursor-grabbing ${dragKelasId === kelas ? 'opacity-50 grayscale' : 'opacity-100'}`}>
                         <div className="text-slate-300 group-hover:text-slate-400 cursor-grab touch-none flex items-center" onTouchStart={(e) => handleTouchStartKelas(e, kelas)}>
                           <GripVertical size={14} />
                         </div>
@@ -572,9 +662,19 @@ const SettingsView = ({
                         <div key={user.id} className={`bg-white border ${user.status === 'pending' ? 'border-orange-200' : 'border-slate-200'} rounded-2xl p-4 transition-all hover:border-indigo-300 hover:shadow-sm`}>
                           {editingAccount?.id === user.id ? (
                             <div className="space-y-3 animate-in fade-in duration-300">
-                              <input type="text" value={editingAccount.name} onChange={e => setEditingAccount({ ...editingAccount, name: e.target.value })} className="w-full bg-white border border-indigo-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500/20" />
-                              <input type="text" value={editingAccount.password} onChange={e => setEditingAccount({ ...editingAccount, password: e.target.value })} className="w-full bg-white border border-indigo-200 rounded-xl px-3 py-2.5 text-xs outline-none focus:ring-2 focus:ring-indigo-500/20" placeholder="Password baru" />
-                              <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="text-[9px] font-black text-slate-400 uppercase">Nama Lengkap</label>
+                                <input type="text" value={editingAccount.name} onChange={e => setEditingAccount({ ...editingAccount, name: e.target.value })} className="w-full bg-white border border-indigo-200 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                              </div>
+                              <div>
+                                <label className="text-[9px] font-black text-slate-400 uppercase">Username Login</label>
+                                <input type="text" value={editingAccount.username} onChange={e => setEditingAccount({ ...editingAccount, username: e.target.value })} className="w-full bg-white border border-indigo-200 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                              </div>
+                              <div>
+                                <label className="text-[9px] font-black text-slate-400 uppercase">Password Baru</label>
+                                <input type="text" value={editingAccount.password} onChange={e => setEditingAccount({ ...editingAccount, password: e.target.value })} className="w-full bg-white border border-indigo-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-indigo-500/20" placeholder="Kosongkan jika tak diubah" />
+                              </div>
+                              <div className="grid grid-cols-2 gap-2 pt-1">
                                 <button onClick={handleSaveAccount} className="bg-indigo-600 text-white py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors">Simpan</button>
                                 <button onClick={() => setEditingAccount(null)} className="bg-slate-100 text-slate-500 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-colors">Batal</button>
                               </div>
@@ -644,13 +744,39 @@ const SettingsView = ({
                     </div>
                   </div>
 
-                  <div className="p-4 sm:p-5 bg-slate-50 grid grid-cols-1 lg:grid-cols-2 gap-4 max-h-[620px] overflow-y-auto custom-scrollbar">
-                    {guruList.map(guru => {
+                  <div
+                    className="p-4 sm:p-5 bg-slate-50 grid grid-cols-1 lg:grid-cols-2 gap-4 max-h-[620px] overflow-y-auto custom-scrollbar"
+                    onTouchMove={handleTouchMoveGuru}
+                    onTouchEnd={handleTouchEndGuru}
+                  >
+                    {guruList.length > 1 && isSuperAdmin && (
+                      <div className="col-span-1 lg:col-span-2 relative mb-1">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                        <input
+                          type="text"
+                          placeholder="Cari nama pengajar..."
+                          value={localGuruSearch}
+                          onChange={(e) => setLocalGuruSearch(e.target.value)}
+                          className="w-full bg-white border border-slate-200 rounded-xl py-3 pl-11 pr-4 text-sm font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition-all placeholder:text-slate-400 shadow-sm"
+                        />
+                      </div>
+                    )}
+
+                    {filteredGuruList.map(guru => {
                       const guruDataKey = Object.keys(guruHalaqohData).find(k => k.trim().toLowerCase() === guru.trim().toLowerCase());
                       const halaqohsForGuru = guruDataKey ? guruHalaqohData[guruDataKey] : [];
                       const linkedUser = appUsers.find(u => u.name?.trim() === guru.trim());
                       return (
-                        <div key={guru} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm transition-all hover:shadow-md group/card flex flex-col">
+                        <div
+                          key={guru}
+                          data-guru-card-id={guru}
+                          draggable={!guruSearch && isSuperAdmin && !editingGuru}
+                          onDragStart={(e) => handleDragStartGuru(e, guru)}
+                          onDragOver={(e) => handleDragOverGuru(e, guru)}
+                          onDrop={(e) => handleDropGuru(e, guru)}
+                          onDragEnd={handleDragEndGuru}
+                          className={`bg-white border ${dragOverGuruId === guru ? 'border-indigo-500 bg-indigo-50/30 shadow-md scale-[1.02] z-10' : 'border-slate-200'} rounded-2xl p-4 shadow-sm transition-all hover:shadow-md group/card flex flex-col ${dragGuruId === guru ? 'opacity-50 grayscale' : 'opacity-100'}`}
+                        >
                           <div className="flex items-start justify-between gap-3 mb-4 pb-4 border-b border-slate-100">
                             {editingGuru?.oldName === guru ? (
                               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full animate-in fade-in slide-in-from-left-2 duration-300">
@@ -669,13 +795,33 @@ const SettingsView = ({
                             ) : (
                               <>
                                 <div className="flex items-center gap-3 min-w-0">
+                                  {!guruSearch && isSuperAdmin && (
+                                    <div
+                                      className="text-slate-300 group-hover/card:text-slate-400 cursor-grab touch-none flex items-center shrink-0 -ml-1 mr-1"
+                                      onTouchStart={(e) => handleTouchStartGuru(e, guru)}
+                                    >
+                                      <GripVertical size={16} />
+                                    </div>
+                                  )}
                                   <div className="w-11 h-11 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center shrink-0"><User size={19} /></div>
                                   <div className="min-w-0">
                                     <h4 className="font-black text-slate-800 text-base truncate tracking-tight">{guru}</h4>
                                     {linkedUser ? (
                                       <p className="text-[10px] font-bold text-slate-500 mt-0.5 flex items-center gap-1"><CheckCircle2 size={10} className="text-emerald-500" /> @{linkedUser.username}</p>
                                     ) : isSuperAdmin ? (
-                                      <p className="text-[10px] font-bold text-orange-500 mt-0.5 flex items-center gap-1"><X size={10} /> Akun belum tertaut</p>
+                                      <div className="mt-1 flex items-center gap-1.5">
+                                        <X size={10} className="text-orange-500 shrink-0" />
+                                        <select
+                                          value=""
+                                          onChange={(e) => { if (e.target.value) handleLinkAccount(guru, e.target.value); }}
+                                          className="text-[10px] bg-orange-50 border border-orange-200 text-orange-700 rounded-md px-1.5 py-0.5 outline-none cursor-pointer focus:ring-1 focus:ring-orange-500 max-w-[140px] truncate"
+                                        >
+                                          <option value="">Pilih Akun Guru...</option>
+                                          {appUsers.filter(u => (u.status === 'active' || u.role === 'superadmin') && !guruList.includes(u.name)).map(u => (
+                                            <option key={u.id} value={u.id}>@{u.username} ({u.name})</option>
+                                          ))}
+                                        </select>
+                                      </div>
                                     ) : (
                                       <p className="text-[10px] font-bold text-slate-400 mt-0.5">{halaqohsForGuru.length} halaqoh</p>
                                     )}
@@ -694,8 +840,8 @@ const SettingsView = ({
                           <div className="flex flex-col gap-3 flex-1">
                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><FolderPlus size={12} /> Daftar Halaqoh</span>
                             <div className="flex flex-wrap gap-2.5"
-                                 onTouchMove={(e) => handleTouchMoveHalaqoh(e, guruDataKey || guru)}
-                                 onTouchEnd={handleTouchEndHalaqoh}>
+                              onTouchMove={(e) => handleTouchMoveHalaqoh(e, guruDataKey || guru)}
+                              onTouchEnd={handleTouchEndHalaqoh}>
                               {(halaqohsForGuru || []).map(halaqoh => (
                                 <React.Fragment key={halaqoh}>
                                   {editingHalaqoh?.oldName === halaqoh && editingHalaqoh?.guruName === guru ? (
@@ -712,14 +858,14 @@ const SettingsView = ({
                                     </div>
                                   ) : (
                                     <div
-                                       data-halaqoh-id={halaqoh}
-                                       data-guru-id={guruDataKey || guru}
-                                       draggable
-                                       onDragStart={(e) => handleDragStartHalaqoh(e, guruDataKey || guru, halaqoh)}
-                                       onDragOver={(e) => handleDragOverHalaqoh(e, guruDataKey || guru, halaqoh)}
-                                       onDrop={(e) => handleDropHalaqoh(e, guruDataKey || guru, halaqoh)}
-                                       onDragEnd={handleDragEndHalaqoh}
-                                       className={`bg-slate-50 border ${dragOverHalaqohInfo?.halaqoh === halaqoh && dragOverHalaqohInfo?.guru === (guruDataKey || guru) ? 'border-indigo-500 bg-indigo-50 shadow-md scale-105' : 'border-slate-200'} pl-2 pr-1.5 py-1.5 rounded-xl text-xs font-bold text-slate-700 flex items-center justify-between gap-1.5 transition-all hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-800 hover:shadow-sm group/badge cursor-grab active:cursor-grabbing max-w-full ${dragHalaqohInfo?.halaqoh === halaqoh && dragHalaqohInfo?.guru === (guruDataKey || guru) ? 'opacity-50 grayscale' : 'opacity-100'}`}
+                                      data-halaqoh-id={halaqoh}
+                                      data-guru-id={guruDataKey || guru}
+                                      draggable
+                                      onDragStart={(e) => handleDragStartHalaqoh(e, guruDataKey || guru, halaqoh)}
+                                      onDragOver={(e) => handleDragOverHalaqoh(e, guruDataKey || guru, halaqoh)}
+                                      onDrop={(e) => handleDropHalaqoh(e, guruDataKey || guru, halaqoh)}
+                                      onDragEnd={handleDragEndHalaqoh}
+                                      className={`bg-slate-50 border ${dragOverHalaqohInfo?.halaqoh === halaqoh && dragOverHalaqohInfo?.guru === (guruDataKey || guru) ? 'border-indigo-500 bg-indigo-50 shadow-md scale-105' : 'border-slate-200'} pl-2 pr-1.5 py-1.5 rounded-xl text-xs font-bold text-slate-700 flex items-center justify-between gap-1.5 transition-all hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-800 hover:shadow-sm group/badge cursor-grab active:cursor-grabbing max-w-full ${dragHalaqohInfo?.halaqoh === halaqoh && dragHalaqohInfo?.guru === (guruDataKey || guru) ? 'opacity-50 grayscale' : 'opacity-100'}`}
                                     >
                                       <div className="text-slate-300 group-hover/badge:text-slate-400 cursor-grab touch-none flex items-center shrink-0" onTouchStart={(e) => handleTouchStartHalaqoh(e, guruDataKey || guru, halaqoh)}>
                                         <GripVertical size={14} />
@@ -745,6 +891,12 @@ const SettingsView = ({
                         </div>
                       );
                     })}
+
+                    {filteredGuruList.length === 0 && guruList.length > 0 && (
+                      <div className="col-span-1 lg:col-span-2 text-center py-6 bg-slate-50 rounded-xl border border-dashed border-slate-300">
+                        <p className="text-xs text-slate-400 font-bold">Pengajar tidak ditemukan.</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -776,19 +928,17 @@ const SettingsView = ({
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 lg:flex gap-2">
-                    {isSuperAdmin && (
-                      <SelectShell className="sm:col-span-1 lg:w-[170px]">
-                        <select
-                          value={filterStatus}
-                          onChange={(e) => setFilterStatus(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3.5 pl-4 pr-10 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 outline-none appearance-none cursor-pointer transition-colors"
-                        >
-                          <option value="kosong">Status: Kosong</option>
-                          <option value="assigned">Status: Halaqoh</option>
-                          <option value="all">Semua Siswa</option>
-                        </select>
-                      </SelectShell>
-                    )}
+                    <SelectShell className="sm:col-span-1 lg:w-[210px]">
+                      <select
+                        value={filterStatus}
+                        onChange={(e) => setFilterStatus(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3.5 pl-4 pr-10 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 outline-none appearance-none cursor-pointer transition-colors"
+                      >
+                        <option value="all">Semua (Saya & Kosong)</option>
+                        <option value="kosong">Status: Belum Ada Halaqoh</option>
+                        <option value="assigned">Status: Punya Halaqoh</option>
+                      </select>
+                    </SelectShell>
                     <SelectShell className="sm:col-span-1 lg:w-[160px]">
                       <select
                         value={filterKelas}
@@ -799,13 +949,13 @@ const SettingsView = ({
                         {kelasList.map(k => <option key={k} value={k}>Kelas {k}</option>)}
                       </select>
                     </SelectShell>
-                  <button
-                    onClick={handleExportCSV}
-                    className="px-4 py-3.5 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 font-black text-xs uppercase tracking-widest border border-emerald-200"
-                    title="Ekspor data siswa ke CSV"
-                  >
-                    <Download size={18} strokeWidth={3} />
-                  </button>
+                    <button
+                      onClick={handleExportCSV}
+                      className="px-4 py-3.5 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 font-black text-xs uppercase tracking-widest border border-emerald-200"
+                      title="Ekspor data siswa ke CSV"
+                    >
+                      <Download size={18} strokeWidth={3} />
+                    </button>
                     {isSuperAdmin && (
                       <button
                         onClick={() => setIsBulkImportOpen(!isBulkImportOpen)}
@@ -882,7 +1032,7 @@ const SettingsView = ({
                               className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-3 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none appearance-none cursor-pointer transition-shadow"
                             >
                               <option value="">-- Jangan Ubah Kelas --</option>
-                          <option value="CLEAR_KELAS">-- Kosongkan Kelas --</option>
+                              <option value="CLEAR_KELAS">-- Kosongkan Kelas --</option>
                               {kelasList.map(k => <option key={k} value={k}>Kelas {k}</option>)}
                             </select>
                           </SelectShell>
@@ -893,7 +1043,7 @@ const SettingsView = ({
                               className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-3 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none appearance-none cursor-pointer transition-shadow"
                             >
                               <option value="">-- Jangan Ubah Halaqoh --</option>
-                          <option value="CLEAR_HALAQOH">-- Kosongkan Halaqoh --</option>
+                              <option value="CLEAR_HALAQOH">-- Kosongkan Halaqoh --</option>
                               {allHalaqohs.map(h => <option key={h} value={h}>{h}</option>)}
                             </select>
                           </SelectShell>
@@ -957,47 +1107,49 @@ const SettingsView = ({
             </div>
           </section>
 
-          {isSuperAdmin && (
-            <section className="animate-in fade-in slide-in-from-bottom-4 duration-700">
-              <SectionHeader
-                accent="bg-rose-500"
-                title="Pemeliharaan Data"
-                description="Aksi perawatan untuk memperbaiki data yang tersimpan tidak sesuai."
-                icon={Wrench}
-              />
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 flex flex-col gap-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4 sm:pb-6">
-                  <div>
-                    <h3 className="text-lg font-black text-slate-800 mb-1">Bersihkan Nilai Lesson Plan</h3>
-                    <p className="text-sm text-slate-500 font-medium">Hapus semua data nilai yang tidak sengaja tersimpan pada mode Target (Lesson Plan).</p>
+          {
+            isSuperAdmin && (
+              <section className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+                <SectionHeader
+                  accent="bg-rose-500"
+                  title="Pemeliharaan Data"
+                  description="Aksi perawatan untuk memperbaiki data yang tersimpan tidak sesuai."
+                  icon={Wrench}
+                />
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 flex flex-col gap-6">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4 sm:pb-6">
+                    <div>
+                      <h3 className="text-lg font-black text-slate-800 mb-1">Bersihkan Nilai Lesson Plan</h3>
+                      <p className="text-sm text-slate-500 font-medium">Hapus semua data nilai yang tidak sengaja tersimpan pada mode Target (Lesson Plan).</p>
+                    </div>
+                    <button onClick={handleCleanLessonPlanValues} className="w-full md:w-auto px-6 py-3 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700 rounded-xl font-black uppercase tracking-widest text-xs transition-colors flex items-center justify-center gap-2 shrink-0">
+                      <Wrench size={16} /> Bersihkan Sekarang
+                    </button>
                   </div>
-              <button onClick={handleCleanLessonPlanValues} className="w-full md:w-auto px-6 py-3 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700 rounded-xl font-black uppercase tracking-widest text-xs transition-colors flex items-center justify-center gap-2 shrink-0">
-                    <Wrench size={16} /> Bersihkan Sekarang
-                  </button>
-            </div>
 
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4 sm:pb-6">
-              <div>
-                <h3 className="text-lg font-black text-slate-800 mb-1">Backup Database Siswa</h3>
-                <p className="text-sm text-slate-500 font-medium">Unduh seluruh data riwayat siswa ke format JSON sebagai cadangan lokal (sangat disarankan sebelum tutup semester).</p>
-              </div>
-              <button onClick={handleBackupData} className="w-full md:w-auto px-6 py-3 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white border border-blue-200 hover:border-blue-600 rounded-xl font-black uppercase tracking-widest text-xs transition-colors flex items-center justify-center gap-2 shrink-0">
-                <Database size={16} /> Unduh JSON
-              </button>
-            </div>
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4 sm:pb-6">
+                    <div>
+                      <h3 className="text-lg font-black text-slate-800 mb-1">Backup Database Siswa</h3>
+                      <p className="text-sm text-slate-500 font-medium">Unduh seluruh data riwayat siswa ke format JSON sebagai cadangan lokal (sangat disarankan sebelum tutup semester).</p>
+                    </div>
+                    <button onClick={handleBackupData} className="w-full md:w-auto px-6 py-3 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white border border-blue-200 hover:border-blue-600 rounded-xl font-black uppercase tracking-widest text-xs transition-colors flex items-center justify-center gap-2 shrink-0">
+                      <Database size={16} /> Unduh JSON
+                    </button>
+                  </div>
 
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div>
-                <h3 className="text-lg font-black text-red-600 mb-1">Tutup Semester / Kenaikan Kelas</h3>
-                <p className="text-sm text-slate-500 font-medium">Mengosongkan seluruh riwayat jurnal dan target untuk semua siswa. Lakukan hanya saat pergantian semester.</p>
-              </div>
-              <button onClick={handleCloseSemester} className="w-full md:w-auto px-6 py-3 bg-red-100 text-red-600 hover:bg-red-600 hover:text-white border border-red-200 hover:border-red-600 rounded-xl font-black uppercase tracking-widest text-xs transition-colors flex items-center justify-center gap-2 shrink-0">
-                <AlertTriangle size={16} /> Mulai Semester Baru
-              </button>
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                      <h3 className="text-lg font-black text-red-600 mb-1">Tutup Semester / Kenaikan Kelas</h3>
+                      <p className="text-sm text-slate-500 font-medium">Mengosongkan seluruh riwayat jurnal dan target untuk semua siswa. Lakukan hanya saat pergantian semester.</p>
+                    </div>
+                    <button onClick={handleCloseSemester} className="w-full md:w-auto px-6 py-3 bg-red-100 text-red-600 hover:bg-red-600 hover:text-white border border-red-200 hover:border-red-600 rounded-xl font-black uppercase tracking-widest text-xs transition-colors flex items-center justify-center gap-2 shrink-0">
+                      <AlertTriangle size={16} /> Mulai Semester Baru
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </section>
-          )}
+              </section>
+            )
+          }
 
           <div className="md:hidden pt-1">
             <button
@@ -1008,7 +1160,7 @@ const SettingsView = ({
               Keluar dari Akun
             </button>
           </div>
-        </div>
+        </div >
 
         {showScrollTop && (
           <button
@@ -1019,8 +1171,8 @@ const SettingsView = ({
             <ArrowUp className="w-5 h-5" strokeWidth={2.5} />
           </button>
         )}
-      </div>
-    </div>
+      </div >
+    </div >
   );
 };
 

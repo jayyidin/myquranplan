@@ -4,7 +4,7 @@ import { BookOpen, User, Menu, Home, Users, BarChart3, PieChart, Settings, LogOu
 // Imports
 import { supabase } from './supabase';
 import { surahList, tahsinCategories, ghoribList, tajwidList } from '../data/constants';
-import { getMonday, formatDateObj, formatShortDate } from '../utils/helpers';
+import { getMonday, formatDateObj, formatShortDate, copyTextToClipboard } from '../utils/helpers';
 
 // Views
 import HomeView from './views/HomeView';
@@ -35,8 +35,22 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
   const [homeTab, setHomeTab] = useState('jurnal');
 
   const [guruHalaqohData, setGuruHalaqohData] = useState({});
-  // Perbaikan Warning Infinite Loop: Cegah guruList memicu useEffect pada setiap render
-  const guruList = useMemo(() => Object.keys(guruHalaqohData), [guruHalaqohData]);
+  // Menggunakan _order_ karena tipe jsonb di Supabase tidak mempertahankan urutan key
+  const guruList = useMemo(() => {
+    const order = guruHalaqohData._order_ || [];
+    const keys = Object.keys(guruHalaqohData).filter(k => k !== '_order_');
+    if (order.length > 0) {
+      return keys.sort((a, b) => {
+        const ia = order.indexOf(a);
+        const ib = order.indexOf(b);
+        if (ia === -1 && ib === -1) return 0;
+        if (ia === -1) return 1;
+        if (ib === -1) return -1;
+        return ia - ib;
+      });
+    }
+    return keys;
+  }, [guruHalaqohData]);
   const [kelasList, setKelasList] = useState([]);
   const [institutionName, setInstitutionName] = useState('Nama Sekolah Anda');
   const [institutionLogo, setInstitutionLogo] = useState('logo.png');
@@ -106,12 +120,12 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
     setIsDbReady
   });
 
-  // Efek Loading saat ganti filter halaqoh, tanggal, atau tab
+  // Efek Loading (dipercepat & dihilangkan untuk filter halaqoh agar perubahannya instan!)
   useEffect(() => {
     setIsLoading(true);
-    const timer = setTimeout(() => setIsLoading(false), 500);
+    const timer = setTimeout(() => setIsLoading(false), 150);
     return () => clearTimeout(timer);
-  }, [activeHalaqoh, activeDate, homeTab, showUnfilledOnly]);
+  }, [activeDate, homeTab, showUnfilledOnly]);
 
   useEffect(() => {
     if (!isSuperAdmin) {
@@ -121,7 +135,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
 
       // Cari data halaqoh secara case-insensitive
       const searchName = teacherName.trim().toLowerCase();
-      const guruKey = Object.keys(guruHalaqohData).find(k => k.trim().toLowerCase() === searchName);
+      const guruKey = Object.keys(guruHalaqohData).find(k => k !== '_order_' && k.trim().toLowerCase() === searchName);
       const halaqohs = guruKey ? (guruHalaqohData[guruKey] || []) : [];
 
       if (halaqohs.length > 0) {
@@ -140,15 +154,25 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
         const halaqohs = guruHalaqohData[activeGuru] || [];
         if (halaqohs.length > 0 && (!activeHalaqoh || !halaqohs.includes(activeHalaqoh))) {
           setActiveHalaqoh(halaqohs[0]);
+        } else if (halaqohs.length === 0 && activeHalaqoh !== '') {
+          setActiveHalaqoh('');
         }
       }
     }
-  }, [guruList, guruHalaqohData, isSuperAdmin, currentUser?.name]);
+  }, [guruList, guruHalaqohData, isSuperAdmin, currentUser?.name, activeGuru, activeHalaqoh, selectedGuruForHalaqoh]);
 
   useEffect(() => { setNewStudent(prev => ({ ...prev, halaqoh: activeHalaqoh, kelas: prev.kelas || (kelasList.length > 0 ? kelasList[0] : '') })); }, [activeHalaqoh, kelasList]);
 
   // -- FUNGSI UTILITY --
   const showToast = (msg) => { setToastMessage(msg); setTimeout(() => setToastMessage(null), 4000); };
+
+  // Handler khusus agar saat Ustadz diganti, Halaqoh otomatis melompat ke urutan pertama
+  const handleGuruChange = (newGuru) => {
+    setActiveGuru(newGuru);
+    const halaqohs = guruHalaqohData[newGuru] || [];
+    setActiveHalaqoh(halaqohs.length > 0 ? halaqohs[0] : '');
+  };
+
   const updateMasterDataCloud = async (updates) => {
     // Format ulang ke lowercase untuk PostgreSQL (Supabase)
     const mappedUpdates = {};
@@ -198,56 +222,56 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
   // Filter siswa yang sangat ketat: Jika bukan SuperAdmin, hanya tampilkan siswa yang ada di halaqoh guru tersebut
   const filteredStudents = useMemo(() => {
     return students.filter(s => {
-    // Dengan RLS, 'students' sudah berisi data yang diizinkan untuk user.
-    // Kita hanya perlu filter berdasarkan UI (halaqoh aktif dan pencarian).
-    const isSearchMatch = (s?.name || '').toLowerCase().includes((searchQuery || '').toLowerCase());
-    const isInActiveHalaqoh = !activeHalaqoh || (s?.halaqoh && String(s.halaqoh).trim() === String(activeHalaqoh).trim());
+      // Dengan RLS, 'students' sudah berisi data yang diizinkan untuk user.
+      // Kita hanya perlu filter berdasarkan UI (halaqoh aktif dan pencarian).
+      const isSearchMatch = (s?.name || '').toLowerCase().includes((searchQuery || '').toLowerCase());
+      const isInActiveHalaqoh = !activeHalaqoh || (s?.halaqoh && String(s.halaqoh).trim() === String(activeHalaqoh).trim());
 
-    let isUnfilledMatch = true;
-    if (showUnfilledOnly && currentView === 'home') {
-      const keys = homeTab === 'lesson_plan'
-        ? { t: 'tahsin', f: 'tahfidz', m: 'murojaah', c: 'catatan', cT: 'catatanTahsin', cF: 'catatanTahfidz' }
-        : { t: 'jurnalTahsin', f: 'jurnalTahfidz', m: 'jurnalMurojaah', c: 'jurnalCatatan', cT: 'jurnalCatatanTahsin', cF: 'jurnalCatatanTahfidz' };
-      const r = s.records?.[activeDate];
-      const hasData = r && (
-        (r[keys.t] && r[keys.t] !== '-') ||
-        (r[keys.f] && r[keys.f] !== '-') ||
-        (r[keys.m] && r[keys.m] !== '-') ||
-        (r[keys.c] && r[keys.c] !== '-') ||
-        (r[keys.cT] && r[keys.cT] !== '-') ||
-        (r[keys.cF] && r[keys.cF] !== '-')
-      );
-      isUnfilledMatch = !hasData;
-    }
+      let isUnfilledMatch = true;
+      if (showUnfilledOnly && currentView === 'home') {
+        const keys = homeTab === 'lesson_plan'
+          ? { t: 'tahsin', f: 'tahfidz', m: 'murojaah', c: 'catatan', cT: 'catatanTahsin', cF: 'catatanTahfidz' }
+          : { t: 'jurnalTahsin', f: 'jurnalTahfidz', m: 'jurnalMurojaah', c: 'jurnalCatatan', cT: 'jurnalCatatanTahsin', cF: 'jurnalCatatanTahfidz' };
+        const r = s.records?.[activeDate];
+        const hasData = r && (
+          (r[keys.t] && r[keys.t] !== '-') ||
+          (r[keys.f] && r[keys.f] !== '-') ||
+          (r[keys.m] && r[keys.m] !== '-') ||
+          (r[keys.c] && r[keys.c] !== '-') ||
+          (r[keys.cT] && r[keys.cT] !== '-') ||
+          (r[keys.cF] && r[keys.cF] !== '-')
+        );
+        isUnfilledMatch = !hasData;
+      }
 
-    if (!isSuperAdmin) {
-      const searchName = currentUser?.name?.trim().toLowerCase() || "";
-      const guruKey = Object.keys(guruHalaqohData).find(k => k.trim().toLowerCase() === searchName);
-      const myHalaqohs = guruKey ? (guruHalaqohData[guruKey] || []) : [];
+      if (!isSuperAdmin) {
+        const searchName = currentUser?.name?.trim().toLowerCase() || "";
+        const guruKey = Object.keys(guruHalaqohData).find(k => k !== '_order_' && k.trim().toLowerCase() === searchName);
+        const myHalaqohs = guruKey ? (guruHalaqohData[guruKey] || []) : [];
 
-      const isMyStudent = activeHalaqoh ? isInActiveHalaqoh : myHalaqohs.includes(s?.halaqoh?.trim());
-      return isMyStudent && isSearchMatch && isUnfilledMatch;
-    }
-    return isInActiveHalaqoh && isSearchMatch && isUnfilledMatch;
-  });
+        const isMyStudent = activeHalaqoh ? isInActiveHalaqoh : myHalaqohs.includes(s?.halaqoh?.trim());
+        return isMyStudent && isSearchMatch && isUnfilledMatch;
+      }
+      return isInActiveHalaqoh && isSearchMatch && isUnfilledMatch;
+    });
   }, [students, searchQuery, activeHalaqoh, showUnfilledOnly, currentView, homeTab, activeDate, isSuperAdmin, currentUser?.name, guruHalaqohData]);
 
   // Hitung jumlah siswa di halaqoh aktif (sebelum difilter oleh pencarian) untuk placeholder
   const studentsInHalaqoh = useMemo(() => {
     return students.filter(s => {
-    // Logika ini juga disederhanakan karena RLS sudah bekerja.
-    const isInActiveHalaqoh = !activeHalaqoh || (s?.halaqoh && String(s.halaqoh).trim() === String(activeHalaqoh).trim());
+      // Logika ini juga disederhanakan karena RLS sudah bekerja.
+      const isInActiveHalaqoh = !activeHalaqoh || (s?.halaqoh && String(s.halaqoh).trim() === String(activeHalaqoh).trim());
 
-    if (!isSuperAdmin) {
-      const searchName = currentUser?.name?.trim().toLowerCase() || "";
-      const guruKey = Object.keys(guruHalaqohData).find(k => k.trim().toLowerCase() === searchName);
-      const myHalaqohs = guruKey ? (guruHalaqohData[guruKey] || []) : [];
+      if (!isSuperAdmin) {
+        const searchName = currentUser?.name?.trim().toLowerCase() || "";
+        const guruKey = Object.keys(guruHalaqohData).find(k => k !== '_order_' && k.trim().toLowerCase() === searchName);
+        const myHalaqohs = guruKey ? (guruHalaqohData[guruKey] || []) : [];
 
-      const isMyStudent = activeHalaqoh ? isInActiveHalaqoh : myHalaqohs.includes(s?.halaqoh?.trim());
-      return isMyStudent;
-    }
-    return isInActiveHalaqoh;
-  });
+        const isMyStudent = activeHalaqoh ? isInActiveHalaqoh : myHalaqohs.includes(s?.halaqoh?.trim());
+        return isMyStudent;
+      }
+      return isInActiveHalaqoh;
+    });
   }, [students, activeHalaqoh, isSuperAdmin, currentUser?.name, guruHalaqohData]);
 
   // -- FUNGSI PENGATURAN (SETTINGS) --
@@ -280,7 +304,11 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
     if (window.confirm('Yakin ingin menolak dan menghapus pendaftaran guru ini?')) {
       try {
         const userToReject = appUsers.find(u => u.id === userId);
-        await supabase.from('app_users').delete().eq('id', userId);
+
+        // Panggil fungsi RPC untuk menghapus user dari auth.users dan app_users
+        const { error } = await supabase.rpc('delete_auth_user', { target_user_id: userId });
+        if (error) await supabase.from('app_users').delete().eq('id', userId); // Fallback
+
         showToast('Pendaftaran ditolak & dihapus.');
 
         // --- LOG AKTIVITAS ---
@@ -304,6 +332,14 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
 
   const handleUpdateUserAccount = async (userId, updatedData) => {
     try {
+      const originalUser = appUsers.find(u => u.id === userId);
+      const isUsernameChanged = updatedData.username && originalUser && updatedData.username !== originalUser.username;
+
+      // Hapus dari auth jika username atau password berubah agar memicu auto-migration di login berikutnya
+      if (isUsernameChanged || (updatedData.password && updatedData.password !== originalUser?.password)) {
+        await supabase.rpc('reset_auth_user', { target_user_id: userId });
+      }
+
       const { error } = await supabase.from('app_users').update(updatedData).eq('id', userId);
       if (error) throw error;
       setAppUsers(prev => prev.map(u => u.id === userId ? { ...u, ...updatedData } : u));
@@ -311,6 +347,48 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
     } catch (error) {
       showToast('Gagal update akun.');
     }
+  };
+
+  const handleLinkAccount = async (masterGuruName, userId) => {
+    if (!userId) return;
+    try {
+      const { error } = await supabase.from('app_users').update({ name: masterGuruName }).eq('id', userId);
+      if (error) throw error;
+      setAppUsers(prev => prev.map(u => u.id === userId ? { ...u, name: masterGuruName } : u));
+      showToast(`Akun berhasil ditautkan ke ${masterGuruName}!`);
+    } catch (error) {
+      console.error(error);
+      showToast('Gagal menautkan akun.');
+    }
+  };
+
+  const handleResetTeacherPassword = async (user) => {
+    const newPassword = window.prompt(`Masukkan password baru untuk Ustadz/ah ${user.name}\n(Minimal 8 karakter):`);
+    if (!newPassword) return;
+    if (newPassword.length < 8) {
+      showToast('Password minimal 8 karakter!');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // 1. Hapus dari sistem auth.users agar memicu proses pendaftaran ulang (auto-migration) saat login
+      await supabase.rpc('reset_auth_user', { target_user_id: user.id });
+
+      // 2. Update profil menjadi plaintext agar dikenali oleh auto-migration
+      const { error } = await supabase.from('app_users').update({
+        password: newPassword,
+        resetrequested: false
+      }).eq('id', user.id);
+
+      if (error) throw error;
+
+      setAppUsers(prev => prev.map(u => u.id === user.id ? { ...u, resetrequested: false } : u));
+      showToast(`Berhasil! Password baru untuk ${user.name}: ${newPassword}`);
+    } catch (error) {
+      showToast('Gagal mereset password.');
+    }
+    setIsLoading(false);
   };
 
   const handleBulkSaveStudents = (studentList, onSuccess) => {
@@ -348,7 +426,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
             sort_order: currentMaxSort
           };
         });
-        
+
         // PENGAMANAN SKALA BESAR: Pecah insert menjadi beberapa bagian (Chunking) 
         // agar API Supabase tidak menolak payload yang terlalu besar
         const CHUNK_SIZE = 250;
@@ -361,9 +439,9 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
         }
 
         if (allInserted.length > 0) {
-           setStudents(prev => [...prev, ...allInserted]);
-           showToast(`${allInserted.length} siswa berhasil diimpor!`);
-           if (onSuccess) onSuccess();
+          setStudents(prev => [...prev, ...allInserted]);
+          showToast(`${allInserted.length} siswa berhasil diimpor!`);
+          if (onSuccess) onSuccess();
         }
       }
     });
@@ -390,7 +468,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, width, height);
           const compressedBase64 = canvas.toDataURL('image/png', 0.9);
-          
+
           setInstitutionLogo(compressedBase64);
           await updateMasterDataCloud({ institutionLogo: compressedBase64 });
           showToast('Logo berhasil diperbarui & dikompresi!');
@@ -411,17 +489,21 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
   };
 
   const handleDeleteKelas = async (kelas) => {
-    if (window.confirm(`Hapus kelas ${kelas}?`)) {
-      const updated = kelasList.filter(k => k !== kelas);
-      setKelasList(updated);
-      await updateMasterDataCloud({ kelasList: updated });
-      
-      // Sinkronisasi: Kosongkan kelas siswa yang terkait agar tidak terbengkalai
-      await supabase.from('students').update({ kelas: '' }).eq('kelas', kelas);
-      setStudents(prev => prev.map(s => s.kelas === kelas ? { ...s, kelas: '' } : s));
-      
-      showToast('Kelas dihapus!');
-    }
+    setConfirmDialog({
+      isOpen: true,
+      message: `Yakin ingin menghapus kelas ${kelas}?`,
+      onConfirm: async () => {
+        const updated = kelasList.filter(k => k !== kelas);
+        setKelasList(updated);
+        await updateMasterDataCloud({ kelasList: updated });
+
+        // Sinkronisasi: Kosongkan kelas siswa yang terkait agar tidak terbengkalai
+        await supabase.from('students').update({ kelas: '' }).eq('kelas', kelas);
+        setStudents(prev => prev.map(s => s.kelas === kelas ? { ...s, kelas: '' } : s));
+
+        showToast('Kelas dihapus!');
+      }
+    });
   };
 
   const handleReorderKelas = async (reorderedList) => {
@@ -432,6 +514,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
   const handleAddGuru = async () => {
     if (!newGuruName.trim() || guruList.includes(newGuruName.trim())) return;
     const updated = { ...guruHalaqohData, [newGuruName.trim()]: [] };
+    updated._order_ = [...guruList, newGuruName.trim()];
     setGuruHalaqohData(updated);
     await updateMasterDataCloud({ guruHalaqohData: updated });
     setNewGuruName('');
@@ -454,13 +537,19 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
     const updated = { ...guruHalaqohData };
     updated[editingGuru.newName.trim()] = updated[editingGuru.oldName];
     delete updated[editingGuru.oldName];
+
+    const newOrder = [...guruList];
+    const idx = newOrder.indexOf(editingGuru.oldName);
+    if (idx !== -1) newOrder[idx] = editingGuru.newName.trim();
+    updated._order_ = newOrder;
+
     setGuruHalaqohData(updated);
     await updateMasterDataCloud({ guruHalaqohData: updated });
-    
+
     // Sinkronisasi: Perbarui juga nama di tabel app_users agar sesi login guru tidak rusak
     await supabase.from('app_users').update({ name: editingGuru.newName.trim() }).eq('name', editingGuru.oldName);
     setAppUsers(prev => prev.map(u => u.name === editingGuru.oldName ? { ...u, name: editingGuru.newName.trim() } : u));
-    
+
     // Perbaiki filter jika guru yang sedang aktif adalah guru yang diedit
     if (activeGuru === editingGuru.oldName) setActiveGuru(editingGuru.newName.trim());
 
@@ -469,24 +558,32 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
   };
 
   const requestDeleteGuru = async (guru) => {
-    if (window.confirm(`Hapus pengajar ${guru} beserta seluruh halaqohnya?`)) {
-      const updated = { ...guruHalaqohData };
-      const halaqohsToDelete = updated[guru] || [];
-      delete updated[guru];
-      setGuruHalaqohData(updated);
-      await updateMasterDataCloud({ guruHalaqohData: updated });
-      
-      // Sinkronisasi: Keluarkan siswa dari halaqoh yang ikut terhapus
-      if (halaqohsToDelete.length > 0) {
-        await supabase.from('students').update({ halaqoh: '' }).in('halaqoh', halaqohsToDelete);
-        setStudents(prev => prev.map(s => halaqohsToDelete.includes(s.halaqoh) ? { ...s, halaqoh: '' } : s));
-      }
-      
-      // Reset filter aktif jika guru yang dihapus sedang dipilih
-      if (activeGuru === guru) setActiveGuru('');
+    setConfirmDialog({
+      isOpen: true,
+      message: `Hapus pengajar ${guru} beserta seluruh halaqohnya?\n\nSiswa yang berada di halaqoh tersebut akan kehilangan status halaqohnya (menjadi kosong).`,
+      onConfirm: async () => {
+        const updated = { ...guruHalaqohData };
+        const halaqohsToDelete = updated[guru] || [];
+        delete updated[guru];
 
-      showToast('Pengajar dihapus!');
-    }
+        const newOrder = guruList.filter(g => g !== guru);
+        updated._order_ = newOrder;
+
+        setGuruHalaqohData(updated);
+        await updateMasterDataCloud({ guruHalaqohData: updated });
+
+        // Sinkronisasi: Keluarkan siswa dari halaqoh yang ikut terhapus
+        if (halaqohsToDelete.length > 0) {
+          await supabase.from('students').update({ halaqoh: '' }).in('halaqoh', halaqohsToDelete);
+          setStudents(prev => prev.map(s => halaqohsToDelete.includes(s.halaqoh) ? { ...s, halaqoh: '' } : s));
+        }
+
+        // Reset filter aktif jika guru yang dihapus sedang dipilih
+        if (activeGuru === guru) setActiveGuru('');
+
+        showToast('Pengajar dihapus!');
+      }
+    });
   };
 
   const handleSaveEditHalaqoh = async () => {
@@ -507,18 +604,22 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
   };
 
   const requestDeleteHalaqoh = async (guru, halaqoh) => {
-    if (window.confirm(`Hapus halaqoh ${halaqoh} dari pengajar ${guru}?`)) {
-      const updated = { ...guruHalaqohData };
-      updated[guru] = updated[guru].filter(h => h !== halaqoh);
-      setGuruHalaqohData(updated);
-      await updateMasterDataCloud({ guruHalaqohData: updated });
-      
-      // Sinkronisasi: Keluarkan siswa dari halaqoh yang terhapus
-      await supabase.from('students').update({ halaqoh: '' }).eq('halaqoh', halaqoh);
-      setStudents(prev => prev.map(s => s.halaqoh === halaqoh ? { ...s, halaqoh: '' } : s));
-      
-      showToast('Halaqoh dihapus!');
-    }
+    setConfirmDialog({
+      isOpen: true,
+      message: `Hapus halaqoh ${halaqoh} dari pengajar ${guru}?\n\nSiswa yang berada di halaqoh tersebut akan kehilangan status halaqohnya (menjadi kosong).`,
+      onConfirm: async () => {
+        const updated = { ...guruHalaqohData };
+        updated[guru] = updated[guru].filter(h => h !== halaqoh);
+        setGuruHalaqohData(updated);
+        await updateMasterDataCloud({ guruHalaqohData: updated });
+
+        // Sinkronisasi: Keluarkan siswa dari halaqoh yang terhapus
+        await supabase.from('students').update({ halaqoh: '' }).eq('halaqoh', halaqoh);
+        setStudents(prev => prev.map(s => s.halaqoh === halaqoh ? { ...s, halaqoh: '' } : s));
+
+        showToast('Halaqoh dihapus!');
+      }
+    });
   };
 
   const handleReorderHalaqoh = async (guru, reorderedList) => {
@@ -527,44 +628,50 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
     await updateMasterDataCloud({ guruHalaqohData: updated });
   };
 
+  const handleReorderGuru = async (reorderedList) => {
+    const updated = { ...guruHalaqohData, _order_: reorderedList };
+    setGuruHalaqohData(updated);
+    await updateMasterDataCloud({ guruHalaqohData: updated });
+  };
+
   // -- FUNGSI HAPUS & KOSONGKAN DATA (Tabel) --
   const handleRemoveData = async (e, studentId, dateStr, type, subIndex = null) => {
     e.preventDefault(); e.stopPropagation();
     // ... (Logika internal untuk memodifikasi objek 'rec' tetap sama)
-      const student = students.find(s => s.id === studentId); if (!student) return;
-      const rec = student.records[dateStr] ? { ...student.records[dateStr] } : {};
-      const k = homeTab === 'lesson_plan' ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan', cT: 'catatanTahsin', cF: 'catatanTahfidz' } : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan', cT: 'jurnalCatatanTahsin', cF: 'jurnalCatatanTahfidz' };
+    const student = students.find(s => s.id === studentId); if (!student) return;
+    const rec = student.records[dateStr] ? { ...student.records[dateStr] } : {};
+    const k = homeTab === 'lesson_plan' ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan', cT: 'catatanTahsin', cF: 'catatanTahfidz' } : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan', cT: 'jurnalCatatanTahsin', cF: 'jurnalCatatanTahfidz' };
 
-      for (let key of Object.values(k)) if (!rec[key]) rec[key] = '-';
+    for (let key of Object.values(k)) if (!rec[key]) rec[key] = '-';
 
-      if (type === 'catatan') { rec[k.c] = '-'; rec[k.cT] = '-'; rec[k.cF] = '-'; }
-      else if (type === 'tahsin_all') { rec[k.t] = '-'; rec[k.h] = '-'; rec[k.tNilai] = '-'; rec[k.tsNilai] = '-'; }
-      else if (type === 'tahfidz_all') { rec[k.f] = '-'; rec[k.af] = '-'; rec[k.fNilai] = '-'; }
-      else if (type === 'murojaah_all') { rec[k.m] = '-'; }
-      else if (type === 'tahsin_surat') {
-        let tList = rec[k.t].split(',').map(s => s.trim()); let aList = rec[k.h] !== '-' ? (rec[k.h] || '').split(',').map(s => s.trim()) : []; let nList = rec[k.tsNilai] !== '-' ? (rec[k.tsNilai] || '').split(',').map(s => s.trim()) : [];
-        tList.splice(subIndex, 1);
-        if (rec[k.h] !== '-') { while (aList.length < tList.length + 1) aList.push(''); aList.splice(subIndex, 1); }
-        if (rec[k.tsNilai] !== '-') { while (nList.length < tList.length + 1) nList.push(''); nList.splice(subIndex, 1); }
-        rec[k.t] = tList.length > 0 && tList.join(', ') !== '' ? tList.join(', ') : '-';
-        rec[k.h] = tList.length > 0 && rec[k.h] !== '-' ? aList.join(', ') : '-';
-        rec[k.tsNilai] = tList.length > 0 && rec[k.tsNilai] !== '-' ? nList.join(', ') : '-';
-        if (rec[k.t] === '-') { rec[k.h] = '-'; rec[k.tNilai] = '-'; rec[k.tsNilai] = '-'; }
-      }
-      else if (type === 'murojaah') {
-        let items = rec[k.m].split(',').map(s => s.trim()); items.splice(subIndex, 1);
-        rec[k.m] = items.length > 0 && items.join(', ') !== '' ? items.join(', ') : '-';
-      }
-      else if (type === 'tahfidz') {
-        let tList = rec[k.f].split(',').map(s => s.trim()); let aList = rec[k.af] !== '-' ? (rec[k.af] || '').split(',').map(s => s.trim()) : []; let nList = rec[k.fNilai] !== '-' ? (rec[k.fNilai] || '').split(',').map(s => s.trim()) : [];
-        tList.splice(subIndex, 1);
-        if (rec[k.af] !== '-') { while (aList.length < tList.length + 1) aList.push(''); aList.splice(subIndex, 1); }
-        if (rec[k.fNilai] !== '-') { while (nList.length < tList.length + 1) nList.push(''); nList.splice(subIndex, 1); }
-        rec[k.f] = tList.length > 0 && tList.join(', ') !== '' ? tList.join(', ') : '-';
-        rec[k.af] = tList.length > 0 && rec[k.af] !== '-' ? aList.join(', ') : '-';
-        rec[k.fNilai] = tList.length > 0 && rec[k.fNilai] !== '-' ? nList.join(', ') : '-';
-        if (rec[k.f] === '-') { rec[k.af] = '-'; rec[k.fNilai] = '-'; }
-      }
+    if (type === 'catatan') { rec[k.c] = '-'; rec[k.cT] = '-'; rec[k.cF] = '-'; }
+    else if (type === 'tahsin_all') { rec[k.t] = '-'; rec[k.h] = '-'; rec[k.tNilai] = '-'; rec[k.tsNilai] = '-'; }
+    else if (type === 'tahfidz_all') { rec[k.f] = '-'; rec[k.af] = '-'; rec[k.fNilai] = '-'; }
+    else if (type === 'murojaah_all') { rec[k.m] = '-'; }
+    else if (type === 'tahsin_surat') {
+      let tList = rec[k.t].split(',').map(s => s.trim()); let aList = rec[k.h] !== '-' ? (rec[k.h] || '').split(',').map(s => s.trim()) : []; let nList = rec[k.tsNilai] !== '-' ? (rec[k.tsNilai] || '').split(',').map(s => s.trim()) : [];
+      tList.splice(subIndex, 1);
+      if (rec[k.h] !== '-') { while (aList.length < tList.length + 1) aList.push(''); aList.splice(subIndex, 1); }
+      if (rec[k.tsNilai] !== '-') { while (nList.length < tList.length + 1) nList.push(''); nList.splice(subIndex, 1); }
+      rec[k.t] = tList.length > 0 && tList.join(', ') !== '' ? tList.join(', ') : '-';
+      rec[k.h] = tList.length > 0 && rec[k.h] !== '-' ? aList.join(', ') : '-';
+      rec[k.tsNilai] = tList.length > 0 && rec[k.tsNilai] !== '-' ? nList.join(', ') : '-';
+      if (rec[k.t] === '-') { rec[k.h] = '-'; rec[k.tNilai] = '-'; rec[k.tsNilai] = '-'; }
+    }
+    else if (type === 'murojaah') {
+      let items = rec[k.m].split(',').map(s => s.trim()); items.splice(subIndex, 1);
+      rec[k.m] = items.length > 0 && items.join(', ') !== '' ? items.join(', ') : '-';
+    }
+    else if (type === 'tahfidz') {
+      let tList = rec[k.f].split(',').map(s => s.trim()); let aList = rec[k.af] !== '-' ? (rec[k.af] || '').split(',').map(s => s.trim()) : []; let nList = rec[k.fNilai] !== '-' ? (rec[k.fNilai] || '').split(',').map(s => s.trim()) : [];
+      tList.splice(subIndex, 1);
+      if (rec[k.af] !== '-') { while (aList.length < tList.length + 1) aList.push(''); aList.splice(subIndex, 1); }
+      if (rec[k.fNilai] !== '-') { while (nList.length < tList.length + 1) nList.push(''); nList.splice(subIndex, 1); }
+      rec[k.f] = tList.length > 0 && tList.join(', ') !== '' ? tList.join(', ') : '-';
+      rec[k.af] = tList.length > 0 && rec[k.af] !== '-' ? aList.join(', ') : '-';
+      rec[k.fNilai] = tList.length > 0 && rec[k.fNilai] !== '-' ? nList.join(', ') : '-';
+      if (rec[k.f] === '-') { rec[k.af] = '-'; rec[k.fNilai] = '-'; }
+    }
     // Setelah logika di atas, simpan kembali ke Supabase
     const updatedRecords = { ...student.records, [dateStr]: rec };
     const { error } = await supabase
@@ -583,7 +690,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
         let detailMsg = `Tanggal: ${formatShortDate(new Date(dateStr))}\n`;
         detailMsg += `Siswa: ${student.name}\n`;
         detailMsg += `Kategori Hapus: ${type}`;
-        
+
         await supabase.from('activity_logs').insert([{
           guru_name: currentUser?.name || 'System / Unknown',
           action: `Menghapus Sebagian Item ${typeName}`,
@@ -607,16 +714,16 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       newRecords[dateStr] = dayRec;
 
       const { error } = await supabase.from('students').update({ records: newRecords }).eq('id', studentId);
-      if (error) { showToast('Gagal mengosongkan data.'); } else { 
+      if (error) { showToast('Gagal mengosongkan data.'); } else {
         setStudents(prev => prev.map(s => s.id === studentId ? { ...s, records: newRecords } : s));
-        showToast('Data dikosongkan!'); 
+        showToast('Data dikosongkan!');
 
         // --- LOG AKTIVITAS KHUSUS JURNAL ---
         try {
           const typeName = homeTab === 'lesson_plan' ? 'Target (Lesson Plan)' : 'Capaian (Jurnal)';
           let detailMsg = `Tanggal: ${formatShortDate(new Date(dateStr))}\n`;
           detailMsg += `Siswa: ${student.name}`;
-          
+
           await supabase.from('activity_logs').insert([{
             guru_name: currentUser?.name || 'System / Unknown',
             action: `Mengosongkan Data ${typeName}`,
@@ -639,7 +746,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       onConfirm: async () => {
         setIsLoading(true);
         const k = tab === 'lesson_plan' ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan', cT: 'catatanTahsin', cF: 'catatanTahfidz' } : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan', cT: 'jurnalCatatanTahsin', cF: 'jurnalCatatanTahfidz' };
-        
+
         try {
           const updates = filteredStudents.map(student => {
             const newRecords = { ...student.records };
@@ -657,9 +764,9 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
           // PENGAMANAN SKALA BESAR: Chunking Upsert
           const CHUNK_SIZE = 250;
           for (let i = 0; i < updates.length; i += CHUNK_SIZE) {
-             const chunk = updates.slice(i, i + CHUNK_SIZE);
-             const { error } = await supabase.from('students').upsert(chunk);
-             if (error) throw error;
+            const chunk = updates.slice(i, i + CHUNK_SIZE);
+            const { error } = await supabase.from('students').upsert(chunk);
+            if (error) throw error;
           }
 
           setStudents(prev => {
@@ -671,7 +778,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
             return newStudents;
           });
           showToast(`Data ${typeName} pada hari tersebut dikosongkan!`);
-        } catch(e) {
+        } catch (e) {
           console.error(e);
           showToast('Gagal mengosongkan data.');
         }
@@ -680,23 +787,98 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
     });
   };
 
+  const handleAutoFillFromGhost = async (ghostData, targetDate, tab, targetStudents) => {
+    setConfirmDialog({
+      isOpen: true,
+      message: `Yakin ingin menyalin riwayat terakhir untuk semua siswa yang BELUM DIISI pada tanggal ${formatShortDate(new Date(targetDate))}? (Siswa yang sudah diisi tidak akan tertimpa)`,
+      onConfirm: async () => {
+        setIsLoading(true);
+        const k = tab === 'lesson_plan'
+          ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan', cT: 'catatanTahsin', cF: 'catatanTahfidz' }
+          : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan', cT: 'jurnalCatatanTahsin', cF: 'jurnalCatatanTahfidz' };
+
+        try {
+          const updates = targetStudents.reduce((acc, student) => {
+            const ghost = ghostData[student.id];
+            if (!ghost) return acc;
+
+            const newRecords = { ...student.records };
+            const currentRec = newRecords[targetDate] || {};
+            let finalRec = { ...currentRec };
+            let hasChanges = false;
+
+            Object.values(k).forEach(keyName => {
+              // Jangan salin Catatan Umum (Sakit/Izin/dll)
+              if (keyName === k.c) return;
+
+              if (!finalRec[keyName] || finalRec[keyName] === '-') {
+                if (ghost[keyName] && ghost[keyName] !== '-') {
+                  finalRec[keyName] = ghost[keyName];
+                  hasChanges = true;
+                }
+              }
+            });
+
+            if (hasChanges) {
+              // Pastikan field kosong diberi '-'
+              Object.values(k).forEach(keyName => {
+                if (!finalRec[keyName]) finalRec[keyName] = '-';
+              });
+              newRecords[targetDate] = finalRec;
+              acc.push({ ...student, records: newRecords });
+            }
+            return acc;
+          }, []);
+
+          if (updates.length === 0) {
+            showToast('Tidak ada data yang bisa disalin atau semua sudah terisi.');
+            setIsLoading(false);
+            return;
+          }
+
+          // PENGAMANAN SKALA BESAR: Chunking Upsert
+          const CHUNK_SIZE = 250;
+          for (let i = 0; i < updates.length; i += CHUNK_SIZE) {
+            const chunk = updates.slice(i, i + CHUNK_SIZE);
+            const { error } = await supabase.from('students').upsert(chunk);
+            if (error) throw error;
+          }
+
+          setStudents(prev => {
+            const newStudents = [...prev];
+            updates.forEach(u => {
+              const idx = newStudents.findIndex(s => s.id === u.id);
+              if (idx !== -1) newStudents[idx].records = u.records;
+            });
+            return newStudents;
+          });
+          showToast(`Berhasil menyalin data otomatis untuk ${updates.length} siswa!`);
+        } catch (e) {
+          console.error(e);
+          showToast('Gagal menyalin data otomatis.');
+        }
+        setIsLoading(false);
+      }
+    });
+  };
+
   const setSharingStudent = (student) => { showToast("Fitur Share Gambar akan segera diaktifkan."); };
 
-  const handleCopyPortalLink = () => {
+  const handleCopyPortalLink = async () => {
     if (!activeHalaqoh) {
       showToast('Pilih halaqoh terlebih dahulu!');
       return;
     }
     const baseUrl = window.location.origin + window.location.pathname;
-    const shareUrl = `${baseUrl}?portalHalaqoh=${encodeURIComponent(activeHalaqoh)}`;
+    const shareUrl = `${baseUrl}?portalHalaqoh=${encodeURIComponent(activeHalaqoh)}&date=${activeDate}`;
     const textToCopy = `Assalamu'alaikum Warahmatullahi Wabarakatuh\n\nBerikut adalah tautan Portal Pemantauan Hafalan untuk Halaqoh *${activeHalaqoh}*:\n\n${shareUrl}\n\nSilakan klik nama Ananda untuk melihat rincian Lesson Plan dan Jurnal.\nTerima kasih.`;
 
-    navigator.clipboard.writeText(textToCopy).then(() => {
+    const copied = await copyTextToClipboard(textToCopy);
+    if (copied) {
       showToast("Link Portal Halaqoh berhasil disalin!");
-    }).catch(err => {
-      console.error('Gagal menyalin link:', err);
+    } else {
       showToast("Gagal menyalin link.");
-    });
+    }
   };
 
   // -- FUNGSI SISWA --
@@ -706,28 +888,28 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       return;
     }
     const { error } = await supabase.from('students').update({ halaqoh: activeHalaqoh }).eq('id', student.id);
-    if (error) { showToast('Gagal.'); } else { 
+    if (error) { showToast('Gagal.'); } else {
       setStudents(prev => prev.map(s => s.id === student.id ? { ...s, halaqoh: activeHalaqoh } : s));
-      showToast(`${student.name} ditambahkan!`); 
+      showToast(`${student.name} ditambahkan!`);
     }
   };
   const handleSaveNewStudent = async (e) => {
     e.preventDefault();
     try {
       const { photo, ...studentData } = newStudent;
-        
-        if (!studentData.name || studentData.name.trim() === '') {
-          showToast('Nama siswa tidak boleh kosong!');
-          return;
-        }
 
-        // Mencegah duplikasi nama
-        const normalizedName = studentData.name.trim().toLowerCase();
-        const duplicateStudent = students.find(s => s.name.trim().toLowerCase() === normalizedName);
-        if (duplicateStudent) {
-          const proceed = window.confirm(`PERINGATAN: Siswa dengan nama "${studentData.name.trim()}" sudah terdaftar di sistem (Kelas: ${duplicateStudent.kelas || '-'}).\n\nApakah ini adalah siswa yang berbeda dan Anda yakin ingin tetap menambahkannya?`);
-          if (!proceed) return;
-        }
+      if (!studentData.name || studentData.name.trim() === '') {
+        showToast('Nama siswa tidak boleh kosong!');
+        return;
+      }
+
+      // Mencegah duplikasi nama
+      const normalizedName = studentData.name.trim().toLowerCase();
+      const duplicateStudent = students.find(s => s.name.trim().toLowerCase() === normalizedName);
+      if (duplicateStudent) {
+        const proceed = window.confirm(`PERINGATAN: Siswa dengan nama "${studentData.name.trim()}" sudah terdaftar di sistem (Kelas: ${duplicateStudent.kelas || '-'}).\n\nApakah ini adalah siswa yang berbeda dan Anda yakin ingin tetap menambahkannya?`);
+        if (!proceed) return;
+      }
 
       const maxSortOrder = students.length > 0 ? Math.max(...students.map(s => s.sort_order || 0)) : 0;
       const newStudentObj = {
@@ -757,7 +939,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
             }
           }
         }
-        
+
         setStudents(prev => [...prev, insertedStudent]);
       }
       setIsAddStudentModalOpen(false);
@@ -875,7 +1057,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
 
   const requestBulkEditStudents = (studentIds, updates, onSuccess) => {
     if (!studentIds || studentIds.length === 0) return;
-    
+
     setConfirmDialog({
       isOpen: true,
       message: `Yakin ingin memperbarui data untuk ${studentIds.length} siswa yang dipilih?`,
@@ -936,7 +1118,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
             });
             return newStudents;
           });
-          
+
           showToast(`Berhasil membersihkan nilai Lesson Plan pada ${updates.length} siswa.`);
         } catch (e) {
           console.error(e);
@@ -952,7 +1134,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       showToast('Hanya Super Admin yang dapat melakukan Tutup Semester.');
       return;
     }
-    
+
     const semesterName = window.prompt('Masukkan nama semester yang akan diarsipkan (Contoh: Semester Ganjil 2026/2027):');
     if (!semesterName || semesterName.trim() === '') {
       return; // Dibatalkan atau kosong
@@ -982,13 +1164,13 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
           // PENGAMANAN SKALA BESAR: Chunking Upsert
           const CHUNK_SIZE = 250;
           for (let i = 0; i < updates.length; i += CHUNK_SIZE) {
-             const chunk = updates.slice(i, i + CHUNK_SIZE);
-             const { error } = await supabase.from('students').upsert(chunk);
-             if (error) throw error;
+            const chunk = updates.slice(i, i + CHUNK_SIZE);
+            const { error } = await supabase.from('students').upsert(chunk);
+            if (error) throw error;
           }
 
           setStudents(prev => prev.map(s => ({ ...s, records: {} })));
-          
+
           try {
             await supabase.from('activity_logs').insert([{
               guru_name: currentUser?.name || 'System / Unknown',
@@ -1035,7 +1217,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
   const handleReorderStudents = (reorderedList) => {
     // Beri index urutan baru berdasarkan posisi mereka di array
     const updates = reorderedList.map((s, index) => ({ ...s, sort_order: index }));
-    
+
     // Update state React secara instan
     setStudents(prev => {
       const newStudents = [...prev];
@@ -1098,7 +1280,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
     if (croppedImageBlob && studentIdForCrop) {
       // Panggil fungsi unggah yang sudah ada dengan gambar hasil crop
       const photoUrl = await handleUploadStudentPhoto(studentIdForCrop, croppedImageBlob);
-      
+
       if (photoUrl) {
         const { error } = await supabase.from('students').update({ photo: photoUrl }).eq('id', studentIdForCrop);
         if (error) {
@@ -1149,12 +1331,15 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
   };
   // Fungsi untuk memfilter daftar halaqoh berdasarkan role user
   function getFilteredHalaqohDataForEdit() {
-    if (isSuperAdmin) return guruHalaqohData;
+    const cleanData = { ...guruHalaqohData };
+    delete cleanData._order_;
+
+    if (isSuperAdmin) return cleanData;
 
     const searchName = currentUser?.name?.trim().toLowerCase() || "";
-    const guruKey = Object.keys(guruHalaqohData).find(k => k.trim().toLowerCase() === searchName);
+    const guruKey = Object.keys(cleanData).find(k => k.trim().toLowerCase() === searchName);
 
-    return guruKey ? { [guruKey]: guruHalaqohData[guruKey] } : { [currentUser?.name || 'Guru']: [] };
+    return guruKey ? { [guruKey]: cleanData[guruKey] } : { [currentUser?.name || 'Guru']: [] };
   }
 
   // -- FUNGSI JURNAL MODAL --
@@ -1165,9 +1350,9 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
     const nilais = (nilaiText || '').split(',').map(s => s.trim());
     const len = Math.max(surats.length, ayats.length, 1);
     const list = [];
-    for (let i = 0; i < len; i++) { 
+    for (let i = 0; i < len; i++) {
       const aParts = (ayats[i] || '').split('-');
-      list.push({ id: Date.now() + Math.random(), surat: surats[i] || '', ayatStart: aParts[0] || '', ayatEnd: aParts[1] || aParts[0] || '', nilai: nilais[i] || '' }); 
+      list.push({ id: Date.now() + Math.random(), surat: surats[i] || '', ayatStart: aParts[0] || '', ayatEnd: aParts[1] || aParts[0] || '', nilai: nilais[i] || '' });
     }
     return list.length ? list : [emptySurat()];
   };
@@ -1176,11 +1361,11 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
     if (!text || text === '-') return [emptySurat()];
     return text.split(',').map((item) => {
       let s = item.trim(), aStart = '', aEnd = ''; let match = s.match(/(.+?)\s*\((.*?)\)/) || s.match(/(.+?)\s+(\d+(?:-\d+)?)$/);
-      if (match) { 
-        s = match[1].trim(); 
+      if (match) {
+        s = match[1].trim();
         const aParts = match[2].split('-');
-        aStart = aParts[0] || ''; 
-        aEnd = aParts[1] || aParts[0] || ''; 
+        aStart = aParts[0] || '';
+        aEnd = aParts[1] || aParts[0] || '';
       }
       return { id: Date.now() + Math.random(), surat: s, ayatStart: aStart, ayatEnd: aEnd };
     });
@@ -1195,7 +1380,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
 
     const findLastRecord = (s) => {
       const activeDateObj = new Date(activeDate);
-      
+
       // Untuk Lesson Plan (Selasa-Jumat), batasi pencarian hanya dalam pekan yang sama
       const currentWeekStart = new Date(activeDateObj);
       const dayOfWeek = currentWeekStart.getDay();
@@ -1233,7 +1418,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       for (const d of recordedDates) {
         const dStr = formatDateObj(d);
         const rec = s.records[dStr];
-          
+
         const isFromPreviousWeek = d < currentWeekStart;
         const searchKeys = (homeTab === 'lesson_plan' && isFromPreviousWeek) ? jurnalKeys : k;
 
@@ -1310,7 +1495,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
     } else if (studentToProcess) { // Regular single student edit/input
       const currentRecord = studentToProcess.records[activeDate] || {};
       initialDataForModal = { ...currentRecord };
-      
+
       // Ambil data bayangan (ghost data) sebagai saran input jika field masih kosong
       const ghostRecord = window._lastDayData ? window._lastDayData[studentToProcess.id] : null;
       if (ghostRecord) {
@@ -1355,12 +1540,12 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
         const brsMatch = rawTahsinAyat.match(/Brs ([\d, ]+)/); if (brsMatch) tBaris = brsMatch[1].split(',').map(s => s.trim());
         tahsinAyatOnly = '';
       } else if (tSurat.includes('Tajwid') || tSurat.includes('Ghorib') || tSurat.includes('Gharib')) {
-        tKategori = tSurat.includes('Tajwid') ? 'Tajwid' : 'Ghorib'; 
+        tKategori = tSurat.includes('Tajwid') ? 'Tajwid' : 'Ghorib';
         tSurat = tSurat.replace(/Tajwid,?\s*/gi, '').replace(/Ghorib,?\s*/gi, '').replace(/Gharib,?\s*/gi, '').trim();
         if (tSurat === '-') tSurat = '';
         const parts = rawTahsinAyat.split('/');
         if (parts.length > 0) {
-          let halMatStr = parts[0].trim(); 
+          let halMatStr = parts[0].trim();
           if (/^[0-9\-, ]+$/.test(halMatStr) || halMatStr.includes('Semua Ayat')) {
             tahsinAyatOnly = halMatStr;
             halMatStr = '';
@@ -1482,11 +1667,11 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
     let tahsinKat = plan.tahsinKategori, halAyat = tS.ayat;
 
     if (['Jilid 1', 'Jilid 2', 'Jilid 3', 'Jilid 4', 'Jilid 5', 'Jilid 6'].includes(tahsinKat)) {
-      let res = []; const sortedHal = [...plan.tahsinHalaman].sort((a, b) => Number(a) - Number(b)); 
+      let res = []; const sortedHal = [...plan.tahsinHalaman].sort((a, b) => Number(a) - Number(b));
       if (sortedHal.length === 0) plan.tahsinBaris = [];
       if (sortedHal.length > 0) res.push('Hal. ' + sortedHal.join(', ')); if (plan.tahsinBaris.length > 0) res.push('Brs ' + plan.tahsinBaris.join(', ')); halAyat = res.length > 0 ? res.join(' ') : '-';
     } else if (['Tajwid', 'Ghorib', 'Gharib'].includes(tahsinKat)) {
-      const sortedHal = [...plan.tahsinHalaman].sort((a, b) => Number(a) - Number(b)); 
+      const sortedHal = [...plan.tahsinHalaman].sort((a, b) => Number(a) - Number(b));
       // BUGS FIXED: Do not clear surah if halaman is empty, users might want to save surah without halaman
       // if (sortedHal.length === 0) {
       //   tS.surat = '-';
@@ -1509,21 +1694,28 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
           const existingRecord = student.records[plan.tanggal] || {}; let finalRecord = { ...existingRecord };
           for (let key of Object.values(k)) if (!finalRecord[key]) finalRecord[key] = '-';
 
+          const isOtherStudent = editingId && student.id !== editingId;
+          const isJurnalOnlySuratCatatan = isOtherStudent && homeTab === 'jurnal';
+
           if (isCategoryEdit || modalMode === 'full_bulk') {
             if (modalMode === 'tahsin' || modalMode === 'full_bulk') {
               if (modalTahsin !== '-' || modalHalAyatTahsin !== '-') {
                 finalRecord[k.t] = modalTahsin;
-                finalRecord[k.h] = modalHalAyatTahsin;
-                finalRecord[k.tNilai] = modalTahsinNilai;
-                finalRecord[k.tsNilai] = modalTahsinSuratNilai;
+                if (!isJurnalOnlySuratCatatan) {
+                  finalRecord[k.h] = modalHalAyatTahsin;
+                  finalRecord[k.tNilai] = modalTahsinNilai;
+                  finalRecord[k.tsNilai] = modalTahsinSuratNilai;
+                }
               }
               if (modalCatatanTahsin !== '-' || modalMode === 'tahsin') finalRecord[k.cT] = modalCatatanTahsin;
             }
             if (modalMode === 'tahfidz' || modalMode === 'full_bulk') {
               if (modalTahfidz !== '-' || modalAyatTahfidz !== '-') {
                 finalRecord[k.f] = modalTahfidz;
-                finalRecord[k.af] = modalAyatTahfidz;
-                finalRecord[k.fNilai] = modalTahfidzNilai;
+                if (!isJurnalOnlySuratCatatan) {
+                  finalRecord[k.af] = modalAyatTahfidz;
+                  finalRecord[k.fNilai] = modalTahfidzNilai;
+                }
               }
               if (modalCatatanTahfidz !== '-' || modalMode === 'tahfidz') finalRecord[k.cF] = modalCatatanTahfidz;
             }
@@ -1537,12 +1729,16 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
             }
           } else {
             finalRecord[k.t] = modalTahsin;
-            finalRecord[k.h] = modalHalAyatTahsin;
-            finalRecord[k.tNilai] = modalTahsinNilai;
-            finalRecord[k.tsNilai] = modalTahsinSuratNilai;
             finalRecord[k.f] = modalTahfidz;
-            finalRecord[k.af] = modalAyatTahfidz;
-            finalRecord[k.fNilai] = modalTahfidzNilai;
+
+            if (!isJurnalOnlySuratCatatan) {
+              finalRecord[k.h] = modalHalAyatTahsin;
+              finalRecord[k.tNilai] = modalTahsinNilai;
+              finalRecord[k.tsNilai] = modalTahsinSuratNilai;
+              finalRecord[k.af] = modalAyatTahfidz;
+              finalRecord[k.fNilai] = modalTahfidzNilai;
+            }
+
             finalRecord[k.m] = modalMurojaah;
             finalRecord[k.c] = modalCatatan;
             finalRecord[k.cT] = modalCatatanTahsin;
@@ -1564,10 +1760,10 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       try {
         const typeName = homeTab === 'lesson_plan' ? 'Target (Lesson Plan)' : 'Capaian (Jurnal)';
         const studentNames = students.filter(s => targetStudentIds.includes(s.id)).map(s => s.name).join(', ');
-        
+
         let detailMsg = `Tanggal: ${formatShortDate(new Date(plan.tanggal))}\n`;
         detailMsg += `Siswa (${targetStudentIds.length}): ${studentNames}\n\n`;
-        
+
         if (modalTahsin !== '-' || modalHalAyatTahsin !== '-') detailMsg += `Tahsin: ${modalTahsin} ${modalHalAyatTahsin !== '-' ? '- ' + modalHalAyatTahsin : ''}\n`;
         if (modalTahfidz !== '-' || modalAyatTahfidz !== '-') detailMsg += `Tahfidz: ${modalTahfidz} ${modalAyatTahfidz !== '-' ? '- ' + modalAyatTahfidz : ''}\n`;
         if (modalMurojaah !== '-') detailMsg += `Murojaah: ${modalMurojaah}\n`;
@@ -1656,7 +1852,8 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
   return (
     <div className="h-screen h-[100dvh] bg-slate-50 text-gray-800 font-sans flex flex-col overflow-hidden transition-all duration-500">
       {/* CSS Khusus untuk Menyembunyikan Scrollbar Bawaan (Membuat UI lebih minimalis) */}
-      <style dangerouslySetInnerHTML={{__html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         /* Chrome, Safari, Edge, Opera */
         .custom-scrollbar::-webkit-scrollbar {
           display: none;
@@ -1675,182 +1872,190 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       <MobileMenu mobileMenuOpen={mobileMenuOpen} setMobileMenuOpen={setMobileMenuOpen} currentUser={currentUser} theme={theme} setTheme={setTheme} currentView={currentView} setCurrentView={setCurrentView} isSuperAdmin={isSuperAdmin} onLogout={onLogout} />
 
       {/* Area Filter Halaqoh & Guru */}
-      <FilterBar currentView={currentView} isSuperAdmin={isSuperAdmin} activeGuru={activeGuru} setActiveGuru={setActiveGuru} setActiveHalaqoh={setActiveHalaqoh} guruList={guruList} currentUser={currentUser} showUnfilledOnly={showUnfilledOnly} setShowUnfilledOnly={setShowUnfilledOnly} handleCopyPortalLink={handleCopyPortalLink} activeHalaqoh={activeHalaqoh} guruHalaqohData={guruHalaqohData} students={students} />
+      <FilterBar currentView={currentView} isSuperAdmin={isSuperAdmin} activeGuru={activeGuru} setActiveGuru={handleGuruChange} setActiveHalaqoh={setActiveHalaqoh} guruList={guruList} currentUser={currentUser} showUnfilledOnly={showUnfilledOnly} setShowUnfilledOnly={setShowUnfilledOnly} handleCopyPortalLink={handleCopyPortalLink} activeHalaqoh={activeHalaqoh} guruHalaqohData={guruHalaqohData} students={students} />
 
-          {/* Main Content Area */}
-          <main className="flex-1 w-full max-w-7xl mx-auto overflow-hidden relative flex flex-col min-h-0 transition-colors duration-500">
-            {currentView === 'home' && (
-              <HomeView
-                activeHalaqoh={activeHalaqoh}
-                activeGuru={activeGuru}
-                homeTab={homeTab}
-                setHomeTab={handleTabChange}
-                weekStart={weekStart}
-                changeWeek={changeWeek}
-                activeDate={activeDate}
-                setActiveDate={setActiveDate}
-                weekDates={weekDates}
-                filteredStudents={filteredStudents}
-                handleOpenModal={handleOpenModal}
-                requestClearRecord={requestClearRecord}
-                requestClearAllRecordForDay={requestClearAllRecordForDay}
-                setSharingStudent={setSharingStudent}
-                handleRemoveData={handleRemoveData}
-                getStatusColor={getStatusColor}
-                institutionLogo={institutionLogo}
-                searchQuery={searchQuery}
-                setSearchQuery={setSearchQuery}
-                studentsInHalaqohCount={studentsInHalaqoh.length}
-                isLoading={isLoading}
-                targetReguler={targetReguler}
-                targetAlQuran={targetAlQuran}
-              />
-            )}
-            {currentView === 'siswa' && (
-              <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar bg-slate-50 pb-24 md:pb-0">
-                <StudentView
-                  activeHalaqoh={activeHalaqoh} filteredStudents={filteredStudents}
-                  openAddStudentModal={() => {
-                    setNewStudent({ name: '', kelas: kelasList.length > 0 ? kelasList[0] : '', halaqoh: activeHalaqoh, photo: null });
-                    setIsAddStudentModalOpen(true);
-                  }}
-                  openEditStudentModal={(s) => { setEditStudentData({ id: s.id, name: s.name, kelas: s.kelas, halaqoh: s.halaqoh, photo: s.photo || null }); setIsEditStudentModalOpen(true); }}
-                  requestDeleteStudent={requestDeleteStudent} isSuperAdmin={isSuperAdmin}
-                  openCropModal={openCropModal}
-                  uploadingPhotoId={uploadingPhotoId}
-                  uploadProgress={uploadProgress}
-                  onReorderStudents={handleReorderStudents}
-                  searchQuery={searchQuery}
-                  setSearchQuery={setSearchQuery}
-                />
-              </div>
-            )}
-            {currentView === 'laporan' && (
-              <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar bg-slate-50 pb-24 md:pb-0">
-                <ReportView
-                  activeHalaqoh={activeHalaqoh}
-                  activeGuru={activeGuru}
-                  activeDate={activeDate}
-                  setActiveDate={setActiveDate}
-                  weekDates={weekDates}
-                  changeWeek={changeWeek}
-                  filteredStudents={filteredStudents}
-                  institutionLogo={institutionLogo}
-                  guruHalaqohData={guruHalaqohData}
-                />
-              </div>
-            )}
-            {currentView === 'arsip' && (
-              <ArchiveView 
-                isSuperAdmin={isSuperAdmin}
-                currentUser={currentUser}
-                institutionLogo={institutionLogo}
-                guruHalaqohData={guruHalaqohData}
-              />
-            )}
-            {currentView === 'pengaturan' && (
-              <SettingsView
-                isSuperAdmin={isSuperAdmin} appUsers={appUsers}
-                handleApproveUser={handleApproveUser} handleRejectUser={handleRejectUser} handleUpdateUserAccount={handleUpdateUserAccount}
-                institutionName={institutionName} setInstitutionName={setInstitutionName} institutionLogo={institutionLogo} handleInstitutionLogoUpload={handleInstitutionLogoUpload} setInstitutionLogo={setInstitutionLogo} updateMasterDataCloud={updateMasterDataCloud} showToast={showToast}
-                targetReguler={targetReguler} setTargetReguler={setTargetReguler} targetAlQuran={targetAlQuran} setTargetAlQuran={setTargetAlQuran}
-                kelasList={kelasList} newKelasName={newKelasName} setNewKelasName={setNewKelasName} handleAddKelas={handleAddKelas} handleDeleteKelas={handleDeleteKelas} handleReorderKelas={handleReorderKelas}
-                newGuruName={newGuruName} setNewGuruName={setNewGuruName} handleAddGuru={handleAddGuru} guruList={isSuperAdmin ? guruList : [currentUser.name]}
-                selectedGuruForHalaqoh={selectedGuruForHalaqoh} setSelectedGuruForHalaqoh={setSelectedGuruForHalaqoh} newHalaqohName={newHalaqohName} setNewHalaqohName={setNewHalaqohName} handleAddHalaqoh={handleAddHalaqoh}
-                currentUser={currentUser} guruHalaqohData={guruHalaqohData} editingGuru={editingGuru} setEditingGuru={setEditingGuru} handleSaveEditGuru={handleSaveEditGuru} requestDeleteGuru={requestDeleteGuru}
-                editingHalaqoh={editingHalaqoh} setEditingHalaqoh={setEditingHalaqoh} handleSaveEditHalaqoh={handleSaveEditHalaqoh} requestDeleteHalaqoh={requestDeleteHalaqoh} handleReorderHalaqoh={handleReorderHalaqoh}
-                students={students} openEditStudentModal={(s) => { setEditStudentData({ id: s.id, name: s.name, kelas: s.kelas, halaqoh: s.halaqoh, photo: s.photo || null }); setIsEditStudentModalOpen(true); }}
-                requestDeleteStudent={requestDeleteStudent} requestBulkDeleteStudents={requestBulkDeleteStudents} requestBulkEditStudents={requestBulkEditStudents} handleBulkSaveStudents={handleBulkSaveStudents} onLogout={onLogout}
-                handleCleanLessonPlanValues={handleCleanLessonPlanValues}
-                handleCloseSemester={handleCloseSemester}
-                handleBackupData={handleBackupData}
-              />
-            )}
-            {currentView === 'statistik' && (
-              <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar bg-slate-50 pb-24 md:pb-0">
-                <ProgressChartView 
-                  students={filteredStudents}
-                  activeHalaqoh={activeHalaqoh}
-                />
-              </div>
-            )}
-            {currentView === 'log' && isSuperAdmin && (
-              <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar bg-slate-50 pb-24 md:pb-0">
-                <ActivityLogView />
-              </div>
-            )}
-          </main>
-
-          {/* RENDER MODALS */}
-          <AddStudentModal
-            isOpen={isAddStudentModalOpen} onClose={() => setIsAddStudentModalOpen(false)} isSuperAdmin={isSuperAdmin} addStudentMode={addStudentMode} setAddStudentMode={setAddStudentMode}
-            masterSearchQuery={masterSearchQuery} setMasterSearchQuery={setMasterSearchQuery} students={students.filter(s => !s.halaqoh || s.halaqoh.trim() === '')} activeHalaqoh={activeHalaqoh} handleAssignFromMaster={handleAssignFromMaster} newStudent={newStudent} setNewStudent={setNewStudent} handlePhotoUpload={handlePhotoUpload} kelasList={kelasList} handleSaveNewStudent={handleSaveNewStudent} getInitials={getInitials}
-            guruHalaqohData={getFilteredHalaqohDataForEdit()}
+      {/* Main Content Area */}
+      <main className="flex-1 w-full max-w-7xl mx-auto overflow-hidden relative flex flex-col min-h-0 transition-colors duration-500">
+        {currentView === 'home' && (
+          <HomeView
+            activeHalaqoh={activeHalaqoh}
+            activeGuru={activeGuru}
+            homeTab={homeTab}
+            setHomeTab={handleTabChange}
+            weekStart={weekStart}
+            changeWeek={changeWeek}
+            activeDate={activeDate}
+            setActiveDate={setActiveDate}
+            weekDates={weekDates}
+            filteredStudents={filteredStudents}
+            handleOpenModal={handleOpenModal}
+            requestClearRecord={requestClearRecord}
+            requestClearAllRecordForDay={requestClearAllRecordForDay}
+            handleAutoFillFromGhost={handleAutoFillFromGhost}
+            setSharingStudent={setSharingStudent}
+            handleRemoveData={handleRemoveData}
+            getStatusColor={getStatusColor}
+            institutionLogo={institutionLogo}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            studentsInHalaqohCount={studentsInHalaqoh.length}
+            isLoading={isLoading}
+            targetReguler={targetReguler}
+            targetAlQuran={targetAlQuran}
+            showToast={showToast}
           />
-          <EditStudentModal
-            isOpen={isEditStudentModalOpen}
-            onClose={() => setIsEditStudentModalOpen(false)}
-            editStudentData={editStudentData}
-            setEditStudentData={setEditStudentData}
-            handlePhotoUpload={handlePhotoUpload}
-            kelasList={kelasList}
-            handleUpdateStudent={handleUpdateStudent}
-            guruHalaqohData={getFilteredHalaqohDataForEdit()}
+        )}
+        {currentView === 'siswa' && (
+          <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar bg-slate-50 pb-24 md:pb-0">
+            <StudentView
+              activeHalaqoh={activeHalaqoh} filteredStudents={filteredStudents}
+              openAddStudentModal={() => {
+                setNewStudent({ name: '', kelas: kelasList.length > 0 ? kelasList[0] : '', halaqoh: activeHalaqoh, photo: null });
+                setIsAddStudentModalOpen(true);
+              }}
+              openEditStudentModal={(s) => { setEditStudentData({ id: s.id, name: s.name, kelas: s.kelas, halaqoh: s.halaqoh, photo: s.photo || null }); setIsEditStudentModalOpen(true); }}
+              requestDeleteStudent={requestDeleteStudent} isSuperAdmin={isSuperAdmin}
+              openCropModal={openCropModal}
+              uploadingPhotoId={uploadingPhotoId}
+              uploadProgress={uploadProgress}
+              onReorderStudents={handleReorderStudents}
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+            />
+          </div>
+        )}
+        {currentView === 'laporan' && (
+          <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar bg-slate-50 pb-24 md:pb-0">
+            <ReportView
+              activeHalaqoh={activeHalaqoh}
+              activeGuru={activeGuru}
+              activeDate={activeDate}
+              setActiveDate={setActiveDate}
+              weekDates={weekDates}
+              changeWeek={changeWeek}
+              filteredStudents={filteredStudents}
+              institutionLogo={institutionLogo}
+              guruHalaqohData={guruHalaqohData}
+            />
+          </div>
+        )}
+        {currentView === 'arsip' && (
+          <ArchiveView
             isSuperAdmin={isSuperAdmin}
             currentUser={currentUser}
+            institutionLogo={institutionLogo}
+            guruHalaqohData={guruHalaqohData}
           />
-
-          {/* MODAL JURNAL */}
-          <JurnalModal
-            isOpen={isModalOpen} onClose={handleCloseModal} modalMode={modalMode} getModalTitle={getModalTitle} lessonPlans={lessonPlans} handlePlanChange={handlePlanChange} handleToggleArray={handleToggleArray} handleAddSurat={handleAddSurat} handleRemoveSurat={handleRemoveSurat} handleSuratChange={handleSuratChange} activeDropdown={activeDropdown} setActiveDropdown={setActiveDropdown} tahsinCategories={tahsinCategories} ghoribList={ghoribList} tajwidList={tajwidList} surahList={surahList} homeTab={homeTab} handleSave={handleSave} editingId={editingId} selectedStudents={selectedStudents} filteredStudents={studentsInHalaqoh} toggleStudent={toggleStudent}
-            handleMarkAbsent={handleMarkAbsent}
+        )}
+        {currentView === 'pengaturan' && (
+          <SettingsView
+            isSuperAdmin={isSuperAdmin} appUsers={appUsers}
+            handleApproveUser={handleApproveUser} handleRejectUser={handleRejectUser} handleUpdateUserAccount={handleUpdateUserAccount}
+            institutionName={institutionName} setInstitutionName={setInstitutionName} institutionLogo={institutionLogo} handleInstitutionLogoUpload={handleInstitutionLogoUpload} setInstitutionLogo={setInstitutionLogo} updateMasterDataCloud={updateMasterDataCloud} showToast={showToast}
+            targetReguler={targetReguler} setTargetReguler={setTargetReguler} targetAlQuran={targetAlQuran} setTargetAlQuran={setTargetAlQuran}
+            kelasList={kelasList} newKelasName={newKelasName} setNewKelasName={setNewKelasName} handleAddKelas={handleAddKelas} handleDeleteKelas={handleDeleteKelas} handleReorderKelas={handleReorderKelas}
+            newGuruName={newGuruName} setNewGuruName={setNewGuruName} handleAddGuru={handleAddGuru} guruList={isSuperAdmin ? guruList : [currentUser.name]}
+            selectedGuruForHalaqoh={selectedGuruForHalaqoh} setSelectedGuruForHalaqoh={setSelectedGuruForHalaqoh} newHalaqohName={newHalaqohName} setNewHalaqohName={setNewHalaqohName} handleAddHalaqoh={handleAddHalaqoh}
+            currentUser={currentUser} guruHalaqohData={guruHalaqohData} editingGuru={editingGuru} setEditingGuru={setEditingGuru} handleSaveEditGuru={handleSaveEditGuru} requestDeleteGuru={requestDeleteGuru}
+            editingHalaqoh={editingHalaqoh} setEditingHalaqoh={setEditingHalaqoh} handleSaveEditHalaqoh={handleSaveEditHalaqoh} requestDeleteHalaqoh={requestDeleteHalaqoh} handleReorderHalaqoh={handleReorderHalaqoh}
+            handleReorderGuru={handleReorderGuru}
+            students={students} openEditStudentModal={(s) => { setEditStudentData({ id: s.id, name: s.name, kelas: s.kelas, halaqoh: s.halaqoh, photo: s.photo || null }); setIsEditStudentModalOpen(true); }}
+            requestDeleteStudent={requestDeleteStudent} requestBulkDeleteStudents={requestBulkDeleteStudents} requestBulkEditStudents={requestBulkEditStudents} handleBulkSaveStudents={handleBulkSaveStudents} onLogout={onLogout}
+            handleCleanLessonPlanValues={handleCleanLessonPlanValues}
+            handleResetTeacherPassword={handleResetTeacherPassword}
+            handleCloseSemester={handleCloseSemester}
+            handleBackupData={handleBackupData}
+            handleLinkAccount={handleLinkAccount}
           />
+        )}
+        {currentView === 'statistik' && (
+          <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar bg-slate-50 pb-24 md:pb-0">
+            <ProgressChartView
+              students={filteredStudents}
+              activeHalaqoh={activeHalaqoh}
+              allStudents={students}
+              weekDates={weekDates}
+              changeWeek={changeWeek}
+            />
+          </div>
+        )}
+        {currentView === 'log' && isSuperAdmin && (
+          <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar bg-slate-50 pb-24 md:pb-0">
+            <ActivityLogView />
+          </div>
+        )}
+      </main>
 
-          {/* MODAL CROP GAMBAR */}
-          <ImageCropModal
-            isOpen={isCropModalOpen}
-            onClose={() => setIsCropModalOpen(false)}
-            imageSrc={imageToCrop}
-            onCropComplete={handleCroppedImage}
-          />
+      {/* RENDER MODALS */}
+      <AddStudentModal
+        isOpen={isAddStudentModalOpen} onClose={() => setIsAddStudentModalOpen(false)} isSuperAdmin={isSuperAdmin} addStudentMode={addStudentMode} setAddStudentMode={setAddStudentMode}
+        masterSearchQuery={masterSearchQuery} setMasterSearchQuery={setMasterSearchQuery} students={students.filter(s => !s.halaqoh || s.halaqoh.trim() === '')} activeHalaqoh={activeHalaqoh} handleAssignFromMaster={handleAssignFromMaster} newStudent={newStudent} setNewStudent={setNewStudent} handlePhotoUpload={handlePhotoUpload} kelasList={kelasList} handleSaveNewStudent={handleSaveNewStudent} getInitials={getInitials}
+        guruHalaqohData={getFilteredHalaqohDataForEdit()}
+      />
+      <EditStudentModal
+        isOpen={isEditStudentModalOpen}
+        onClose={() => setIsEditStudentModalOpen(false)}
+        editStudentData={editStudentData}
+        setEditStudentData={setEditStudentData}
+        handlePhotoUpload={handlePhotoUpload}
+        kelasList={kelasList}
+        handleUpdateStudent={handleUpdateStudent}
+        guruHalaqohData={getFilteredHalaqohDataForEdit()}
+        isSuperAdmin={isSuperAdmin}
+        currentUser={currentUser}
+      />
 
-          {/* MODAL KONFIRMASI BERBAHAYA (CUSTOM CONFIRM) */}
-          {confirmDialog.isOpen && (
-            <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-              <div className="bg-white rounded-[2rem] shadow-2xl max-w-sm w-full overflow-hidden animate-in zoom-in-95 duration-300">
-                <div className="bg-gradient-to-b from-red-500 to-red-600 p-8 flex flex-col items-center justify-center text-center text-white relative overflow-hidden">
-                  <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
-                  <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-black/10 rounded-full blur-2xl"></div>
-                  
-                  <div className="w-20 h-20 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center mb-5 shadow-inner border border-white/30">
-                    <AlertTriangle size={40} className="text-white drop-shadow-md" />
-                  </div>
-                  <h3 className="text-2xl font-black mb-2 tracking-tight drop-shadow-sm">PERINGATAN!</h3>
-                  <p className="text-red-50 text-sm font-medium leading-relaxed drop-shadow-sm">{confirmDialog.message}</p>
-                </div>
-                <div className="p-5 sm:p-6 bg-white flex gap-3">
-                  <button onClick={() => setConfirmDialog({ isOpen: false })} className="flex-1 py-3.5 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-xl font-bold transition-colors active:scale-95">Batal</button>
-                  <button onClick={() => { confirmDialog.onConfirm(); setConfirmDialog({ isOpen: false }); }} className="flex-1 py-3.5 bg-red-600 text-white hover:bg-red-700 rounded-xl font-black shadow-lg shadow-red-200 active:scale-95 transition-all border border-red-500">Ya, Lanjutkan!</button>
-                </div>
+      {/* MODAL JURNAL */}
+      <JurnalModal
+        isOpen={isModalOpen} onClose={handleCloseModal} modalMode={modalMode} getModalTitle={getModalTitle} lessonPlans={lessonPlans} handlePlanChange={handlePlanChange} handleToggleArray={handleToggleArray} handleAddSurat={handleAddSurat} handleRemoveSurat={handleRemoveSurat} handleSuratChange={handleSuratChange} activeDropdown={activeDropdown} setActiveDropdown={setActiveDropdown} tahsinCategories={tahsinCategories} ghoribList={ghoribList} tajwidList={tajwidList} surahList={surahList} homeTab={homeTab} handleSave={handleSave} editingId={editingId} selectedStudents={selectedStudents} filteredStudents={studentsInHalaqoh} toggleStudent={toggleStudent}
+        handleMarkAbsent={handleMarkAbsent}
+      />
+
+      {/* MODAL CROP GAMBAR */}
+      <ImageCropModal
+        isOpen={isCropModalOpen}
+        onClose={() => setIsCropModalOpen(false)}
+        imageSrc={imageToCrop}
+        onCropComplete={handleCroppedImage}
+      />
+
+      {/* MODAL KONFIRMASI BERBAHAYA (CUSTOM CONFIRM) */}
+      {confirmDialog.isOpen && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-[2rem] shadow-2xl max-w-sm w-full overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="bg-gradient-to-b from-red-500 to-red-600 p-8 flex flex-col items-center justify-center text-center text-white relative overflow-hidden">
+              <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+              <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-black/10 rounded-full blur-2xl"></div>
+
+              <div className="w-20 h-20 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center mb-5 shadow-inner border border-white/30">
+                <AlertTriangle size={40} className="text-white drop-shadow-md" />
               </div>
+              <h3 className="text-2xl font-black mb-2 tracking-tight drop-shadow-sm">PERINGATAN!</h3>
+              <p className="text-red-50 text-sm font-medium leading-relaxed drop-shadow-sm">{confirmDialog.message}</p>
             </div>
-          )}
-
-          {toastMessage && (<div className="fixed top-4 md:top-20 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-4 py-2 rounded-xl shadow-2xl z-[9999] font-bold text-xs md:text-sm animate-bounce">{toastMessage}</div>)}
-
-          <nav className="md:hidden fixed bottom-0 w-full bg-white border-t border-gray-100 flex justify-around items-center h-[70px] z-40 print:hidden">
-            <button onClick={() => setCurrentView('home')} className={`flex flex-col items-center gap-1 ${currentView === 'home' ? 'text-green-600' : 'text-gray-400'}`}><Home size={20} /><span className="text-[9px] font-bold">Beranda</span></button>
-            <button onClick={() => setCurrentView('siswa')} className={`flex flex-col items-center gap-1 ${currentView === 'siswa' ? 'text-green-600' : 'text-gray-400'}`}><Users size={20} /><span className="text-[9px] font-bold">Siswa</span></button>
-            <button onClick={() => setCurrentView('laporan')} className={`flex flex-col items-center gap-1 ${currentView === 'laporan' ? 'text-green-600' : 'text-gray-400'}`}><BarChart3 size={20} /><span className="text-[9px] font-bold">Laporan</span></button>
-            <button onClick={() => setCurrentView('arsip')} className={`flex flex-col items-center gap-1 ${currentView === 'arsip' ? 'text-green-600' : 'text-gray-400'}`}><Archive size={20} /><span className="text-[9px] font-bold">Arsip</span></button>
-            <button onClick={() => setCurrentView('statistik')} className={`flex flex-col items-center gap-1 ${currentView === 'statistik' ? 'text-green-600' : 'text-gray-400'}`}><PieChart size={20} /><span className="text-[9px] font-bold">Grafik</span></button>
-            {isSuperAdmin && (
-              <button onClick={() => setCurrentView('log')} className={`flex flex-col items-center gap-1 ${currentView === 'log' ? 'text-green-600' : 'text-gray-400'}`}><Activity size={20} /><span className="text-[9px] font-bold">Log</span></button>
-            )}
-            <button onClick={() => setCurrentView('pengaturan')} className={`flex flex-col items-center gap-1 ${currentView === 'pengaturan' ? 'text-green-600' : 'text-gray-400'}`}><Settings size={20} /><span className="text-[9px] font-bold">Setelan</span></button>
-          </nav>
+            <div className="p-5 sm:p-6 bg-white flex gap-3">
+              <button onClick={() => setConfirmDialog({ isOpen: false })} className="flex-1 py-3.5 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-xl font-bold transition-colors active:scale-95">Batal</button>
+              <button onClick={() => { confirmDialog.onConfirm(); setConfirmDialog({ isOpen: false }); }} className="flex-1 py-3.5 bg-red-600 text-white hover:bg-red-700 rounded-xl font-black shadow-lg shadow-red-200 active:scale-95 transition-all border border-red-500">Ya, Lanjutkan!</button>
+            </div>
+          </div>
         </div>
-        );
+      )}
+
+      {toastMessage && (<div className="fixed top-4 md:top-20 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-4 py-2 rounded-xl shadow-2xl z-[100010] font-bold text-xs md:text-sm animate-bounce">{toastMessage}</div>)}
+
+      <nav className="md:hidden fixed bottom-0 w-full bg-white border-t border-gray-100 flex justify-around items-center h-[70px] z-40 print:hidden">
+        <button onClick={() => setCurrentView('home')} className={`flex flex-col items-center gap-1 ${currentView === 'home' ? 'text-green-600' : 'text-gray-400'}`}><Home size={20} /><span className="text-[9px] font-bold">Beranda</span></button>
+        <button onClick={() => setCurrentView('siswa')} className={`flex flex-col items-center gap-1 ${currentView === 'siswa' ? 'text-green-600' : 'text-gray-400'}`}><Users size={20} /><span className="text-[9px] font-bold">Siswa</span></button>
+        <button onClick={() => setCurrentView('laporan')} className={`flex flex-col items-center gap-1 ${currentView === 'laporan' ? 'text-green-600' : 'text-gray-400'}`}><BarChart3 size={20} /><span className="text-[9px] font-bold">Laporan</span></button>
+        <button onClick={() => setCurrentView('arsip')} className={`flex flex-col items-center gap-1 ${currentView === 'arsip' ? 'text-green-600' : 'text-gray-400'}`}><Archive size={20} /><span className="text-[9px] font-bold">Arsip</span></button>
+        <button onClick={() => setCurrentView('statistik')} className={`flex flex-col items-center gap-1 ${currentView === 'statistik' ? 'text-green-600' : 'text-gray-400'}`}><PieChart size={20} /><span className="text-[9px] font-bold">Grafik</span></button>
+        {isSuperAdmin && (
+          <button onClick={() => setCurrentView('log')} className={`flex flex-col items-center gap-1 ${currentView === 'log' ? 'text-green-600' : 'text-gray-400'}`}><Activity size={20} /><span className="text-[9px] font-bold">Log</span></button>
+        )}
+        <button onClick={() => setCurrentView('pengaturan')} className={`flex flex-col items-center gap-1 ${currentView === 'pengaturan' ? 'text-green-600' : 'text-gray-400'}`}><Settings size={20} /><span className="text-[9px] font-bold">Setelan</span></button>
+      </nav>
+    </div>
+  );
 };
 
-        export default MainApp;
+export default MainApp;

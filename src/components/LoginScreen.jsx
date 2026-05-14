@@ -3,10 +3,10 @@ import React, { useState, useEffect } from 'react';
 import {
   BookOpen, UserPlus, GraduationCap, User, Lock, Calendar, Mic, Repeat, FileText,
   Eye, EyeOff, Loader2, ShieldAlert, CheckCircle2, HelpCircle, Download, Printer, Users,
-  ChevronLeft, ChevronRight, Search, SearchCode, RotateCcw, LayoutGrid, X, Link, Star
+  ChevronLeft, ChevronRight, Search, SearchCode, RotateCcw, LayoutGrid, X, Link, Star, Sun, Moon
 } from 'lucide-react';
 import { supabase } from './supabase';
-import { formatShortDate, getInitials, formatPeriode, formatPrintData, getMonday, formatDateObj, getMonthYear, getDayName } from '../utils/helpers';
+import { formatShortDate, getInitials, formatPeriode, formatPrintData, getMonday, formatDateObj, getMonthYear, getDayName, copyTextToClipboard } from '../utils/helpers';
 
 const renderTextWithHighlights = (txt) => {
   if (typeof txt !== 'string') return txt;
@@ -104,7 +104,7 @@ const renderCatatanDetail = (valC, valCT, valCF) => {
   );
 }
 
-const LoginScreen = ({ onLogin }) => {
+const LoginScreen = ({ onLogin, theme, setTheme }) => {
   const [isRegistering, setIsRegistering] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [fullName, setFullName] = useState('');
@@ -117,6 +117,8 @@ const LoginScreen = ({ onLogin }) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [institutionLogo, setInstitutionLogo] = useState(null);
+  const [toastMessage, setToastMessage] = useState(null);
+  const showToast = (msg) => { setToastMessage(msg); setTimeout(() => setToastMessage(null), 4000); };
 
 
   // State khusus Public View
@@ -149,6 +151,7 @@ const LoginScreen = ({ onLogin }) => {
   const [isPublicLoading, setIsPublicLoading] = useState(false);
   const [isPrintingAll, setIsPrintingAll] = useState(false);
   const [publicTab, setPublicTab] = useState('jurnal');
+  const [copySuccessModal, setCopySuccessModal] = useState({ isOpen: false, title: '', message: '', link: '' });
 
   const handlePrintAll = () => {
     setIsPrintingAll(true);
@@ -158,28 +161,69 @@ const LoginScreen = ({ onLogin }) => {
       setIsPrintingAll(false);
     }, 500);
   };
-  const [publicWeekStart, setPublicWeekStart] = useState(getMonday(new Date()));
+  const [publicWeekStart, setPublicWeekStart] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const dateParam = params.get('date');
+    if (dateParam) {
+      const parsed = new Date(dateParam);
+      if (!isNaN(parsed.getTime())) {
+        return getMonday(parsed);
+      }
+    }
+    return getMonday(new Date());
+  });
 
-  const handleCopyClassShareLink = () => {
+  const handleCopyClassShareLink = async () => {
     if (!publicClassHalaqoh) return;
     const baseUrl = window.location.origin + window.location.pathname;
-    const shareUrl = `${baseUrl}?shareClass=${encodeURIComponent(publicClassHalaqoh)}`;
+    const dateParam = formatDateObj(publicWeekStart);
+    const shareUrl = `${baseUrl}?shareClass=${encodeURIComponent(publicClassHalaqoh)}&date=${dateParam}`;
     const weekStart = publicWeekStart;
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekEnd.getDate() + 4);
     const periode = formatPeriode(weekStart, weekEnd);
-    const textToCopy = `Assalamu'alaikum Warahmatullahi Wabarakatuh\n\nBerikut adalah tautan Laporan Kelas/Halaqoh *${publicClassHalaqoh}* periode *${periode}*:\n\n${shareUrl}\n\nTerima kasih.`;
+    const textToCopy = `Assalamu'alaikum Warahmatullahi Wabarakatuh\n\nBerikut adalah tautan Laporan Halaqoh *${publicClassHalaqoh}* periode *${periode}*:\n\n${shareUrl}\n\nTerima kasih.`;
 
-    navigator.clipboard.writeText(textToCopy).then(() => {
-      alert("Link Laporan Kelas berhasil disalin ke clipboard!");
-    }).catch(err => {
-      console.error('Gagal menyalin link:', err);
-    });
+    const copied = await copyTextToClipboard(textToCopy);
+    if (copied) {
+      setCopySuccessModal({
+        isOpen: true,
+        title: 'Tautan Berhasil Disalin!',
+        message: `Tautan laporan halaqoh untuk kelompok ${publicClassHalaqoh} telah disalin ke clipboard. Anda dapat membagikannya kepada wali murid.`,
+        link: shareUrl
+      });
+    } else {
+      showToast("Gagal menyalin tautan laporan.");
+    }
   };
 
   const [publicClassHalaqoh, setPublicClassHalaqoh] = useState(null);
   const [publicClassGuru, setPublicClassGuru] = useState('');
   const [publicClassStudents, setPublicClassStudents] = useState([]);
+
+  const handleCopyShareLink = async () => {
+    if (!publicStudent) return;
+    const baseUrl = window.location.origin + window.location.pathname;
+    const dateParam = formatDateObj(publicWeekStart);
+    const shareUrl = `${baseUrl}?share=${publicStudent.id}&date=${dateParam}`;
+    const weekStart = publicWeekStart;
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 4);
+    const periode = formatPeriode(weekStart, weekEnd);
+    const textToCopy = `Assalamu'alaikum Warahmatullahi Wabarakatuh\n\nBerikut adalah tautan Laporan Al-Qur'an ananda *${publicStudent.name}* periode *${periode}*:\n\n${shareUrl}\n\nTerima kasih.`;
+
+    const copied = await copyTextToClipboard(textToCopy);
+    if (copied) {
+      setCopySuccessModal({
+        isOpen: true,
+        title: 'Tautan Berhasil Disalin!',
+        message: `Tautan laporan individu untuk ${publicStudent.name} telah disalin ke clipboard. Anda dapat membagikannya kepada wali murid.`,
+        link: shareUrl
+      });
+    } else {
+      showToast("Gagal menyalin tautan laporan.");
+    }
+  };
 
   const changePublicWeek = (offset) => {
     const n = new Date(publicWeekStart);
@@ -256,7 +300,7 @@ const LoginScreen = ({ onLogin }) => {
     // Cari nama guru secara otomatis
     let foundTeacher = '-';
     for (const [guru, halaqohs] of Object.entries(guruHalaqohMap)) {
-      if (Array.isArray(halaqohs) && halaqohs.includes(student.halaqoh)) {
+      if (guru !== '_order_' && Array.isArray(halaqohs) && halaqohs.includes(student.halaqoh)) {
         foundTeacher = guru;
         break;
       }
@@ -273,7 +317,7 @@ const LoginScreen = ({ onLogin }) => {
 
         // Cari guru berdasarkan halaqoh
         for (const [guru, halaqohs] of Object.entries(guruData)) {
-          if (Array.isArray(halaqohs) && halaqohs.includes(sData.halaqoh)) {
+          if (guru !== '_order_' && Array.isArray(halaqohs) && halaqohs.includes(sData.halaqoh)) {
             setPublicTeacher(guru);
             break;
           }
@@ -290,12 +334,14 @@ const LoginScreen = ({ onLogin }) => {
     setIsPublicLoading(true);
     setPublicClassHalaqoh(halaqohName);
     try {
-      const { data: sData } = await supabase.from('students').select('*').eq('halaqoh', halaqohName);
+      // Gunakan ilike untuk case-insensitive match, dan pastikan string bebas dari spasi berlebih
+      const safeName = halaqohName.trim();
+      const { data: sData } = await supabase.from('students').select('*').ilike('halaqoh', safeName);
       if (sData) {
         setPublicClassStudents(sData.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)));
         let foundTeacher = '-';
         for (const [guru, halaqohs] of Object.entries(guruData)) {
-          if (Array.isArray(halaqohs) && halaqohs.includes(halaqohName)) {
+          if (guru !== '_order_' && Array.isArray(halaqohs) && halaqohs.some(h => h.toLowerCase() === safeName.toLowerCase())) {
             foundTeacher = guru;
             break;
           }
@@ -314,6 +360,9 @@ const LoginScreen = ({ onLogin }) => {
 
     const normalizedUsername = username.toLowerCase().trim();
     const rawUsername = username.trim();
+
+    // Fungsi mengubah spasi menjadi garis bawah (underscore) agar format email valid
+    const generateSafeEmail = (uname) => `${uname.toLowerCase().replace(/\s+/g, '_')}@myquranplan.local`;
 
     try {
       if (isRegistering) {
@@ -342,7 +391,7 @@ const LoginScreen = ({ onLogin }) => {
           setError('Username sudah terdaftar! Gunakan yang lain.');
         } else {
           // Supabase Auth membutuhkan format email, kita gunakan format dummy dengan username
-          const dummyEmail = `${normalizedUsername}@myquranplan.local`;
+          const dummyEmail = generateSafeEmail(normalizedUsername);
           // 1. Mendaftar menggunakan Supabase Auth
           const { data: authData, error: authError } = await supabase.auth.signUp({
             email: dummyEmail,
@@ -392,13 +441,19 @@ const LoginScreen = ({ onLogin }) => {
         }
 
         if (userData) {
-          if (userData.role !== 'superadmin' && userData.status !== 'active') {
-            setError('Akun Anda belum disetujui oleh Admin. Harap tunggu atau hubungi Admin.');
-            setIsLoading(false);
-            return;
+          if (userData.role !== 'superadmin') {
+            if (userData.status === 'pending') {
+              setError('Akun Anda belum disetujui oleh Admin. Harap tunggu atau hubungi Admin.');
+              setIsLoading(false);
+              return;
+            } else if (userData.status === 'inactive') {
+              setError('Akun login ini telah dinonaktifkan. Silakan hubungi Admin Utama.');
+              setIsLoading(false);
+              return;
+            }
           }
 
-          const loginEmail = `${userData.username.toLowerCase()}@myquranplan.local`;
+          const loginEmail = generateSafeEmail(userData.username);
 
           // Login menggunakan sistem autentikasi resmi Supabase Auth
           const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
@@ -506,7 +561,7 @@ const LoginScreen = ({ onLogin }) => {
       link.download = `Laporan_${(publicStudent?.name || 'Siswa').replace(/\s/g, '_')}.jpg`;
       link.href = dataURL;
       link.click();
-    } catch (error) { alert("Gagal mengunduh gambar."); }
+    } catch (error) { showToast("Gagal mengunduh gambar."); }
     finally { setIsLoading(false); }
   };
 
@@ -517,21 +572,21 @@ const LoginScreen = ({ onLogin }) => {
     const totalPages = workDays.length > 3 ? 2 : 1;
 
     return (
-      <div className="min-h-screen bg-slate-900 text-gray-800 flex flex-col p-0 md:p-6 printable-area print:!static print:p-0 print:m-0 transition-all duration-500">
+      <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col p-0 md:p-6 printable-area print:!static print:p-0 print:m-0 transition-all duration-500">
 
         {/* Header Navigasi & Aksi (Sticky Top) */}
-        <div className="bg-slate-800/95 backdrop-blur-md sticky top-0 z-[100000] print:hidden flex flex-col xl:flex-row justify-between items-center p-4 sm:p-6 gap-4 shadow-2xl w-full border-b border-slate-700" data-html2canvas-ignore="true">
+        <div className="bg-white/90 backdrop-blur-md sticky top-0 z-[100000] print:hidden flex flex-col xl:flex-row justify-between items-center p-4 sm:p-6 gap-4 shadow-sm w-full border-b border-slate-200" data-html2canvas-ignore="true">
 
           {/* Bagian Kiri: Tab & Minggu */}
           <div className="flex flex-col sm:flex-row items-center gap-3 w-full xl:w-auto">
-            <div className="flex gap-2 w-full sm:w-auto">
-              <button onClick={() => setPublicTab('lesson_plan')} className={`flex-1 sm:flex-none px-5 py-3 sm:py-2.5 text-xs sm:text-sm font-black rounded-xl transition-all shadow-md ${publicTab === 'lesson_plan' ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>Target (Lesson Plan)</button>
-              <button onClick={() => setPublicTab('jurnal')} className={`flex-1 sm:flex-none px-5 py-3 sm:py-2.5 text-xs sm:text-sm font-black rounded-xl transition-all shadow-md ${publicTab === 'jurnal' ? 'bg-blue-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>Capaian (Jurnal)</button>
+            <div className="flex gap-2 w-full sm:w-auto bg-slate-100 p-1.5 rounded-2xl">
+              <button onClick={() => setPublicTab('lesson_plan')} className={`flex-1 sm:flex-none px-5 py-3 sm:py-2 text-xs sm:text-sm font-black rounded-xl transition-all ${publicTab === 'lesson_plan' ? 'bg-emerald-500 text-white shadow-md' : 'text-slate-500 hover:text-slate-700'}`}>Target (Lesson Plan)</button>
+              <button onClick={() => setPublicTab('jurnal')} className={`flex-1 sm:flex-none px-5 py-3 sm:py-2 text-xs sm:text-sm font-black rounded-xl transition-all ${publicTab === 'jurnal' ? 'bg-blue-500 text-white shadow-md' : 'text-slate-500 hover:text-slate-700'}`}>Capaian (Jurnal)</button>
             </div>
-            <div className="flex items-center justify-between bg-slate-700 rounded-xl px-2 py-1.5 shadow-md w-full sm:w-auto">
-              <button onClick={() => changePublicWeek(-7)} className="p-2 sm:p-2.5 text-slate-400 hover:text-emerald-400 transition-colors"><ChevronLeft size={18} /></button>
-              <span className="text-xs sm:text-sm font-bold whitespace-nowrap px-4 text-white">{formatPeriode(weekDates[0], weekDates[4])}</span>
-              <button onClick={() => changePublicWeek(7)} className="p-2 sm:p-2.5 text-slate-400 hover:text-emerald-400 transition-colors"><ChevronRight size={18} /></button>
+            <div className="flex items-center justify-between bg-white border border-slate-200 rounded-xl px-2 py-1.5 shadow-sm w-full sm:w-auto">
+              <button onClick={() => changePublicWeek(-7)} className="p-2 sm:p-2 bg-slate-50 hover:bg-emerald-50 text-slate-400 hover:text-emerald-500 rounded-lg transition-colors"><ChevronLeft size={18} /></button>
+              <span className="text-xs sm:text-sm font-bold whitespace-nowrap px-4 text-slate-700">{formatPeriode(weekDates[0], weekDates[4])}</span>
+              <button onClick={() => changePublicWeek(7)} className="p-2 sm:p-2 bg-slate-50 hover:bg-emerald-50 text-slate-400 hover:text-emerald-500 rounded-lg transition-colors"><ChevronRight size={18} /></button>
             </div>
           </div>
 
@@ -551,25 +606,38 @@ const LoginScreen = ({ onLogin }) => {
         <div className="w-full flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar flex flex-col md:items-center p-0 md:p-6 print:p-0 print:m-0 print:overflow-visible relative">
 
           {/* TAMPILAN NAMA SISWA */}
-          <div className="w-full max-w-5xl px-4 py-6 print:hidden">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {publicClassStudents.map((student, idx) => (
-                <button key={student.id} onClick={() => handleSelectStudent(student)} className="flex items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-100 hover:border-emerald-300 hover:shadow-md transition-all group text-left">
-                  <div className="w-12 h-12 rounded-full bg-emerald-50 border-2 border-emerald-100 flex items-center justify-center text-emerald-600 font-black shrink-0 group-hover:bg-emerald-100 transition-colors overflow-hidden">
-                    {student?.photo && student.photo !== '' ? (
-                      <img src={student.photo} alt={student?.name} className="w-full h-full object-cover" />
-                    ) : (
-                      getInitials(student?.name)
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-black text-slate-800 group-hover:text-emerald-600 text-sm truncate transition-colors">{student?.name || 'Unknown'}</div>
-                    <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Kelas {student?.kelas || '-'}</div>
-                  </div>
-                  <ChevronRight size={18} className="text-slate-300 group-hover:text-emerald-500 transition-colors" />
-                </button>
-              ))}
-            </div>
+          <div className="w-full max-w-5xl px-4 py-6 print:hidden min-h-[400px]">
+            {isPublicLoading ? (
+              <div className="flex flex-col items-center justify-center py-20 text-emerald-500 animate-in fade-in duration-500">
+                <Loader2 size={40} className="animate-spin mb-4" />
+                <p className="font-bold text-slate-500">Memuat data siswa...</p>
+              </div>
+            ) : publicClassStudents.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {publicClassStudents.map((student, idx) => (
+                  <button key={student.id} onClick={() => handleSelectStudent(student)} className="flex items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-100 hover:border-emerald-300 hover:shadow-md transition-all group text-left animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: `${idx * 0.05}s` }}>
+                    <div className="w-12 h-12 rounded-full bg-emerald-50 border-2 border-emerald-100 flex items-center justify-center text-emerald-600 font-black shrink-0 group-hover:bg-emerald-100 transition-colors overflow-hidden">
+                      {student?.photo && student.photo !== '' ? (
+                        <img src={student.photo} alt={student?.name} className="w-full h-full object-cover" />
+                      ) : (
+                        getInitials(student?.name)
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-black text-slate-800 group-hover:text-emerald-600 text-sm truncate transition-colors">{student?.name || 'Unknown'}</div>
+                      <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Kelas {student?.kelas || '-'}</div>
+                    </div>
+                    <ChevronRight size={18} className="text-slate-300 group-hover:text-emerald-500 transition-colors" />
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200 shadow-sm animate-in fade-in duration-500">
+                <Users size={48} className="mx-auto text-slate-300 mb-4" />
+                <h3 className="text-lg font-black text-slate-700">Belum Ada Siswa</h3>
+                <p className="text-slate-500 font-medium mt-1">Sistem tidak menemukan siswa di kelompok halaqoh <strong className="text-emerald-600">{publicClassHalaqoh}</strong>.</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -875,8 +943,10 @@ const LoginScreen = ({ onLogin }) => {
 
   // --- TAMPILAN PORTAL PENCARIAN ORANG TUA ---
   if (isParentPortal) {
-    const availableGurus = Object.keys(guruHalaqohMap).sort();
-    const availableHalaqohs = Array.from(new Set(Object.values(guruHalaqohMap).flat())).sort();
+    const availableGurus = Object.keys(guruHalaqohMap).filter(k => k !== '_order_').sort();
+    const availableHalaqohs = portalGuruFilter
+      ? (guruHalaqohMap[portalGuruFilter] || []).sort()
+      : Array.from(new Set(Object.keys(guruHalaqohMap).filter(k => k !== '_order_').flatMap(k => guruHalaqohMap[k]))).sort();
     const isSearching = portalSearch.trim() !== '' || portalKelasFilter !== '' || (!isHalaqohLocked && portalHalaqohFilter !== '') || portalGuruFilter !== '';
 
     const filtered = allStudents.filter(s => {
@@ -912,6 +982,15 @@ const LoginScreen = ({ onLogin }) => {
               className="text-[10px] sm:text-xs font-black bg-emerald-500 text-white px-4 py-2 rounded-xl hover:bg-emerald-600 transition-all shadow-md shadow-emerald-100"
             >
               Daftar Guru
+            </button>
+            <button
+              onClick={() => setTheme && setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className={`p-2 sm:p-2.5 rounded-xl transition-all active:scale-90 ml-1 sm:ml-2 shadow-sm border ${theme === 'dark' ? 'bg-slate-800 text-amber-400 border-slate-700 hover:text-amber-300' : 'bg-slate-50 text-slate-400 hover:text-amber-500 border-slate-100'}`}
+              title="Mode Gelap/Terang"
+            >
+              <div className={`transform transition-transform duration-500 ${theme === 'dark' ? 'rotate-180' : 'rotate-0'}`}>
+                {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+              </div>
             </button>
           </div>
         </header>
@@ -958,7 +1037,16 @@ const LoginScreen = ({ onLogin }) => {
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500 transition-colors pointer-events-none" size={16} />
                 <select
                   value={portalGuruFilter}
-                  onChange={(e) => setPortalGuruFilter(e.target.value)}
+                  onChange={(e) => {
+                    const newGuru = e.target.value;
+                    setPortalGuruFilter(newGuru);
+                    if (newGuru && portalHalaqohFilter) {
+                      const guruHalaqohs = guruHalaqohMap[newGuru] || [];
+                      if (!guruHalaqohs.includes(portalHalaqohFilter)) {
+                        if (!isHalaqohLocked) setPortalHalaqohFilter('');
+                      }
+                    }
+                  }}
                   className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl pl-10 pr-3 py-3 text-xs font-bold text-slate-600 outline-none focus:border-emerald-500 focus:bg-white transition-all cursor-pointer appearance-none"
                 >
                   <option value="">Semua Ustadz/ah</option>
@@ -1056,6 +1144,13 @@ const LoginScreen = ({ onLogin }) => {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col justify-center items-center p-4 sm:p-6 relative overflow-hidden z-0 transition-all duration-500">
+
+      <button onClick={() => setTheme && setTheme(theme === 'dark' ? 'light' : 'dark')} className={`absolute top-4 right-4 sm:top-6 sm:right-6 z-50 p-3 backdrop-blur-sm rounded-2xl shadow-sm border transition-all active:scale-90 ${theme === 'dark' ? 'bg-slate-800/80 text-amber-400 border-slate-700 hover:text-amber-300' : 'bg-white/80 text-slate-500 hover:text-amber-500 border-slate-100'}`} title="Mode Gelap/Terang">
+        <div className={`transform transition-transform duration-500 ${theme === 'dark' ? 'rotate-180' : 'rotate-0'}`}>
+          {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+        </div>
+      </button>
+
       {/* Pola Islami Samar (Islamic Geometric Pattern) */}
       <div
         className="absolute inset-0 opacity-[0.03] pointer-events-none -z-20"
@@ -1181,7 +1276,6 @@ const LoginScreen = ({ onLogin }) => {
                     <Lock size={18} className="text-slate-400 group-focus-within:text-emerald-500 transition-colors" />
                   </div>
                   <input
-                    type={showPassword ? "text" : "password"}
                     type={showConfirmPassword ? "text" : "password"}
                     value={confirmPassword}
                     onChange={(e) => { setConfirmPassword(e.target.value); setError(''); setSuccessMsg(''); }}
@@ -1256,6 +1350,55 @@ const LoginScreen = ({ onLogin }) => {
           </div>
         </div>
       )}
+
+      {/* ===== MODAL SUCCESS COPY LINK ===== */}
+      {copySuccessModal.isOpen && (
+        <div className="fixed inset-0 z-[100005] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200 print:hidden">
+          <div className="bg-white rounded-[2rem] shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="bg-gradient-to-b from-emerald-500 to-emerald-600 p-6 flex flex-col items-center justify-center text-center text-white relative overflow-hidden">
+              <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
+              <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-black/10 rounded-full blur-2xl pointer-events-none"></div>
+
+              <div className="w-20 h-20 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center mb-4 shadow-inner border border-white/30 relative z-10">
+                <CheckCircle2 size={40} className="text-white drop-shadow-md" />
+              </div>
+              <h3 className="text-2xl font-black tracking-tight drop-shadow-sm relative z-10">{copySuccessModal.title}</h3>
+            </div>
+            
+            <div className="p-6 bg-white flex flex-col gap-4">
+              <p className="text-slate-600 text-sm font-medium leading-relaxed text-center">
+                {copySuccessModal.message}
+              </p>
+              
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center gap-3">
+                <div className="flex-1 overflow-hidden text-left">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Tautan Laporan</p>
+                  <p className="text-sm font-semibold text-slate-700 truncate">{copySuccessModal.link}</p>
+                </div>
+                <button 
+                  onClick={() => {
+                    copyTextToClipboard(copySuccessModal.link);
+                    if (showToast) showToast("Tautan disalin!");
+                  }} 
+                  className="w-10 h-10 bg-white border border-slate-200 rounded-lg flex items-center justify-center text-slate-500 hover:text-emerald-600 hover:border-emerald-200 hover:bg-emerald-50 transition-all shrink-0"
+                  title="Salin Tautan Saja"
+                >
+                  <Link size={18} />
+                </button>
+              </div>
+
+              <button 
+                onClick={() => setCopySuccessModal({ isOpen: false, title: '', message: '', link: '' })} 
+                className="w-full mt-2 py-3.5 bg-slate-900 text-white hover:bg-slate-800 rounded-xl font-black shadow-lg shadow-slate-200 active:scale-95 transition-all"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {toastMessage && (<div className="fixed top-4 md:top-20 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-4 py-2 rounded-xl shadow-2xl z-[100010] font-bold text-xs md:text-sm animate-bounce">{toastMessage}</div>)}
     </div>
   );
 };

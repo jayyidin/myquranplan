@@ -190,3 +190,22 @@ SECURITY DEFINER LANGUAGE sql AS $$
   -- Menghapus log yang usianya lebih dari 6 bulan
   DELETE FROM public.activity_logs WHERE created_at < NOW() - INTERVAL '6 months';
 $$;
+
+-- FUNGSI UNTUK MENGHAPUS USER DARI AUTH (Saat menolak pendaftaran)
+CREATE OR REPLACE FUNCTION delete_auth_user(target_user_id uuid)
+RETURNS void
+SECURITY DEFINER LANGUAGE plpgsql AS $$
+BEGIN
+  DELETE FROM auth.users WHERE id = target_user_id;
+  DELETE FROM public.app_users WHERE id = target_user_id;
+END;
+$$;
+
+-- FUNGSI UNTUK RESET PASSWORD (Menghapus dari auth saja agar bisa auto-migrasi lagi)
+CREATE OR REPLACE FUNCTION reset_auth_user(target_user_id uuid)
+RETURNS void
+SECURITY DEFINER LANGUAGE plpgsql AS $$
+BEGIN
+  DELETE FROM auth.users WHERE id = target_user_id;
+END;
+$$;

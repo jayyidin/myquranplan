@@ -58,7 +58,47 @@ export const getInitials = (name) => {
     const words = name.trim().split(/\s+/).filter(Boolean);
     if (words.length === 0) return 'UN';
     return words.slice(0, 2).map(w => w[0].toUpperCase()).join('');
-  } catch (e) { return 'UN'; }
+  } catch { return 'UN'; }
+};
+
+// Salin teks dengan fallback untuk browser yang tidak mendukung Clipboard API.
+export const copyTextToClipboard = async (text) => {
+  if (!text) return false;
+
+  try {
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch (err) {
+    console.warn('Clipboard API gagal, mencoba fallback:', err);
+  }
+
+  if (typeof document === 'undefined') return false;
+
+  const textArea = document.createElement('textarea');
+  textArea.value = text;
+  textArea.setAttribute('readonly', '');
+  textArea.style.position = 'fixed';
+  textArea.style.top = '0';
+  textArea.style.left = '0';
+  textArea.style.width = '1px';
+  textArea.style.height = '1px';
+  textArea.style.opacity = '0';
+
+  document.body.appendChild(textArea);
+  textArea.focus();
+  textArea.select();
+  textArea.setSelectionRange(0, textArea.value.length);
+
+  try {
+    return document.execCommand('copy');
+  } catch (err) {
+    console.error('Fallback copy gagal:', err);
+    return false;
+  } finally {
+    document.body.removeChild(textArea);
+  }
 };
 
 // Format periode tanggal
@@ -69,7 +109,7 @@ export const formatPeriode = (start, end) => {
     if (isNaN(dStart) || isNaN(dEnd)) return '-';
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
     return `${dStart.getDate()} ${months[dStart.getMonth()]} ${dStart.getFullYear()} - ${dEnd.getDate()} ${months[dEnd.getMonth()]} ${dEnd.getFullYear()}`;
-  } catch(e) { return '-'; }
+  } catch { return '-'; }
 };
 
 // Format data untuk tampilan cetak/kartu
@@ -122,5 +162,5 @@ export const formatPrintData = (text, detail, gradeCat, gradeSurat) => {
       if (n && n !== '-') line += ` (${n})`;
       return line;
     }).join('\n');
-  } catch (err) { return '-'; }
+  } catch { return '-'; }
 };

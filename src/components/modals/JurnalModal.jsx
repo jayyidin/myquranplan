@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { X, BookOpen, Mic, Repeat, FileText, Plus, ChevronDown, Search, Check, UserX } from 'lucide-react';
+import { X, BookOpen, Mic, Repeat, FileText, Plus, ChevronDown, Search, Check, UserX, Loader2 } from 'lucide-react';
 import SurahSelector from '../SurahSelector';
 import AyatSelector from '../AyatSelector';
 import { Tooltip } from 'react-tooltip';
@@ -13,6 +13,8 @@ export const JurnalModal = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isAbsentMenuOpen, setIsAbsentMenuOpen] = useState(false);
+  const [copyOptions, setCopyOptions] = useState({ surat: true, ayat: false, nilai: false, catatan: true });
+  const [savingAction, setSavingAction] = useState(null);
 
   const gradeOptions = ['A', 'B+', 'B', 'B-', 'C'];
   const applyToOthersDisabled = homeTab === 'jurnal' && editingId && ['sakit', 'izin', 'alpa', 'tidak hadir'].some(keyword => (
@@ -24,6 +26,20 @@ export const JurnalModal = ({
     if (!searchQuery.trim()) return filteredStudents;
     return filteredStudents.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()));
   }, [filteredStudents, searchQuery]);
+
+  // Reset copy options when modal opens
+  React.useEffect(() => {
+    if (isOpen) {
+      setCopyOptions({ surat: true, ayat: homeTab === 'lesson_plan', nilai: false, catatan: true });
+      setSavingAction(null);
+    }
+  }, [isOpen, homeTab]);
+
+  const handleSaveClick = async (options, action) => {
+    setSavingAction(action);
+    await handleSave(options, action);
+    setSavingAction(null);
+  };
 
   // Pastikan Early Return berada SETELAH semua fungsi React Hooks dipanggil
   if (!isOpen) return null;
@@ -56,7 +72,7 @@ export const JurnalModal = ({
             )}
 
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2.5">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
                 {editingId ? 'Terapkan Juga Ke Siswa Lain' : `Pilih Siswa (${selectedStudents.length}/${filteredStudents.length})`}
               </label>
               <div className="flex items-center gap-2">
@@ -99,6 +115,27 @@ export const JurnalModal = ({
                 <div className="w-full text-center text-xs text-gray-400 py-3 italic font-medium">Siswa tidak ditemukan.</div>
               )}
             </div>
+
+            {/* Opsi Salin Spesifik (Muncul jika > 1 siswa dipilih) */}
+            {selectedStudents.length > 1 && (
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-1 pt-3 border-t border-gray-100">
+                <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest shrink-0">Bagian yang disalin ke siswa lain:</span>
+                <div className="flex flex-wrap items-center gap-3">
+                  <label className="flex items-center gap-1.5 text-xs font-bold text-gray-600 cursor-pointer hover:text-blue-600 transition-colors">
+                    <input type="checkbox" checked={copyOptions.surat} onChange={e => setCopyOptions({ ...copyOptions, surat: e.target.checked })} className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-gray-300" /> Surat/Jilid
+                  </label>
+                  <label className="flex items-center gap-1.5 text-xs font-bold text-gray-600 cursor-pointer hover:text-blue-600 transition-colors">
+                    <input type="checkbox" checked={copyOptions.ayat} onChange={e => setCopyOptions({ ...copyOptions, ayat: e.target.checked })} className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-gray-300" /> Halaman/Ayat
+                  </label>
+                  <label className="flex items-center gap-1.5 text-xs font-bold text-gray-600 cursor-pointer hover:text-blue-600 transition-colors">
+                    <input type="checkbox" checked={copyOptions.nilai} onChange={e => setCopyOptions({ ...copyOptions, nilai: e.target.checked })} className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-gray-300" /> Nilai
+                  </label>
+                  <label className="flex items-center gap-1.5 text-xs font-bold text-gray-600 cursor-pointer hover:text-blue-600 transition-colors">
+                    <input type="checkbox" checked={copyOptions.catatan} onChange={e => setCopyOptions({ ...copyOptions, catatan: e.target.checked })} className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-gray-300" /> Catatan
+                  </label>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Form Input Data */}
@@ -426,11 +463,11 @@ export const JurnalModal = ({
 
         {/* Tombol Simpan Bawah */}
         <div className="absolute sm:relative bottom-0 left-0 right-0 p-4 sm:p-6 bg-white border-t border-gray-100 shadow-[0_-10px_20px_rgba(0,0,0,0.03)] sm:shadow-none z-30">
-          <div className="flex items-center gap-3">
-            <div className="relative flex-1 sm:flex-none">
-              <button type="button" onClick={() => setIsAbsentMenuOpen(!isAbsentMenuOpen)} className="w-full flex items-center justify-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 px-5 py-4 rounded-2xl font-black text-sm active:scale-95 transition-all shadow-sm border border-red-200">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="relative shrink-0 sm:flex-none">
+              <button type="button" onClick={() => setIsAbsentMenuOpen(!isAbsentMenuOpen)} className="w-full flex items-center justify-center gap-1.5 sm:gap-2 bg-red-50 hover:bg-red-100 text-red-600 px-3 sm:px-5 py-4 rounded-2xl font-black text-xs sm:text-sm active:scale-95 transition-all shadow-sm border border-red-200">
                 <UserX size={18} />
-                <span>Absen</span>
+                <span className="hidden sm:inline">Absen</span>
               </button>
 
               {isAbsentMenuOpen && (
@@ -445,9 +482,22 @@ export const JurnalModal = ({
                 </>
               )}
             </div>
-            <button onClick={handleSave} className="flex-[3] sm:flex-1 w-full flex justify-center items-center gap-2 bg-[#00e676] hover:bg-green-500 text-white py-4 rounded-2xl font-black text-sm active:scale-95 transition-all shadow-lg shadow-green-200">
-              <BookOpen size={18} /> Simpan Data {homeTab === 'lesson_plan' ? 'Target' : 'Jurnal'}
-            </button>
+
+            <div className="flex-1 flex gap-2">
+              <button onClick={() => handleSaveClick(copyOptions, 'close')} disabled={savingAction !== null} className="flex-1 w-full flex justify-center items-center gap-1.5 sm:gap-2 bg-[#00e676] hover:bg-green-500 text-white py-4 rounded-2xl font-black text-xs sm:text-sm active:scale-95 transition-all shadow-md shadow-green-200 disabled:opacity-70 disabled:cursor-not-allowed">
+                {savingAction === 'close' ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                {savingAction === 'close' ? 'Menyimpan...' : 'Simpan'}
+              </button>
+              {editingId && selectedStudents.length <= 1 && (
+                <button onClick={() => handleSaveClick(copyOptions, 'next')} disabled={savingAction !== null} className="flex-1 w-full flex justify-center items-center gap-1.5 sm:gap-2 bg-blue-500 hover:bg-blue-600 text-white py-4 rounded-2xl font-black text-xs sm:text-sm active:scale-95 transition-all shadow-md shadow-blue-200 disabled:opacity-70 disabled:cursor-not-allowed" title="Simpan nilai dan langsung lanjut ke siswa berikutnya">
+                  {savingAction === 'next' ? (
+                    <><Loader2 size={16} className="animate-spin" /> Lanjut...</>
+                  ) : (
+                    <>Lanjut &raquo;</>
+                  )}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>

@@ -93,7 +93,7 @@ const ArchiveView = ({ isSuperAdmin, currentUser, institutionLogo, guruHalaqohDa
   const filteredStudents = useMemo(() => {
     return archivedStudents.filter(s => {
       const isInActiveHalaqoh = !activeHalaqoh || (s?.halaqoh && String(s.halaqoh).trim() === String(activeHalaqoh).trim());
-      
+
       if (!isSuperAdmin) {
         const searchName = currentUser?.name?.trim().toLowerCase() || "";
         const guruKey = Object.keys(guruHalaqohData).find(k => k.trim().toLowerCase() === searchName);

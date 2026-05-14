@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Settings, Users, Edit3, Trash2, Share2, Plus, X, Calendar, ChevronLeft, ChevronRight, BookOpen, Mic, Repeat, Printer, Check, Download, FileText, History, Link, Search, ImageDown, ChevronUp, ChevronDown, ArrowUp, Star } from 'lucide-react';
+import { Settings, Users, Edit3, Trash2, Share2, Plus, X, Calendar, ChevronLeft, ChevronRight, BookOpen, Mic, Repeat, Printer, Check, Download, FileText, History, Link, Search, ImageDown, ChevronUp, ChevronDown, ArrowUp, Star, ChevronsUpDown, CheckCircle2 } from 'lucide-react';
 import { Tooltip } from 'react-tooltip';
-import { formatShortDate, getInitials, formatPeriode, formatPrintData } from '../../utils/helpers';
+import { formatShortDate, getInitials, formatPeriode, formatPrintData, copyTextToClipboard } from '../../utils/helpers';
 
 const renderTextWithHighlights = (txt) => {
   if (typeof txt !== 'string') return txt;
@@ -154,21 +154,21 @@ const getGhostDateLabel = (record, group) => {
 const HomeView = ({
   activeHalaqoh, activeGuru, homeTab, setHomeTab, weekStart, changeWeek,
   activeDate, setActiveDate, weekDates, filteredStudents, handleOpenModal,
-  requestClearRecord, requestClearAllRecordForDay, setSharingStudent, handleRemoveData, getStatusColor,
+  requestClearRecord, requestClearAllRecordForDay, handleAutoFillFromGhost, setSharingStudent, handleRemoveData, getStatusColor,
   institutionLogo,
   isLoading,
   searchQuery,
   setSearchQuery,
   studentsInHalaqohCount,
   targetReguler,
-  targetAlQuran
+  targetAlQuran,
+  showToast
 }) => {
   // State untuk fitur Share Laporan Individu
   const [shareStudent, setShareStudent] = useState(null);
   const [activeStudentId, setActiveStudentId] = useState(null);
   const [isClassReportVisible, setIsClassReportVisible] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [isHeaderVisible, setIsHeaderVisible] = useState(window.innerWidth >= 768);
 
   // State untuk Lazy Loading di Mobile
@@ -176,6 +176,20 @@ const HomeView = ({
   const [isMoreLoading, setIsMoreLoading] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const scrollContainerRef = useRef(null);
+  const dateNavRef = useRef(null);
+  const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
+  const [currentNavStudent, setCurrentNavStudent] = useState(null);
+  const [copySuccessModal, setCopySuccessModal] = useState({ isOpen: false, title: '', message: '', link: '' });
+
+  // Auto-scroll Date Nav agar tanggal yang aktif selalu di tengah layar
+  useEffect(() => {
+    if (dateNavRef.current) {
+      const activeBtn = dateNavRef.current.querySelector('[data-active="true"]');
+      if (activeBtn) {
+        setTimeout(() => { activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }); }, 100);
+      }
+    }
+  }, [activeDate, weekDates]);
 
   // --- DEBOUNCE PENCARIAN (MENGURANGI LAG DI HP) ---
   const [localSearch, setLocalSearch] = useState(searchQuery || '');
@@ -195,6 +209,64 @@ const HomeView = ({
 
   const scrollToTop = () => {
     scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Tracker Siswa yang Aktif di Layar (Untuk Fitur Toggle Scroll Navigasi)
+  useEffect(() => {
+    if (!isNavMenuOpen) return;
+
+    const handleCheckVisibleStudent = () => {
+      const studentElements = filteredStudents.map(s => document.getElementById(`student-card-${s.id}`) || document.getElementById(`student-row-${s.id}`)).filter(Boolean);
+      if (studentElements.length === 0) return;
+
+      const viewportCenter = window.innerHeight / 2;
+      let closestIdx = -1;
+      let minDistance = Infinity;
+
+      studentElements.forEach((el, idx) => {
+        const rect = el.getBoundingClientRect();
+        const elCenter = rect.top + rect.height / 2;
+        const distance = Math.abs(elCenter - viewportCenter);
+        if (distance < minDistance) {
+          minDistance = distance;
+          closestIdx = idx;
+        }
+      });
+
+      if (closestIdx >= 0) {
+        setCurrentNavStudent({ ...filteredStudents[closestIdx], index: closestIdx });
+      }
+    };
+
+    handleCheckVisibleStudent();
+
+    const container = scrollContainerRef.current;
+    if (container) {
+      container.addEventListener('scroll', handleCheckVisibleStudent, { passive: true });
+      return () => container.removeEventListener('scroll', handleCheckVisibleStudent);
+    }
+  }, [isNavMenuOpen, filteredStudents]);
+
+  const handleScrollToNextStudent = (direction) => {
+    if (!currentNavStudent) return;
+    let targetIdx = currentNavStudent.index + direction;
+    if (targetIdx < 0) targetIdx = 0;
+    if (targetIdx >= filteredStudents.length) targetIdx = filteredStudents.length - 1;
+
+    let delay = 50;
+    if (targetIdx >= visibleCount - 2 && visibleCount < filteredStudents.length) {
+      setVisibleCount(prev => prev + 10);
+      delay = 150; // Beri waktu pada perangkat HP merender baris baru
+    }
+
+    setTimeout(() => {
+      const targetEl = document.getElementById(`student-card-${filteredStudents[targetIdx].id}`) || document.getElementById(`student-row-${filteredStudents[targetIdx].id}`);
+      if (targetEl) {
+        targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        targetEl.classList.add('ring-4', 'ring-blue-400/50', 'ring-offset-2', 'z-50', 'transition-all', 'duration-500');
+        setTimeout(() => targetEl.classList.remove('ring-4', 'ring-blue-400/50', 'ring-offset-2', 'z-50'), 1000);
+      }
+    }, delay);
   };
 
   // Reset jumlah yang terlihat saat berganti halaqoh atau tanggal
@@ -266,7 +338,7 @@ const HomeView = ({
       }
     } catch (error) {
       console.error("Gagal mengunduh gambar:", error);
-      alert("Maaf, terjadi kesalahan saat membuat gambar. Pastikan koneksi internet stabil.");
+      if (showToast) showToast("Gagal membuat gambar. Pastikan koneksi stabil.");
     } finally {
       setIsDownloading(false);
     }
@@ -300,7 +372,7 @@ const HomeView = ({
       }
     } catch (error) {
       console.error("Gagal mengunduh gambar laporan kelas:", error);
-      alert("Maaf, terjadi kesalahan saat membuat gambar.");
+      if (showToast) showToast("Maaf, terjadi kesalahan saat membuat gambar.");
     } finally {
       setIsDownloading(false);
     }
@@ -352,7 +424,7 @@ const HomeView = ({
       }
     } catch (error) {
       console.error("Gagal mengunduh PDF:", error);
-      alert("Maaf, terjadi kesalahan saat membuat PDF.");
+      if (showToast) showToast("Maaf, terjadi kesalahan saat membuat PDF.");
     } finally {
       setIsDownloading(false);
     }
@@ -386,38 +458,52 @@ const HomeView = ({
       // Menghindari crash jika activeHalaqoh bernilai null/undefined
       const safeHalaqoh = String(activeHalaqoh || 'Kelas').replace(/[^a-z0-9]/gi, '_').toLowerCase();
       pdf.save(`Laporan_Halaqoh_${safeHalaqoh}_${getDateString(weekDates[0])}.pdf`);
-    } catch (error) { console.error("Gagal mengunduh PDF laporan kelas:", error); alert("Maaf, terjadi kesalahan saat membuat PDF."); }
+    } catch (error) { console.error("Gagal mengunduh PDF laporan kelas:", error); if (showToast) showToast("Maaf, terjadi kesalahan saat membuat PDF."); }
     finally { setIsDownloading(false); }
   };
 
   // --- FUNGSI SALIN LINK UNTUK ORANG TUA ---
-  const handleCopyShareLink = () => {
+  const handleCopyShareLink = async () => {
     if (!shareStudent) return;
     const baseUrl = window.location.origin + window.location.pathname;
-    const shareUrl = `${baseUrl}?share=${shareStudent.id}`;
+    const dateParam = getDateString(weekStart);
+    const shareUrl = `${baseUrl}?share=${shareStudent.id}&date=${dateParam}`;
     const periode = formatPeriode(weekDates[0], weekDates[weekDates.length - 1] || weekDates[0]);
     const textToCopy = `Assalamu'alaikum Warahmatullahi Wabarakatuh\n\nBerikut adalah tautan Laporan Al-Qur'an ananda *${shareStudent.name}* periode *${periode}*:\n\n${shareUrl}\n\nTerima kasih.`;
 
-    navigator.clipboard.writeText(textToCopy).then(() => {
-      alert("Link dan teks pengantar berhasil disalin ke clipboard!");
-    }).catch(err => {
-      console.error('Gagal menyalin link:', err);
-    });
+    const copied = await copyTextToClipboard(textToCopy);
+    if (copied) {
+      setCopySuccessModal({
+        isOpen: true,
+        title: 'Tautan Berhasil Disalin!',
+        message: `Tautan laporan individu untuk ${shareStudent.name} telah disalin ke clipboard. Anda dapat menempelkan (paste) pesan tersebut di WhatsApp atau aplikasi pesan lainnya.`,
+        link: shareUrl
+      });
+    } else {
+      if (showToast) showToast("Gagal menyalin tautan laporan.");
+    }
   };
 
-  // --- FUNGSI SALIN LINK UNTUK ORANG TUA (LAPORAN KELAS) ---
-  const handleCopyClassShareLink = () => {
+  // --- FUNGSI SALIN LINK UNTUK ORANG TUA (LAPORAN HALAQOH) ---
+  const handleCopyClassShareLink = async () => {
     if (!activeHalaqoh) return;
     const baseUrl = window.location.origin + window.location.pathname;
-    const shareUrl = `${baseUrl}?shareClass=${encodeURIComponent(activeHalaqoh)}`;
+    const dateParam = getDateString(weekStart);
+    const shareUrl = `${baseUrl}?shareClass=${encodeURIComponent(activeHalaqoh)}&date=${dateParam}`;
     const periode = formatPeriode(weekDates[0], weekDates[weekDates.length - 1] || weekDates[0]);
-    const textToCopy = `Assalamu'alaikum Warahmatullahi Wabarakatuh\n\nBerikut adalah tautan Laporan Kelas/Halaqoh *${activeHalaqoh}* periode *${periode}*:\n\n${shareUrl}\n\nTerima kasih.`;
+    const textToCopy = `Assalamu'alaikum Warahmatullahi Wabarakatuh\n\nBerikut adalah tautan Laporan Halaqoh *${activeHalaqoh}* periode *${periode}*:\n\n${shareUrl}\n\nTerima kasih.`;
 
-    navigator.clipboard.writeText(textToCopy).then(() => {
-      alert("Link dan teks pengantar Laporan Kelas berhasil disalin ke clipboard!");
-    }).catch(err => {
-      console.error('Gagal menyalin link:', err);
-    });
+    const copied = await copyTextToClipboard(textToCopy);
+    if (copied) {
+      setCopySuccessModal({
+        isOpen: true,
+        title: 'Tautan Berhasil Disalin!',
+        message: `Tautan laporan halaqoh untuk kelompok ${activeHalaqoh} telah disalin ke clipboard. Anda dapat menempelkan (paste) pesan tersebut di grup WhatsApp wali murid.`,
+        link: shareUrl
+      });
+    } else {
+      if (showToast) showToast("Gagal menyalin tautan laporan.");
+    }
   };
 
   // --- FUNGSI DESAIN KARTU TAHSIN (TAMPILAN WEB) - ANTI CRASH ---
@@ -1209,18 +1295,18 @@ const HomeView = ({
                 </div>
               </div>
             </div>
-            <div className="flex w-full md:w-auto gap-2 shrink-0 mt-1 sm:mt-0 transition-all">
-              <button onClick={handleCopyClassShareLink} disabled={!activeHalaqoh} className="flex-1 md:flex-none border-2 px-3 sm:px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 font-black text-xs sm:text-sm transition-all bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 disabled:opacity-50" title="Salin Link Laporan Kelas">
-                <Link size={16} /> <span className="hidden sm:inline">Salin Link</span>
+            <div className="flex w-full md:w-auto gap-2 shrink-0 mt-1 sm:mt-0 transition-all overflow-x-auto custom-scrollbar pb-2 md:pb-0">
+              <button onClick={() => handleAutoFillFromGhost(ghostDataMap, activeDate, homeTab, filteredStudents)} disabled={!activeHalaqoh || filteredStudents.length === 0} className="flex-1 md:flex-none border-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 font-black text-xs sm:text-sm transition-all bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100 disabled:opacity-50 shrink-0" title="Isi Cepat Data Sebelumnya">
+                <History size={16} /> <span className="hidden sm:inline whitespace-nowrap">Isi Cepat</span>
               </button>
-              <button onClick={() => handleOpenModal(null, 'full_bulk', homeTab)} disabled={!activeHalaqoh} className="flex-1 md:flex-none border-2 px-3 sm:px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 font-black text-xs sm:text-sm transition-all bg-white text-slate-700 border-slate-200 hover:bg-gray-50 disabled:opacity-50" title="Input Massal">
-                <Edit3 size={16} className="text-[#00e676]" /> <span className="hidden sm:inline">Input Massal</span>
+              <button onClick={() => handleOpenModal(null, 'full_bulk', homeTab)} disabled={!activeHalaqoh} className="flex-1 md:flex-none border-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 font-black text-xs sm:text-sm transition-all bg-white text-slate-700 border-slate-200 hover:bg-gray-50 disabled:opacity-50 shrink-0" title="Input Massal">
+                <Edit3 size={16} className="text-[#00e676]" /> <span className="hidden sm:inline whitespace-nowrap">Input Massal</span>
               </button>
-              <button onClick={() => requestClearAllRecordForDay(null, activeDate, homeTab)} disabled={!activeHalaqoh || filteredStudents.length === 0} className="flex-1 md:flex-none border-2 px-3 sm:px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 font-black text-xs sm:text-sm transition-all bg-red-50 text-red-600 border-red-200 hover:bg-red-100 disabled:opacity-50" title={`Kosongkan ${homeTab === 'lesson_plan' ? 'Target' : 'Capaian'} Hari Ini`}>
-                <Trash2 size={16} /> <span className="hidden sm:inline">Kosongkan</span>
+              <button onClick={() => requestClearAllRecordForDay(null, activeDate, homeTab)} disabled={!activeHalaqoh || filteredStudents.length === 0} className="flex-1 md:flex-none border-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 font-black text-xs sm:text-sm transition-all bg-red-50 text-red-600 border-red-200 hover:bg-red-100 disabled:opacity-50 shrink-0" title={`Kosongkan ${homeTab === 'lesson_plan' ? 'Target' : 'Capaian'} Hari Ini`}>
+                <Trash2 size={16} /> <span className="hidden sm:inline whitespace-nowrap">Kosongkan</span>
               </button>
-              <button onClick={() => setIsClassReportVisible(true)} disabled={!activeHalaqoh || filteredStudents.length === 0} className="flex-1 md:flex-none px-3 sm:px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 font-black text-xs sm:text-sm transition-all shadow-lg border-2 bg-gray-800 text-white border-gray-900 hover:bg-gray-700 disabled:opacity-50" title="Laporan Kelas">
-                <Printer size={16} /> <span className="hidden sm:inline">Laporan Kelas</span>
+              <button onClick={() => setIsClassReportVisible(true)} disabled={!activeHalaqoh || filteredStudents.length === 0} className="flex-1 md:flex-none px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 font-black text-xs sm:text-sm transition-all shadow-lg border-2 bg-gray-800 text-white border-transparent hover:bg-gray-700 disabled:opacity-50 shrink-0" title="Laporan Halaqoh">
+                <Printer size={16} /> <span className="hidden sm:inline whitespace-nowrap">Laporan Halaqoh</span>
               </button>
             </div>
           </div>
@@ -1243,13 +1329,6 @@ const HomeView = ({
                 <span className="hidden sm:inline">Capaian (Jurnal)</span>
               </button>
               <button
-                onClick={() => setIsSearchVisible(!isSearchVisible)}
-                className={`flex items-center justify-center px-2.5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl shadow-sm border transition-all ${isSearchVisible || searchQuery ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-white text-slate-500 hover:text-emerald-600 border-gray-200/50'}`}
-                title="Pencarian Siswa"
-              >
-                <Search size={18} />
-              </button>
-              <button
                 onClick={() => setIsHeaderVisible(!isHeaderVisible)}
                 className="flex items-center justify-center px-2.5 py-1.5 sm:py-2 bg-white text-slate-500 hover:text-emerald-600 rounded-lg sm:rounded-xl shadow-sm border border-gray-200/50 transition-all"
                 title={isHeaderVisible ? "Sembunyikan Header Atas" : "Tampilkan Header Atas"}
@@ -1266,7 +1345,7 @@ const HomeView = ({
             </div>
 
             {/* HORIZONTAL DATE NAV (SNAP SCROLLING) */}
-            <div className="flex gap-1.5 overflow-x-auto custom-scrollbar pb-1 w-full snap-x">
+            <div className="flex gap-1.5 overflow-x-auto custom-scrollbar pb-1 w-full snap-x" ref={dateNavRef}>
               {weekDates.map((dateObj) => {
                 if (!dateObj || typeof dateObj.getDay !== 'function') return null;
                 const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
@@ -1274,7 +1353,7 @@ const HomeView = ({
                 if (dateObj.getDay() === 0 || dateObj.getDay() === 6) return null;
                 const { status: dateStatus, count: filledCount } = getDateStatus(dateStr);
                 return ( // Removed dark mode styles
-                  <button key={dateStr} onClick={() => setActiveDate(dateStr)} className={`flex-1 flex flex-col shrink-0 min-w-[70px] sm:min-w-[80px] items-center justify-center p-2 rounded-xl border transition-all snap-center relative ${activeDate === dateStr ? 'bg-[#00e676] border-[#00e676] text-white shadow-md transform scale-[1.03]' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+                  <button key={dateStr} data-active={activeDate === dateStr} onClick={() => setActiveDate(dateStr)} className={`flex-1 flex flex-col shrink-0 min-w-[70px] sm:min-w-[80px] items-center justify-center p-2 rounded-xl border transition-all snap-center relative ${activeDate === dateStr ? 'bg-[#00e676] border-[#00e676] text-white shadow-md transform scale-[1.03]' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
                     <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest mb-0.5">{dayName}</span>
                     <span className="text-xs md:text-base font-black">{dateObj.getDate()} {['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'][dateObj.getMonth()]}</span>
                     {dateStatus !== 'none' && (
@@ -1291,34 +1370,27 @@ const HomeView = ({
               })}
             </div>
 
-            {/* KOTAK PENCARIAN SISWA */}
-            {(isSearchVisible || searchQuery) && (
-              <div className="sticky md:relative -top-3 sm:-top-4 md:top-auto z-40 bg-slate-50/95 md:bg-transparent backdrop-blur-md md:backdrop-blur-none -mx-3 px-3 sm:-mx-4 sm:px-4 md:mx-0 md:px-0 py-2 md:py-0 mb-2 md:mb-0 border-b border-gray-200/60 md:border-none shadow-[0_4px_15px_-10px_rgba(0,0,0,0.05)] md:shadow-none transition-all">
-                <div className="relative animate-in slide-in-from-top-2 fade-in duration-200">
-                  <Search
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-                    size={18}
-                  />
-                  <input
-                    autoFocus
-                    type="text"
-                    inputMode="search"
-                    enterKeyHint="search"
-                    placeholder={activeHalaqoh ? `Cari nama siswa... (${studentsInHalaqohCount} siswa)` : 'Pilih halaqoh terlebih dahulu'}
-                    value={localSearch}
-                    onChange={(e) => setLocalSearch(e.target.value)}
-                    disabled={!activeHalaqoh}
-                    className="w-full bg-white border border-gray-200/80 rounded-xl pl-10 pr-10 py-2.5 sm:py-3 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 text-sm font-bold text-slate-700 transition-all shadow-sm disabled:bg-slate-50 disabled:cursor-not-allowed"
-                  />
-                  <button
-                    onClick={() => { setIsSearchVisible(false); setLocalSearch(''); setSearchQuery(''); }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors"
-                  >
-                    <X size={16} />
+            {/* KOTAK PENCARIAN SISWA (SELALU TAMPIL) */}
+            <div className="sticky top-0 z-40 bg-slate-50/95 md:bg-transparent backdrop-blur-md md:backdrop-blur-none -mx-3 px-3 sm:-mx-4 sm:px-4 md:mx-0 md:px-0 py-2 md:py-0 mb-2 md:mb-3 transition-all">
+              <div className="relative shadow-sm hover:shadow-md transition-shadow rounded-xl">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
+                <input
+                  type="text"
+                  inputMode="search"
+                  enterKeyHint="search"
+                  placeholder={activeHalaqoh ? `Ketik nama untuk mencari... (${studentsInHalaqohCount} siswa)` : 'Pilih halaqoh terlebih dahulu'}
+                  value={localSearch}
+                  onChange={(e) => setLocalSearch(e.target.value)}
+                  disabled={!activeHalaqoh}
+                  className="w-full bg-white border border-gray-200/80 rounded-xl pl-10 pr-10 py-3 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-sm font-bold text-slate-700 transition-all disabled:bg-slate-50 disabled:cursor-not-allowed"
+                />
+                {localSearch && (
+                  <button onClick={() => { setLocalSearch(''); setSearchQuery(''); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 bg-gray-100 hover:bg-red-50 p-1 rounded-full transition-colors">
+                    <X size={14} />
                   </button>
-                </div>
+                )}
               </div>
-            )}
+            </div>
 
             {/* PETUNJUK GESER (KHUSUS MOBILE) */}
             {activeHalaqoh && filteredStudents.length > 0 && (
@@ -1496,6 +1568,7 @@ const HomeView = ({
                           const isUjian = !isCatatanEmpty && String(valC).toLowerCase().includes('ujian kenaikan jilid');
                           return (
                             <tr
+                              id={`student-row-${student.id}`}
                               /* Perbaikan Error Warning Key: Hindari Math.random() pada loop render */
                               key={student?.id || `student-row-${index}`}
                               className={`relative transition-all duration-300 group ${!isLoading ? 'animate-row-slide-in' : ''} hover:shadow-xl hover:z-20 ${isUjian ? 'bg-emerald-50/50' : 'hover:bg-white'}`}
@@ -1682,7 +1755,7 @@ const HomeView = ({
                       const isUjian = !isCatatanEmpty && String(valC).toLowerCase().includes('ujian kenaikan jilid');
 
                       return (
-                        <div key={student.id} className={`p-4 flex flex-col gap-4 animate-row-slide-in ${isUjian ? 'bg-emerald-50/80 border-t border-emerald-300 shadow-sm relative' : 'bg-white'}`} style={{ animationDelay: `${index * 0.05}s` }}>
+                        <div key={student.id} id={`student-card-${student.id}`} className={`p-4 flex flex-col gap-4 animate-row-slide-in ${isUjian ? 'bg-emerald-50/80 border-t border-emerald-300 shadow-sm relative' : 'bg-white'}`} style={{ animationDelay: `${index * 0.05}s` }}>
                           {isUjian && (
                             <div className="absolute top-0 right-4 bg-emerald-500 text-white text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-b-md shadow-sm">Ujian Jilid</div>
                           )}
@@ -1837,6 +1910,46 @@ const HomeView = ({
           className="!bg-slate-900 !text-white !rounded-xl !px-3 !py-2 !text-[10px] !font-bold !opacity-100 !shadow-2xl z-[100]"
         />
 
+        {/* Toggle Scroll Navigasi Siswa Mengambang */}
+        {filteredStudents.length > 0 && (
+          <div className="fixed bottom-24 md:bottom-8 left-4 md:left-8 z-50 flex flex-col items-start gap-3 print:hidden">
+            {isNavMenuOpen && currentNavStudent && (
+              <div className="flex items-center bg-white p-1.5 sm:p-2 rounded-2xl shadow-2xl border border-slate-100 animate-in fade-in slide-in-from-bottom-4 duration-300 relative">
+                <button
+                  onClick={() => handleScrollToNextStudent(-1)}
+                  disabled={currentNavStudent.index === 0}
+                  className="p-3 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded-xl transition-colors shadow-sm disabled:opacity-30 disabled:hover:bg-blue-50 disabled:hover:text-blue-600 shrink-0"
+                  title="Siswa Sebelumnya (Naik)"
+                >
+                  <ChevronUp size={24} strokeWidth={3} />
+                </button>
+
+                <div className="flex flex-col items-center justify-center w-[120px] sm:w-[150px] px-2 text-center overflow-hidden">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Siswa {currentNavStudent.index + 1}/{filteredStudents.length}</span>
+                  <span className="text-xs sm:text-sm font-bold text-slate-700 truncate w-full">{currentNavStudent.name}</span>
+                </div>
+
+                <button
+                  onClick={() => handleScrollToNextStudent(1)}
+                  disabled={currentNavStudent.index === filteredStudents.length - 1}
+                  className="p-3 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded-xl transition-colors shadow-sm disabled:opacity-30 disabled:hover:bg-blue-50 disabled:hover:text-blue-600 shrink-0"
+                  title="Siswa Selanjutnya (Turun)"
+                >
+                  <ChevronDown size={24} strokeWidth={3} />
+                </button>
+              </div>
+            )}
+
+            <button
+              onClick={() => setIsNavMenuOpen(!isNavMenuOpen)}
+              className={`p-3 sm:p-3.5 rounded-full shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-2 ${isNavMenuOpen ? 'bg-red-500 text-white hover:bg-red-600' : 'bg-blue-600 text-white hover:bg-blue-700 hover:-translate-y-1'}`}
+              title="Navigasi Cepat Siswa"
+            >
+              {isNavMenuOpen ? <X size={20} className="sm:w-6 sm:h-6" /> : <div className="flex items-center gap-2"><div className="bg-white/20 p-1 rounded-full"><ChevronsUpDown size={18} className="sm:w-5 sm:h-5" /></div><span className="text-xs sm:text-sm font-black hidden sm:inline pr-2">Navigasi Scroll</span></div>}
+            </button>
+          </div>
+        )}
+
         {/* Tombol Scroll ke Atas */}
         {showScrollTop && (
           <button
@@ -1846,6 +1959,53 @@ const HomeView = ({
           >
             <ArrowUp className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.5} />
           </button>
+        )}
+
+        {/* ===== MODAL SUCCESS COPY LINK ===== */}
+        {copySuccessModal.isOpen && (
+          <div className="fixed inset-0 z-[100005] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200 print:hidden">
+            <div className="bg-white rounded-[2rem] shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-300">
+              <div className="bg-gradient-to-b from-emerald-500 to-emerald-600 p-6 flex flex-col items-center justify-center text-center text-white relative overflow-hidden">
+                <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
+                <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-black/10 rounded-full blur-2xl pointer-events-none"></div>
+
+                <div className="w-20 h-20 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center mb-4 shadow-inner border border-white/30 relative z-10">
+                  <CheckCircle2 size={40} className="text-white drop-shadow-md" />
+                </div>
+                <h3 className="text-2xl font-black tracking-tight drop-shadow-sm relative z-10">{copySuccessModal.title}</h3>
+              </div>
+              
+              <div className="p-6 bg-white flex flex-col gap-4">
+                <p className="text-slate-600 text-sm font-medium leading-relaxed text-center">
+                  {copySuccessModal.message}
+                </p>
+                
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center gap-3">
+                  <div className="flex-1 overflow-hidden text-left">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Tautan Laporan</p>
+                    <p className="text-sm font-semibold text-slate-700 truncate">{copySuccessModal.link}</p>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      copyTextToClipboard(copySuccessModal.link);
+                      if (showToast) showToast("Tautan disalin!");
+                    }} 
+                    className="w-10 h-10 bg-white border border-slate-200 rounded-lg flex items-center justify-center text-slate-500 hover:text-emerald-600 hover:border-emerald-200 hover:bg-emerald-50 transition-all shrink-0"
+                    title="Salin Tautan Saja"
+                  >
+                    <Link size={18} />
+                  </button>
+                </div>
+
+                <button 
+                  onClick={() => setCopySuccessModal({ isOpen: false, title: '', message: '', link: '' })} 
+                  className="w-full mt-2 py-3.5 bg-slate-900 text-white hover:bg-slate-800 rounded-xl font-black shadow-lg shadow-slate-200 active:scale-95 transition-all"
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </>

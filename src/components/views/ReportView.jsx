@@ -200,7 +200,7 @@ const ReportView = ({
       };
     })
     .filter(({ student, teacherName }) => {
-    return !studentSearch.trim() || String(student?.name || '').toLowerCase().includes(studentSearch.trim().toLowerCase());
+      return !studentSearch.trim() || String(student?.name || '').toLowerCase().includes(studentSearch.trim().toLowerCase());
     });
 
   const stats = {
@@ -210,6 +210,26 @@ const ReportView = ({
     murojaah: reportRows.filter((row) => hasValue(row.latest?.record?.[JURNAL.murojaah])).length,
     jilid: reportRows.filter((row) => row.journey.length > 0).length
   };
+
+  // Menghitung Distribusi Tahsin per Halaqoh yang sedang tampil
+  const tahsinDistribution = useMemo(() => {
+    const counts = {};
+    reportRows.forEach(row => {
+      const level = row.tahsinLevel;
+      if (level && level !== '-') {
+        counts[level] = (counts[level] || 0) + 1;
+      }
+    });
+    const order = ['Jilid 1', 'Jilid 2', 'Jilid 3', 'Jilid 4', 'Jilid 5', 'Jilid 6', "Al-Qur'an", 'Tajwid', 'Ghorib', 'Tahsin'];
+    return Object.entries(counts).sort((a, b) => {
+      const idxA = order.indexOf(a[0]);
+      const idxB = order.indexOf(b[0]);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return b[1] - a[1];
+    });
+  }, [reportRows]);
 
   const handlePrint = () => {
     if (typeof window !== 'undefined') window.print();
@@ -246,7 +266,8 @@ const ReportView = ({
       className="flex-1 w-full h-full overflow-y-auto custom-scrollbar bg-slate-50 text-slate-900 relative print:bg-white print:overflow-visible"
       style={{ WebkitOverflowScrolling: 'touch' }}
     >
-      <style type="text/css" media="print" dangerouslySetInnerHTML={{ __html: `
+      <style type="text/css" media="print" dangerouslySetInnerHTML={{
+        __html: `
         @page { size: A4 landscape; margin: 10mm; }
         body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; background: white !important; }
         .report-card { break-inside: avoid; }
@@ -287,16 +308,16 @@ const ReportView = ({
               <button onClick={() => reportType === 'weekly' ? changeWeek(7) : changeMonth(1)} className="p-2 rounded-xl text-slate-500 hover:bg-white hover:text-emerald-600 transition-colors"><ChevronRight size={20} /></button>
             </div>
 
-    <div className="relative flex-1">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                <input
-                  type="text"
-                  placeholder="Cari siswa..."
-                  value={studentSearch}
-                  onChange={(e) => setStudentSearch(e.target.value)}
-                  className="w-full h-full min-h-[44px] pl-10 pr-10 bg-slate-50 border border-transparent rounded-xl text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-emerald-300 transition-all"
-                />
-                {studentSearch && <button onClick={() => setStudentSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500"><X size={16} /></button>}
+            <div className="relative flex-1">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+              <input
+                type="text"
+                placeholder="Cari siswa..."
+                value={studentSearch}
+                onChange={(e) => setStudentSearch(e.target.value)}
+                className="w-full h-full min-h-[44px] pl-10 pr-10 bg-slate-50 border border-transparent rounded-xl text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-emerald-300 transition-all"
+              />
+              {studentSearch && <button onClick={() => setStudentSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500"><X size={16} /></button>}
             </div>
           </div>
         </div>
@@ -358,7 +379,7 @@ const ReportView = ({
                   {/* Bar Tahsin */}
                   <div>
                     <div className="flex justify-between text-xs font-bold mb-2">
-                      <span className="text-blue-700 flex items-center gap-1.5"><BookOpen size={14}/> Tahsin</span>
+                      <span className="text-blue-700 flex items-center gap-1.5"><BookOpen size={14} /> Tahsin</span>
                       <span className="text-slate-500">{Math.round((stats.tahsin / reportRows.length) * 100)}% <span className="font-medium text-[10px]">({stats.tahsin}/{reportRows.length})</span></span>
                     </div>
                     <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden shadow-inner">
@@ -368,7 +389,7 @@ const ReportView = ({
                   {/* Bar Tahfidz */}
                   <div>
                     <div className="flex justify-between text-xs font-bold mb-2">
-                      <span className="text-purple-700 flex items-center gap-1.5"><Mic size={14}/> Tahfidz</span>
+                      <span className="text-purple-700 flex items-center gap-1.5"><Mic size={14} /> Tahfidz</span>
                       <span className="text-slate-500">{Math.round((stats.tahfidz / reportRows.length) * 100)}% <span className="font-medium text-[10px]">({stats.tahfidz}/{reportRows.length})</span></span>
                     </div>
                     <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden shadow-inner">
@@ -378,13 +399,41 @@ const ReportView = ({
                   {/* Bar Murojaah */}
                   <div>
                     <div className="flex justify-between text-xs font-bold mb-2">
-                      <span className="text-emerald-700 flex items-center gap-1.5"><Repeat size={14}/> Murojaah</span>
+                      <span className="text-emerald-700 flex items-center gap-1.5"><Repeat size={14} /> Murojaah</span>
                       <span className="text-slate-500">{Math.round((stats.murojaah / reportRows.length) * 100)}% <span className="font-medium text-[10px]">({stats.murojaah}/{reportRows.length})</span></span>
                     </div>
                     <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden shadow-inner">
                       <div className="bg-gradient-to-r from-emerald-400 to-emerald-500 h-full rounded-full transition-all duration-1000 ease-out" style={{ width: `${Math.round((stats.murojaah / reportRows.length) * 100)}%` }}></div>
                     </div>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* DISTRIBUSI LEVEL TAHSIN */}
+            {tahsinDistribution.length > 0 && (
+              <div className="bg-white rounded-[24px] border border-slate-200 p-5 sm:p-6 mb-6 shadow-sm print:hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="flex items-center justify-between mb-5">
+                  <h3 className="text-xs sm:text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                    <Layers size={18} className="text-blue-500" />
+                    Distribusi Level Tahsin
+                  </h3>
+                  <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-md uppercase tracking-widest">{activeHalaqoh || 'Semua Halaqoh'}</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
+                  {tahsinDistribution.map(([level, count]) => {
+                    const percentage = Math.round((count / reportRows.length) * 100);
+                    return (
+                      <div key={level} className="bg-blue-50/50 border border-blue-100 rounded-2xl p-4 flex flex-col justify-center items-center text-center">
+                        <span className="text-xs sm:text-sm font-black text-blue-800 mb-1">{level}</span>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-2xl font-black text-blue-600 leading-none">{count}</span>
+                          <span className="text-[10px] font-bold text-blue-400 uppercase">Siswa</span>
+                        </div>
+                        <span className="text-[10px] font-bold text-blue-500/70 mt-1">{percentage}% dari total aktif</span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}

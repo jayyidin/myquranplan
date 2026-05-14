@@ -26,6 +26,16 @@ export const AddStudentModal = ({
     if (masterSearchQuery === '') setLocalQuery('');
   }, [masterSearchQuery]);
 
+  // Mencegah scroll pada body ketika modal terbuka (UX Mobile)
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
@@ -140,6 +150,16 @@ export const EditStudentModal = ({
   handlePhotoUpload, kelasList, handleUpdateStudent,
   guruHalaqohData, isSuperAdmin
 }) => {
+  // Mencegah scroll pada body ketika modal terbuka (UX Mobile)
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
