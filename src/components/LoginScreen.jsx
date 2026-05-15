@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import {
   BookOpen, UserPlus, GraduationCap, User, Lock, Calendar, Mic, Repeat, FileText,
   Eye, EyeOff, Loader2, ShieldAlert, CheckCircle2, HelpCircle, Download, Printer, Users,
-  ChevronLeft, ChevronRight, Search, SearchCode, RotateCcw, LayoutGrid, X, Link, Star, Sun, Moon
+  ChevronLeft, ChevronRight, Search, SearchCode, RotateCcw, LayoutGrid, X, Link, Star, Sun, Moon, Check
 } from 'lucide-react';
 import { supabase } from './supabase';
 import { formatShortDate, getInitials, formatPeriode, formatPrintData, getMonday, formatDateObj, getMonthYear, getDayName, copyTextToClipboard } from '../utils/helpers';
