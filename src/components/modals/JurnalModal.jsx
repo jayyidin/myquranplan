@@ -45,8 +45,8 @@ export const JurnalModal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[500] print-hidden flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity">
-      <div className="bg-gray-50 w-full sm:max-w-2xl rounded-t-[24px] sm:rounded-3xl shadow-2xl h-[90vh] sm:h-auto sm:max-h-[90vh] flex flex-col overflow-hidden animate-[slideUp_0.3s_ease-out] sm:animate-in sm:zoom-in-95">
+    <div className="fixed inset-0 z-[500] print-hidden flex items-end sm:items-center justify-center p-0 sm:p-4 h-[100dvh] bg-slate-900/60 backdrop-blur-sm transition-opacity">
+      <div className="bg-gray-50 w-full sm:max-w-2xl rounded-t-[24px] sm:rounded-3xl shadow-2xl max-h-[100dvh] h-[95dvh] sm:h-auto sm:max-h-[90vh] flex flex-col overflow-hidden animate-[slideUp_0.3s_ease-out] sm:animate-in sm:zoom-in-95">
 
         {/* Header Modal */}
         <div className="px-5 py-4 border-b border-gray-200 bg-white z-20 shrink-0 flex justify-between items-center rounded-t-[24px] sm:rounded-t-3xl">
@@ -54,7 +54,7 @@ export const JurnalModal = ({
           <button onClick={onClose} className="w-8 h-8 bg-gray-100 text-gray-500 rounded-full flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-colors"><X size={18} /></button>
         </div>
 
-        <div className="p-4 sm:p-6 flex-1 flex flex-col gap-4 overflow-y-auto custom-scrollbar bg-gray-50 pb-24 sm:pb-6">
+        <div className="p-4 sm:p-6 flex-1 flex flex-col gap-4 overflow-y-auto custom-scrollbar bg-gray-50 pb-48 sm:pb-6">
 
           {/* Bagian Pilih Siswa - Selalu Tampil untuk memungkinkan input massal dari form manapun */}
           <div className={`relative bg-white p-4 sm:p-5 rounded-3xl shadow-sm border shrink-0 flex flex-col gap-3 transition-all overflow-hidden ${applyToOthersDisabled ? 'border-red-100' : 'border-gray-100'}`}>
@@ -303,7 +303,7 @@ export const JurnalModal = ({
                     {/* Catatan Tahsin */}
                     <div className="border-t border-gray-100 pt-4 mt-2">
                       <label className="block text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1.5">Catatan Khusus Tahsin</label>
-                      <textarea rows="2" placeholder="Ketikkan catatan khusus tahsin..." value={plan.catatanTahsin || ''} onChange={e => handlePlanChange(plan.id, 'catatanTahsin', e.target.value)} className="w-full bg-blue-50/50 border border-blue-100 focus:border-blue-400 rounded-2xl p-3 text-sm font-bold outline-none resize-none text-gray-800 transition-colors focus:ring-2 focus:ring-blue-400/20"></textarea>
+                      <textarea rows="2" placeholder="Ketikkan catatan khusus tahsin..." value={plan.catatanTahsin || ''} onChange={e => handlePlanChange(plan.id, 'catatanTahsin', e.target.value)} onFocus={(e) => setTimeout(() => e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300)} className="w-full bg-blue-50/50 border border-blue-100 focus:border-blue-400 rounded-2xl p-3 text-sm font-bold outline-none resize-none text-gray-800 transition-colors focus:ring-2 focus:ring-blue-400/20"></textarea>
                       <div className="mt-2 flex overflow-x-auto gap-2 pb-1 custom-scrollbar">
                         {['Sangat Baik', 'Lancar', 'Perlu Murojaah', 'Bacaan Dengung', 'Makharijul Huruf', 'Panjang Pendek (Mad)', 'Ulangi Besok'].map(note => (
                           <button type="button" key={note} onClick={() => handlePlanChange(plan.id, 'catatanTahsin', (plan.catatanTahsin ? plan.catatanTahsin + ', ' : '') + note)} className="shrink-0 bg-white border border-blue-200 text-blue-600 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg text-[10px] font-black transition-colors shadow-sm">
@@ -380,7 +380,7 @@ export const JurnalModal = ({
                     {/* Catatan Tahfidz */}
                     <div className="border-t border-gray-100 pt-4 mt-2">
                       <label className="block text-[10px] font-black text-purple-500 uppercase tracking-widest mb-1.5">Catatan Khusus Tahfidz</label>
-                      <textarea rows="2" placeholder="Ketikkan catatan khusus tahfidz..." value={plan.catatanTahfidz || ''} onChange={e => handlePlanChange(plan.id, 'catatanTahfidz', e.target.value)} className="w-full bg-purple-50/50 border border-purple-100 focus:border-purple-400 rounded-2xl p-3 text-sm font-bold outline-none resize-none text-gray-800 transition-colors focus:ring-2 focus:ring-purple-400/20"></textarea>
+                      <textarea rows="2" placeholder="Ketikkan catatan khusus tahfidz..." value={plan.catatanTahfidz || ''} onChange={e => handlePlanChange(plan.id, 'catatanTahfidz', e.target.value)} onFocus={(e) => setTimeout(() => e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300)} className="w-full bg-purple-50/50 border border-purple-100 focus:border-purple-400 rounded-2xl p-3 text-sm font-bold outline-none resize-none text-gray-800 transition-colors focus:ring-2 focus:ring-purple-400/20"></textarea>
                       <div className="mt-2 flex overflow-x-auto gap-2 pb-1 custom-scrollbar">
                         {['Sangat Baik', 'Lancar', 'Kelancaran Hafalan', 'Sering Lupa', 'Perlu Murojaah', 'Kurang Lancar', 'Ulangi Besok'].map(note => (
                           <button type="button" key={note} onClick={() => handlePlanChange(plan.id, 'catatanTahfidz', (plan.catatanTahfidz ? plan.catatanTahfidz + ', ' : '') + note)} className="shrink-0 bg-white border border-purple-200 text-purple-600 hover:bg-purple-50 px-2.5 py-1.5 rounded-lg text-[10px] font-black transition-colors shadow-sm">
@@ -445,7 +445,7 @@ export const JurnalModal = ({
                   <div className="flex flex-col gap-4">
                     <div>
                       <label className="block text-[10px] font-black text-orange-500 uppercase tracking-widest mb-1.5">Catatan Umum / Lainnya</label>
-                      <textarea rows="2" placeholder="Ketikkan catatan lainnya (contoh: Sakit, Izin, Libur, dll)..." value={plan.lainLain || ''} onChange={e => handlePlanChange(plan.id, 'lainLain', e.target.value)} className="w-full bg-orange-50/30 border border-orange-100 focus:border-orange-400 rounded-2xl p-3 text-sm font-bold outline-none resize-none text-gray-800 transition-colors focus:ring-2 focus:ring-orange-400/20"></textarea>
+                      <textarea rows="2" placeholder="Ketikkan catatan lainnya (contoh: Sakit, Izin, Libur, dll)..." value={plan.lainLain || ''} onChange={e => handlePlanChange(plan.id, 'lainLain', e.target.value)} onFocus={(e) => setTimeout(() => e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300)} className="w-full bg-orange-50/30 border border-orange-100 focus:border-orange-400 rounded-2xl p-3 text-sm font-bold outline-none resize-none text-gray-800 transition-colors focus:ring-2 focus:ring-orange-400/20"></textarea>
                       <div className="mt-2 flex overflow-x-auto gap-2 pb-1 custom-scrollbar">
                         {['Sakit', 'Izin', 'Libur', 'Ujian Kenaikan Jilid'].map(note => (
                           <button type="button" key={note} onClick={() => handlePlanChange(plan.id, 'lainLain', (plan.lainLain ? plan.lainLain + ', ' : '') + note)} className="shrink-0 bg-white border border-orange-200 text-orange-600 hover:bg-orange-50 px-2.5 py-1.5 rounded-lg text-[10px] font-black transition-colors shadow-sm">
