@@ -7,7 +7,7 @@
 ### 👨‍🏫 Panel Pengajar (Admin)
 *   **Manajemen Halaqoh & Siswa**: Kelola daftar siswa berdasarkan kelompok halaqoh dan jenjang kelas dengan mudah.
 *   **Input Progres Cepat**: Fitur *Input Massal* dan *Copy Data Pekan Lalu* untuk efisiensi administrasi harian.
-*   **Lesson Plan & Jurnal**: Pantau Target (Lesson Plan) dan Capaian (Jurnal Harian) yang meliputi Tahsin, Tahfidz, dan Murojaah.
+*   **Lesson Plan & Mutabaah**: Pantau Target (Lesson Plan) dan Capaian (Mutabaah) yang meliputi Tahsin, Tahfidz, dan Murojaah.
 *   **Sistem Persetujuan Akun**: Keamanan ekstra dengan verifikasi pendaftaran guru oleh Super Admin.
 
 ### 👨‍👩‍👧‍👦 Portal Wali Murid (Publik)

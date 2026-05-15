@@ -886,15 +886,20 @@ const HomeView = ({
                           const valCT = rec?.[k.cT] && rec?.[k.cT] !== '-' ? String(rec[k.cT]) : '';
                           const valCF = rec?.[k.cF] && rec?.[k.cF] !== '-' ? String(rec[k.cF]) : '';
 
+                          const isTahsinAchieved = homeTab === 'lesson_plan' && valT !== '-' && (rec?.jurnalTahsin && rec?.jurnalTahsin !== '-');
+                          const isTahfidzAchieved = homeTab === 'lesson_plan' && valF !== '-' && (rec?.jurnalTahfidz && rec?.jurnalTahfidz !== '-');
+
                           return (
                             <React.Fragment key={dateStr + '-data'}>
                               <td className="p-1.5 text-center text-[9px] font-bold text-emerald-600 whitespace-pre-wrap leading-snug bg-white align-top">
                                 {renderTextWithHighlights(formatPrintData(valM, '-', null, null))}
                               </td>
-                              <td className="p-1.5 text-center text-[9px] font-bold text-blue-600 whitespace-pre-wrap leading-snug bg-white align-top">
+                              <td className="relative p-1.5 text-center text-[9px] font-bold text-blue-600 whitespace-pre-wrap leading-snug bg-white align-top">
+                                {isTahsinAchieved && <Check size={10} className="text-emerald-500 absolute top-1 right-1" strokeWidth={4} />}
                                 {renderTextWithHighlights(formatPrintData(valT, valH, valTNilai, valTSNilai))}
                               </td>
-                              <td className="p-1.5 text-center text-[9px] font-bold text-purple-600 whitespace-pre-wrap leading-snug bg-white align-top">
+                              <td className="relative p-1.5 text-center text-[9px] font-bold text-purple-600 whitespace-pre-wrap leading-snug bg-white align-top">
+                                {isTahfidzAchieved && <Check size={10} className="text-emerald-500 absolute top-1 right-1" strokeWidth={4} />}
                                 {renderTextWithHighlights(formatPrintData(valF, valAF, null, valFNilai))}
                               </td>
                             </React.Fragment>
@@ -1028,6 +1033,9 @@ const HomeView = ({
                             const valCT = rec?.[k.cT] && rec?.[k.cT] !== '-' ? String(rec[k.cT]) : '';
                             const valCF = rec?.[k.cF] && rec?.[k.cF] !== '-' ? String(rec[k.cF]) : '';
 
+                            const isTahsinAchieved = homeTab === 'lesson_plan' && valT !== '-' && (rec?.jurnalTahsin && rec?.jurnalTahsin !== '-');
+                            const isTahfidzAchieved = homeTab === 'lesson_plan' && valF !== '-' && (rec?.jurnalTahfidz && rec?.jurnalTahfidz !== '-');
+
                             const hasData = valM !== '-' || valT !== '-' || valF !== '-' || valC !== '' || valCT !== '' || valCF !== '';
                             if (!hasData) return null;
 
@@ -1043,13 +1051,13 @@ const HomeView = ({
                                   )}
                                   {valT !== '-' && (
                                     <div>
-                                      <div className="text-[9px] text-blue-500 font-black uppercase tracking-widest mb-0.5">Tahsin</div>
+                                      <div className="text-[9px] text-blue-500 font-black uppercase tracking-widest mb-0.5 flex items-center gap-1">Tahsin {isTahsinAchieved && <Check size={12} className="text-emerald-500" strokeWidth={4} title="Target Tercapai" />}</div>
                                       <div className="text-[11px] font-bold text-slate-700 leading-snug whitespace-pre-wrap">{renderTextWithHighlights(valT)}</div>
                                     </div>
                                   )}
                                   {valF !== '-' && (
                                     <div>
-                                      <div className="text-[9px] text-purple-500 font-black uppercase tracking-widest mb-0.5">Tahfidz</div>
+                                      <div className="text-[9px] text-purple-500 font-black uppercase tracking-widest mb-0.5 flex items-center gap-1">Tahfidz {isTahfidzAchieved && <Check size={12} className="text-emerald-500" strokeWidth={4} title="Target Tercapai" />}</div>
                                       <div className="text-[11px] font-bold text-slate-700 leading-snug whitespace-pre-wrap">{renderTextWithHighlights(valF)}</div>
                                     </div>
                                   )}

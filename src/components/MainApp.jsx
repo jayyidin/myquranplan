@@ -684,9 +684,9 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
     } else {
       setStudents(prev => prev.map(s => s.id === studentId ? { ...s, records: updatedRecords } : s));
 
-      // --- LOG AKTIVITAS KHUSUS JURNAL ---
+      // --- LOG AKTIVITAS KHUSUS MUTABAAH ---
       try {
-        const typeName = homeTab === 'lesson_plan' ? 'Target (Lesson Plan)' : 'Capaian (Jurnal)';
+        const typeName = homeTab === 'lesson_plan' ? 'Target (Lesson Plan)' : 'Capaian (Mutabaah)';
         let detailMsg = `Tanggal: ${formatShortDate(new Date(dateStr))}\n`;
         detailMsg += `Siswa: ${student.name}\n`;
         detailMsg += `Kategori Hapus: ${type}`;
@@ -718,9 +718,9 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
         setStudents(prev => prev.map(s => s.id === studentId ? { ...s, records: newRecords } : s));
         showToast('Data dikosongkan!');
 
-        // --- LOG AKTIVITAS KHUSUS JURNAL ---
+        // --- LOG AKTIVITAS KHUSUS MUTABAAH ---
         try {
-          const typeName = homeTab === 'lesson_plan' ? 'Target (Lesson Plan)' : 'Capaian (Jurnal)';
+          const typeName = homeTab === 'lesson_plan' ? 'Target (Lesson Plan)' : 'Capaian (Mutabaah)';
           let detailMsg = `Tanggal: ${formatShortDate(new Date(dateStr))}\n`;
           detailMsg += `Siswa: ${student.name}`;
 
@@ -739,7 +739,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
 
   const requestClearAllRecordForDay = async (e, dateStr, tab) => {
     if (e) { e.preventDefault(); e.stopPropagation(); }
-    const typeName = tab === 'lesson_plan' ? 'Target (Lesson Plan)' : 'Capaian (Jurnal)';
+    const typeName = tab === 'lesson_plan' ? 'Target (Lesson Plan)' : 'Capaian (Mutabaah)';
     setConfirmDialog({
       isOpen: true,
       message: `Yakin ingin mengosongkan semua data ${typeName} untuk SELURUH SISWA yang tampil saat ini pada tanggal ${formatShortDate(new Date(dateStr))}? Tindakan ini tidak dapat dibatalkan.`,
@@ -871,7 +871,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
     }
     const baseUrl = window.location.origin + window.location.pathname;
     const shareUrl = `${baseUrl}?portalHalaqoh=${encodeURIComponent(activeHalaqoh)}&date=${activeDate}`;
-    const textToCopy = `Assalamu'alaikum Warahmatullahi Wabarakatuh\n\nBerikut adalah tautan Portal Pemantauan Hafalan untuk Halaqoh *${activeHalaqoh}*:\n\n${shareUrl}\n\nSilakan klik nama Ananda untuk melihat rincian Lesson Plan dan Jurnal.\nTerima kasih.`;
+    const textToCopy = `Assalamu'alaikum Warahmatullahi Wabarakatuh\n\nBerikut adalah tautan Portal Pemantauan Hafalan untuk Halaqoh *${activeHalaqoh}*:\n\n${shareUrl}\n\nSilakan klik nama Ananda untuk melihat rincian Lesson Plan dan Mutabaah.\nTerima kasih.`;
 
     const copied = await copyTextToClipboard(textToCopy);
     if (copied) {
@@ -1142,7 +1142,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
 
     setConfirmDialog({
       isOpen: true,
-      message: `PERHATIAN PENTING!\n\nFitur "Tutup Semester" akan MENGHAPUS SELURUH RIWAYAT Jurnal dan Target untuk SEMUA SISWA dan memindahkannya ke dalam Arsip "${semesterName.trim()}".\n\nYakin ingin memulai semester baru?`,
+      message: `PERHATIAN PENTING!\n\nFitur "Tutup Semester" akan MENGHAPUS SELURUH RIWAYAT Mutabaah dan Target untuk SEMUA SISWA dan memindahkannya ke dalam Arsip "${semesterName.trim()}".\n\nYakin ingin memulai semester baru?`,
       onConfirm: async () => {
         setIsLoading(true);
         try {
@@ -1519,7 +1519,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
 
     if (Object.keys(initialDataForModal).length > 0 || studentToProcess || mode === 'full_bulk' || isBulkCategoryInput) { // Only open if there's data or it's a new bulk
       // FIX: Create a 'clean' data object for the modal.
-      // This ensures that only data relevant to the current tab (Target or Jurnal) is used,
+      // This ensures that only data relevant to the current tab (Target or Mutabaah) is used,
       // preventing data from the other tab from "leaking" into the modal.
       const cleanData = {};
       if (studentToProcess || mode.includes('last')) {
@@ -1756,9 +1756,9 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       const { error } = await supabase.from('students').upsert(updates);
       if (error) throw error;
 
-      // --- LOG AKTIVITAS KHUSUS JURNAL ---
+      // --- LOG AKTIVITAS KHUSUS MUTABAAH ---
       try {
-        const typeName = homeTab === 'lesson_plan' ? 'Target (Lesson Plan)' : 'Capaian (Jurnal)';
+        const typeName = homeTab === 'lesson_plan' ? 'Target (Lesson Plan)' : 'Capaian (Mutabaah)';
         const studentNames = students.filter(s => targetStudentIds.includes(s.id)).map(s => s.name).join(', ');
 
         let detailMsg = `Tanggal: ${formatShortDate(new Date(plan.tanggal))}\n`;
@@ -1777,7 +1777,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
           details: detailMsg.trim()
         }]);
       } catch (logErr) {
-        console.error('Gagal mencatat log aktivitas jurnal:', logErr);
+        console.error('Gagal mencatat log aktivitas mutabaah:', logErr);
       }
       // ------------------------------------
 

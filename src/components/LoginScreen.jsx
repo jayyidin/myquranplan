@@ -570,6 +570,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
     const weekDates = Array.from({ length: 5 }).map((_, i) => { const d = new Date(weekStart); d.setDate(d.getDate() + i); return d; });
     const workDays = weekDates.filter(d => d && d.getDay() !== 0 && d.getDay() !== 6);
     const totalPages = workDays.length > 3 ? 2 : 1;
+    const k = publicTab === 'lesson_plan' ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan', cT: 'catatanTahsin', cF: 'catatanTahfidz' } : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan', cT: 'jurnalCatatanTahsin', cF: 'jurnalCatatanTahfidz' };
 
     return (
       <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col p-0 md:p-6 printable-area print:!static print:p-0 print:m-0 transition-all duration-500">
@@ -672,10 +673,10 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
       if (isAbsent) continue;
 
       if (!latestTahsin && ((rec[k.t] && rec[k.t] !== '-') || (rec[k.h] && rec[k.h] !== '-'))) {
-        latestTahsin = { date: dateStr, t: rec[k.t], h: rec[k.h], tNilai: rec[k.tNilai], tsNilai: rec[k.tsNilai] };
+        latestTahsin = { date: dateStr, t: rec[k.t], h: rec[k.h], tNilai: rec[k.tNilai], tsNilai: rec[k.tsNilai], jT: rec.jurnalTahsin };
       }
       if (!latestTahfidz && ((rec[k.f] && rec[k.f] !== '-') || (rec[k.af] && rec[k.af] !== '-'))) {
-        latestTahfidz = { date: dateStr, f: rec[k.f], af: rec[k.af], fNilai: rec[k.fNilai] };
+        latestTahfidz = { date: dateStr, f: rec[k.f], af: rec[k.af], fNilai: rec[k.fNilai], jF: rec.jurnalTahfidz };
       }
       if (!latestMurojaah && (rec[k.m] && rec[k.m] !== '-')) {
         latestMurojaah = { date: dateStr, m: rec[k.m] };
@@ -709,7 +710,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
             <div className="bg-gradient-to-br from-emerald-50 via-white to-teal-50 p-6 sm:p-10 border-b border-gray-100 flex flex-col-reverse sm:flex-row justify-between items-center gap-6 text-center sm:text-left relative overflow-hidden">
               <div className="w-full sm:w-auto relative z-10">
                 <h1 className="text-2xl sm:text-4xl font-black text-slate-800 mb-1 sm:mb-2 tracking-tight">
-                  {publicTab === 'lesson_plan' ? "Lesson Plan Al-Qur'an" : "Jurnal Harian Al-Qur'an"}
+                  {publicTab === 'lesson_plan' ? "Lesson Plan Al-Qur'an" : "Mutabaah Al-Qur'an"}
                 </h1>
                 <p className="text-emerald-600 font-bold text-sm sm:text-base tracking-wide uppercase">Laporan Pemantauan Hafalan</p>
               </div>
@@ -753,7 +754,10 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
                       <div className="absolute top-0 right-0 bg-blue-50 text-blue-500 text-[9px] font-black px-2 py-1 rounded-bl-xl border-b border-l border-blue-100">{formatShortDate(new Date(latestTahsin.date))}</div>
                       <div className="flex items-center gap-2 mb-3 mt-1 sm:mt-0">
                         <div className="p-1.5 bg-blue-100 text-blue-600 rounded-lg"><BookOpen size={14} strokeWidth={2.5} /></div>
-                        <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-blue-700">Tahsin</span>
+                        <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-blue-700 flex items-center gap-1">
+                          Tahsin
+                          {publicTab === 'lesson_plan' && latestTahsin.jT && latestTahsin.jT !== '-' && latestTahsin.t !== '-' && <Check size={14} className="text-emerald-500" strokeWidth={4} title="Target Tercapai" />}
+                        </span>
                       </div>
                       <div className="pl-1"><ExpandableText text={formatPrintData(latestTahsin.t, latestTahsin.h, latestTahsin.tNilai, latestTahsin.tsNilai)} /></div>
                     </div>
@@ -765,7 +769,10 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
                       <div className="absolute top-0 right-0 bg-purple-50 text-purple-500 text-[9px] font-black px-2 py-1 rounded-bl-xl border-b border-l border-purple-100">{formatShortDate(new Date(latestTahfidz.date))}</div>
                       <div className="flex items-center gap-2 mb-3 mt-1 sm:mt-0">
                         <div className="p-1.5 bg-purple-100 text-purple-600 rounded-lg"><Mic size={14} strokeWidth={2.5} /></div>
-                        <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-purple-700">Tahfidz</span>
+                        <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-purple-700 flex items-center gap-1">
+                          Tahfidz
+                          {publicTab === 'lesson_plan' && latestTahfidz.jF && latestTahfidz.jF !== '-' && latestTahfidz.f !== '-' && <Check size={14} className="text-emerald-500" strokeWidth={4} title="Target Tercapai" />}
+                        </span>
                       </div>
                       <div className="pl-1"><ExpandableText text={formatPrintData(latestTahfidz.f, latestTahfidz.af, null, latestTahfidz.fNilai)} /></div>
                     </div>
@@ -785,7 +792,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
                 </div>
 
                 <p className="text-[10px] sm:text-xs text-slate-400 mt-4 sm:mt-5 font-bold italic text-center sm:text-left bg-white px-4 py-2 rounded-xl border border-slate-100">
-                  💡 <span className="text-amber-500">Tips:</span> Menampilkan batas capaian hafalan/bacaan terakhir Ananda. Guru cukup mengisi jurnal sekali waktu saja, dan status terkini akan otomatis tampil di sini.
+                  💡 <span className="text-amber-500">Tips:</span> Menampilkan batas capaian hafalan/bacaan terakhir Ananda. Guru cukup mengisi Mutabaah sekali waktu saja, dan status terkini akan otomatis tampil di sini.
                 </p>
               </div>
             )}
@@ -805,7 +812,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
               {/* Tab Toggle */}
               <div className="flex w-full lg:w-auto bg-slate-200/50 p-1.5 rounded-2xl">
                 <button onClick={() => setPublicTab('lesson_plan')} className={`flex-1 lg:flex-none py-2.5 sm:py-3 px-6 text-[11px] sm:text-xs font-black rounded-xl transition-all duration-300 ${publicTab === 'lesson_plan' ? 'bg-white text-emerald-600 shadow-sm ring-1 ring-slate-900/5' : 'text-slate-500 hover:text-slate-700'}`}>Target (Lesson Plan)</button>
-                <button onClick={() => setPublicTab('jurnal')} className={`flex-1 lg:flex-none py-2.5 sm:py-3 px-6 text-[11px] sm:text-xs font-black rounded-xl transition-all duration-300 ${publicTab === 'jurnal' ? 'bg-white text-blue-600 shadow-sm ring-1 ring-slate-900/5' : 'text-slate-500 hover:text-slate-700'}`}>Capaian (Jurnal)</button>
+                <button onClick={() => setPublicTab('jurnal')} className={`flex-1 lg:flex-none py-2.5 sm:py-3 px-6 text-[11px] sm:text-xs font-black rounded-xl transition-all duration-300 ${publicTab === 'jurnal' ? 'bg-white text-blue-600 shadow-sm ring-1 ring-slate-900/5' : 'text-slate-500 hover:text-slate-700'}`}>Capaian (Mutabaah)</button>
               </div>
             </div>
 
@@ -861,7 +868,10 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
                       <div className="bg-blue-50/40 p-4 rounded-2xl border border-blue-100/50 hover:bg-blue-50/80 transition-colors flex flex-col">
                         <div className="flex items-center gap-2 mb-2 sm:mb-3">
                           <div className="p-1.5 bg-blue-100 text-blue-600 rounded-lg"><BookOpen size={14} strokeWidth={2.5} /></div>
-                          <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-blue-700">Tahsin</span>
+                          <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-blue-700 flex items-center gap-1">
+                            Tahsin
+                            {publicTab === 'lesson_plan' && rec?.jurnalTahsin && rec?.jurnalTahsin !== '-' && valT !== '-' && <Check size={14} className="text-emerald-500" strokeWidth={4} title="Target Tercapai" />}
+                          </span>
                         </div>
                         <div className="pl-1"><ExpandableText text={valT} /></div>
                       </div>
@@ -870,7 +880,10 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
                       <div className="bg-purple-50/40 p-4 rounded-2xl border border-purple-100/50 hover:bg-purple-50/80 transition-colors flex flex-col">
                         <div className="flex items-center gap-2 mb-2 sm:mb-3">
                           <div className="p-1.5 bg-purple-100 text-purple-600 rounded-lg"><Mic size={14} strokeWidth={2.5} /></div>
-                          <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-purple-700">Tahfidz</span>
+                          <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-purple-700 flex items-center gap-1">
+                            Tahfidz
+                            {publicTab === 'lesson_plan' && rec?.jurnalTahfidz && rec?.jurnalTahfidz !== '-' && valF !== '-' && <Check size={14} className="text-emerald-500" strokeWidth={4} title="Target Tercapai" />}
+                          </span>
                         </div>
                         <div className="pl-1"><ExpandableText text={valF} /></div>
                       </div>
@@ -1014,7 +1027,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
               <div className="h-0.5 w-32 bg-gradient-to-r from-transparent via-amber-500 to-transparent mb-2"></div>
             </div>
             <p className="text-slate-500 font-medium max-w-md leading-relaxed">
-              Selamat datang di platform pemantauan hafalan Ananda. Silakan cari nama Ananda untuk melihat target (Lesson Plan) serta capaian harian (Jurnal).
+              Selamat datang di platform pemantauan hafalan Ananda. Silakan cari nama Ananda untuk melihat target (Lesson Plan) serta capaian harian (Mutabaah).
             </p>
           </div>
 
