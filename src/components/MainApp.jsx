@@ -70,7 +70,9 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
 
   const [weekStart, setWeekStart] = useState(getMonday(new Date())); // Tetap mulai dari Senin
   const [activeDate, setActiveDate] = useState(formatDateObj(new Date())); // Tapi tanggal aktif adalah hari ini
-  const weekDates = Array.from({ length: 5 }).map((_, i) => { const d = new Date(weekStart); d.setDate(d.getDate() + i); return d; });
+  const weekDates = useMemo(() => {
+    return Array.from({ length: 5 }).map((_, i) => { const d = new Date(weekStart); d.setDate(d.getDate() + i); return d; });
+  }, [weekStart]);
 
   const [toastMessage, setToastMessage] = useState(null);
 

@@ -187,7 +187,12 @@ const HomeView = ({
     if (dateNavRef.current) {
       const activeBtn = dateNavRef.current.querySelector('[data-active="true"]');
       if (activeBtn) {
-        setTimeout(() => { activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }); }, 100);
+        setTimeout(() => { 
+          // Gulir khusus kontainer tanggal secara horizontal, tanpa mereset posisi scroll vertikal layar
+          const container = dateNavRef.current;
+          const scrollLeft = activeBtn.offsetLeft - (container.offsetWidth / 2) + (activeBtn.offsetWidth / 2);
+          container.scrollTo({ left: scrollLeft, behavior: 'smooth' });
+        }, 100);
       }
     }
   }, [activeDate, weekDates]);
