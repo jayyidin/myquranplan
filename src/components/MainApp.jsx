@@ -1856,14 +1856,19 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
         }
         setActiveDate(nextDateStr);
 
-        const studentToProcess = students.find(s => s.id === editingId);
+        // Cari siswa yang di-edit, prioritaskan data terbaru dari 'updates' yang baru saja disimpan
+        const studentToProcess = updates.find(u => u.id === editingId) || students.find(s => s.id === editingId);
         if (studentToProcess) {
           const currentRecord = studentToProcess.records[nextDateStr] || {};
           let initialDataForModal = { ...currentRecord };
 
-          const ghostRecord = window._lastDayData ? window._lastDayData[studentToProcess.id] : null;
+          // Gunakan data yang baru saja disimpan pada hari sebelumnya sebagai bayangan (ghost data)
+          const ghostRecord = studentToProcess.records[plan.tanggal] || (window._lastDayData ? window._lastDayData[studentToProcess.id] : null);
           if (ghostRecord) {
             Object.values(k).forEach(keyName => {
+              // Jangan salin Catatan Umum (Sakit/Izin/dll)
+              if (keyName === k.c) return;
+
               if (!initialDataForModal[keyName] || initialDataForModal[keyName] === '-') {
                 if (ghostRecord[keyName] && ghostRecord[keyName] !== '-') {
                   initialDataForModal[keyName] = ghostRecord[keyName];

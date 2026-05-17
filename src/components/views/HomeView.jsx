@@ -1306,11 +1306,6 @@ const HomeView = ({
               </div>
             </div>
             <div className="flex w-full md:w-auto gap-2 shrink-0 mt-1 sm:mt-0 transition-all overflow-x-auto custom-scrollbar pb-2 md:pb-0">
-          {homeTab === 'lesson_plan' && (
-            <button onClick={() => handleAutoFillFromGhost(ghostDataMap, activeDate, homeTab, filteredStudents)} disabled={!activeHalaqoh || filteredStudents.length === 0} className="flex-1 md:flex-none border-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 font-black text-xs sm:text-sm transition-all bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100 disabled:opacity-50 shrink-0" title="Isi Cepat Data Sebelumnya">
-              <History size={16} /> <span className="hidden sm:inline whitespace-nowrap">Isi Cepat</span>
-            </button>
-          )}
               <button onClick={() => handleOpenModal(null, 'full_bulk', homeTab)} disabled={!activeHalaqoh} className="flex-1 md:flex-none border-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 font-black text-xs sm:text-sm transition-all bg-white text-slate-700 border-slate-200 hover:bg-gray-50 disabled:opacity-50 shrink-0" title="Input Massal">
                 <Edit3 size={16} className="text-[#00e676]" /> <span className="hidden sm:inline whitespace-nowrap">Input Massal</span>
               </button>
