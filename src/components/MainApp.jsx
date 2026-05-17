@@ -1838,10 +1838,10 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
         return newStudents;
       });
 
-      showToast('Data berhasil disimpan!');
-
       if (action === 'next') {
-        const currentDate = new Date(plan.tanggal);
+        // Gunakan local time agar tidak terkena bug zona waktu (UTC) yang membuat tanggal tersangkut
+        const [year, month, day] = plan.tanggal.split('-').map(Number);
+        const currentDate = new Date(year, month - 1, day);
         currentDate.setDate(currentDate.getDate() + 1);
 
         if (currentDate.getDay() === 6) {
@@ -1854,9 +1854,10 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
         const nextDateMonday = getMonday(currentDate);
         
         if (nextDateMonday.getTime() !== weekStart.getTime()) {
-           showToast('Batas akhir pekan tercapai. Silakan ganti minggu secara manual.');
-           handleCloseModal();
-           return;
+           setWeekStart(nextDateMonday); // Otomatis lompat ke minggu selanjutnya, jangan tutup modal
+           showToast('Data disimpan! Lanjut ke minggu selanjutnya.');
+        } else {
+           showToast('Data berhasil disimpan!');
         }
         setActiveDate(nextDateStr);
 
@@ -1872,6 +1873,9 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
             Object.values(k).forEach(keyName => {
               // Jangan salin Catatan Umum (Sakit/Izin/dll)
               if (keyName === k.c) return;
+              
+              // Jangan salin Nilai hafalan ke hari berikutnya agar kosong dan siap dinilai ulang
+              if (keyName === k.tNilai || keyName === k.tsNilai || keyName === k.fNilai) return;
 
               if (!initialDataForModal[keyName] || initialDataForModal[keyName] === '-') {
                 if (ghostRecord[keyName] && ghostRecord[keyName] !== '-') {
@@ -1921,6 +1925,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
           }]);
         }
       } else {
+        showToast('Data berhasil disimpan!');
         handleCloseModal();
       }
     } catch (e) { console.error(e); showToast('Gagal menyimpan.'); }
