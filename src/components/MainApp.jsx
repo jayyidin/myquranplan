@@ -1852,7 +1852,9 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
         const nextDateMonday = getMonday(currentDate);
         
         if (nextDateMonday.getTime() !== weekStart.getTime()) {
-           setWeekStart(nextDateMonday);
+           showToast('Batas akhir pekan tercapai. Silakan ganti minggu secara manual.');
+           handleCloseModal();
+           return;
         }
         setActiveDate(nextDateStr);
 
