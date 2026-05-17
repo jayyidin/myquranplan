@@ -270,11 +270,11 @@ const HomeView = ({
     }, delay);
   };
 
-  // Reset jumlah yang terlihat saat berganti halaqoh atau tanggal
+  // Reset jumlah yang terlihat saat berganti halaqoh, pencarian, atau tab (jangan reset saat ganti tanggal agar tidak terlempar ke atas)
   useEffect(() => {
     setVisibleCount(10);
     setIsMoreLoading(false);
-  }, [activeHalaqoh, activeDate]);
+  }, [activeHalaqoh, searchQuery, homeTab]);
 
   // Fungsi Muat Lebih Banyak dengan Skeleton Delay
   const handleLoadMore = () => {
