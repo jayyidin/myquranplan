@@ -1285,7 +1285,7 @@ const HomeView = ({
               </div>
               <div>
                 <h1 className="text-base sm:text-xl md:text-2xl font-bold mb-0.5 sm:mb-1 text-slate-700">
-                  {homeTab === 'lesson_plan' ? "Lesson Plan Al-Qur'an" : "Jurnal Harian Al-Qur'an"}
+                {homeTab === 'lesson_plan' ? "Lesson Plan Al-Qur'an" : "Mutabaah Al-Qur'an"}
                 </h1>
                 <div className="flex flex-wrap sm:flex-row sm:items-center gap-x-3 gap-y-1 text-gray-500 font-medium text-[9px] sm:text-xs mt-0.5 sm:mt-1">
                   <span className="flex items-center gap-1.5 min-w-0">
@@ -1306,9 +1306,11 @@ const HomeView = ({
               </div>
             </div>
             <div className="flex w-full md:w-auto gap-2 shrink-0 mt-1 sm:mt-0 transition-all overflow-x-auto custom-scrollbar pb-2 md:pb-0">
-              <button onClick={() => handleAutoFillFromGhost(ghostDataMap, activeDate, homeTab, filteredStudents)} disabled={!activeHalaqoh || filteredStudents.length === 0} className="flex-1 md:flex-none border-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 font-black text-xs sm:text-sm transition-all bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100 disabled:opacity-50 shrink-0" title="Isi Cepat Data Sebelumnya">
-                <History size={16} /> <span className="hidden sm:inline whitespace-nowrap">Isi Cepat</span>
-              </button>
+          {homeTab === 'lesson_plan' && (
+            <button onClick={() => handleAutoFillFromGhost(ghostDataMap, activeDate, homeTab, filteredStudents)} disabled={!activeHalaqoh || filteredStudents.length === 0} className="flex-1 md:flex-none border-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 font-black text-xs sm:text-sm transition-all bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100 disabled:opacity-50 shrink-0" title="Isi Cepat Data Sebelumnya">
+              <History size={16} /> <span className="hidden sm:inline whitespace-nowrap">Isi Cepat</span>
+            </button>
+          )}
               <button onClick={() => handleOpenModal(null, 'full_bulk', homeTab)} disabled={!activeHalaqoh} className="flex-1 md:flex-none border-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 font-black text-xs sm:text-sm transition-all bg-white text-slate-700 border-slate-200 hover:bg-gray-50 disabled:opacity-50 shrink-0" title="Input Massal">
                 <Edit3 size={16} className="text-[#00e676]" /> <span className="hidden sm:inline whitespace-nowrap">Input Massal</span>
               </button>
@@ -1335,8 +1337,8 @@ const HomeView = ({
               </button>
               <button onClick={() => setHomeTab('jurnal')} className={`flex-1 flex items-center justify-center gap-1.5 px-2 sm:px-4 py-1.5 sm:py-2 font-black text-xs sm:text-sm rounded-lg sm:rounded-xl transition-all duration-300 min-w-fit ${homeTab === 'jurnal' ? 'bg-blue-500 text-white shadow-md border border-blue-600' : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'}`}>
                 {homeTab === 'jurnal' && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse shrink-0"></span>}
-                <span className="sm:hidden">Jurnal</span>
-                <span className="hidden sm:inline">Capaian (Jurnal)</span>
+                <span className="sm:hidden">Mutabaah</span>
+                <span className="hidden sm:inline">Mutabaah</span>
               </button>
               <button
                 onClick={() => setIsHeaderVisible(!isHeaderVisible)}
@@ -1414,8 +1416,25 @@ const HomeView = ({
             {/* PROGRESS BAR PENGISIAN JURNAL & RINGKASAN KEHADIRAN */}
             {activeHalaqoh && (studentsInHalaqoh || filteredStudents).length > 0 && (() => {
               const targetStudents = studentsInHalaqoh || filteredStudents;
-              const { count } = getDateStatus(activeDate);
-              const total = targetStudents.length;
+              let count = 0;
+              let total = 0;
+
+              if (homeTab === 'lesson_plan') {
+                targetStudents.forEach(s => {
+                  const r = s.records?.[activeDate];
+                  if (r) {
+                    const hasTahsinTarget = (r.tahsin && r.tahsin !== '-') || (r.halAyatTahsin && r.halAyatTahsin !== '-');
+                    const hasTahfidzTarget = (r.tahfidz && r.tahfidz !== '-') || (r.ayatTahfidz && r.ayatTahfidz !== '-');
+                    if (hasTahsinTarget) { total++; if (r.jurnalTahsin && r.jurnalTahsin !== '-') count++; }
+                    if (hasTahfidzTarget) { total++; if (r.jurnalTahfidz && r.jurnalTahfidz !== '-') count++; }
+                  }
+                });
+                if (total === 0) total = targetStudents.length;
+              } else {
+                count = getDateStatus(activeDate).count;
+                total = targetStudents.length;
+              }
+
               const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
               const isComplete = count === total && total > 0;
 
@@ -1439,7 +1458,7 @@ const HomeView = ({
                 <div className="w-full flex flex-col gap-1.5 mb-3 mt-1 px-1 animate-in fade-in duration-500">
                   <div className="flex justify-between items-end">
                     <span className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                      Progres {homeTab === 'lesson_plan' ? 'Target' : 'Capaian'} Hari Ini
+                      {homeTab === 'lesson_plan' ? 'Target Tercapai Hari Ini' : 'Progres Mutabaah Hari Ini'}
                       {isComplete && <Check size={14} className="text-[#00e676]" strokeWidth={3} />}
                     </span>
                     <span className={`text-xs sm:text-sm font-black ${isComplete ? 'text-[#00e676]' : 'text-emerald-500'}`}>
@@ -1458,24 +1477,26 @@ const HomeView = ({
                   </div>
 
                   {/* Ringkasan Kehadiran */}
-                  <div className="flex flex-wrap items-center gap-2 text-[10px] sm:text-[11px] font-black tracking-wide mt-0.5">
-                    <div className="flex items-center gap-1.5 text-emerald-700 bg-emerald-50/80 px-2.5 py-1 rounded-md border border-emerald-100">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                      Hadir: {hadirCount}
+                  {homeTab !== 'lesson_plan' && (
+                    <div className="flex flex-wrap items-center gap-2 text-[10px] sm:text-[11px] font-black tracking-wide mt-0.5">
+                      <div className="flex items-center gap-1.5 text-emerald-700 bg-emerald-50/80 px-2.5 py-1 rounded-md border border-emerald-100">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                        Hadir: {hadirCount}
+                      </div>
+                      {absenCount > 0 && (
+                        <div className="flex items-center gap-1.5 text-red-600 bg-red-50/80 px-2.5 py-1 rounded-md border border-red-100">
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                          Tidak Hadir: {absenCount}
+                        </div>
+                      )}
+                      {liburCount > 0 && (
+                        <div className="flex items-center gap-1.5 text-blue-600 bg-blue-50/80 px-2.5 py-1 rounded-md border border-blue-100">
+                          <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                          Libur: {liburCount}
+                        </div>
+                      )}
                     </div>
-                    {absenCount > 0 && (
-                      <div className="flex items-center gap-1.5 text-red-600 bg-red-50/80 px-2.5 py-1 rounded-md border border-red-100">
-                        <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
-                        Tidak Hadir: {absenCount}
-                      </div>
-                    )}
-                    {liburCount > 0 && (
-                      <div className="flex items-center gap-1.5 text-blue-600 bg-blue-50/80 px-2.5 py-1 rounded-md border border-blue-100">
-                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                        Libur: {liburCount}
-                      </div>
-                    )}
-                  </div>
+                  )}
                 </div>
               );
             })()}

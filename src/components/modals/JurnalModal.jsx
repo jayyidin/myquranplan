@@ -41,6 +41,18 @@ export const JurnalModal = ({
     setSavingAction(null);
   };
 
+  const activeDate = lessonPlans[0]?.tanggal;
+  const availableStudents = useMemo(() => {
+    return filteredStudents.filter(s => {
+      if (s.id === editingId) return true;
+      const rec = s.records?.[activeDate];
+      const cat = homeTab === 'lesson_plan' ? rec?.catatan : rec?.jurnalCatatan;
+      if (!cat || cat === '-') return true;
+      const text = String(cat).toLowerCase();
+      return !['sakit', 'izin', 'alpa', 'tidak hadir', 'libur'].some(keyword => text.includes(keyword));
+    });
+  }, [filteredStudents, activeDate, homeTab, editingId]);
+
   // Pastikan Early Return berada SETELAH semua fungsi React Hooks dipanggil
   if (!isOpen) return null;
 
@@ -87,8 +99,8 @@ export const JurnalModal = ({
                     className="w-full pl-8 pr-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
-                <button type="button" onClick={() => toggleStudent('ALL')} disabled={applyToOthersDisabled} className="shrink-0 text-[10px] text-blue-600 font-bold bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors border border-blue-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-50">
-                  {filteredStudents.length === selectedStudents.length ? 'Batal Semua' : 'Pilih Semua'}
+                <button type="button" onClick={() => toggleStudent('ALL')} disabled={applyToOthersDisabled || availableStudents.length === 0} className="shrink-0 text-[10px] text-blue-600 font-bold bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors border border-blue-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-50">
+                  {availableStudents.length === selectedStudents.length && availableStudents.length > 0 ? 'Batal Semua' : 'Pilih Semua'}
                 </button>
               </div>
             </div>
@@ -96,7 +108,8 @@ export const JurnalModal = ({
               {displayStudents.map(s => {
                 const isSelected = selectedStudents.includes(s.id);
                 const isEditing = s.id === editingId;
-                const isStudentDisabled = applyToOthersDisabled && !isEditing;
+                const isAvailable = availableStudents.some(av => av.id === s.id);
+                const isStudentDisabled = (applyToOthersDisabled && !isEditing) || (!isAvailable && !isEditing);
 
                 return (
                   <button
@@ -105,6 +118,7 @@ export const JurnalModal = ({
                     onClick={() => toggleStudent(s.id)}
                     disabled={isStudentDisabled}
                     className={`relative flex items-center justify-center gap-1.5 shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all disabled:opacity-40 disabled:cursor-not-allowed ${isSelected ? (isEditing ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-[#00e676]/10 border-[#00e676] text-green-700 shadow-sm') : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300'}`}
+                    title={!isAvailable && !isEditing ? "Siswa ini sedang absen/libur" : ""}
                   >
                     {isSelected && !isEditing && <Check size={12} strokeWidth={3} className="shrink-0" />}
                     <span className="truncate max-w-[110px] sm:max-w-[140px]">{s.name}</span>
@@ -127,9 +141,11 @@ export const JurnalModal = ({
                   <label className="flex items-center gap-1.5 text-xs font-bold text-gray-600 cursor-pointer hover:text-blue-600 transition-colors">
                     <input type="checkbox" checked={copyOptions.ayat} onChange={e => setCopyOptions({ ...copyOptions, ayat: e.target.checked })} className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-gray-300" /> Halaman/Ayat
                   </label>
-                  <label className="flex items-center gap-1.5 text-xs font-bold text-gray-600 cursor-pointer hover:text-blue-600 transition-colors">
-                    <input type="checkbox" checked={copyOptions.nilai} onChange={e => setCopyOptions({ ...copyOptions, nilai: e.target.checked })} className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-gray-300" /> Nilai
-                  </label>
+                  {homeTab !== 'lesson_plan' && (
+                    <label className="flex items-center gap-1.5 text-xs font-bold text-gray-600 cursor-pointer hover:text-blue-600 transition-colors">
+                      <input type="checkbox" checked={copyOptions.nilai} onChange={e => setCopyOptions({ ...copyOptions, nilai: e.target.checked })} className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-gray-300" /> Nilai
+                    </label>
+                  )}
                   <label className="flex items-center gap-1.5 text-xs font-bold text-gray-600 cursor-pointer hover:text-blue-600 transition-colors">
                     <input type="checkbox" checked={copyOptions.catatan} onChange={e => setCopyOptions({ ...copyOptions, catatan: e.target.checked })} className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-gray-300" /> Catatan
                   </label>
@@ -489,7 +505,7 @@ export const JurnalModal = ({
                 {savingAction === 'close' ? 'Menyimpan...' : 'Simpan'}
               </button>
               {editingId && selectedStudents.length <= 1 && (
-                <button onClick={() => handleSaveClick(copyOptions, 'next')} disabled={savingAction !== null} className="flex-1 w-full flex justify-center items-center gap-1.5 sm:gap-2 bg-blue-500 hover:bg-blue-600 text-white py-4 rounded-2xl font-black text-xs sm:text-sm active:scale-95 transition-all shadow-md shadow-blue-200 disabled:opacity-70 disabled:cursor-not-allowed" title="Simpan nilai dan langsung lanjut ke siswa berikutnya">
+                <button onClick={() => handleSaveClick(copyOptions, 'next')} disabled={savingAction !== null} className="flex-1 w-full flex justify-center items-center gap-1.5 sm:gap-2 bg-blue-500 hover:bg-blue-600 text-white py-4 rounded-2xl font-black text-xs sm:text-sm active:scale-95 transition-all shadow-md shadow-blue-200 disabled:opacity-70 disabled:cursor-not-allowed" title="Simpan nilai dan langsung lanjut ke hari berikutnya">
                   {savingAction === 'next' ? (
                     <><Loader2 size={16} className="animate-spin" /> Lanjut...</>
                   ) : (

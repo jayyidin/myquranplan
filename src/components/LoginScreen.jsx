@@ -582,7 +582,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
           <div className="flex flex-col sm:flex-row items-center gap-3 w-full xl:w-auto">
             <div className="flex gap-2 w-full sm:w-auto bg-slate-100 p-1.5 rounded-2xl">
               <button onClick={() => setPublicTab('lesson_plan')} className={`flex-1 sm:flex-none px-5 py-3 sm:py-2 text-xs sm:text-sm font-black rounded-xl transition-all ${publicTab === 'lesson_plan' ? 'bg-emerald-500 text-white shadow-md' : 'text-slate-500 hover:text-slate-700'}`}>Target (Lesson Plan)</button>
-              <button onClick={() => setPublicTab('jurnal')} className={`flex-1 sm:flex-none px-5 py-3 sm:py-2 text-xs sm:text-sm font-black rounded-xl transition-all ${publicTab === 'jurnal' ? 'bg-blue-500 text-white shadow-md' : 'text-slate-500 hover:text-slate-700'}`}>Capaian (Jurnal)</button>
+              <button onClick={() => setPublicTab('jurnal')} className={`flex-1 sm:flex-none px-5 py-3 sm:py-2 text-xs sm:text-sm font-black rounded-xl transition-all ${publicTab === 'jurnal' ? 'bg-blue-500 text-white shadow-md' : 'text-slate-500 hover:text-slate-700'}`}>Mutabaah</button>
             </div>
             <div className="flex items-center justify-between bg-white border border-slate-200 rounded-xl px-2 py-1.5 shadow-sm w-full sm:w-auto">
               <button onClick={() => changePublicWeek(-7)} className="p-2 sm:p-2 bg-slate-50 hover:bg-emerald-50 text-slate-400 hover:text-emerald-500 rounded-lg transition-colors"><ChevronLeft size={18} /></button>
@@ -812,7 +812,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
               {/* Tab Toggle */}
               <div className="flex w-full lg:w-auto bg-slate-200/50 p-1.5 rounded-2xl">
                 <button onClick={() => setPublicTab('lesson_plan')} className={`flex-1 lg:flex-none py-2.5 sm:py-3 px-6 text-[11px] sm:text-xs font-black rounded-xl transition-all duration-300 ${publicTab === 'lesson_plan' ? 'bg-white text-emerald-600 shadow-sm ring-1 ring-slate-900/5' : 'text-slate-500 hover:text-slate-700'}`}>Target (Lesson Plan)</button>
-                <button onClick={() => setPublicTab('jurnal')} className={`flex-1 lg:flex-none py-2.5 sm:py-3 px-6 text-[11px] sm:text-xs font-black rounded-xl transition-all duration-300 ${publicTab === 'jurnal' ? 'bg-white text-blue-600 shadow-sm ring-1 ring-slate-900/5' : 'text-slate-500 hover:text-slate-700'}`}>Capaian (Mutabaah)</button>
+                <button onClick={() => setPublicTab('jurnal')} className={`flex-1 lg:flex-none py-2.5 sm:py-3 px-6 text-[11px] sm:text-xs font-black rounded-xl transition-all duration-300 ${publicTab === 'jurnal' ? 'bg-white text-blue-600 shadow-sm ring-1 ring-slate-900/5' : 'text-slate-500 hover:text-slate-700'}`}>Mutabaah</button>
               </div>
             </div>
 

@@ -30,9 +30,13 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
   // -- STATE UTAMA --
   const [isDbReady, setIsDbReady] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [currentView, setCurrentView] = useState('home');
+  const [currentView, setCurrentView] = useState(() => {
+    const saved = localStorage.getItem('myquranplan_current_view');
+    if (saved === 'log' && !isSuperAdmin) return 'home';
+    return saved || 'home';
+  });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [homeTab, setHomeTab] = useState('jurnal');
+  const [homeTab, setHomeTab] = useState(() => localStorage.getItem('myquranplan_home_tab') || 'jurnal');
 
   const [guruHalaqohData, setGuruHalaqohData] = useState({});
   // Menggunakan _order_ karena tipe jsonb di Supabase tidak mempertahankan urutan key
@@ -58,8 +62,8 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
   const [targetAlQuran, setTargetAlQuran] = useState('');
   const [appUsers, setAppUsers] = useState([]);
 
-  const [activeGuru, setActiveGuru] = useState('');
-  const [activeHalaqoh, setActiveHalaqoh] = useState('');
+  const [activeGuru, setActiveGuru] = useState(() => localStorage.getItem('myquranplan_active_guru') || '');
+  const [activeHalaqoh, setActiveHalaqoh] = useState(() => localStorage.getItem('myquranplan_active_halaqoh') || '');
   const [students, setStudents] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showUnfilledOnly, setShowUnfilledOnly] = useState(false);
@@ -128,6 +132,26 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
   }, [activeDate, homeTab, showUnfilledOnly]);
 
   useEffect(() => {
+    localStorage.setItem('myquranplan_current_view', currentView);
+  }, [currentView]);
+
+  useEffect(() => {
+    localStorage.setItem('myquranplan_home_tab', homeTab);
+  }, [homeTab]);
+
+  useEffect(() => {
+    if (activeGuru) localStorage.setItem('myquranplan_active_guru', activeGuru);
+    else localStorage.removeItem('myquranplan_active_guru');
+  }, [activeGuru]);
+
+  useEffect(() => {
+    if (activeHalaqoh) localStorage.setItem('myquranplan_active_halaqoh', activeHalaqoh);
+    else localStorage.removeItem('myquranplan_active_halaqoh');
+  }, [activeHalaqoh]);
+
+  useEffect(() => {
+    if (!isDbReady) return; // Mencegah reset saat data dari database belum selesai dimuat
+
     if (!isSuperAdmin) {
       const teacherName = currentUser?.name || "";
       if (activeGuru !== teacherName) setActiveGuru(teacherName);
@@ -146,20 +170,25 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
         setActiveHalaqoh('');
       }
     } else {
-      if (!activeGuru && guruList.length > 0) {
-        const firstGuru = guruList[0];
-        setActiveGuru(firstGuru);
-        setActiveHalaqoh((guruHalaqohData[firstGuru] && guruHalaqohData[firstGuru].length > 0) ? guruHalaqohData[firstGuru][0] : '');
-      } else if (activeGuru) {
-        const halaqohs = guruHalaqohData[activeGuru] || [];
-        if (halaqohs.length > 0 && (!activeHalaqoh || !halaqohs.includes(activeHalaqoh))) {
-          setActiveHalaqoh(halaqohs[0]);
-        } else if (halaqohs.length === 0 && activeHalaqoh !== '') {
-          setActiveHalaqoh('');
+      if (guruList.length > 0) {
+        if (!activeGuru || !guruList.includes(activeGuru)) {
+          const firstGuru = guruList[0];
+          setActiveGuru(firstGuru);
+          setActiveHalaqoh((guruHalaqohData[firstGuru] && guruHalaqohData[firstGuru].length > 0) ? guruHalaqohData[firstGuru][0] : '');
+        } else {
+          const halaqohs = guruHalaqohData[activeGuru] || [];
+          if (halaqohs.length > 0 && (!activeHalaqoh || !halaqohs.includes(activeHalaqoh))) {
+            setActiveHalaqoh(halaqohs[0]);
+          } else if (halaqohs.length === 0 && activeHalaqoh !== '') {
+            setActiveHalaqoh('');
+          }
         }
+      } else if (activeGuru !== '') {
+        setActiveGuru('');
+        setActiveHalaqoh('');
       }
     }
-  }, [guruList, guruHalaqohData, isSuperAdmin, currentUser?.name, activeGuru, activeHalaqoh, selectedGuruForHalaqoh]);
+  }, [guruList, guruHalaqohData, isSuperAdmin, currentUser?.name, activeGuru, activeHalaqoh, selectedGuruForHalaqoh, isDbReady]);
 
   useEffect(() => { setNewStudent(prev => ({ ...prev, halaqoh: activeHalaqoh, kelas: prev.kelas || (kelasList.length > 0 ? kelasList[0] : '') })); }, [activeHalaqoh, kelasList]);
 
@@ -1577,13 +1606,29 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
   );
 
   const handleCloseModal = () => { setIsModalOpen(false); setEditingId(null); setActiveDropdown(null); setModalMode('full_bulk'); };
+
+  const isStudentAbsentOnDate = (student, dateStr) => {
+    const rec = student.records?.[dateStr];
+    if (!rec) return false;
+    const cat = homeTab === 'lesson_plan' ? rec.catatan : rec.jurnalCatatan;
+    if (!cat || cat === '-') return false;
+    const text = String(cat).toLowerCase();
+    return ['sakit', 'izin', 'alpa', 'tidak hadir', 'libur'].some(keyword => text.includes(keyword));
+  };
+
   const toggleStudent = (id) => {
     if (shouldRestrictApplyToOthers()) {
       setSelectedStudents([editingId]);
       return;
     }
 
-    if (id === 'ALL') { setSelectedStudents(studentsInHalaqoh.length === selectedStudents.length ? [] : studentsInHalaqoh.map(s => s.id)) } else { setSelectedStudents(prev => prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]); }
+    if (id === 'ALL') {
+      const activeDate = lessonPlans[0]?.tanggal;
+      const availableStudents = studentsInHalaqoh.filter(s => !isStudentAbsentOnDate(s, activeDate) || s.id === editingId);
+      setSelectedStudents(availableStudents.length === selectedStudents.length && availableStudents.length > 0 ? [] : availableStudents.map(s => s.id));
+    } else {
+      setSelectedStudents(prev => prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]);
+    }
   };
 
   const handlePlanChange = (id, field, value) => {
@@ -1659,7 +1704,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
     } catch (e) { console.error(e); showToast(`Gagal menandai ${status.toLowerCase()}.`); }
   };
 
-  const handleSave = async () => {
+  const handleSave = async (options, action) => {
     if (!editingId && selectedStudents.length === 0) { showToast('Pilih minimal 1 siswa!'); return; }
     const plan = lessonPlans[0];
     const formatS = (list) => { const v = list.filter(i => i.surat); return { surat: v.map(i => i.surat).join(', ') || '-', ayat: v.map(i => getAyatRangeOrDefault(i.surat, i.ayatStart, i.ayatEnd)).join(', ') || '-', nilai: v.map(i => i.nilai || '-').join(', ') || '-' }; };
@@ -1791,13 +1836,90 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
         return newStudents;
       });
 
-      handleCloseModal(); showToast('Data berhasil disimpan!');
+      showToast('Data berhasil disimpan!');
+
+      if (action === 'next') {
+        const currentDate = new Date(plan.tanggal);
+        currentDate.setDate(currentDate.getDate() + 1);
+
+        if (currentDate.getDay() === 6) {
+          currentDate.setDate(currentDate.getDate() + 2);
+        } else if (currentDate.getDay() === 0) {
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+
+        const nextDateStr = formatDateObj(currentDate);
+        const nextDateMonday = getMonday(currentDate);
+        
+        if (nextDateMonday.getTime() !== weekStart.getTime()) {
+           setWeekStart(nextDateMonday);
+        }
+        setActiveDate(nextDateStr);
+
+        const studentToProcess = students.find(s => s.id === editingId);
+        if (studentToProcess) {
+          const currentRecord = studentToProcess.records[nextDateStr] || {};
+          let initialDataForModal = { ...currentRecord };
+
+          const ghostRecord = window._lastDayData ? window._lastDayData[studentToProcess.id] : null;
+          if (ghostRecord) {
+            Object.values(k).forEach(keyName => {
+              if (!initialDataForModal[keyName] || initialDataForModal[keyName] === '-') {
+                if (ghostRecord[keyName] && ghostRecord[keyName] !== '-') {
+                  initialDataForModal[keyName] = ghostRecord[keyName];
+                }
+              }
+            });
+          }
+
+          const cleanData = {};
+          Object.values(k).forEach(keyName => {
+            if (initialDataForModal[keyName]) {
+              cleanData[keyName] = initialDataForModal[keyName];
+            }
+          });
+
+          let tKategori = '', tSurat = cleanData[k.t] || '', tHalaman = [], tBaris = [], tMateri = [], tHalamanTg = [], rawTahsinAyat = cleanData[k.h] || '', tahsinAyatOnly = rawTahsinAyat;
+          if (tSurat === '-') tSurat = '';
+          if (rawTahsinAyat === '-') { rawTahsinAyat = ''; tahsinAyatOnly = ''; }
+
+          if (tSurat.includes('Jilid')) {
+            tKategori = tahsinCategories.find(c => tSurat.includes(c)) || ''; tSurat = '';
+            const halMatch = rawTahsinAyat.match(/Hal\. ([\d, ]+)/); if (halMatch) tHalaman = halMatch[1].split(',').map(s => s.trim());
+            const brsMatch = rawTahsinAyat.match(/Brs ([\d, ]+)/); if (brsMatch) tBaris = brsMatch[1].split(',').map(s => s.trim());
+            tahsinAyatOnly = '';
+          } else if (tSurat.includes('Tajwid') || tSurat.includes('Ghorib') || tSurat.includes('Gharib')) {
+            tKategori = tSurat.includes('Tajwid') ? 'Tajwid' : 'Ghorib';
+            tSurat = tSurat.replace(/Tajwid,?\s*/gi, '').replace(/Ghorib,?\s*/gi, '').replace(/Gharib,?\s*/gi, '').trim();
+            if (tSurat === '-') tSurat = '';
+            const parts = rawTahsinAyat.split('/');
+            if (parts.length > 0) {
+              let halMatStr = parts[0].trim();
+              if (/^[0-9\-, ]+$/.test(halMatStr) || halMatStr.includes('Semua Ayat')) {
+                tahsinAyatOnly = halMatStr;
+                halMatStr = '';
+              } else {
+                tahsinAyatOnly = parts.length > 1 ? parts.slice(1).join('/').trim() : '';
+              }
+              const tgHalMatch = halMatStr.match(/Hal\.\s+([\d,\s]+)/);
+              if (tgHalMatch) { tHalaman = tgHalMatch[1].split(',').map(s => s.trim()); halMatStr = halMatStr.replace(tgHalMatch[0], '').replace(/^[\s-]+|[\s-]+$/g, ''); }
+              if (halMatStr) { tMateri = halMatStr.split('|').map(s => s.trim()).filter(Boolean); }
+            }
+          } else if (tSurat && tSurat !== '-') tKategori = 'Al-Qur\'an';
+
+          setLessonPlans([{
+            id: Date.now(), tanggal: nextDateStr, murojaah: parseMurojaahList(cleanData[k.m]), tahsinKategori: tKategori, tahsinSuratList: parseSuratAyatList(tSurat, tahsinAyatOnly, cleanData[k.tsNilai]), tahsinHalaman: tHalaman, tahsinBaris: tBaris, tahsinMateri: tMateri, tahsinHalamanTg: tHalamanTg, tahfidzSuratList: parseSuratAyatList(cleanData[k.f], cleanData[k.af], cleanData[k.fNilai]), lainLain: cleanData[k.c] && cleanData[k.c] !== '-' ? cleanData[k.c] : '', catatanTahsin: cleanData[k.cT] && cleanData[k.cT] !== '-' ? cleanData[k.cT] : '', catatanTahfidz: cleanData[k.cF] && cleanData[k.cF] !== '-' ? cleanData[k.cF] : '', tahsinNilai: cleanData[k.tNilai] && cleanData[k.tNilai] !== '-' ? cleanData[k.tNilai] : ''
+          }]);
+        }
+      } else {
+        handleCloseModal();
+      }
     } catch (e) { console.error(e); showToast('Gagal menyimpan.'); }
   };
 
   const getModalTitle = () => {
     const nameSuffix = selectedStudents.length === 1 && modalMode === 'full_edit' ? ' - ' + (students.find(s => s.id === selectedStudents[0])?.name || '') : '';
-    const prefix = homeTab === 'lesson_plan' ? 'Target' : 'Capaian';
+    const prefix = homeTab === 'lesson_plan' ? 'Target' : 'Mutabaah';
     if (modalMode === 'tahsin') return <><BookOpen size={20} className="text-blue-500" /> {prefix} Tahsin</>;
     if (modalMode === 'tahfidz') return <><Mic size={20} className="text-purple-500" /> {prefix} Tahfidz</>;
     if (modalMode === 'murojaah') return <><Repeat size={20} className="text-emerald-500" /> {prefix} Murojaah</>;
