@@ -515,8 +515,8 @@ const HomeView = ({
   // --- FUNGSI DESAIN KARTU TAHSIN (TAMPILAN WEB) - ANTI CRASH ---
   const renderTahsinCard = (tahsin, halAyat, studentId, dateStr, nilaiCat, nilaiSuratStr) => {
     try {
-      if (!tahsin && !halAyat && !nilaiCat) return <span className="text-xs sm:text-sm text-gray-300 font-medium">-</span>;
-      if (tahsin === '-' && halAyat === '-' && nilaiCat === '-') return <span className="text-xs sm:text-sm text-gray-300 font-medium">-</span>;
+      if (!tahsin && !halAyat && !nilaiCat && !nilaiSuratStr) return <span className="text-xs sm:text-sm text-gray-300 font-medium">-</span>;
+      if (tahsin === '-' && halAyat === '-' && nilaiCat === '-' && (!nilaiSuratStr || nilaiSuratStr === '-')) return <span className="text-xs sm:text-sm text-gray-300 font-medium">-</span>;
 
       const isExcellent = String(nilaiCat).trim() === 'A';
       const isGood = String(nilaiCat).trim() === 'B+';
@@ -524,7 +524,21 @@ const HomeView = ({
       const badgeBg = isExcellent ? 'bg-amber-400 text-amber-900 shadow-amber-200' : isGood ? 'bg-slate-200 text-slate-700 shadow-slate-300 border border-slate-300' : isFair ? 'bg-orange-100 text-orange-800 shadow-orange-200 border border-orange-300' : 'bg-[#0f4c5c] text-white shadow-sm';
       const catBadge = (nilaiCat && nilaiCat !== '-') ? <div className={`mt-1 inline-flex items-center justify-center ${badgeBg} text-[12px] font-black px-2.5 py-1 rounded-full w-max leading-none gap-1`}>{(isExcellent || isGood || isFair) && <Star size={10} className={isExcellent ? "fill-amber-900" : isGood ? "fill-slate-500" : "fill-orange-600"} />}{String(nilaiCat)}</div> : null;
 
-      if (!tahsin || tahsin === '-' || typeof tahsin !== 'string') return <div className="flex flex-col items-center justify-center w-full min-w-0"><span className="text-[13px] md:text-[14px] font-bold text-gray-700 break-words text-center">{halAyat !== '-' ? String(halAyat) : ''}</span>{catBadge}</div>;
+      if (!tahsin || tahsin === '-' || typeof tahsin !== 'string') {
+        const nList = nilaiSuratStr && nilaiSuratStr !== '-' ? String(nilaiSuratStr).split(',').map(s => s.trim()) : [];
+        return (
+          <div className="flex flex-col items-center justify-center w-full min-w-0 gap-1">
+            {halAyat !== '-' && <span className="text-[13px] md:text-[14px] font-bold text-gray-700 break-words text-center">{String(halAyat)}</span>}
+            {catBadge}
+            {nList.length > 0 && nList.map((n, i) => {
+              if (!n || n === '-') return null;
+              const isEx = String(n).trim() === 'A'; const isGd = String(n).trim() === 'B+'; const isFr = String(n).trim() === 'B';
+              const bg = isEx ? 'bg-amber-400 text-amber-900 shadow-amber-200' : isGd ? 'bg-slate-200 text-slate-700 shadow-slate-300 border border-slate-300' : isFr ? 'bg-orange-100 text-orange-800 shadow-orange-200 border border-orange-300' : 'bg-[#0f4c5c] text-white shadow-sm';
+              return <div key={`tn-${i}`} className={`inline-flex items-center justify-center ${bg} text-[11px] font-black px-2.5 py-1 rounded-full w-max leading-none gap-1`}>{(isEx || isGd || isFr) && <Star size={10} className={isEx ? "fill-amber-900" : isGd ? "fill-slate-500" : "fill-orange-600"} />}{n}</div>;
+            })}
+          </div>
+        );
+      }
 
       if (tahsin.includes('Tajwid') || tahsin.includes('Ghorib') || tahsin.includes('Gharib')) {
         const parts = tahsin.split(','); const category = parts[0].trim(); const suratListStr = parts.slice(1).join(',').trim();
@@ -602,6 +616,20 @@ const HomeView = ({
       const tList = tahfidz && tahfidz !== '-' && typeof tahfidz === 'string' ? tahfidz.split(',').map(s => s.trim()) : [];
       const aList = ayat && ayat !== '-' ? String(ayat || '').split(',').map(s => s.trim()) : [];
       const nList = nilai && nilai !== '-' ? String(nilai).split(',').map(s => s.trim()) : [];
+
+      if (tList.length === 0 && nList.length > 0) {
+        return (
+          <div className="flex flex-col items-center justify-center gap-1 w-full min-w-0">
+            {nList.map((n, i) => {
+              if (!n || n === '-') return null;
+              const isEx = String(n).trim() === 'A'; const isGd = String(n).trim() === 'B+'; const isFr = String(n).trim() === 'B';
+              const bg = isEx ? 'bg-amber-400 text-amber-900 shadow-amber-200' : isGd ? 'bg-slate-200 text-slate-700 shadow-slate-300 border border-slate-300' : isFr ? 'bg-orange-100 text-orange-800 shadow-orange-200 border border-orange-300' : 'bg-[#0f4c5c] text-white shadow-sm';
+              return <div key={`fn-${i}`} className={`inline-flex items-center justify-center ${bg} text-[11px] font-black px-2.5 py-1 rounded-full w-max leading-none gap-1`}>{(isEx || isGd || isFr) && <Star size={10} className={isEx ? "fill-amber-900" : isGd ? "fill-slate-500" : "fill-orange-600"} />}{n}</div>;
+            })}
+          </div>
+        );
+      }
+
       return (
         <div className="flex flex-col items-center justify-center gap-1 w-full min-w-0">
           {tList.map((t, i) => {
@@ -1574,8 +1602,6 @@ const HomeView = ({
                           // Jurnal Check for Target Achieved
                           const jT = record?.jurnalTahsin || '-';
                           const jF = record?.jurnalTahfidz || '-';
-                          const jM = record?.jurnalMurojaah || '-';
-                          const jC = record?.jurnalCatatan || '-';
 
                           // Inisial untuk avatar web
                           const initials = getInitials(student?.name);
@@ -1583,17 +1609,19 @@ const HomeView = ({
                           // Ambil data referensi pekan lalu
                           const lastRec = ghostDataMap[student.id];
                           const ghostLabel = homeTab === 'lesson_plan' && new Date(activeDate).getDay() === 1 ? 'Jurnal Pekan Lalu' : 'Hari Sebelumnya';
-                          const isTahsinEmpty = valT === '-' && valH === '-' && valTNilai === '-';
-                          const isTahfidzEmpty = valF === '-' && valAF === '-' && valFNilai === '-';
+                          const isTahsinNoSurat = valT === '-' && valH === '-';
+                          const hasTahsinGrade = valTNilai !== '-' || valTSNilai !== '-';
+                          const hasGhostTahsin = isTahsinNoSurat && lastRec && lastRec[k.t] && lastRec[k.t] !== '-';
+
+                          const isTahfidzNoSurat = valF === '-' && valAF === '-';
+                          const hasTahfidzGrade = valFNilai !== '-';
+                          const hasGhostTahfidz = isTahfidzNoSurat && lastRec && lastRec[k.f] && lastRec[k.f] !== '-';
                           const isMurojaahEmpty = valM === '-';
                           const isCatatanEmpty = !hasAnyCatatan(valC, valCT, valCF);
 
-                          const isTahsinAchieved = homeTab === 'lesson_plan' && !isTahsinEmpty && jT !== '-';
-                          const isTahfidzAchieved = homeTab === 'lesson_plan' && !isTahfidzEmpty && jF !== '-';
+                          const isTahsinAchieved = homeTab === 'lesson_plan' && !isTahsinNoSurat && jT !== '-';
+                          const isTahfidzAchieved = homeTab === 'lesson_plan' && !isTahfidzNoSurat && jF !== '-';
 
-                          // Determine if the current cell is empty and has ghost data
-                          const hasGhostTahsin = isTahsinEmpty && lastRec && lastRec[k.t] && lastRec[k.t] !== '-';
-                          const hasGhostTahfidz = isTahfidzEmpty && lastRec && lastRec[k.f] && lastRec[k.f] !== '-';
                           const hasGhostMurojaah = isMurojaahEmpty && lastRec && lastRec[k.m] && lastRec[k.m] !== '-';
                           const hasGhostCatatan = isCatatanEmpty && lastRec && hasAnyCatatan(lastRec[k.c], lastRec[k.cT], lastRec[k.cF]);
                           const isAbsent = !isCatatanEmpty && ['alpa', 'sakit', 'izin', 'tidak hadir'].some(keyword => String(valC).toLowerCase().includes(keyword));
@@ -1631,17 +1659,19 @@ const HomeView = ({
                                       <Check size={12} strokeWidth={4} />
                                     </div>
                                   )}
-                                  {!isTahsinEmpty ? (
+                                  {!isTahsinNoSurat ? (
                                     renderTahsinCard(valT, valH, student?.id, activeDate, valTNilai, valTSNilai)
                                   ) : hasGhostTahsin ? (
-                                    <div className="pointer-events-none opacity-30 grayscale blur-[0.5px] scale-90 origin-center transition-all group-hover/cell:opacity-70 group-hover/cell:blur-none group-hover/cell:grayscale-0" title={`Dari tgl ${getGhostDateLabel(lastRec, 'tahsin')}`}>
+                                    <div className={`pointer-events-none origin-center transition-all ${hasTahsinGrade ? 'opacity-100' : 'opacity-30 grayscale blur-[0.5px] scale-90 group-hover/cell:opacity-70 group-hover/cell:blur-none group-hover/cell:grayscale-0'}`} title={`Dari tgl ${getGhostDateLabel(lastRec, 'tahsin')}`}>
                                       <div className="flex items-center justify-center gap-1 text-[9px] font-black text-gray-400 uppercase tracking-tighter mb-0.5">
                                         <History size={10} /> {ghostLabel}
                                       </div>
-                                      {renderTahsinCard(lastRec[k.t], lastRec[k.h], student?.id, 'ghost', lastRec[k.tNilai], lastRec[k.tsNilai])}
+                                      {renderTahsinCard(lastRec[k.t], lastRec[k.h], student?.id, 'ghost', hasTahsinGrade ? valTNilai : lastRec[k.tNilai], hasTahsinGrade ? valTSNilai : lastRec[k.tsNilai])}
                                     </div>
+                                  ) : hasTahsinGrade ? (
+                                    renderTahsinCard('-', '-', student?.id, activeDate, valTNilai, valTSNilai)
                                   ) : <span className="text-gray-300 group-hover:text-slate-400 transition-colors">-</span>}
-                                  {!isTahsinEmpty ? (
+                                  {(!isTahsinNoSurat || hasTahsinGrade) ? (
                                     <button onClick={(e) => handleRemoveData(e, student?.id, activeDate, 'tahsin_all', homeTab)} className="absolute right-1 top-1 text-red-500 opacity-0 lg:group-hover/cell:opacity-100 transition-opacity"><X size={12} /></button>
                                   ) : (
                                     <button className="absolute top-1 right-1 opacity-0 lg:group-hover/cell:opacity-100 text-blue-500 bg-blue-50 p-1 rounded-md transition-opacity"><Plus size={12} /></button>
@@ -1656,17 +1686,19 @@ const HomeView = ({
                                       <Check size={12} strokeWidth={4} />
                                     </div>
                                   )}
-                                  {!isTahfidzEmpty ? (
+                                  {!isTahfidzNoSurat ? (
                                     renderTahfidzCard(valF, valAF, student?.id, activeDate, valFNilai)
                                   ) : hasGhostTahfidz ? (
-                                    <div className="pointer-events-none opacity-30 grayscale blur-[0.5px] scale-90 origin-center transition-all group-hover/cell:opacity-70 group-hover/cell:blur-none group-hover/cell:grayscale-0" title={`Dari tgl ${getGhostDateLabel(lastRec, 'tahfidz')}`}>
+                                    <div className={`pointer-events-none origin-center transition-all ${hasTahfidzGrade ? 'opacity-100' : 'opacity-30 grayscale blur-[0.5px] scale-90 group-hover/cell:opacity-70 group-hover/cell:blur-none group-hover/cell:grayscale-0'}`} title={`Dari tgl ${getGhostDateLabel(lastRec, 'tahfidz')}`}>
                                       <div className="flex items-center justify-center gap-1 text-[9px] font-black text-gray-400 uppercase tracking-tighter mb-0.5">
                                         <History size={10} /> {ghostLabel}
                                       </div>
-                                      {renderTahfidzCard(lastRec[k.f], lastRec[k.af], student?.id, 'ghost', lastRec[k.fNilai])}
+                                      {renderTahfidzCard(lastRec[k.f], lastRec[k.af], student?.id, 'ghost', hasTahfidzGrade ? valFNilai : lastRec[k.fNilai])}
                                     </div>
+                                  ) : hasTahfidzGrade ? (
+                                    renderTahfidzCard('-', '-', student?.id, activeDate, valFNilai)
                                   ) : <span className="text-gray-300 group-hover:text-slate-400 transition-colors">-</span>}
-                                  {!isTahfidzEmpty ? (
+                                  {(!isTahfidzNoSurat || hasTahfidzGrade) ? (
                                     <button onClick={(e) => handleRemoveData(e, student?.id, activeDate, 'tahfidz_all', homeTab)} className="absolute right-1 top-1 text-red-500 opacity-0 lg:group-hover/cell:opacity-100 transition-opacity"><X size={12} /></button>
                                   ) : (
                                     <button className="absolute top-1 right-1 opacity-0 lg:group-hover/cell:opacity-100 text-purple-500 bg-purple-50 p-1 rounded-md transition-opacity"><Plus size={12} /></button>
@@ -1767,20 +1799,20 @@ const HomeView = ({
 
                       const jT = record?.jurnalTahsin || '-';
                       const jF = record?.jurnalTahfidz || '-';
-                      const jM = record?.jurnalMurojaah || '-';
-                      const jC = record?.jurnalCatatan || '-';
 
                       const lastRec = ghostDataMap[student.id];
-                      const isTahsinEmpty = valT === '-' && valH === '-' && valTNilai === '-';
-                      const isTahfidzEmpty = valF === '-' && valAF === '-' && valFNilai === '-';
+                      const isTahsinNoSurat = valT === '-' && valH === '-';
+                      const hasTahsinGrade = valTNilai !== '-' || valTSNilai !== '-';
+                      const hasGhostTahsin = isTahsinNoSurat && lastRec && lastRec[k.t] && lastRec[k.t] !== '-';
+
+                      const isTahfidzNoSurat = valF === '-' && valAF === '-';
+                      const hasTahfidzGrade = valFNilai !== '-';
+                      const hasGhostTahfidz = isTahfidzNoSurat && lastRec && lastRec[k.f] && lastRec[k.f] !== '-';
                       const isMurojaahEmpty = valM === '-';
                       const isCatatanEmpty = valC === '-' && valCT === '-' && valCF === '-';
 
-                      const isTahsinAchieved = homeTab === 'lesson_plan' && !isTahsinEmpty && jT !== '-';
-                      const isTahfidzAchieved = homeTab === 'lesson_plan' && !isTahfidzEmpty && jF !== '-';
-
-                      const hasGhostTahsin = isTahsinEmpty && lastRec && lastRec[k.t] && lastRec[k.t] !== '-';
-                      const hasGhostTahfidz = isTahfidzEmpty && lastRec && lastRec[k.f] && lastRec[k.f] !== '-';
+                      const isTahsinAchieved = homeTab === 'lesson_plan' && !isTahsinNoSurat && jT !== '-';
+                      const isTahfidzAchieved = homeTab === 'lesson_plan' && !isTahfidzNoSurat && jF !== '-';
                       const hasGhostMurojaah = isMurojaahEmpty && lastRec && lastRec[k.m] && lastRec[k.m] !== '-';
                       const hasGhostCatatan = isCatatanEmpty && lastRec && (lastRec[k.c] !== '-' || lastRec[k.cT] !== '-' || lastRec[k.cF] !== '-');
                       const isAbsent = !isCatatanEmpty && ['alpa', 'sakit', 'izin', 'tidak hadir'].some(keyword => String(valC).toLowerCase().includes(keyword));
@@ -1823,9 +1855,17 @@ const HomeView = ({
                                 </div>
                               )}
                               <div className="flex items-center gap-1 mb-1.5 text-blue-500 font-black uppercase text-[8px] tracking-widest"><BookOpen size={12} /> Tahsin</div>
-                              {!isTahsinEmpty ? renderTahsinCard(valT, valH, student.id, activeDate, valTNilai, valTSNilai) : (hasGhostTahsin ? <div className="pointer-events-none opacity-30 grayscale blur-[0.5px] scale-90 transition-all" title={`Dari tgl ${getGhostDateLabel(lastRec, 'tahsin')}`}>{renderTahsinCard(lastRec[k.t], lastRec[k.h], student.id, 'ghost', lastRec[k.tNilai], lastRec[k.tsNilai])}</div> : <span className="text-gray-300">-</span>)
-                              }
-                              {!isTahsinEmpty && (
+                              {!isTahsinNoSurat ? (
+                                renderTahsinCard(valT, valH, student.id, activeDate, valTNilai, valTSNilai)
+                              ) : hasGhostTahsin ? (
+                                <div className={`pointer-events-none transition-all ${hasTahsinGrade ? 'opacity-100' : 'opacity-30 grayscale blur-[0.5px] scale-90'}`} title={`Dari tgl ${getGhostDateLabel(lastRec, 'tahsin')}`}>
+                                  {renderTahsinCard(lastRec[k.t], lastRec[k.h], student.id, 'ghost', hasTahsinGrade ? valTNilai : lastRec[k.tNilai], hasTahsinGrade ? valTSNilai : lastRec[k.tsNilai])}
+                                </div>
+                              ) : hasTahsinGrade ? (
+                                renderTahsinCard('-', '-', student.id, activeDate, valTNilai, valTSNilai)
+                              ) : <span className="text-gray-300">-</span>}
+
+                              {(!isTahsinNoSurat || hasTahsinGrade) && (
                                 <button onClick={(e) => { e.stopPropagation(); handleRemoveData(e, student.id, activeDate, 'tahsin_all', homeTab); }} className="absolute top-1 right-1 p-1 bg-red-50 text-red-500 rounded-lg">
                                   <X size={10} />
                                 </button>
@@ -1840,9 +1880,17 @@ const HomeView = ({
                                 </div>
                               )}
                               <div className="flex items-center gap-1 mb-1.5 text-purple-500 font-black uppercase text-[8px] tracking-widest"><Mic size={12} /> Tahfidz</div>
-                              {!isTahfidzEmpty ? renderTahfidzCard(valF, valAF, student.id, activeDate, valFNilai) : (hasGhostTahfidz ? <div className="pointer-events-none opacity-30 grayscale blur-[0.5px] scale-90 transition-all" title={`Dari tgl ${getGhostDateLabel(lastRec, 'tahfidz')}`}>{renderTahfidzCard(lastRec[k.f], lastRec[k.af], student.id, 'ghost', lastRec[k.fNilai])}</div> : <span className="text-gray-300">-</span>)
-                              }
-                              {!isTahfidzEmpty && (
+                              {!isTahfidzNoSurat ? (
+                                renderTahfidzCard(valF, valAF, student.id, activeDate, valFNilai)
+                              ) : hasGhostTahfidz ? (
+                                <div className={`pointer-events-none transition-all ${hasTahfidzGrade ? 'opacity-100' : 'opacity-30 grayscale blur-[0.5px] scale-90'}`} title={`Dari tgl ${getGhostDateLabel(lastRec, 'tahfidz')}`}>
+                                  {renderTahfidzCard(lastRec[k.f], lastRec[k.af], student.id, 'ghost', hasTahfidzGrade ? valFNilai : lastRec[k.fNilai])}
+                                </div>
+                              ) : hasTahfidzGrade ? (
+                                renderTahfidzCard('-', '-', student.id, activeDate, valFNilai)
+                              ) : <span className="text-gray-300">-</span>}
+
+                              {(!isTahfidzNoSurat || hasTahfidzGrade) && (
                                 <button onClick={(e) => { e.stopPropagation(); handleRemoveData(e, student.id, activeDate, 'tahfidz_all', homeTab); }} className="absolute top-1 right-1 p-1 bg-red-50 text-red-500 rounded-lg">
                                   <X size={10} />
                                 </button>

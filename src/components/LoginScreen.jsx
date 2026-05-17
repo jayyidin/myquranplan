@@ -659,27 +659,29 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
       .sort((a, b) => new Date(b) - new Date(a))
       .map(d => new Date(d));
 
-    // --- SOLUSI INPUT JARANG: Ambil Status Terakhir ---
+    // --- SOLUSI INPUT JARANG: Ambil Status Terakhir (Hanya Mutabaah) ---
     let latestTahsin = null;
     let latestTahfidz = null;
     let latestMurojaah = null;
+
+    const jurnalK = { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan' };
 
     const sortedAllDatesStr = Object.keys(publicStudent.records || {})
       .sort((a, b) => new Date(b) - new Date(a));
 
     for (const dateStr of sortedAllDatesStr) {
       const rec = publicStudent.records[dateStr];
-      const isAbsent = ['alpa', 'sakit', 'izin', 'tidak hadir', 'libur'].some(kw => String(rec[k.c] || '').toLowerCase().includes(kw));
+      const isAbsent = ['alpa', 'sakit', 'izin', 'tidak hadir', 'libur'].some(kw => String(rec[jurnalK.c] || rec.catatan || '').toLowerCase().includes(kw));
       if (isAbsent) continue;
 
-      if (!latestTahsin && ((rec[k.t] && rec[k.t] !== '-') || (rec[k.h] && rec[k.h] !== '-'))) {
-        latestTahsin = { date: dateStr, t: rec[k.t], h: rec[k.h], tNilai: rec[k.tNilai], tsNilai: rec[k.tsNilai], jT: rec.jurnalTahsin };
+      if (!latestTahsin && ((rec[jurnalK.t] && rec[jurnalK.t] !== '-') || (rec[jurnalK.h] && rec[jurnalK.h] !== '-'))) {
+        latestTahsin = { date: dateStr, t: rec[jurnalK.t], h: rec[jurnalK.h], tNilai: rec[jurnalK.tNilai], tsNilai: rec[jurnalK.tsNilai] };
       }
-      if (!latestTahfidz && ((rec[k.f] && rec[k.f] !== '-') || (rec[k.af] && rec[k.af] !== '-'))) {
-        latestTahfidz = { date: dateStr, f: rec[k.f], af: rec[k.af], fNilai: rec[k.fNilai], jF: rec.jurnalTahfidz };
+      if (!latestTahfidz && ((rec[jurnalK.f] && rec[jurnalK.f] !== '-') || (rec[jurnalK.af] && rec[jurnalK.af] !== '-'))) {
+        latestTahfidz = { date: dateStr, f: rec[jurnalK.f], af: rec[jurnalK.af], fNilai: rec[jurnalK.fNilai] };
       }
-      if (!latestMurojaah && (rec[k.m] && rec[k.m] !== '-')) {
-        latestMurojaah = { date: dateStr, m: rec[k.m] };
+      if (!latestMurojaah && (rec[jurnalK.m] && rec[jurnalK.m] !== '-')) {
+        latestMurojaah = { date: dateStr, m: rec[jurnalK.m] };
       }
       if (latestTahsin && latestTahfidz && latestMurojaah) break;
     }
@@ -756,7 +758,6 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
                         <div className="p-1.5 bg-blue-100 text-blue-600 rounded-lg"><BookOpen size={14} strokeWidth={2.5} /></div>
                         <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-blue-700 flex items-center gap-1">
                           Tahsin
-                          {publicTab === 'lesson_plan' && latestTahsin.jT && latestTahsin.jT !== '-' && latestTahsin.t !== '-' && <Check size={14} className="text-emerald-500" strokeWidth={4} title="Target Tercapai" />}
                         </span>
                       </div>
                       <div className="pl-1"><ExpandableText text={formatPrintData(latestTahsin.t, latestTahsin.h, latestTahsin.tNilai, latestTahsin.tsNilai)} /></div>
@@ -771,7 +772,6 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
                         <div className="p-1.5 bg-purple-100 text-purple-600 rounded-lg"><Mic size={14} strokeWidth={2.5} /></div>
                         <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-purple-700 flex items-center gap-1">
                           Tahfidz
-                          {publicTab === 'lesson_plan' && latestTahfidz.jF && latestTahfidz.jF !== '-' && latestTahfidz.f !== '-' && <Check size={14} className="text-emerald-500" strokeWidth={4} title="Target Tercapai" />}
                         </span>
                       </div>
                       <div className="pl-1"><ExpandableText text={formatPrintData(latestTahfidz.f, latestTahfidz.af, null, latestTahfidz.fNilai)} /></div>

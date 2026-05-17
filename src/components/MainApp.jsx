@@ -1379,11 +1379,14 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
     const surats = (suratText || '').split(',').map(s => s.trim());
     const ayats = (ayatText || '').split(',').map(s => s.trim());
     const nilais = (nilaiText || '').split(',').map(s => s.trim());
-    const len = Math.max(surats.length, ayats.length, 1);
+    const len = Math.max(surats.length, ayats.length, nilais.length, 1);
     const list = [];
     for (let i = 0; i < len; i++) {
       const aParts = (ayats[i] || '').split('-');
-      list.push({ id: Date.now() + Math.random(), surat: surats[i] || '', ayatStart: aParts[0] || '', ayatEnd: aParts[1] || aParts[0] || '', nilai: nilais[i] || '' });
+      let sStr = surats[i] || ''; if (sStr === '-') sStr = '';
+      let aStr0 = aParts[0] || ''; if (aStr0 === '-') aStr0 = '';
+      let nStr = nilais[i] || ''; if (nStr === '-') nStr = '';
+      list.push({ id: Date.now() + Math.random(), surat: sStr, ayatStart: aStr0, ayatEnd: aParts[1] || aStr0, nilai: nStr });
     }
     return list.length ? list : [emptySurat()];
   };
@@ -1638,7 +1641,20 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       setSelectedStudents([editingId]);
     }
 
-    setLessonPlans(plans => plans.map(p => { if (p.id === id) { let finalValue = (field === 'tahsinNilai' && p[field] === value) ? '' : value; let u = { ...p, [field]: finalValue }; if (field === 'tahsinKategori') { u.tahsinHalaman = []; u.tahsinBaris = []; u.tahsinMateri = []; u.tahsinSuratList = [emptySurat()]; } return u; } return p; }));
+    setLessonPlans(plans => plans.map(p => { 
+      if (p.id === id) { 
+        let finalValue = (field === 'tahsinNilai' && p[field] === value) ? '' : value; 
+        let u = { ...p, [field]: finalValue }; 
+        if (field === 'tahsinKategori') { 
+          u.tahsinHalaman = []; 
+          u.tahsinBaris = []; 
+          u.tahsinMateri = []; 
+          // tahsinSuratList tidak di-reset agar surat tilawah tetap tersimpan meskipun jilid / kategorinya diganti
+        } 
+        return u; 
+      } 
+      return p; 
+    }));
   };
   const handleToggleArray = (planId, field, value) => { setLessonPlans(plans => plans.map(p => { if (p.id === planId) { const arr = p[field] || []; let newArr = arr.includes(value) ? arr.filter(x => x !== value) : [...arr, value]; if (field === 'tahsinBaris' || field === 'tahsinHalaman') newArr.sort((a, b) => Number(a) - Number(b)); return { ...p, [field]: newArr }; } return p; })); };
   const handleAddSurat = (planId, listName) => setLessonPlans(plans => plans.map(p => p.id === planId ? { ...p, [listName]: [...p[listName], emptySurat()] } : p));
@@ -1709,7 +1725,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
   const handleSave = async (options, action) => {
     if (!editingId && selectedStudents.length === 0) { showToast('Pilih minimal 1 siswa!'); return; }
     const plan = lessonPlans[0];
-    const formatS = (list) => { const v = list.filter(i => i.surat); return { surat: v.map(i => i.surat).join(', ') || '-', ayat: v.map(i => getAyatRangeOrDefault(i.surat, i.ayatStart, i.ayatEnd)).join(', ') || '-', nilai: v.map(i => i.nilai || '-').join(', ') || '-' }; };
+    const formatS = (list) => { const v = list.filter(i => i.surat || i.nilai); return { surat: v.map(i => i.surat || '-').join(', ') || '-', ayat: v.map(i => i.surat ? getAyatRangeOrDefault(i.surat, i.ayatStart, i.ayatEnd) : '-').join(', ') || '-', nilai: v.map(i => i.nilai || '-').join(', ') || '-' }; };
     const mS = formatS(plan.murojaah), tS = formatS(plan.tahsinSuratList), fS = formatS(plan.tahfidzSuratList);
     let tahsinKat = plan.tahsinKategori, halAyat = tS.ayat;
 
@@ -1746,7 +1762,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
 
           if (isCategoryEdit || modalMode === 'full_bulk') {
             if (modalMode === 'tahsin' || modalMode === 'full_bulk') {
-              if (modalTahsin !== '-' || modalHalAyatTahsin !== '-') {
+              if (modalTahsin !== '-' || modalHalAyatTahsin !== '-' || modalTahsinNilai !== '-' || modalTahsinSuratNilai !== '-') {
                 finalRecord[k.t] = modalTahsin;
                 if (!isJurnalOnlySuratCatatan) {
                   finalRecord[k.h] = modalHalAyatTahsin;
@@ -1757,7 +1773,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
               if (modalCatatanTahsin !== '-' || modalMode === 'tahsin') finalRecord[k.cT] = modalCatatanTahsin;
             }
             if (modalMode === 'tahfidz' || modalMode === 'full_bulk') {
-              if (modalTahfidz !== '-' || modalAyatTahfidz !== '-') {
+              if (modalTahfidz !== '-' || modalAyatTahfidz !== '-' || modalTahfidzNilai !== '-') {
                 finalRecord[k.f] = modalTahfidz;
                 if (!isJurnalOnlySuratCatatan) {
                   finalRecord[k.af] = modalAyatTahfidz;
@@ -1811,8 +1827,8 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
         let detailMsg = `Tanggal: ${formatShortDate(new Date(plan.tanggal))}\n`;
         detailMsg += `Siswa (${targetStudentIds.length}): ${studentNames}\n\n`;
 
-        if (modalTahsin !== '-' || modalHalAyatTahsin !== '-') detailMsg += `Tahsin: ${modalTahsin} ${modalHalAyatTahsin !== '-' ? '- ' + modalHalAyatTahsin : ''}\n`;
-        if (modalTahfidz !== '-' || modalAyatTahfidz !== '-') detailMsg += `Tahfidz: ${modalTahfidz} ${modalAyatTahfidz !== '-' ? '- ' + modalAyatTahfidz : ''}\n`;
+        if (modalTahsin !== '-' || modalHalAyatTahsin !== '-' || modalTahsinNilai !== '-' || modalTahsinSuratNilai !== '-') detailMsg += `Tahsin: ${modalTahsin} ${modalHalAyatTahsin !== '-' ? '- ' + modalHalAyatTahsin : ''} (Nilai: ${modalTahsinSuratNilai !== '-' ? modalTahsinSuratNilai : modalTahsinNilai})\n`;
+        if (modalTahfidz !== '-' || modalAyatTahfidz !== '-' || modalTahfidzNilai !== '-') detailMsg += `Tahfidz: ${modalTahfidz} ${modalAyatTahfidz !== '-' ? '- ' + modalAyatTahfidz : ''} (Nilai: ${modalTahfidzNilai})\n`;
         if (modalMurojaah !== '-') detailMsg += `Murojaah: ${modalMurojaah}\n`;
         if (modalCatatan !== '-') detailMsg += `Catatan Umum: ${modalCatatan}\n`;
         if (modalCatatanTahsin !== '-') detailMsg += `Catatan Tahsin: ${modalCatatanTahsin}\n`;
