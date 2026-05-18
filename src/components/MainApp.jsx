@@ -1764,15 +1764,67 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
           const isOtherStudent = editingId && student.id !== editingId;
           const applyOptions = options || { surat: true, ayat: homeTab === 'lesson_plan', nilai: false, catatan: true };
 
+          const zipCsv = (oldStr, newStr, apply, targetLen, isCommaList) => {
+            if (!isOtherStudent) return newStr;
+            if (!isCommaList) return apply ? newStr : oldStr;
+
+            const oldArr = (oldStr && oldStr !== '-') ? oldStr.split(',').map(s => s.trim()) : [];
+            const newArr = (newStr && newStr !== '-') ? newStr.split(',').map(s => s.trim()) : [];
+            const res = [];
+            for (let i = 0; i < targetLen; i++) {
+              res.push(apply ? (newArr[i] || '-') : (oldArr[i] || '-'));
+            }
+            while (res.length > 0 && res[res.length - 1] === '-') res.pop();
+            return res.length > 0 ? res.join(', ') : '-';
+          };
+
+          const doTahsin = () => {
+            const oldT = finalRecord[k.t];
+            const applyS = !isOtherStudent || applyOptions.surat;
+            const targetCat = applyS ? modalTahsin : oldT;
+            const isComma = targetCat && targetCat !== '-' && !targetCat.includes('Jilid') && !targetCat.includes('Tajwid') && !targetCat.includes('Ghorib') && !targetCat.includes('Gharib');
+
+            const oldSArr = (oldT && oldT !== '-') ? oldT.split(',').map(s => s.trim()) : [];
+            const newSArr = (modalTahsin && modalTahsin !== '-') ? modalTahsin.split(',').map(s => s.trim()) : [];
+            const targetLen = applyS ? newSArr.length : oldSArr.length;
+
+            finalRecord[k.t] = zipCsv(finalRecord[k.t], modalTahsin, applyS, targetLen, isComma);
+            finalRecord[k.h] = zipCsv(finalRecord[k.h], modalHalAyatTahsin, !isOtherStudent || applyOptions.ayat, targetLen, isComma);
+
+            if (!isOtherStudent || applyOptions.nilai) {
+              finalRecord[k.tNilai] = modalTahsinNilai;
+              finalRecord[k.tsNilai] = zipCsv(finalRecord[k.tsNilai], modalTahsinSuratNilai, true, targetLen, isComma);
+            }
+          };
+
+          const doTahfidz = () => {
+            const oldF = finalRecord[k.f];
+            const applyS = !isOtherStudent || applyOptions.surat;
+
+            const oldSArr = (oldF && oldF !== '-') ? oldF.split(',').map(s => s.trim()) : [];
+            const newSArr = (modalTahfidz && modalTahfidz !== '-') ? modalTahfidz.split(',').map(s => s.trim()) : [];
+            const targetLen = applyS ? newSArr.length : oldSArr.length;
+
+            finalRecord[k.f] = zipCsv(finalRecord[k.f], modalTahfidz, applyS, targetLen, true);
+            finalRecord[k.af] = zipCsv(finalRecord[k.af], modalAyatTahfidz, !isOtherStudent || applyOptions.ayat, targetLen, true);
+            finalRecord[k.fNilai] = zipCsv(finalRecord[k.fNilai], modalTahfidzNilai, !isOtherStudent || applyOptions.nilai, targetLen, true);
+          };
+
+          const doMurojaah = () => {
+            const oldM = finalRecord[k.m];
+            const applyS = !isOtherStudent || applyOptions.surat;
+
+            const oldSArr = (oldM && oldM !== '-') ? oldM.split(',').map(s => s.trim()) : [];
+            const newSArr = (modalMurojaah && modalMurojaah !== '-') ? modalMurojaah.split(',').map(s => s.trim()) : [];
+            const targetLen = applyS ? newSArr.length : oldSArr.length;
+
+            finalRecord[k.m] = zipCsv(finalRecord[k.m], modalMurojaah, applyS, targetLen, true);
+          };
+
           if (isCategoryEdit || modalMode === 'full_bulk') {
             if (modalMode === 'tahsin' || modalMode === 'full_bulk') {
               if (modalTahsin !== '-' || modalHalAyatTahsin !== '-' || modalTahsinNilai !== '-' || modalTahsinSuratNilai !== '-') {
-                if (!isOtherStudent || applyOptions.surat) finalRecord[k.t] = modalTahsin;
-                if (!isOtherStudent || applyOptions.ayat) finalRecord[k.h] = modalHalAyatTahsin;
-                if (!isOtherStudent || applyOptions.nilai) {
-                  finalRecord[k.tNilai] = modalTahsinNilai;
-                  finalRecord[k.tsNilai] = modalTahsinSuratNilai;
-                }
+                doTahsin();
               }
               if (modalCatatanTahsin !== '-' || modalMode === 'tahsin') {
                 if (!isOtherStudent || applyOptions.catatan) finalRecord[k.cT] = modalCatatanTahsin;
@@ -1780,9 +1832,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
             }
             if (modalMode === 'tahfidz' || modalMode === 'full_bulk') {
               if (modalTahfidz !== '-' || modalAyatTahfidz !== '-' || modalTahfidzNilai !== '-') {
-                if (!isOtherStudent || applyOptions.surat) finalRecord[k.f] = modalTahfidz;
-                if (!isOtherStudent || applyOptions.ayat) finalRecord[k.af] = modalAyatTahfidz;
-                if (!isOtherStudent || applyOptions.nilai) finalRecord[k.fNilai] = modalTahfidzNilai;
+                doTahfidz();
               }
               if (modalCatatanTahfidz !== '-' || modalMode === 'tahfidz') {
                 if (!isOtherStudent || applyOptions.catatan) finalRecord[k.cF] = modalCatatanTahfidz;
@@ -1790,7 +1840,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
             }
             if (modalMode === 'murojaah' || modalMode === 'full_bulk') {
               if (modalMurojaah !== '-') {
-                if (!isOtherStudent || applyOptions.surat) finalRecord[k.m] = modalMurojaah;
+                doMurojaah();
               }
             }
             if (modalMode === 'catatan' || modalMode === 'full_bulk') {
@@ -1799,20 +1849,9 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
               }
             }
           } else {
-            if (!isOtherStudent || applyOptions.surat) {
-              finalRecord[k.t] = modalTahsin;
-              finalRecord[k.f] = modalTahfidz;
-              finalRecord[k.m] = modalMurojaah;
-            }
-            if (!isOtherStudent || applyOptions.ayat) {
-              finalRecord[k.h] = modalHalAyatTahsin;
-              finalRecord[k.af] = modalAyatTahfidz;
-            }
-            if (!isOtherStudent || applyOptions.nilai) {
-              finalRecord[k.tNilai] = modalTahsinNilai;
-              finalRecord[k.tsNilai] = modalTahsinSuratNilai;
-              finalRecord[k.fNilai] = modalTahfidzNilai;
-            }
+            doTahsin();
+            doTahfidz();
+            doMurojaah();
             if (!isOtherStudent || applyOptions.catatan) {
               finalRecord[k.c] = modalCatatan;
               finalRecord[k.cT] = modalCatatanTahsin;
