@@ -115,10 +115,21 @@ export const formatPeriode = (start, end) => {
 // Format data untuk tampilan cetak/kartu
 export const formatPrintData = (text, detail, gradeCat, gradeSurat) => {
   try {
-    if (!text || text === '-' || typeof text !== 'string') return '-';
+    const hasText = text && text !== '-' && typeof text === 'string';
+    const nList = String(gradeSurat || '').split(',').map(s => s.trim()).filter(s => s && s !== '-');
+    const dList = String(detail || '').split(',').map(s => s.trim()).filter(s => s && s !== '-');
+
+    if (!hasText) {
+      let res = '';
+      if (dList.length > 0) res += dList.join(', ') + '\n';
+      if (gradeCat && gradeCat !== '-') res += `(Nilai: ${gradeCat})\n`;
+      if (nList.length > 0) res += nList.map(n => `(${n})`).join(' ');
+      return res.trim() || '-';
+    }
+
     const tList = text.split(',').map(s => s.trim());
-    const dList = String(detail || '').split(',').map(s => s.trim());
-    const nList = String(gradeSurat || '').split(',').map(s => s.trim());
+    const detailList = String(detail || '').split(',').map(s => s.trim());
+    const gradeSuratList = String(gradeSurat || '').split(',').map(s => s.trim());
 
     if (text.includes('Jilid')) {
         let res = `${text}`;
@@ -147,7 +158,7 @@ export const formatPrintData = (text, detail, gradeCat, gradeSurat) => {
            res += '\n' + sList.map((s, i) => {
               const a = aList[i];
               let line = (a && a !== '-' && a !== 'Semua Ayat') ? `${s} ${a}` : s;
-              const n = nList[i];
+              const n = gradeSuratList[i];
               if (n && n !== '-') line += ` (${n})`;
               return line;
            }).join('\n');
@@ -156,8 +167,8 @@ export const formatPrintData = (text, detail, gradeCat, gradeSurat) => {
     }
 
     return tList.map((t, i) => {
-      const d = dList[i];
-      const n = nList[i];
+      const d = detailList[i];
+      const n = gradeSuratList[i];
       let line = (d && d !== '-' && d !== 'Semua Ayat') ? `${t} ${d}` : t;
       if (n && n !== '-') line += ` (${n})`;
       return line;

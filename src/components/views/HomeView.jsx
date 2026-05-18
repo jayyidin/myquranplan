@@ -786,7 +786,8 @@ const HomeView = ({
     const filledCount = targetStudents.filter(s => {
       const r = s.records?.[dateStr];
       return r && (
-        (r[k.t] && r[k.t] !== '-') || (r[k.f] && r[k.f] !== '-') ||
+        (r[k.t] && r[k.t] !== '-') || (r[k.tNilai] && r[k.tNilai] !== '-') || (r[k.tsNilai] && r[k.tsNilai] !== '-') ||
+        (r[k.f] && r[k.f] !== '-') || (r[k.fNilai] && r[k.fNilai] !== '-') ||
         (r[k.m] && r[k.m] !== '-') || (r[k.c] && r[k.c] !== '-') || (r[k.cT] && r[k.cT] !== '-') || (r[k.cF] && r[k.cF] !== '-')
       );
     }).length;
@@ -919,8 +920,8 @@ const HomeView = ({
                           const valCT = rec?.[k.cT] && rec?.[k.cT] !== '-' ? String(rec[k.cT]) : '';
                           const valCF = rec?.[k.cF] && rec?.[k.cF] !== '-' ? String(rec[k.cF]) : '';
 
-                          const isTahsinAchieved = homeTab === 'lesson_plan' && valT !== '-' && (rec?.jurnalTahsin && rec?.jurnalTahsin !== '-');
-                          const isTahfidzAchieved = homeTab === 'lesson_plan' && valF !== '-' && (rec?.jurnalTahfidz && rec?.jurnalTahfidz !== '-');
+                          const isTahsinAchieved = homeTab === 'lesson_plan' && (valT !== '-' || valTNilai !== '-' || valTSNilai !== '-') && (rec?.jurnalTahsin && rec?.jurnalTahsin !== '-');
+                          const isTahfidzAchieved = homeTab === 'lesson_plan' && (valF !== '-' || valFNilai !== '-') && (rec?.jurnalTahfidz && rec?.jurnalTahfidz !== '-');
 
                           return (
                             <React.Fragment key={dateStr + '-data'}>
@@ -1451,8 +1452,8 @@ const HomeView = ({
                 targetStudents.forEach(s => {
                   const r = s.records?.[activeDate];
                   if (r) {
-                    const hasTahsinTarget = (r.tahsin && r.tahsin !== '-') || (r.halAyatTahsin && r.halAyatTahsin !== '-');
-                    const hasTahfidzTarget = (r.tahfidz && r.tahfidz !== '-') || (r.ayatTahfidz && r.ayatTahfidz !== '-');
+                    const hasTahsinTarget = (r.tahsin && r.tahsin !== '-') || (r.halAyatTahsin && r.halAyatTahsin !== '-') || (r.tahsinNilai && r.tahsinNilai !== '-') || (r.tahsinSuratNilai && r.tahsinSuratNilai !== '-');
+                    const hasTahfidzTarget = (r.tahfidz && r.tahfidz !== '-') || (r.ayatTahfidz && r.ayatTahfidz !== '-') || (r.tahfidzNilai && r.tahfidzNilai !== '-');
                     if (hasTahsinTarget) { total++; if (r.jurnalTahsin && r.jurnalTahsin !== '-') count++; }
                     if (hasTahfidzTarget) { total++; if (r.jurnalTahfidz && r.jurnalTahfidz !== '-') count++; }
                   }

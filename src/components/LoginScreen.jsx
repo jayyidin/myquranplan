@@ -654,7 +654,9 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
     const allDates = Object.keys(publicStudent.records || {})
       .filter(dateStr => {
         const rec = publicStudent.records[dateStr];
-        return (rec[k.t] && rec[k.t] !== '-') || (rec[k.f] && rec[k.f] !== '-') || (rec[k.m] && rec[k.m] !== '-') || (rec[k.c] && rec[k.c] !== '-') || (rec[k.cT] && rec[k.cT] !== '-') || (rec[k.cF] && rec[k.cF] !== '-');
+        return (rec[k.t] && rec[k.t] !== '-') || (rec[k.tNilai] && rec[k.tNilai] !== '-') || (rec[k.tsNilai] && rec[k.tsNilai] !== '-') || 
+               (rec[k.f] && rec[k.f] !== '-') || (rec[k.fNilai] && rec[k.fNilai] !== '-') || 
+               (rec[k.m] && rec[k.m] !== '-') || (rec[k.c] && rec[k.c] !== '-') || (rec[k.cT] && rec[k.cT] !== '-') || (rec[k.cF] && rec[k.cF] !== '-');
       })
       .sort((a, b) => new Date(b) - new Date(a))
       .map(d => new Date(d));
@@ -914,7 +916,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
               {datesToDisplay.every(d => { // Add dark mode styles to this empty state
                 const ds = formatDateObj(d); // Fix: Use formatDateObj(d) instead of d
                 const r = publicStudent.records?.[ds] || {};
-                return !((r[k.t] && r[k.t] !== '-') || (r[k.f] && r[k.f] !== '-') || (r[k.m] && r[k.m] !== '-') || (r[k.c] && r[k.c] !== '-') || (r[k.cT] && r[k.cT] !== '-') || (r[k.cF] && r[k.cF] !== '-'));
+                return !((r[k.t] && r[k.t] !== '-') || (r[k.tNilai] && r[k.tNilai] !== '-') || (r[k.tsNilai] && r[k.tsNilai] !== '-') || (r[k.f] && r[k.f] !== '-') || (r[k.fNilai] && r[k.fNilai] !== '-') || (r[k.m] && r[k.m] !== '-') || (r[k.c] && r[k.c] !== '-') || (r[k.cT] && r[k.cT] !== '-') || (r[k.cF] && r[k.cF] !== '-'));
               }) && (
                   <div className="py-20 text-center flex flex-col items-center gap-3 opacity-40">
                     <Calendar size={48} />

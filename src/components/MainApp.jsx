@@ -1590,7 +1590,11 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
           if (tgHalMatch) { tHalaman = tgHalMatch[1].split(',').map(s => s.trim()); halMatStr = halMatStr.replace(tgHalMatch[0], '').replace(/^[\s-]+|[\s-]+$/g, ''); }
           if (halMatStr) { tMateri = halMatStr.split('|').map(s => s.trim()).filter(Boolean); }
         }
-      } else if (tSurat && tSurat !== '-') tKategori = 'Al-Qur\'an';
+      } else if (tSurat && tSurat !== '-') {
+        tKategori = 'Al-Qur\'an';
+      } else if ((cleanData[k.tsNilai] && cleanData[k.tsNilai] !== '-') || (cleanData[k.tNilai] && cleanData[k.tNilai] !== '-')) {
+        tKategori = 'Al-Qur\'an';
+      }
 
       setLessonPlans([{
         id: Date.now(), tanggal: activeDate, murojaah: parseMurojaahList(cleanData[k.m]), tahsinKategori: tKategori, tahsinSuratList: parseSuratAyatList(tSurat, tahsinAyatOnly, cleanData[k.tsNilai]), tahsinHalaman: tHalaman, tahsinBaris: tBaris, tahsinMateri: tMateri, tahsinHalamanTg: tHalamanTg, tahfidzSuratList: parseSuratAyatList(cleanData[k.f], cleanData[k.af], cleanData[k.fNilai]), lainLain: cleanData[k.c] && cleanData[k.c] !== '-' ? cleanData[k.c] : '', catatanTahsin: cleanData[k.cT] && cleanData[k.cT] !== '-' ? cleanData[k.cT] : '', catatanTahfidz: cleanData[k.cF] && cleanData[k.cF] !== '-' ? cleanData[k.cF] : '', tahsinNilai: cleanData[k.tNilai] && cleanData[k.tNilai] !== '-' ? cleanData[k.tNilai] : ''
@@ -1641,19 +1645,19 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       setSelectedStudents([editingId]);
     }
 
-    setLessonPlans(plans => plans.map(p => { 
-      if (p.id === id) { 
-        let finalValue = (field === 'tahsinNilai' && p[field] === value) ? '' : value; 
-        let u = { ...p, [field]: finalValue }; 
-        if (field === 'tahsinKategori') { 
-          u.tahsinHalaman = []; 
-          u.tahsinBaris = []; 
-          u.tahsinMateri = []; 
+    setLessonPlans(plans => plans.map(p => {
+      if (p.id === id) {
+        let finalValue = (field === 'tahsinNilai' && p[field] === value) ? '' : value;
+        let u = { ...p, [field]: finalValue };
+        if (field === 'tahsinKategori') {
+          u.tahsinHalaman = [];
+          u.tahsinBaris = [];
+          u.tahsinMateri = [];
           // tahsinSuratList tidak di-reset agar surat tilawah tetap tersimpan meskipun jilid / kategorinya diganti
-        } 
-        return u; 
-      } 
-      return p; 
+        }
+        return u;
+      }
+      return p;
     }));
   };
   const handleToggleArray = (planId, field, value) => { setLessonPlans(plans => plans.map(p => { if (p.id === planId) { const arr = p[field] || []; let newArr = arr.includes(value) ? arr.filter(x => x !== value) : [...arr, value]; if (field === 'tahsinBaris' || field === 'tahsinHalaman') newArr.sort((a, b) => Number(a) - Number(b)); return { ...p, [field]: newArr }; } return p; })); };
@@ -1758,54 +1762,62 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
           for (let key of Object.values(k)) if (!finalRecord[key]) finalRecord[key] = '-';
 
           const isOtherStudent = editingId && student.id !== editingId;
-          const isJurnalOnlySuratCatatan = isOtherStudent && homeTab === 'jurnal';
+          const applyOptions = options || { surat: true, ayat: homeTab === 'lesson_plan', nilai: false, catatan: true };
 
           if (isCategoryEdit || modalMode === 'full_bulk') {
             if (modalMode === 'tahsin' || modalMode === 'full_bulk') {
               if (modalTahsin !== '-' || modalHalAyatTahsin !== '-' || modalTahsinNilai !== '-' || modalTahsinSuratNilai !== '-') {
-                finalRecord[k.t] = modalTahsin;
-                if (!isJurnalOnlySuratCatatan) {
-                  finalRecord[k.h] = modalHalAyatTahsin;
+                if (!isOtherStudent || applyOptions.surat) finalRecord[k.t] = modalTahsin;
+                if (!isOtherStudent || applyOptions.ayat) finalRecord[k.h] = modalHalAyatTahsin;
+                if (!isOtherStudent || applyOptions.nilai) {
                   finalRecord[k.tNilai] = modalTahsinNilai;
                   finalRecord[k.tsNilai] = modalTahsinSuratNilai;
                 }
               }
-              if (modalCatatanTahsin !== '-' || modalMode === 'tahsin') finalRecord[k.cT] = modalCatatanTahsin;
+              if (modalCatatanTahsin !== '-' || modalMode === 'tahsin') {
+                if (!isOtherStudent || applyOptions.catatan) finalRecord[k.cT] = modalCatatanTahsin;
+              }
             }
             if (modalMode === 'tahfidz' || modalMode === 'full_bulk') {
               if (modalTahfidz !== '-' || modalAyatTahfidz !== '-' || modalTahfidzNilai !== '-') {
-                finalRecord[k.f] = modalTahfidz;
-                if (!isJurnalOnlySuratCatatan) {
-                  finalRecord[k.af] = modalAyatTahfidz;
-                  finalRecord[k.fNilai] = modalTahfidzNilai;
-                }
+                if (!isOtherStudent || applyOptions.surat) finalRecord[k.f] = modalTahfidz;
+                if (!isOtherStudent || applyOptions.ayat) finalRecord[k.af] = modalAyatTahfidz;
+                if (!isOtherStudent || applyOptions.nilai) finalRecord[k.fNilai] = modalTahfidzNilai;
               }
-              if (modalCatatanTahfidz !== '-' || modalMode === 'tahfidz') finalRecord[k.cF] = modalCatatanTahfidz;
+              if (modalCatatanTahfidz !== '-' || modalMode === 'tahfidz') {
+                if (!isOtherStudent || applyOptions.catatan) finalRecord[k.cF] = modalCatatanTahfidz;
+              }
             }
             if (modalMode === 'murojaah' || modalMode === 'full_bulk') {
               if (modalMurojaah !== '-') {
-                finalRecord[k.m] = modalMurojaah;
+                if (!isOtherStudent || applyOptions.surat) finalRecord[k.m] = modalMurojaah;
               }
             }
             if (modalMode === 'catatan' || modalMode === 'full_bulk') {
-              if (modalCatatan !== '-' || modalMode === 'catatan') finalRecord[k.c] = modalCatatan;
+              if (modalCatatan !== '-' || modalMode === 'catatan') {
+                if (!isOtherStudent || applyOptions.catatan) finalRecord[k.c] = modalCatatan;
+              }
             }
           } else {
-            finalRecord[k.t] = modalTahsin;
-            finalRecord[k.f] = modalTahfidz;
-
-            if (!isJurnalOnlySuratCatatan) {
+            if (!isOtherStudent || applyOptions.surat) {
+              finalRecord[k.t] = modalTahsin;
+              finalRecord[k.f] = modalTahfidz;
+              finalRecord[k.m] = modalMurojaah;
+            }
+            if (!isOtherStudent || applyOptions.ayat) {
               finalRecord[k.h] = modalHalAyatTahsin;
+              finalRecord[k.af] = modalAyatTahfidz;
+            }
+            if (!isOtherStudent || applyOptions.nilai) {
               finalRecord[k.tNilai] = modalTahsinNilai;
               finalRecord[k.tsNilai] = modalTahsinSuratNilai;
-              finalRecord[k.af] = modalAyatTahfidz;
               finalRecord[k.fNilai] = modalTahfidzNilai;
             }
-
-            finalRecord[k.m] = modalMurojaah;
-            finalRecord[k.c] = modalCatatan;
-            finalRecord[k.cT] = modalCatatanTahsin;
-            finalRecord[k.cF] = modalCatatanTahfidz;
+            if (!isOtherStudent || applyOptions.catatan) {
+              finalRecord[k.c] = modalCatatan;
+              finalRecord[k.cT] = modalCatatanTahsin;
+              finalRecord[k.cF] = modalCatatanTahfidz;
+            }
           }
           acc.push({
             ...student, // Bawa semua data siswa yang ada
@@ -1868,12 +1880,12 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
 
         const nextDateStr = formatDateObj(currentDate);
         const nextDateMonday = getMonday(currentDate);
-        
+
         if (nextDateMonday.getTime() !== weekStart.getTime()) {
-           setWeekStart(nextDateMonday); // Otomatis lompat ke minggu selanjutnya, jangan tutup modal
-           showToast('Data disimpan! Lanjut ke minggu selanjutnya.');
+          setWeekStart(nextDateMonday); // Otomatis lompat ke minggu selanjutnya, jangan tutup modal
+          showToast('Data disimpan! Lanjut ke minggu selanjutnya.');
         } else {
-           showToast('Data berhasil disimpan!');
+          showToast('Data berhasil disimpan!');
         }
         setActiveDate(nextDateStr);
 
@@ -1889,7 +1901,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
             Object.values(k).forEach(keyName => {
               // Jangan salin Catatan Umum (Sakit/Izin/dll)
               if (keyName === k.c) return;
-              
+
               // Jangan salin Nilai hafalan ke hari berikutnya agar kosong dan siap dinilai ulang
               if (keyName === k.tNilai || keyName === k.tsNilai || keyName === k.fNilai) return;
 
@@ -1934,7 +1946,11 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
               if (tgHalMatch) { tHalaman = tgHalMatch[1].split(',').map(s => s.trim()); halMatStr = halMatStr.replace(tgHalMatch[0], '').replace(/^[\s-]+|[\s-]+$/g, ''); }
               if (halMatStr) { tMateri = halMatStr.split('|').map(s => s.trim()).filter(Boolean); }
             }
-          } else if (tSurat && tSurat !== '-') tKategori = 'Al-Qur\'an';
+          } else if (tSurat && tSurat !== '-') {
+            tKategori = 'Al-Qur\'an';
+          } else if ((cleanData[k.tsNilai] && cleanData[k.tsNilai] !== '-') || (cleanData[k.tNilai] && cleanData[k.tNilai] !== '-')) {
+            tKategori = 'Al-Qur\'an';
+          }
 
           setLessonPlans([{
             id: Date.now(), tanggal: nextDateStr, murojaah: parseMurojaahList(cleanData[k.m]), tahsinKategori: tKategori, tahsinSuratList: parseSuratAyatList(tSurat, tahsinAyatOnly, cleanData[k.tsNilai]), tahsinHalaman: tHalaman, tahsinBaris: tBaris, tahsinMateri: tMateri, tahsinHalamanTg: tHalamanTg, tahfidzSuratList: parseSuratAyatList(cleanData[k.f], cleanData[k.af], cleanData[k.fNilai]), lainLain: cleanData[k.c] && cleanData[k.c] !== '-' ? cleanData[k.c] : '', catatanTahsin: cleanData[k.cT] && cleanData[k.cT] !== '-' ? cleanData[k.cT] : '', catatanTahfidz: cleanData[k.cF] && cleanData[k.cF] !== '-' ? cleanData[k.cF] : '', tahsinNilai: cleanData[k.tNilai] && cleanData[k.tNilai] !== '-' ? cleanData[k.tNilai] : ''
