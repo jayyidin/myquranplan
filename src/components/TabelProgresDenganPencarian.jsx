@@ -22,7 +22,7 @@ const TabelProgresDenganPencarian = ({ students = [], onOpenModal }) => {
     }, [students, searchTerm]);
 
     return (
-        <div className="w-full bg-white dark:bg-slate-900/70 p-4 sm:p-6 rounded-2xl shadow-subtle border border-gray-200 dark:border-slate-800">
+        <div className="w-full bg-white dark:bg-slate-900/70 p-4 sm:p-6 rounded-2xl shadow-lg shadow-slate-200/50 dark:shadow-none border border-slate-200 dark:border-slate-800 transition-colors duration-500">
             {/* --- Kotak Pencarian Siswa --- */}
             <div className="relative mb-4">
                 <Search

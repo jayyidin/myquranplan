@@ -93,7 +93,7 @@ export const JurnalModal = ({
 
   return (
     <div onAnimationEnd={onAnimationEnd} className={`fixed inset-0 z-[500] print-hidden flex items-end sm:items-center justify-center p-0 sm:p-4 h-[100dvh] bg-slate-900/60 backdrop-blur-sm transition-opacity ${isOpen ? 'animate-in fade-in' : 'animate-out fade-out'}`}>
-      <div className={`bg-gray-50 dark:bg-slate-900 w-full sm:max-w-2xl rounded-t-[24px] sm:rounded-3xl shadow-2xl max-h-[100dvh] h-[95dvh] sm:h-auto sm:max-h-[90vh] flex flex-col overflow-hidden border border-transparent dark:border-slate-800 ${isOpen ? 'animate-slide-up sm:animate-in sm:zoom-in-95' : 'animate-slide-down sm:animate-out sm:zoom-out-95'}`}>
+      <div className={`bg-white dark:bg-slate-900 w-full sm:max-w-2xl rounded-t-[24px] sm:rounded-3xl shadow-2xl max-h-[100dvh] h-[95dvh] sm:h-auto sm:max-h-[90vh] flex flex-col overflow-hidden border border-transparent dark:border-slate-800 ${isOpen ? 'animate-slide-up sm:animate-in sm:zoom-in-95' : 'animate-slide-down sm:animate-out sm:zoom-out-95'}`}>
 
         {/* Header Modal */}
         <div className="px-5 py-4 border-b border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 z-20 shrink-0 flex justify-between items-start sm:items-center rounded-t-[24px] sm:rounded-t-3xl">

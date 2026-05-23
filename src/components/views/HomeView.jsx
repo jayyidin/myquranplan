@@ -1340,10 +1340,10 @@ const HomeView = ({
               </div>
             </div>
             <div className="flex w-full md:w-auto gap-2 shrink-0 mt-1 sm:mt-0 transition-all overflow-x-auto hide-scrollbar overscroll-x-contain pb-1 md:pb-0" style={{ WebkitOverflowScrolling: 'touch' }}>
-              <button onClick={() => handleOpenModal(null, 'full_bulk', homeTab)} disabled={!activeHalaqoh} className="flex-1 md:flex-none border-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 font-black text-xs sm:text-sm transition-all bg-white text-slate-700 border-slate-200 hover:bg-gray-50 disabled:opacity-50 shrink-0" title="Input Massal">
+              <button onClick={() => handleOpenModal(null, 'full_bulk', homeTab)} disabled={!activeHalaqoh} className="flex-1 md:flex-none border-2 border-transparent px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 font-black text-xs sm:text-sm transition-all bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-emerald-50 dark:hover:bg-slate-700 hover:text-emerald-600 dark:hover:text-emerald-400 hover:border-emerald-200 dark:hover:border-slate-600 disabled:opacity-50 shrink-0 shadow-sm" title="Input Massal">
                 <Edit3 size={16} className="text-[#00e676]" /> <span className="hidden sm:inline whitespace-nowrap">Input Massal</span>
               </button>
-              <button onClick={() => requestClearAllRecordForDay(null, activeDate, homeTab)} disabled={!activeHalaqoh || filteredStudents.length === 0} className="flex-1 md:flex-none border-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 font-black text-xs sm:text-sm transition-all bg-red-50 text-red-600 border-red-200 hover:bg-red-100 disabled:opacity-50 shrink-0" title={`Kosongkan ${homeTab === 'lesson_plan' ? 'Target' : 'Capaian'} Hari Ini`}>
+              <button onClick={() => requestClearAllRecordForDay(null, activeDate, homeTab)} disabled={!activeHalaqoh || filteredStudents.length === 0} className="flex-1 md:flex-none border-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 font-black text-xs sm:text-sm transition-all bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/20 hover:bg-red-100 dark:hover:bg-red-500/20 disabled:opacity-50 shrink-0 shadow-sm" title={`Kosongkan ${homeTab === 'lesson_plan' ? 'Target' : 'Capaian'} Hari Ini`}>
                 <Trash2 size={16} /> <span className="hidden sm:inline whitespace-nowrap">Kosongkan</span>
               </button>
               <button onClick={() => setIsClassReportVisible(true)} disabled={!activeHalaqoh || filteredStudents.length === 0} className="flex-1 md:flex-none px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 font-black text-xs sm:text-sm transition-all shadow-lg border-2 bg-gray-800 text-white border-transparent hover:bg-gray-700 disabled:opacity-50 shrink-0" title="Laporan Halaqoh">
@@ -1554,34 +1554,34 @@ const HomeView = ({
                       {/* HEADER TABEL (STICKY DI BAWAH HEADER APLIKASI) */}
                       <thead className="sticky top-[-1px] z-30 shadow-sm transition-colors bg-[#f8fafc]">
                         <tr className="border-b border-gray-200 text-[11px] font-black text-gray-400 uppercase tracking-widest transition-colors">
-                          <th className="p-2.5 sm:p-3 text-center sticky left-0 top-0 z-40 w-[40px] sm:w-[50px] bg-[#f8fafc]">No</th>
-                          <th className="p-2.5 sm:p-3 pl-2 text-left sticky left-[40px] sm:left-[50px] top-0 z-40 w-[140px] sm:w-[220px] shadow-[4px_0_12px_rgba(0,0,0,0.05)] border-r bg-[#f8fafc] border-gray-100">Nama Siswa</th>
-                          <th className="p-2.5 sm:p-3 w-[200px] sticky top-0 z-30 transition-colors bg-[#f8fafc]">
+                          <th className="p-2.5 sm:p-3 text-center sticky left-0 top-0 z-40 w-[40px] sm:w-[50px] bg-[#f8fafc] dark:bg-slate-900 border-gray-100 dark:border-slate-800 border-b">No</th>
+                          <th className="p-2.5 sm:p-3 pl-2 text-left sticky left-[40px] sm:left-[50px] top-0 z-40 w-[140px] sm:w-[220px] shadow-[4px_0_12px_rgba(0,0,0,0.05)] border-r bg-[#f8fafc] dark:bg-slate-900 border-gray-100 dark:border-slate-800 border-b">Nama Siswa</th>
+                          <th className="p-2.5 sm:p-3 w-[200px] sticky top-0 z-30 transition-colors bg-[#f8fafc] dark:bg-slate-900 border-gray-100 dark:border-slate-800 border-b">
                             <div className="flex items-center justify-center gap-1.5 cursor-pointer hover:text-blue-600 transition-colors" onClick={() => handleOpenModal(null, 'tahsin', homeTab)}>
                               Tahsin
                             </div>
                           </th>
-                          <th className="p-2.5 sm:p-3 w-[200px] sticky top-0 z-30 transition-colors bg-[#f8fafc]">
+                          <th className="p-2.5 sm:p-3 w-[200px] sticky top-0 z-30 transition-colors bg-[#f8fafc] dark:bg-slate-900 border-gray-100 dark:border-slate-800 border-b">
                             <div className="flex items-center justify-center gap-1.5 cursor-pointer hover:text-purple-600 transition-colors" onClick={() => handleOpenModal(null, 'tahfidz', homeTab)}>
                               Tahfidz
                             </div>
                           </th>
-                          <th className="p-2.5 sm:p-3 w-[200px] sticky top-0 z-30 transition-colors bg-[#f8fafc]">
+                          <th className="p-2.5 sm:p-3 w-[200px] sticky top-0 z-30 transition-colors bg-[#f8fafc] dark:bg-slate-900 border-gray-100 dark:border-slate-800 border-b">
                             <div className="flex items-center justify-center gap-1.5 cursor-pointer hover:text-emerald-600 transition-colors" onClick={() => handleOpenModal(null, 'murojaah', homeTab)}>
                               Murojaah
                             </div>
                           </th>
-                          <th className="p-2.5 sm:p-3 w-[200px] sticky top-0 z-30 transition-colors bg-[#f8fafc]">
+                          <th className="p-2.5 sm:p-3 w-[200px] sticky top-0 z-30 transition-colors bg-[#f8fafc] dark:bg-slate-900 border-gray-100 dark:border-slate-800 border-b">
                             <div className="flex items-center justify-center gap-1.5 cursor-pointer hover:text-orange-600 transition-colors" onClick={() => handleOpenModal(null, 'catatan', homeTab)}>
                               Catatan
                             </div>
                           </th>
-                          <th className="p-2.5 sm:p-3 w-[90px] sm:w-[120px] sticky right-0 top-0 z-40 shadow-[-4px_0_12px_rgba(0,0,0,0.03)] border-l transition-colors bg-[#f8fafc] border-gray-100">
+                          <th className="p-2.5 sm:p-3 w-[90px] sm:w-[120px] sticky right-0 top-0 z-40 shadow-[-4px_0_12px_rgba(0,0,0,0.03)] border-l transition-colors bg-[#f8fafc] dark:bg-slate-900 border-gray-100 dark:border-slate-800 border-b">
                             <div className="flex items-center justify-center gap-1.5"><Settings size={12} /> Aksi</div>
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-100 transition-colors">
+                      <tbody className="divide-y divide-gray-100 dark:divide-slate-800 transition-colors">
                         {filteredStudents.map((student, index) => {
                           const record = student?.records?.[activeDate] || {};
 

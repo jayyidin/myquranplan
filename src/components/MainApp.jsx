@@ -2120,10 +2120,10 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
   };
 
   if (!currentUser) return null;
-  if (!isDbReady) return (<div className="min-h-screen flex flex-col items-center justify-center bg-[#F8F9FA]"><Loader2 size={48} className="animate-spin text-[#00e676] mb-4" /></div>);
+  if (!isDbReady) return (<div className="h-[100dvh] w-full flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 transition-colors duration-500"><Loader2 size={48} className="animate-spin text-emerald-500 mb-4" /></div>);
 
   return (
-    <div className="h-screen h-[100dvh] bg-slate-50 text-gray-800 font-sans flex flex-col overflow-hidden transition-all duration-500">
+    <div className="h-[100dvh] w-full bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 font-sans flex flex-col overflow-hidden transition-colors duration-500">
       {/* CSS Khusus untuk Menyembunyikan Scrollbar Bawaan (Membuat UI lebih minimalis) */}
       <style dangerouslySetInnerHTML={{
         __html: `
