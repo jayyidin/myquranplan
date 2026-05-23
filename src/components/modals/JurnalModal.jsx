@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { X, BookOpen, Mic, Repeat, FileText, Plus, ChevronDown, Search, Check, UserX, Loader2 } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { X, BookOpen, Mic, Repeat, FileText, Plus, ChevronDown, Search, Check, UserX, Loader2, Calendar } from 'lucide-react';
 import SurahSelector from '../SurahSelector';
 import AyatSelector from '../AyatSelector';
 import { Tooltip } from 'react-tooltip';
@@ -14,7 +14,6 @@ export const JurnalModal = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [isAbsentMenuOpen, setIsAbsentMenuOpen] = useState(false);
   const [copyOptions, setCopyOptions] = useState({ surat: true, ayat: false, nilai: false, catatan: true });
-  const [savingAction, setSavingAction] = useState(null);
 
   const gradeOptions = ['A', 'B+', 'B', 'B-', 'C'];
   const applyToOthersDisabled = homeTab === 'jurnal' && editingId && ['sakit', 'izin', 'alpa', 'tidak hadir'].some(keyword => (
@@ -31,17 +30,37 @@ export const JurnalModal = ({
   React.useEffect(() => {
     if (isOpen) {
       setCopyOptions({ surat: true, ayat: homeTab === 'lesson_plan', nilai: false, catatan: true });
-      setSavingAction(null);
     }
   }, [isOpen, homeTab]);
+
+  // State untuk animasi & loading
+  const [isRendered, setIsRendered] = useState(false);
+  const [savingAction, setSavingAction] = useState(null);
+
+  useEffect(() => {
+    if (isOpen) setIsRendered(true);
+  }, [isOpen]);
+
+  const onAnimationEnd = () => {
+    if (!isOpen) setIsRendered(false);
+  };
 
   const handleSaveClick = async (options, action) => {
     setSavingAction(action);
     await handleSave(options, action);
-    setSavingAction(null);
+    if (action === 'next') {
+      setSavingAction(null);
+    }
   };
 
   const activeDate = lessonPlans[0]?.tanggal;
+  let formattedDate = '';
+  if (activeDate) {
+    const [year, month, day] = activeDate.split('-').map(Number);
+    const dateObj = new Date(year, month - 1, day);
+    formattedDate = dateObj.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  }
+
   const availableStudents = useMemo(() => {
     return filteredStudents.filter(s => {
       if (s.id === editingId) return true;
@@ -53,38 +72,62 @@ export const JurnalModal = ({
     });
   }, [filteredStudents, activeDate, homeTab, editingId]);
 
+  // Fungsi untuk autogrow textarea otomatis saat data berubah (misal: saat klik tombol quick note)
+  useEffect(() => {
+    if (!isOpen) return;
+    const textareas = document.querySelectorAll('textarea');
+    textareas.forEach(textarea => {
+      textarea.style.height = 'auto';
+      textarea.style.height = `${textarea.scrollHeight}px`;
+    });
+  }, [lessonPlans, isOpen, modalMode]);
+
+  // Fungsi untuk autogrow langsung saat Ustadz mengetik
+  const handleAutoResize = (e) => {
+    e.target.style.height = 'auto';
+    e.target.style.height = `${e.target.scrollHeight}px`;
+  };
+
   // Pastikan Early Return berada SETELAH semua fungsi React Hooks dipanggil
-  if (!isOpen) return null;
+  if (!isRendered) return null;
 
   return (
-    <div className="fixed inset-0 z-[500] print-hidden flex items-end sm:items-center justify-center p-0 sm:p-4 h-[100dvh] bg-slate-900/60 backdrop-blur-sm transition-opacity">
-      <div className="bg-gray-50 w-full sm:max-w-2xl rounded-t-[24px] sm:rounded-3xl shadow-2xl max-h-[100dvh] h-[95dvh] sm:h-auto sm:max-h-[90vh] flex flex-col overflow-hidden animate-[slideUp_0.3s_ease-out] sm:animate-in sm:zoom-in-95">
+    <div onAnimationEnd={onAnimationEnd} className={`fixed inset-0 z-[500] print-hidden flex items-end sm:items-center justify-center p-0 sm:p-4 h-[100dvh] bg-slate-900/60 backdrop-blur-sm transition-opacity ${isOpen ? 'animate-in fade-in' : 'animate-out fade-out'}`}>
+      <div className={`bg-gray-50 dark:bg-slate-900 w-full sm:max-w-2xl rounded-t-[24px] sm:rounded-3xl shadow-2xl max-h-[100dvh] h-[95dvh] sm:h-auto sm:max-h-[90vh] flex flex-col overflow-hidden border border-transparent dark:border-slate-800 ${isOpen ? 'animate-slide-up sm:animate-in sm:zoom-in-95' : 'animate-slide-down sm:animate-out sm:zoom-out-95'}`}>
 
         {/* Header Modal */}
-        <div className="px-5 py-4 border-b border-gray-200 bg-white z-20 shrink-0 flex justify-between items-center rounded-t-[24px] sm:rounded-t-3xl">
-          <h2 className="text-base sm:text-lg font-black text-gray-800 flex items-center gap-2">{getModalTitle()}</h2>
-          <button onClick={onClose} className="w-8 h-8 bg-gray-100 text-gray-500 rounded-full flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-colors"><X size={18} /></button>
+        <div className="px-5 py-4 border-b border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 z-20 shrink-0 flex justify-between items-start sm:items-center rounded-t-[24px] sm:rounded-t-3xl">
+          <div className="flex flex-col gap-0.5">
+            <h2 className="text-base sm:text-lg font-black text-gray-800 dark:text-slate-100 flex items-center gap-2">{getModalTitle()}</h2>
+            {formattedDate && (
+              <div className="flex items-center gap-1.5 text-[10px] sm:text-xs font-bold text-emerald-600 dark:text-emerald-500 mt-0.5">
+                <Calendar size={12} className="shrink-0" />
+                {formattedDate}
+              </div>
+            )}
+          </div>
+          <button onClick={onClose} className="w-8 h-8 bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400 rounded-full flex items-center justify-center hover:bg-red-50 dark:hover:bg-red-500/20 hover:text-red-500 dark:hover:text-red-400 transition-colors shrink-0"><X size={18} /></button>
         </div>
 
-        <div className="p-4 sm:p-6 flex-1 flex flex-col gap-4 overflow-y-auto custom-scrollbar bg-gray-50 pb-48 sm:pb-6">
+        <div className="p-4 sm:p-6 flex-1 flex flex-col gap-4 overflow-y-auto overscroll-y-contain custom-scrollbar bg-gray-50 dark:bg-slate-900/50 pb-48 sm:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
 
           {/* Bagian Pilih Siswa - Selalu Tampil untuk memungkinkan input massal dari form manapun */}
-          <div className={`relative bg-white p-4 sm:p-5 rounded-3xl shadow-sm border shrink-0 flex flex-col gap-3 transition-all overflow-hidden ${applyToOthersDisabled ? 'border-red-100' : 'border-gray-100'}`}>
+          <div className={`relative bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-3xl shadow-sm border shrink-0 flex flex-col gap-3 transition-all overflow-hidden ${applyToOthersDisabled ? 'border-red-100 dark:border-red-500/30' : 'border-gray-100 dark:border-slate-700'}`}>
 
             {/* Overlay Pengunci Panel saat Siswa Absen */}
             {applyToOthersDisabled && (
               <div
-                className="absolute inset-0 z-20 bg-white/70 backdrop-blur-[2px] flex items-center justify-center cursor-not-allowed"
+                className="absolute inset-0 z-20 bg-white/70 dark:bg-slate-900/70 backdrop-blur-[2px] flex items-center justify-center cursor-not-allowed"
                 onClick={() => window.alert("Silakan hapus keterangan absen pada kolom 'Catatan Umum / Lainnya' di bawah terlebih dahulu untuk mengaktifkan kembali fitur ini.")}
               >
-                <div className="bg-red-50 text-red-600 border border-red-200 px-4 py-2.5 rounded-2xl font-black text-xs flex items-center gap-2 shadow-sm animate-in zoom-in-95 duration-200 pointer-events-none">
+                <div className="bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-500/20 px-4 py-2.5 rounded-2xl font-black text-xs flex items-center gap-2 shadow-sm animate-in zoom-in-95 duration-200 pointer-events-none">
                   <UserX size={16} /> Fitur dinonaktifkan karena Ananda absen
                 </div>
               </div>
             )}
 
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2.5">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+              <label className="text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
                 {editingId ? 'Terapkan Juga Ke Siswa Lain' : `Pilih Siswa (${selectedStudents.length}/${filteredStudents.length})`}
               </label>
               <div className="flex items-center gap-2">
@@ -96,15 +139,15 @@ export const JurnalModal = ({
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
                     disabled={applyToOthersDisabled}
-                    className="w-full pl-8 pr-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full pl-8 pr-3 py-1.5 bg-gray-50 dark:bg-slate-900/50 border border-gray-200 dark:border-slate-700 rounded-lg text-xs font-bold focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-gray-700 dark:text-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
-                <button type="button" onClick={() => toggleStudent('ALL')} disabled={applyToOthersDisabled || availableStudents.length === 0} className="shrink-0 text-[10px] text-blue-600 font-bold bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors border border-blue-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-50">
+                <button type="button" onClick={() => toggleStudent('ALL')} disabled={applyToOthersDisabled || availableStudents.length === 0} className="shrink-0 text-[10px] text-blue-600 dark:text-blue-400 font-bold bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20 px-3 py-1.5 rounded-lg transition-colors border border-blue-100 dark:border-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-50 dark:disabled:hover:bg-blue-500/10">
                   {availableStudents.length === selectedStudents.length && availableStudents.length > 0 ? 'Batal Semua' : 'Pilih Semua'}
                 </button>
               </div>
             </div>
-            <div className="flex flex-wrap gap-2 max-h-[140px] sm:max-h-[160px] overflow-y-auto custom-scrollbar p-1 -mx-1">
+            <div className="flex flex-wrap gap-2 max-h-[140px] sm:max-h-[160px] overflow-y-auto overscroll-y-contain custom-scrollbar p-1 -mx-1" style={{ WebkitOverflowScrolling: 'touch' }}>
               {displayStudents.map(s => {
                 const isSelected = selectedStudents.includes(s.id);
                 const isEditing = s.id === editingId;
@@ -117,7 +160,7 @@ export const JurnalModal = ({
                     type="button"
                     onClick={() => toggleStudent(s.id)}
                     disabled={isStudentDisabled}
-                    className={`relative flex items-center justify-center gap-1.5 shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all disabled:opacity-40 disabled:cursor-not-allowed ${isSelected ? (isEditing ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-[#00e676]/10 border-[#00e676] text-green-700 shadow-sm') : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300'}`}
+                    className={`relative flex items-center justify-center gap-1.5 shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all disabled:opacity-40 disabled:cursor-not-allowed ${isSelected ? (isEditing ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-[#00e676]/10 dark:bg-emerald-500/20 border-[#00e676] dark:border-emerald-500/30 text-green-700 dark:text-emerald-400 shadow-sm') : 'bg-white dark:bg-slate-700 border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-600 hover:border-gray-300 dark:hover:border-slate-500'}`}
                     title={!isAvailable && !isEditing ? "Siswa ini sedang absen/libur" : ""}
                   >
                     {isSelected && !isEditing && <Check size={12} strokeWidth={3} className="shrink-0" />}
@@ -132,21 +175,21 @@ export const JurnalModal = ({
 
             {/* Opsi Salin Spesifik (Muncul jika > 1 siswa dipilih) */}
             {(selectedStudents.length > 1 || (editingId && selectedStudents.length > 0)) && !['murojaah', 'catatan'].includes(modalMode) && (
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-1 pt-3 border-t border-gray-100">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-1 pt-3 border-t border-gray-100 dark:border-slate-700">
                 <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest shrink-0">Bagian yang disalin ke siswa lain:</span>
                 <div className="flex flex-wrap items-center gap-3">
-                  <label className="flex items-center gap-1.5 text-xs font-bold text-gray-600 cursor-pointer hover:text-blue-600 transition-colors">
+                  <label className="flex items-center gap-1.5 text-xs font-bold text-gray-600 dark:text-slate-300 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                     <input type="checkbox" checked={copyOptions.surat} onChange={e => setCopyOptions({ ...copyOptions, surat: e.target.checked })} className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-gray-300" /> Surat/Jilid
                   </label>
-                  <label className="flex items-center gap-1.5 text-xs font-bold text-gray-600 cursor-pointer hover:text-blue-600 transition-colors">
+                  <label className="flex items-center gap-1.5 text-xs font-bold text-gray-600 dark:text-slate-300 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                     <input type="checkbox" checked={copyOptions.ayat} onChange={e => setCopyOptions({ ...copyOptions, ayat: e.target.checked })} className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-gray-300" /> Halaman/Ayat
                   </label>
                   {homeTab !== 'lesson_plan' && (
-                    <label className="flex items-center gap-1.5 text-xs font-bold text-gray-600 cursor-pointer hover:text-blue-600 transition-colors">
+                    <label className="flex items-center gap-1.5 text-xs font-bold text-gray-600 dark:text-slate-300 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                       <input type="checkbox" checked={copyOptions.nilai} onChange={e => setCopyOptions({ ...copyOptions, nilai: e.target.checked })} className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-gray-300" /> Nilai
                     </label>
                   )}
-                  <label className="flex items-center gap-1.5 text-xs font-bold text-gray-600 cursor-pointer hover:text-blue-600 transition-colors">
+                  <label className="flex items-center gap-1.5 text-xs font-bold text-gray-600 dark:text-slate-300 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                     <input type="checkbox" checked={copyOptions.catatan} onChange={e => setCopyOptions({ ...copyOptions, catatan: e.target.checked })} className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-gray-300" /> Catatan
                   </label>
                 </div>
@@ -160,14 +203,14 @@ export const JurnalModal = ({
 
               {/* --- FORM TAHSIN --- */}
               {['full_bulk', 'full_edit', 'tahsin'].includes(modalMode) && (
-                <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
-                  <h3 className="font-black text-gray-800 text-sm mb-4 flex items-center gap-2"><BookOpen size={18} className="text-blue-500" /> Data Tahsin</h3>
+                <div className="bg-white dark:bg-slate-800 p-5 rounded-3xl border border-gray-100 dark:border-slate-700 shadow-sm">
+                  <h3 className="font-black text-gray-800 dark:text-slate-100 text-sm mb-4 flex items-center gap-2"><BookOpen size={18} className="text-blue-500" /> Data Tahsin</h3>
                   <div className="flex flex-col gap-4">
 
                     {/* Kategori */}
                     <div>
-                      <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Metode / Jilid</label>
-                      <select value={plan.tahsinKategori} onChange={(e) => handlePlanChange(plan.id, 'tahsinKategori', e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 transition-shadow">
+                      <label className="block text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">Metode / Jilid</label>
+                      <select value={plan.tahsinKategori} onChange={(e) => handlePlanChange(plan.id, 'tahsinKategori', e.target.value)} className="w-full bg-gray-50 dark:bg-slate-900/50 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:ring-1 focus:ring-blue-500 text-gray-800 dark:text-slate-200 transition-shadow">
                         <option value="">Pilih Metode / Jilid...</option>
                         {tahsinCategories.map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
@@ -176,17 +219,17 @@ export const JurnalModal = ({
                     {/* Materi Tajwid / Ghorib */}
                     {(plan.tahsinKategori === 'Ghorib' || plan.tahsinKategori === 'Gharib' || plan.tahsinKategori === 'Tajwid') && (
                       <div className="relative">
-                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Materi Pokok</label>
-                        <div className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold flex justify-between items-center cursor-pointer transition-shadow hover:border-blue-300" onClick={() => setActiveDropdown(activeDropdown === `mat` ? null : `mat`)}>
+                        <label className="block text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">Materi Pokok</label>
+                        <div className="w-full bg-gray-50 dark:bg-slate-900/50 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-bold flex justify-between items-center cursor-pointer transition-shadow hover:border-blue-300 dark:hover:border-blue-500/50 text-gray-800 dark:text-slate-200" onClick={() => setActiveDropdown(activeDropdown === `mat` ? null : `mat`)}>
                           <span className="truncate">{(plan.tahsinMateri || []).length > 0 ? plan.tahsinMateri.length + ' dipilih' : `Pilih Materi...`}</span>
                           <ChevronDown size={18} className="text-gray-400" />
                         </div>
                         {activeDropdown === `mat` && (
-                          <div className="bg-white border border-gray-200 rounded-xl mt-2 max-h-48 overflow-y-auto p-2 flex flex-col gap-1 shadow-xl absolute z-20 w-full left-0 top-full">
+                          <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl mt-2 max-h-48 overflow-y-auto p-2 flex flex-col gap-1 shadow-xl absolute z-20 w-full left-0 top-full">
                             {((plan.tahsinKategori === 'Ghorib' || plan.tahsinKategori === 'Gharib') ? ghoribList : tajwidList).map((materi, i) => (
-                              <label key={i} className="flex items-start gap-3 p-3 bg-gray-50 hover:bg-blue-50 rounded-lg cursor-pointer transition-colors">
+                              <label key={i} className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-slate-900/50 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg cursor-pointer transition-colors">
                                 <input type="checkbox" checked={(plan.tahsinMateri || []).includes(materi)} onChange={() => handleToggleArray(plan.id, 'tahsinMateri', materi)} className="w-4 h-4 mt-0.5 text-blue-600 rounded cursor-pointer shrink-0" />
-                                <span className={`text-sm font-bold text-gray-700 flex-1 leading-snug ${(plan.tahsinKategori === 'Ghorib' || plan.tahsinKategori === 'Gharib') ? 'font-arabic text-lg text-right' : 'text-left'}`} dir={(plan.tahsinKategori === 'Ghorib' || plan.tahsinKategori === 'Gharib') ? "rtl" : "ltr"}>{materi}</span>
+                                <span className={`text-sm font-bold text-gray-700 dark:text-slate-200 flex-1 leading-snug ${(plan.tahsinKategori === 'Ghorib' || plan.tahsinKategori === 'Gharib') ? 'font-arabic text-lg text-right' : 'text-left'}`} dir={(plan.tahsinKategori === 'Ghorib' || plan.tahsinKategori === 'Gharib') ? "rtl" : "ltr"}>{materi}</span>
                               </label>
                             ))}
                           </div>
@@ -196,7 +239,7 @@ export const JurnalModal = ({
 
                     {/* Pilihan Halaman */}
                     {['Jilid 1', 'Jilid 2', 'Jilid 3', 'Jilid 4', 'Jilid 5', 'Jilid 6', 'Tajwid', 'Ghorib', 'Gharib'].includes(plan.tahsinKategori) && (
-                      <div className="bg-blue-50/30 p-3 sm:p-4 rounded-2xl border border-blue-100/50">
+                      <div className="bg-blue-50/30 dark:bg-blue-500/5 p-3 sm:p-4 rounded-2xl border border-blue-100/50 dark:border-blue-500/20">
                         <div className="flex items-center justify-between mb-3">
                           <label className="block text-[10px] font-black text-blue-600 uppercase tracking-widest">Halaman</label>
                           {plan.tahsinHalaman.length > 0 && (
@@ -205,7 +248,7 @@ export const JurnalModal = ({
                         </div>
                         <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-1.5 sm:gap-2">
                           {Array.from({ length: plan.tahsinKategori === 'Ghorib' ? 28 : plan.tahsinKategori === 'Tajwid' ? 20 : 40 }, (_, i) => String(i + 1)).map(p => (
-                            <button type="button" key={p} onClick={() => handleToggleArray(plan.id, 'tahsinHalaman', p)} className={`w-full aspect-square rounded-xl text-xs sm:text-sm font-black border-2 flex items-center justify-center transition-all ${plan.tahsinHalaman.includes(p) ? 'bg-blue-600 text-white border-blue-600 shadow-md scale-105' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:bg-blue-50'}`}>{p}</button>
+                            <button type="button" key={p} onClick={() => handleToggleArray(plan.id, 'tahsinHalaman', p)} className={`w-full aspect-square rounded-xl text-xs sm:text-sm font-black border-2 flex items-center justify-center transition-all ${plan.tahsinHalaman.includes(p) ? 'bg-blue-600 text-white border-blue-600 shadow-md scale-105' : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-300 border-gray-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-500/50 hover:bg-blue-50 dark:hover:bg-blue-500/10'}`}>{p}</button>
                           ))}
                         </div>
                       </div>
@@ -213,24 +256,35 @@ export const JurnalModal = ({
 
                     {/* Pilihan Baris */}
                     {['Jilid 1', 'Jilid 2', 'Jilid 3', 'Jilid 4', 'Jilid 5', 'Jilid 6'].includes(plan.tahsinKategori) && plan.tahsinHalaman.length > 0 && (
-                      <div className="bg-blue-50/30 p-3 sm:p-4 rounded-2xl border border-blue-100/50">
-                        <div className="flex items-center justify-between mb-3">
-                          <label className="block text-[10px] font-black text-blue-600 uppercase tracking-widest">Baris</label>
-                          {plan.tahsinBaris.length > 0 && (
-                            <span className="text-[10px] font-bold text-blue-500 bg-blue-100 px-2 py-0.5 rounded-full">{plan.tahsinBaris.length} Dipilih</span>
-                          )}
-                        </div>
-                        <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5 sm:gap-2">
-                          {['1', '2', '3', '4', '5', '6', '7', '8'].map(b => (
-                            <button type="button" key={b} onClick={() => handleToggleArray(plan.id, 'tahsinBaris', b)} className={`w-full aspect-[2/1] sm:aspect-square rounded-xl text-xs sm:text-sm font-black border-2 flex items-center justify-center transition-all ${plan.tahsinBaris.includes(b) ? 'bg-blue-600 text-white border-blue-600 shadow-md scale-105' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:bg-blue-50'}`}>{b}</button>
-                          ))}
-                        </div>
+                      <div className="flex flex-col gap-3">
+                        {[...plan.tahsinHalaman].sort((a, b) => Number(a) - Number(b)).map(hal => {
+                          const barisForHal = plan.tahsinBaris.filter(b => b === String(hal) || (typeof b === 'string' && b.startsWith(`${hal}:`))).map(b => typeof b === 'string' && b.includes(':') ? b.split(':')[1] : b);
+                          return (
+                            <div key={`baris-${hal}`} className="bg-blue-50/30 dark:bg-blue-500/5 p-3 sm:p-4 rounded-2xl border border-blue-100/50 dark:border-blue-500/20">
+                              <div className="flex items-center justify-between mb-3">
+                                <label className="block text-[10px] font-black text-blue-600 uppercase tracking-widest">Baris Hal. {hal}</label>
+                                {barisForHal.length > 0 && (
+                                  <span className="text-[10px] font-bold text-blue-500 bg-blue-100 px-2 py-0.5 rounded-full">{barisForHal.length} Dipilih</span>
+                                )}
+                              </div>
+                              <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5 sm:gap-2">
+                                {['1', '2', '3', '4', '5', '6', '7', '8'].map(b => {
+                                  const val = `${hal}:${b}`;
+                                  const isSelected = plan.tahsinBaris.includes(val) || plan.tahsinBaris.includes(b);
+                                  return (
+                                    <button type="button" key={b} onClick={() => handleToggleArray(plan.id, 'tahsinBaris', val)} className={`w-full aspect-[2/1] sm:aspect-square rounded-xl text-xs sm:text-sm font-black border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-blue-600 text-white border-blue-600 shadow-md scale-105' : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-300 border-gray-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-500/50 hover:bg-blue-50 dark:hover:bg-blue-500/10'}`}>{b}</button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
 
                     {/* Nilai Kategori Keseluruhan (Muncul persis setelah Jilid / Materi, Hanya di Tab Jurnal) */}
                     {homeTab === 'jurnal' && ['Jilid 1', 'Jilid 2', 'Jilid 3', 'Jilid 4', 'Jilid 5', 'Jilid 6', 'Tajwid', 'Ghorib', 'Gharib'].includes(plan.tahsinKategori) && (
-                      <div className="mt-1 mb-2 bg-blue-50/40 p-3 rounded-2xl border border-blue-100/50">
+                      <div className="mt-1 mb-2 bg-blue-50/40 dark:bg-blue-500/10 p-3 rounded-2xl border border-blue-100/50 dark:border-blue-500/20">
                         <label className="block text-[10px] font-black text-blue-600 uppercase tracking-widest mb-2">
                           Nilai {plan.tahsinKategori.includes('Jilid') ? 'Jilid' : plan.tahsinKategori}
                         </label>
@@ -240,7 +294,7 @@ export const JurnalModal = ({
                               type="button"
                               key={n}
                               onClick={() => handlePlanChange(plan.id, 'tahsinNilai', n)}
-                              className={`w-full py-2.5 rounded-xl text-sm font-black border-2 transition-all ${plan.tahsinNilai === n ? 'bg-blue-600 text-white border-blue-600 shadow-md scale-105' : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-100 hover:border-blue-300'}`}
+                              className={`w-full py-2.5 rounded-xl text-sm font-black border-2 transition-all ${plan.tahsinNilai === n ? 'bg-blue-600 text-white border-blue-600 shadow-md scale-105' : 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-500/30 hover:bg-blue-100 dark:hover:bg-blue-500/20 hover:border-blue-300 dark:hover:border-blue-500/50'}`}
                             >
                               {n}
                             </button>
@@ -251,18 +305,18 @@ export const JurnalModal = ({
 
                     {/* Pilihan Surat & Ayat Tahsin */}
                     {(plan.tahsinKategori === 'Al-Qur\'an' || ['Tajwid', 'Ghorib', 'Gharib'].includes(plan.tahsinKategori)) && (
-                      <div className="flex flex-col gap-3 border-t border-gray-100 pt-4 mt-2">
+                      <div className="flex flex-col gap-3 border-t border-gray-100 dark:border-slate-700 pt-4 mt-2">
                         <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">
                           Surat & Ayat {plan.tahsinKategori !== 'Al-Qur\'an' ? '(Aplikasi / Tilawah)' : ''}
                         </label>
 
                         {plan.tahsinSuratList.map((item, idx) => (
-                          <div key={item.id} className="bg-blue-50/50 border border-blue-100 p-3 rounded-2xl flex flex-col gap-3 relative">
+                          <div key={item.id} className="bg-blue-50/50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 p-3 rounded-2xl flex flex-col gap-3 relative">
                             <SurahSelector
                               value={item.surat}
                               onChange={value => handleSuratChange(plan.id, 'tahsinSuratList', item.id, 'surat', value)}
                               surahList={surahList}
-                              className="w-full bg-white border border-blue-200 rounded-xl px-3 py-2.5 text-sm font-bold text-gray-800 outline-none focus:ring-2 focus:ring-blue-500"
+                              className="w-full bg-white dark:bg-slate-900/80 border border-blue-200 dark:border-blue-500/30 rounded-xl px-3 py-2.5 text-sm font-bold text-gray-800 dark:text-slate-200 outline-none focus:ring-1 focus:ring-blue-500"
                             />
 
                             <div className="flex flex-col sm:flex-row items-center gap-2">
@@ -274,8 +328,8 @@ export const JurnalModal = ({
                                   onChange={value => handleSuratChange(plan.id, 'tahsinSuratList', item.id, 'ayatStart', value)}
                                   maxAyat={item.ayatEnd}
                                   placeholder="Awal"
-                                  className="w-full bg-white border border-blue-200 rounded-xl px-3 py-2.5 text-sm font-bold text-gray-800 disabled:bg-gray-100 disabled:border-gray-200 outline-none focus:ring-2 focus:ring-blue-500"
-                                  disabled={!item.surat}
+                                  className="w-full bg-white dark:bg-slate-900/80 border border-blue-200 dark:border-blue-500/30 rounded-xl px-3 py-2.5 text-sm font-bold text-gray-800 dark:text-slate-200 disabled:bg-gray-100 dark:disabled:bg-slate-800 disabled:border-gray-200 dark:disabled:border-slate-700 outline-none focus:ring-1 focus:ring-blue-500"
+                                  disabled={!item.surat || item.surat === '-'}
                                 />
                                 <span className="text-gray-400 font-bold">-</span>
                                 <AyatSelector
@@ -285,8 +339,8 @@ export const JurnalModal = ({
                                   onChange={value => handleSuratChange(plan.id, 'tahsinSuratList', item.id, 'ayatEnd', value)}
                                   minAyat={item.ayatStart}
                                   placeholder="Akhir"
-                                  className="w-full bg-white border border-blue-200 rounded-xl px-3 py-2.5 text-sm font-bold text-gray-800 disabled:bg-gray-100 disabled:border-gray-200 outline-none focus:ring-2 focus:ring-blue-500"
-                                  disabled={!item.surat}
+                                  className="w-full bg-white dark:bg-slate-900/80 border border-blue-200 dark:border-blue-500/30 rounded-xl px-3 py-2.5 text-sm font-bold text-gray-800 dark:text-slate-200 disabled:bg-gray-100 dark:disabled:bg-slate-800 disabled:border-gray-200 dark:disabled:border-slate-700 outline-none focus:ring-1 focus:ring-blue-500"
+                                  disabled={!item.surat || item.surat === '-'}
                                 />
                               </div>
 
@@ -295,8 +349,13 @@ export const JurnalModal = ({
                                 <div className="w-full sm:w-28 shrink-0 mt-2 sm:mt-0 relative">
                                   <select
                                     value={item.nilai || ''}
-                                    onChange={e => handleSuratChange(plan.id, 'tahsinSuratList', item.id, 'nilai', e.target.value)}
-                                    className="w-full bg-gray-800 text-white border-2 border-gray-800 rounded-xl px-3 py-2.5 text-sm font-black outline-none focus:ring-2 focus:ring-blue-500 shadow-sm text-center appearance-none"
+                                    onChange={e => {
+                                      handleSuratChange(plan.id, 'tahsinSuratList', item.id, 'nilai', e.target.value);
+                                      if (e.target.value && !item.surat) {
+                                        handleSuratChange(plan.id, 'tahsinSuratList', item.id, 'surat', '-');
+                                      }
+                                    }}
+                                    className="w-full bg-gray-800 dark:bg-slate-800 text-white border border-gray-800 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm font-black outline-none focus:ring-1 focus:ring-blue-500 shadow-sm text-center appearance-none"
                                   >
                                     <option value="">Nilai</option>
                                     {gradeOptions.map(g => <option key={g} value={g}>{g}</option>)}
@@ -308,21 +367,28 @@ export const JurnalModal = ({
                                 </div>
                               )}
                             </div>
-                            {idx > 0 && <button type="button" onClick={() => handleRemoveSurat(plan.id, 'tahsinSuratList', item.id)} className="absolute -top-2 -right-2 bg-red-100 text-red-500 rounded-full p-1.5 shadow-sm hover:bg-red-500 hover:text-white transition-colors"><X size={14} strokeWidth={3} /></button>}
+                            {idx > 0 && <button type="button" onClick={() => handleRemoveSurat(plan.id, 'tahsinSuratList', item.id)} className="absolute -top-2 -right-2 bg-red-100 dark:bg-red-500/20 text-red-500 dark:text-red-400 rounded-full p-1.5 shadow-sm hover:bg-red-500 hover:text-white dark:hover:bg-red-600 transition-colors"><X size={14} strokeWidth={3} /></button>}
                           </div>
                         ))}
 
-                        <button type="button" onClick={() => handleAddSurat(plan.id, 'tahsinSuratList')} className="text-xs font-black bg-blue-50 hover:bg-blue-100 text-blue-600 py-3 rounded-xl flex justify-center items-center gap-1.5 transition-colors border border-blue-200/50 mt-1"><Plus size={16} /> TAMBAH SURAT</button>
+                        <button type="button" onClick={() => handleAddSurat(plan.id, 'tahsinSuratList')} className="text-xs font-black bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 py-3 rounded-xl flex justify-center items-center gap-1.5 transition-colors border border-blue-200/50 dark:border-blue-500/20 mt-1"><Plus size={16} /> TAMBAH SURAT</button>
                       </div>
                     )}
 
                     {/* Catatan Tahsin */}
-                    <div className="border-t border-gray-100 pt-4 mt-2">
-                      <label className="block text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1.5">Catatan Khusus Tahsin</label>
-                      <textarea rows="2" placeholder="Ketikkan catatan khusus tahsin..." value={plan.catatanTahsin || ''} onChange={e => handlePlanChange(plan.id, 'catatanTahsin', e.target.value)} onFocus={(e) => setTimeout(() => e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300)} className="w-full bg-blue-50/50 border border-blue-100 focus:border-blue-400 rounded-2xl p-3 text-sm font-bold outline-none resize-none text-gray-800 transition-colors focus:ring-2 focus:ring-blue-400/20"></textarea>
-                      <div className="mt-2 flex overflow-x-auto gap-2 pb-1 custom-scrollbar">
+                    <div className="border-t border-gray-100 dark:border-slate-700 pt-4 mt-2">
+                      <div className="flex justify-between items-end mb-1.5">
+                        <label className="block text-[10px] font-black text-blue-500 uppercase tracking-widest">Catatan Khusus Tahsin</label>
+                        {plan.catatanTahsin && (
+                          <button type="button" onClick={() => handlePlanChange(plan.id, 'catatanTahsin', '')} className="text-[10px] font-bold text-red-500 hover:text-red-600 transition-colors">
+                            Bersihkan
+                          </button>
+                        )}
+                      </div>
+                      <textarea rows="2" placeholder="Ketikkan catatan khusus tahsin..." value={plan.catatanTahsin || ''} onChange={e => handlePlanChange(plan.id, 'catatanTahsin', e.target.value)} onInput={handleAutoResize} onFocus={(e) => setTimeout(() => e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300)} className="w-full bg-blue-50/50 dark:bg-blue-500/5 border border-blue-100 dark:border-blue-500/20 focus:border-blue-400 rounded-2xl p-3 text-sm font-bold outline-none resize-none text-gray-800 dark:text-slate-200 transition-colors focus:ring-1 focus:ring-blue-400/50 overflow-hidden"></textarea>
+                      <div className="mt-2 flex overflow-x-auto overscroll-x-contain gap-2 pb-1 hide-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
                         {['Sangat Baik', 'Lancar', 'Perlu Murojaah', 'Bacaan Dengung', 'Makharijul Huruf', 'Panjang Pendek (Mad)', 'Ulangi Besok'].map(note => (
-                          <button type="button" key={note} onClick={() => handlePlanChange(plan.id, 'catatanTahsin', (plan.catatanTahsin ? plan.catatanTahsin + ', ' : '') + note)} className="shrink-0 bg-white border border-blue-200 text-blue-600 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg text-[10px] font-black transition-colors shadow-sm">
+                          <button type="button" key={note} onClick={() => handlePlanChange(plan.id, 'catatanTahsin', (plan.catatanTahsin ? plan.catatanTahsin + ', ' : '') + note)} className="shrink-0 bg-white dark:bg-slate-800 border border-blue-200 dark:border-blue-500/30 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 px-2.5 py-1.5 rounded-lg text-[10px] font-black transition-colors shadow-sm">
                             + {note}
                           </button>
                         ))}
@@ -335,16 +401,16 @@ export const JurnalModal = ({
 
               {/* --- FORM TAHFIDZ --- */}
               {['full_bulk', 'full_edit', 'tahfidz'].includes(modalMode) && (
-                <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
-                  <h3 className="font-black text-gray-800 text-sm mb-4 flex items-center gap-2"><Mic size={18} className="text-purple-500" /> Data Tahfidz</h3>
+                <div className="bg-white dark:bg-slate-800 p-5 rounded-3xl border border-gray-100 dark:border-slate-700 shadow-sm">
+                  <h3 className="font-black text-gray-800 dark:text-slate-100 text-sm mb-4 flex items-center gap-2"><Mic size={18} className="text-purple-500" /> Data Tahfidz</h3>
                   <div className="flex flex-col gap-3">
                     {plan.tahfidzSuratList.map((item, idx) => (
-                      <div key={item.id} className="bg-purple-50/50 border border-purple-100 p-3 rounded-2xl flex flex-col gap-3 relative">
+                      <div key={item.id} className="bg-purple-50/50 dark:bg-purple-500/5 border border-purple-100 dark:border-purple-500/20 p-3 rounded-2xl flex flex-col gap-3 relative">
                         <SurahSelector
                           value={item.surat}
                           onChange={value => handleSuratChange(plan.id, 'tahfidzSuratList', item.id, 'surat', value)}
                           surahList={surahList}
-                          className="w-full bg-white border border-purple-200 rounded-xl px-3 py-2.5 text-sm font-bold text-gray-800 outline-none focus:ring-2 focus:ring-purple-500"
+                          className="w-full bg-white dark:bg-slate-900/80 border border-purple-200 dark:border-purple-500/30 rounded-xl px-3 py-2.5 text-sm font-bold text-gray-800 dark:text-slate-200 outline-none focus:ring-1 focus:ring-purple-500"
                         />
                         <div className="flex flex-col sm:flex-row items-center gap-2">
                           <div className="flex items-center gap-2 flex-1 w-full">
@@ -355,8 +421,8 @@ export const JurnalModal = ({
                               onChange={value => handleSuratChange(plan.id, 'tahfidzSuratList', item.id, 'ayatStart', value)}
                               maxAyat={item.ayatEnd}
                               placeholder="Awal"
-                              className="w-full bg-white border border-purple-200 rounded-xl px-3 py-2.5 text-sm font-bold text-gray-800 disabled:bg-gray-100 disabled:border-gray-200 outline-none focus:ring-2 focus:ring-purple-500"
-                              disabled={!item.surat}
+                              className="w-full bg-white dark:bg-slate-900/80 border border-purple-200 dark:border-purple-500/30 rounded-xl px-3 py-2.5 text-sm font-bold text-gray-800 dark:text-slate-200 disabled:bg-gray-100 dark:disabled:bg-slate-800 disabled:border-gray-200 dark:disabled:border-slate-700 outline-none focus:ring-1 focus:ring-purple-500"
+                              disabled={!item.surat || item.surat === '-'}
                             />
                             <span className="text-gray-400 font-bold">-</span>
                             <AyatSelector
@@ -366,8 +432,8 @@ export const JurnalModal = ({
                               onChange={value => handleSuratChange(plan.id, 'tahfidzSuratList', item.id, 'ayatEnd', value)}
                               minAyat={item.ayatStart}
                               placeholder="Akhir"
-                              className="w-full bg-white border border-purple-200 rounded-xl px-3 py-2.5 text-sm font-bold text-gray-800 disabled:bg-gray-100 disabled:border-gray-200 outline-none focus:ring-2 focus:ring-purple-500"
-                              disabled={!item.surat}
+                              className="w-full bg-white dark:bg-slate-900/80 border border-purple-200 dark:border-purple-500/30 rounded-xl px-3 py-2.5 text-sm font-bold text-gray-800 dark:text-slate-200 disabled:bg-gray-100 dark:disabled:bg-slate-800 disabled:border-gray-200 dark:disabled:border-slate-700 outline-none focus:ring-1 focus:ring-purple-500"
+                              disabled={!item.surat || item.surat === '-'}
                             />
                           </div>
 
@@ -376,8 +442,13 @@ export const JurnalModal = ({
                             <div className="w-full sm:w-28 shrink-0 mt-2 sm:mt-0 relative">
                               <select
                                 value={item.nilai || ''}
-                                onChange={e => handleSuratChange(plan.id, 'tahfidzSuratList', item.id, 'nilai', e.target.value)}
-                                className="w-full bg-gray-800 text-white border-2 border-gray-800 rounded-xl px-3 py-2.5 text-sm font-black outline-none focus:ring-2 focus:ring-purple-500 shadow-sm text-center appearance-none"
+                                onChange={e => {
+                                  handleSuratChange(plan.id, 'tahfidzSuratList', item.id, 'nilai', e.target.value);
+                                  if (e.target.value && !item.surat) {
+                                    handleSuratChange(plan.id, 'tahfidzSuratList', item.id, 'surat', '-');
+                                  }
+                                }}
+                                className="w-full bg-gray-800 dark:bg-slate-800 text-white border border-gray-800 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm font-black outline-none focus:ring-1 focus:ring-purple-500 shadow-sm text-center appearance-none"
                               >
                                 <option value="">Nilai</option>
                                 {gradeOptions.map(g => <option key={g} value={g}>{g}</option>)}
@@ -388,18 +459,25 @@ export const JurnalModal = ({
                             </div>
                           )}
                         </div>
-                        {idx > 0 && <button type="button" onClick={() => handleRemoveSurat(plan.id, 'tahfidzSuratList', item.id)} className="absolute -top-2 -right-2 bg-red-100 text-red-500 rounded-full p-1.5 shadow-sm hover:bg-red-500 hover:text-white transition-colors"><X size={14} strokeWidth={3} /></button>}
+                        {idx > 0 && <button type="button" onClick={() => handleRemoveSurat(plan.id, 'tahfidzSuratList', item.id)} className="absolute -top-2 -right-2 bg-red-100 dark:bg-red-500/20 text-red-500 dark:text-red-400 rounded-full p-1.5 shadow-sm hover:bg-red-500 hover:text-white dark:hover:bg-red-600 transition-colors"><X size={14} strokeWidth={3} /></button>}
                       </div>
                     ))}
-                    <button type="button" onClick={() => handleAddSurat(plan.id, 'tahfidzSuratList')} className="text-xs font-black bg-purple-50 hover:bg-purple-100 text-purple-600 py-3 rounded-xl flex justify-center items-center gap-1.5 transition-colors border border-purple-200/50 mt-1"><Plus size={16} /> TAMBAH SURAT HAFALAN</button>
+                    <button type="button" onClick={() => handleAddSurat(plan.id, 'tahfidzSuratList')} className="text-xs font-black bg-purple-50 dark:bg-purple-500/10 hover:bg-purple-100 dark:hover:bg-purple-500/20 text-purple-600 dark:text-purple-400 py-3 rounded-xl flex justify-center items-center gap-1.5 transition-colors border border-purple-200/50 dark:border-purple-500/20 mt-1"><Plus size={16} /> TAMBAH SURAT HAFALAN</button>
 
                     {/* Catatan Tahfidz */}
-                    <div className="border-t border-gray-100 pt-4 mt-2">
-                      <label className="block text-[10px] font-black text-purple-500 uppercase tracking-widest mb-1.5">Catatan Khusus Tahfidz</label>
-                      <textarea rows="2" placeholder="Ketikkan catatan khusus tahfidz..." value={plan.catatanTahfidz || ''} onChange={e => handlePlanChange(plan.id, 'catatanTahfidz', e.target.value)} onFocus={(e) => setTimeout(() => e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300)} className="w-full bg-purple-50/50 border border-purple-100 focus:border-purple-400 rounded-2xl p-3 text-sm font-bold outline-none resize-none text-gray-800 transition-colors focus:ring-2 focus:ring-purple-400/20"></textarea>
-                      <div className="mt-2 flex overflow-x-auto gap-2 pb-1 custom-scrollbar">
+                    <div className="border-t border-gray-100 dark:border-slate-700 pt-4 mt-2">
+                      <div className="flex justify-between items-end mb-1.5">
+                        <label className="block text-[10px] font-black text-purple-500 uppercase tracking-widest">Catatan Khusus Tahfidz</label>
+                        {plan.catatanTahfidz && (
+                          <button type="button" onClick={() => handlePlanChange(plan.id, 'catatanTahfidz', '')} className="text-[10px] font-bold text-red-500 hover:text-red-600 transition-colors">
+                            Bersihkan
+                          </button>
+                        )}
+                      </div>
+                      <textarea rows="2" placeholder="Ketikkan catatan khusus tahfidz..." value={plan.catatanTahfidz || ''} onChange={e => handlePlanChange(plan.id, 'catatanTahfidz', e.target.value)} onInput={handleAutoResize} onFocus={(e) => setTimeout(() => e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300)} className="w-full bg-purple-50/50 dark:bg-purple-500/5 border border-purple-100 dark:border-purple-500/20 focus:border-purple-400 rounded-2xl p-3 text-sm font-bold outline-none resize-none text-gray-800 dark:text-slate-200 transition-colors focus:ring-1 focus:ring-purple-400/50 overflow-hidden"></textarea>
+                      <div className="mt-2 flex overflow-x-auto overscroll-x-contain gap-2 pb-1 hide-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
                         {['Sangat Baik', 'Lancar', 'Kelancaran Hafalan', 'Sering Lupa', 'Perlu Murojaah', 'Kurang Lancar', 'Ulangi Besok'].map(note => (
-                          <button type="button" key={note} onClick={() => handlePlanChange(plan.id, 'catatanTahfidz', (plan.catatanTahfidz ? plan.catatanTahfidz + ', ' : '') + note)} className="shrink-0 bg-white border border-purple-200 text-purple-600 hover:bg-purple-50 px-2.5 py-1.5 rounded-lg text-[10px] font-black transition-colors shadow-sm">
+                          <button type="button" key={note} onClick={() => handlePlanChange(plan.id, 'catatanTahfidz', (plan.catatanTahfidz ? plan.catatanTahfidz + ', ' : '') + note)} className="shrink-0 bg-white dark:bg-slate-800 border border-purple-200 dark:border-purple-500/30 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-500/10 px-2.5 py-1.5 rounded-lg text-[10px] font-black transition-colors shadow-sm">
                             + {note}
                           </button>
                         ))}
@@ -411,16 +489,16 @@ export const JurnalModal = ({
 
               {/* --- FORM MUROJAAH --- */}
               {['full_bulk', 'full_edit', 'murojaah'].includes(modalMode) && (
-                <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
-                  <h3 className="font-black text-gray-800 text-sm mb-4 flex items-center gap-2"><Repeat size={18} className="text-emerald-500" /> Data Murojaah</h3>
+                <div className="bg-white dark:bg-slate-800 p-5 rounded-3xl border border-gray-100 dark:border-slate-700 shadow-sm">
+                  <h3 className="font-black text-gray-800 dark:text-slate-100 text-sm mb-4 flex items-center gap-2"><Repeat size={18} className="text-emerald-500" /> Data Murojaah</h3>
                   <div className="flex flex-col gap-3">
                     {plan.murojaah.map((item, idx) => (
-                      <div key={item.id} className="bg-emerald-50/50 border border-emerald-100 p-3 rounded-2xl flex flex-col gap-3 relative">
+                      <div key={item.id} className="bg-emerald-50/50 dark:bg-emerald-500/5 border border-emerald-100 dark:border-emerald-500/20 p-3 rounded-2xl flex flex-col gap-3 relative">
                         <SurahSelector
                           value={item.surat}
                           onChange={value => handleSuratChange(plan.id, 'murojaah', item.id, 'surat', value)}
                           surahList={surahList}
-                          className="w-full bg-white border border-emerald-200 rounded-xl px-3 py-2.5 text-sm font-bold text-gray-800 outline-none focus:ring-2 focus:ring-emerald-500"
+                          className="w-full bg-white dark:bg-slate-900/80 border border-emerald-200 dark:border-emerald-500/30 rounded-xl px-3 py-2.5 text-sm font-bold text-gray-800 dark:text-slate-200 outline-none focus:ring-1 focus:ring-emerald-500"
                         />
                         <div className="flex items-center gap-2">
                           <AyatSelector
@@ -430,7 +508,7 @@ export const JurnalModal = ({
                             onChange={value => handleSuratChange(plan.id, 'murojaah', item.id, 'ayatStart', value)}
                             maxAyat={item.ayatEnd}
                             placeholder="Awal"
-                            className="w-full bg-white border border-emerald-200 rounded-xl px-3 py-2.5 text-sm font-bold text-gray-800 disabled:bg-gray-100 disabled:border-gray-200 outline-none focus:ring-2 focus:ring-emerald-500"
+                            className="w-full bg-white dark:bg-slate-900/80 border border-emerald-200 dark:border-emerald-500/30 rounded-xl px-3 py-2.5 text-sm font-bold text-gray-800 dark:text-slate-200 disabled:bg-gray-100 dark:disabled:bg-slate-800 disabled:border-gray-200 dark:disabled:border-slate-700 outline-none focus:ring-1 focus:ring-emerald-500"
                             disabled={!item.surat}
                           />
                           <span className="text-gray-400 font-bold">-</span>
@@ -441,30 +519,37 @@ export const JurnalModal = ({
                             onChange={value => handleSuratChange(plan.id, 'murojaah', item.id, 'ayatEnd', value)}
                             minAyat={item.ayatStart}
                             placeholder="Akhir"
-                            className="w-full bg-white border border-emerald-200 rounded-xl px-3 py-2.5 text-sm font-bold text-gray-800 disabled:bg-gray-100 disabled:border-gray-200 outline-none focus:ring-2 focus:ring-emerald-500"
-                            disabled={!item.surat}
+                            className="w-full bg-white dark:bg-slate-900/80 border border-emerald-200 dark:border-emerald-500/30 rounded-xl px-3 py-2.5 text-sm font-bold text-gray-800 dark:text-slate-200 disabled:bg-gray-100 dark:disabled:bg-slate-800 disabled:border-gray-200 dark:disabled:border-slate-700 outline-none focus:ring-1 focus:ring-emerald-500"
+                            disabled={!item.surat || item.surat === '-'}
                           />
                         </div>
-                        {idx > 0 && <button type="button" onClick={() => handleRemoveSurat(plan.id, 'murojaah', item.id)} className="absolute -top-2 -right-2 bg-red-100 text-red-500 rounded-full p-1.5 shadow-sm hover:bg-red-500 hover:text-white transition-colors"><X size={14} strokeWidth={3} /></button>}
+                        {idx > 0 && <button type="button" onClick={() => handleRemoveSurat(plan.id, 'murojaah', item.id)} className="absolute -top-2 -right-2 bg-red-100 dark:bg-red-500/20 text-red-500 dark:text-red-400 rounded-full p-1.5 shadow-sm hover:bg-red-500 hover:text-white dark:hover:bg-red-600 transition-colors"><X size={14} strokeWidth={3} /></button>}
                       </div>
                     ))}
-                    <button type="button" onClick={() => handleAddSurat(plan.id, 'murojaah')} className="text-xs font-black bg-emerald-50 hover:bg-emerald-100 text-emerald-600 py-3 rounded-xl flex justify-center items-center gap-1.5 transition-colors border border-emerald-200/50 mt-1"><Plus size={16} /> TAMBAH SURAT MUROJAAH</button>
+                    <button type="button" onClick={() => handleAddSurat(plan.id, 'murojaah')} className="text-xs font-black bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 py-3 rounded-xl flex justify-center items-center gap-1.5 transition-colors border border-emerald-200/50 dark:border-emerald-500/20 mt-1"><Plus size={16} /> TAMBAH SURAT MUROJAAH</button>
                   </div>
                 </div>
               )}
 
               {/* --- FORM CATATAN --- */}
               {['full_bulk', 'full_edit', 'catatan'].includes(modalMode) && (
-                <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
-                  <h3 className="font-black text-gray-800 text-sm mb-4 flex items-center gap-2"><FileText size={18} className="text-orange-500" /> {homeTab === 'lesson_plan' ? 'Catatan Target Guru' : 'Catatan Capaian / Nilai Jurnal'}</h3>
+                <div className="bg-white dark:bg-slate-800 p-5 rounded-3xl border border-gray-100 dark:border-slate-700 shadow-sm">
+                  <h3 className="font-black text-gray-800 dark:text-slate-100 text-sm mb-4 flex items-center gap-2"><FileText size={18} className="text-orange-500" /> {homeTab === 'lesson_plan' ? 'Catatan Target Guru' : 'Catatan Capaian / Nilai Jurnal'}</h3>
 
                   <div className="flex flex-col gap-4">
                     <div>
-                      <label className="block text-[10px] font-black text-orange-500 uppercase tracking-widest mb-1.5">Catatan Umum / Lainnya</label>
-                      <textarea rows="2" placeholder="Ketikkan catatan lainnya (contoh: Sakit, Izin, Libur, dll)..." value={plan.lainLain || ''} onChange={e => handlePlanChange(plan.id, 'lainLain', e.target.value)} onFocus={(e) => setTimeout(() => e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300)} className="w-full bg-orange-50/30 border border-orange-100 focus:border-orange-400 rounded-2xl p-3 text-sm font-bold outline-none resize-none text-gray-800 transition-colors focus:ring-2 focus:ring-orange-400/20"></textarea>
-                      <div className="mt-2 flex overflow-x-auto gap-2 pb-1 custom-scrollbar">
+                      <div className="flex justify-between items-end mb-1.5">
+                        <label className="block text-[10px] font-black text-orange-500 uppercase tracking-widest">Catatan Umum / Lainnya</label>
+                        {plan.lainLain && (
+                          <button type="button" onClick={() => handlePlanChange(plan.id, 'lainLain', '')} className="text-[10px] font-bold text-red-500 hover:text-red-600 transition-colors">
+                            Bersihkan
+                          </button>
+                        )}
+                      </div>
+                      <textarea rows="2" placeholder="Ketikkan catatan lainnya (contoh: Sakit, Izin, Libur, dll)..." value={plan.lainLain || ''} onChange={e => handlePlanChange(plan.id, 'lainLain', e.target.value)} onInput={handleAutoResize} onFocus={(e) => setTimeout(() => e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300)} className="w-full bg-orange-50/30 dark:bg-orange-500/5 border border-orange-100 dark:border-orange-500/20 focus:border-orange-400 rounded-2xl p-3 text-sm font-bold outline-none resize-none text-gray-800 dark:text-slate-200 transition-colors focus:ring-1 focus:ring-orange-400/50 overflow-hidden"></textarea>
+                      <div className="mt-2 flex overflow-x-auto overscroll-x-contain gap-2 pb-1 hide-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
                         {['Sakit', 'Izin', 'Libur', 'Ujian Kenaikan Jilid'].map(note => (
-                          <button type="button" key={note} onClick={() => handlePlanChange(plan.id, 'lainLain', (plan.lainLain ? plan.lainLain + ', ' : '') + note)} className="shrink-0 bg-white border border-orange-200 text-orange-600 hover:bg-orange-50 px-2.5 py-1.5 rounded-lg text-[10px] font-black transition-colors shadow-sm">
+                          <button type="button" key={note} onClick={() => handlePlanChange(plan.id, 'lainLain', (plan.lainLain ? plan.lainLain + ', ' : '') + note)} className="shrink-0 bg-white dark:bg-slate-800 border border-orange-200 dark:border-orange-500/30 text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-500/10 px-2.5 py-1.5 rounded-lg text-[10px] font-black transition-colors shadow-sm">
                             + {note}
                           </button>
                         ))}
@@ -478,10 +563,10 @@ export const JurnalModal = ({
         </div>
 
         {/* Tombol Simpan Bawah */}
-        <div className="absolute sm:relative bottom-0 left-0 right-0 p-4 sm:p-6 bg-white border-t border-gray-100 shadow-[0_-10px_20px_rgba(0,0,0,0.03)] sm:shadow-none z-30">
+        <div className="absolute sm:relative bottom-0 left-0 right-0 p-4 sm:p-6 bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-slate-800 shadow-[0_-10px_20px_rgba(0,0,0,0.03)] sm:shadow-none z-30">
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="relative shrink-0 sm:flex-none">
-              <button type="button" onClick={() => setIsAbsentMenuOpen(!isAbsentMenuOpen)} className="w-full flex items-center justify-center gap-1.5 sm:gap-2 bg-red-50 hover:bg-red-100 text-red-600 px-3 sm:px-5 py-4 rounded-2xl font-black text-xs sm:text-sm active:scale-95 transition-all shadow-sm border border-red-200">
+              <button type="button" onClick={() => setIsAbsentMenuOpen(!isAbsentMenuOpen)} className="w-full flex items-center justify-center gap-1.5 sm:gap-2 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 text-red-600 dark:text-red-400 px-3 sm:px-5 py-4 rounded-2xl font-black text-xs sm:text-sm active:scale-95 transition-all shadow-sm border border-red-200 dark:border-red-500/20">
                 <UserX size={18} />
                 <span className="hidden sm:inline">Absen</span>
               </button>
@@ -489,11 +574,11 @@ export const JurnalModal = ({
               {isAbsentMenuOpen && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setIsAbsentMenuOpen(false)}></div>
-                  <div className="absolute bottom-full left-0 mb-2 w-full sm:w-32 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden flex flex-col p-1.5 animate-in slide-in-from-bottom-2 fade-in z-50">
-                    <button type="button" onClick={() => { handleMarkAbsent('Alpa'); setIsAbsentMenuOpen(false); }} className="px-4 py-3 text-left text-sm font-black text-red-600 hover:bg-red-50 rounded-xl transition-colors">Alpa</button>
-                    <button type="button" onClick={() => { handleMarkAbsent('Sakit'); setIsAbsentMenuOpen(false); }} className="px-4 py-3 text-left text-sm font-black text-amber-500 hover:bg-amber-50 rounded-xl transition-colors">Sakit</button>
-                    <button type="button" onClick={() => { handleMarkAbsent('Izin'); setIsAbsentMenuOpen(false); }} className="px-4 py-3 text-left text-sm font-black text-blue-500 hover:bg-blue-50 rounded-xl transition-colors">Izin</button>
-                    <button type="button" onClick={() => { handleMarkAbsent('Libur'); setIsAbsentMenuOpen(false); }} className="px-4 py-3 text-left text-sm font-black text-emerald-500 hover:bg-emerald-50 rounded-xl transition-colors">Libur</button>
+                  <div className="absolute bottom-full left-0 mb-2 w-full sm:w-32 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-gray-100 dark:border-slate-700 overflow-hidden flex flex-col p-1.5 animate-in slide-in-from-bottom-2 fade-in z-50">
+                    <button type="button" onClick={() => { handleMarkAbsent('Alpa'); setIsAbsentMenuOpen(false); }} className="px-4 py-3 text-left text-sm font-black text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors">Alpa</button>
+                    <button type="button" onClick={() => { handleMarkAbsent('Sakit'); setIsAbsentMenuOpen(false); }} className="px-4 py-3 text-left text-sm font-black text-amber-500 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-xl transition-colors">Sakit</button>
+                    <button type="button" onClick={() => { handleMarkAbsent('Izin'); setIsAbsentMenuOpen(false); }} className="px-4 py-3 text-left text-sm font-black text-blue-500 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors">Izin</button>
+                    <button type="button" onClick={() => { handleMarkAbsent('Libur'); setIsAbsentMenuOpen(false); }} className="px-4 py-3 text-left text-sm font-black text-emerald-500 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-xl transition-colors">Libur</button>
                   </div>
                 </>
               )}

@@ -573,26 +573,29 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
     const k = publicTab === 'lesson_plan' ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan', cT: 'catatanTahsin', cF: 'catatanTahfidz' } : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan', cT: 'jurnalCatatanTahsin', cF: 'jurnalCatatanTahfidz' };
 
     return (
-      <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col p-0 md:p-6 printable-area print:!static print:p-0 print:m-0 transition-all duration-500">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 flex flex-col p-0 md:p-6 printable-area print:!static print:p-0 print:m-0 transition-all duration-500">
 
         {/* Header Navigasi & Aksi (Sticky Top) */}
-        <div className="bg-white/90 backdrop-blur-md sticky top-0 z-[100000] print:hidden flex flex-col xl:flex-row justify-between items-center p-4 sm:p-6 gap-4 shadow-sm w-full border-b border-slate-200" data-html2canvas-ignore="true">
+        <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md sticky top-0 z-[100000] print:hidden flex flex-col xl:flex-row justify-between items-center p-4 sm:p-6 gap-4 shadow-sm w-full border-b border-slate-200 dark:border-slate-800" data-html2canvas-ignore="true">
 
           {/* Bagian Kiri: Tab & Minggu */}
           <div className="flex flex-col sm:flex-row items-center gap-3 w-full xl:w-auto">
-            <div className="flex gap-2 w-full sm:w-auto bg-slate-100 p-1.5 rounded-2xl">
-              <button onClick={() => setPublicTab('lesson_plan')} className={`flex-1 sm:flex-none px-5 py-3 sm:py-2 text-xs sm:text-sm font-black rounded-xl transition-all ${publicTab === 'lesson_plan' ? 'bg-emerald-500 text-white shadow-md' : 'text-slate-500 hover:text-slate-700'}`}>Target (Lesson Plan)</button>
-              <button onClick={() => setPublicTab('jurnal')} className={`flex-1 sm:flex-none px-5 py-3 sm:py-2 text-xs sm:text-sm font-black rounded-xl transition-all ${publicTab === 'jurnal' ? 'bg-blue-500 text-white shadow-md' : 'text-slate-500 hover:text-slate-700'}`}>Mutabaah</button>
+            <div className="flex gap-2 w-full sm:w-auto bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl">
+              <button onClick={() => setPublicTab('lesson_plan')} className={`flex-1 sm:flex-none px-5 py-3 sm:py-2 text-xs sm:text-sm font-black rounded-xl transition-all ${publicTab === 'lesson_plan' ? 'bg-emerald-500 text-white shadow-md' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>Target (Lesson Plan)</button>
+              <button onClick={() => setPublicTab('jurnal')} className={`flex-1 sm:flex-none px-5 py-3 sm:py-2 text-xs sm:text-sm font-black rounded-xl transition-all ${publicTab === 'jurnal' ? 'bg-blue-500 text-white shadow-md' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>Mutabaah</button>
             </div>
-            <div className="flex items-center justify-between bg-white border border-slate-200 rounded-xl px-2 py-1.5 shadow-sm w-full sm:w-auto">
-              <button onClick={() => changePublicWeek(-7)} className="p-2 sm:p-2 bg-slate-50 hover:bg-emerald-50 text-slate-400 hover:text-emerald-500 rounded-lg transition-colors"><ChevronLeft size={18} /></button>
-              <span className="text-xs sm:text-sm font-bold whitespace-nowrap px-4 text-slate-700">{formatPeriode(weekDates[0], weekDates[4])}</span>
-              <button onClick={() => changePublicWeek(7)} className="p-2 sm:p-2 bg-slate-50 hover:bg-emerald-50 text-slate-400 hover:text-emerald-500 rounded-lg transition-colors"><ChevronRight size={18} /></button>
+            <div className="flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-2 py-1.5 shadow-sm w-full sm:w-auto">
+              <button onClick={() => changePublicWeek(-7)} className="p-2 sm:p-2 bg-slate-50 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-500/20 text-slate-400 dark:text-slate-500 hover:text-emerald-500 dark:hover:text-emerald-400 rounded-lg transition-colors"><ChevronLeft size={18} /></button>
+              <span className="text-xs sm:text-sm font-bold whitespace-nowrap px-4 text-slate-700 dark:text-slate-200">{formatPeriode(weekDates[0], weekDates[4])}</span>
+              <button onClick={() => changePublicWeek(7)} className="p-2 sm:p-2 bg-slate-50 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-500/20 text-slate-400 dark:text-slate-500 hover:text-emerald-500 dark:hover:text-emerald-400 rounded-lg transition-colors"><ChevronRight size={18} /></button>
             </div>
           </div>
 
           {/* Bagian Kanan: Tombol Unduh & Tutup */}
           <div className="flex flex-wrap justify-center gap-2 w-full xl:w-auto">
+            <button onClick={() => setTheme && setTheme(theme === 'dark' ? 'light' : 'dark')} className="flex-none bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-4 py-3 sm:py-2.5 flex items-center justify-center rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors" title="Mode Gelap/Terang">
+              {theme === 'dark' ? <Sun size={16} className="text-amber-500" /> : <Moon size={16} />}
+            </button>
             <button onClick={handleCopyClassShareLink} className="flex-1 sm:flex-none bg-blue-600 text-white px-4 py-3 sm:py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg hover:bg-blue-700 transition-colors">
               <Link size={16} />
               <span className="text-[11px] sm:text-xs whitespace-nowrap">Salin Link</span>
@@ -604,7 +607,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
         </div>
 
         {/* Kontainer Tabel */}
-        <div className="w-full flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar flex flex-col md:items-center p-0 md:p-6 print:p-0 print:m-0 print:overflow-visible relative">
+        <div className="w-full flex-1 overflow-y-auto overscroll-y-contain overflow-x-hidden custom-scrollbar flex flex-col md:items-center p-0 md:p-6 print:p-0 print:m-0 print:overflow-visible relative" style={{ WebkitOverflowScrolling: 'touch' }}>
 
           {/* TAMPILAN NAMA SISWA */}
           <div className="w-full max-w-5xl px-4 py-6 print:hidden min-h-[400px]">
@@ -616,8 +619,8 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
             ) : publicClassStudents.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {publicClassStudents.map((student, idx) => (
-                  <button key={student.id} onClick={() => handleSelectStudent(student)} className="flex items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-100 hover:border-emerald-300 hover:shadow-md transition-all group text-left animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: `${idx * 0.05}s` }}>
-                    <div className="w-12 h-12 rounded-full bg-emerald-50 border-2 border-emerald-100 flex items-center justify-center text-emerald-600 font-black shrink-0 group-hover:bg-emerald-100 transition-colors overflow-hidden">
+                  <button key={student.id} onClick={() => handleSelectStudent(student)} className="flex items-center gap-4 bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-500/50 hover:shadow-md dark:hover:shadow-emerald-500/10 transition-all group text-left animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: `${idx * 0.05}s` }}>
+                    <div className="w-12 h-12 rounded-full bg-emerald-50 dark:bg-emerald-500/10 border-2 border-emerald-100 dark:border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-black shrink-0 group-hover:bg-emerald-100 dark:group-hover:bg-emerald-500/20 transition-colors overflow-hidden">
                       {student?.photo && student.photo !== '' ? (
                         <img src={student.photo} alt={student?.name} className="w-full h-full object-cover" />
                       ) : (
@@ -625,18 +628,18 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="font-black text-slate-800 group-hover:text-emerald-600 text-sm truncate transition-colors">{student?.name || 'Unknown'}</div>
-                      <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Kelas {student?.kelas || '-'}</div>
+                      <div className="font-black text-slate-800 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 text-sm truncate transition-colors">{student?.name || 'Unknown'}</div>
+                      <div className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-0.5">Kelas {student?.kelas || '-'}</div>
                     </div>
-                    <ChevronRight size={18} className="text-slate-300 group-hover:text-emerald-500 transition-colors" />
+                    <ChevronRight size={18} className="text-slate-300 dark:text-slate-600 group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors" />
                   </button>
                 ))}
               </div>
             ) : (
-              <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200 shadow-sm animate-in fade-in duration-500">
+              <div className="text-center py-20 bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800 shadow-sm animate-in fade-in duration-500">
                 <Users size={48} className="mx-auto text-slate-300 mb-4" />
-                <h3 className="text-lg font-black text-slate-700">Belum Ada Siswa</h3>
-                <p className="text-slate-500 font-medium mt-1">Sistem tidak menemukan siswa di kelompok halaqoh <strong className="text-emerald-600">{publicClassHalaqoh}</strong>.</p>
+                <h3 className="text-lg font-black text-slate-700 dark:text-slate-200">Belum Ada Siswa</h3>
+                <p className="text-slate-500 dark:text-slate-400 font-medium mt-1">Sistem tidak menemukan siswa di kelompok halaqoh <strong className="text-emerald-600 dark:text-emerald-400">{publicClassHalaqoh}</strong>.</p>
               </div>
             )}
           </div>
@@ -654,9 +657,9 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
     const allDates = Object.keys(publicStudent.records || {})
       .filter(dateStr => {
         const rec = publicStudent.records[dateStr];
-        return (rec[k.t] && rec[k.t] !== '-') || (rec[k.tNilai] && rec[k.tNilai] !== '-') || (rec[k.tsNilai] && rec[k.tsNilai] !== '-') || 
-               (rec[k.f] && rec[k.f] !== '-') || (rec[k.fNilai] && rec[k.fNilai] !== '-') || 
-               (rec[k.m] && rec[k.m] !== '-') || (rec[k.c] && rec[k.c] !== '-') || (rec[k.cT] && rec[k.cT] !== '-') || (rec[k.cF] && rec[k.cF] !== '-');
+        return (rec[k.t] && rec[k.t] !== '-') || (rec[k.tNilai] && rec[k.tNilai] !== '-') || (rec[k.tsNilai] && rec[k.tsNilai] !== '-') ||
+          (rec[k.f] && rec[k.f] !== '-') || (rec[k.fNilai] && rec[k.fNilai] !== '-') ||
+          (rec[k.m] && rec[k.m] !== '-') || (rec[k.c] && rec[k.c] !== '-') || (rec[k.cT] && rec[k.cT] !== '-') || (rec[k.cF] && rec[k.cF] !== '-');
       })
       .sort((a, b) => new Date(b) - new Date(a))
       .map(d => new Date(d));
@@ -691,34 +694,37 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
     const datesToDisplay = isPrintingAll ? allDates : weekDates;
 
     return ( // Public Student View
-      <div className="min-h-screen bg-slate-100 text-gray-800 flex flex-col items-center p-0 md:p-6 overflow-y-auto transition-all duration-500">
+      <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-gray-800 dark:text-slate-200 flex flex-col items-center p-0 md:p-6 overflow-y-auto transition-all duration-500">
         <div className="fixed bottom-6 right-6 sm:top-6 sm:right-6 sm:bottom-auto z-[100] flex flex-col-reverse sm:flex-row gap-3 print:hidden">
+          <button onClick={() => setTheme && setTheme(theme === 'dark' ? 'light' : 'dark')} className="bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 w-14 h-14 sm:w-auto sm:h-auto sm:p-3 rounded-full sm:rounded-xl shadow-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2 mb-2 sm:mb-0" title="Ganti Tema">
+            {theme === 'dark' ? <Sun size={24} className="sm:w-[20px] sm:h-[20px] text-amber-500" /> : <Moon size={24} className="sm:w-[20px] sm:h-[20px]" />}
+          </button>
           <button onClick={handleDownloadImage} className="bg-emerald-500 text-white w-14 h-14 sm:w-auto sm:h-auto sm:px-5 sm:py-3 rounded-full sm:rounded-xl shadow-xl hover:bg-emerald-600 transition-all flex items-center justify-center gap-2" title="Unduh Gambar (JPG)">
             <Download size={24} className="sm:w-[20px] sm:h-[20px]" /> <span className="hidden sm:inline text-sm font-bold">Unduh JPG</span>
           </button>
           <button onClick={handlePrintAll} className="bg-blue-600 text-white w-14 h-14 sm:w-auto sm:h-auto sm:px-5 sm:py-3 rounded-full sm:rounded-xl shadow-xl hover:bg-blue-700 transition-all flex items-center justify-center gap-2" title="Unduh Riwayat Lengkap">
             <FileText size={24} className="sm:w-[20px] sm:h-[20px]" /> <span className="hidden sm:inline text-sm font-bold">Riwayat PDF</span>
           </button>
-          <button onClick={() => window.print()} className="bg-slate-800 text-white w-14 h-14 sm:w-auto sm:h-auto sm:px-5 sm:py-3 rounded-full sm:rounded-xl shadow-xl hover:bg-slate-900 transition-all flex items-center justify-center gap-2 border border-slate-700" title="Cetak">
+          <button onClick={() => window.print()} className="bg-slate-800 dark:bg-black text-white w-14 h-14 sm:w-auto sm:h-auto sm:px-5 sm:py-3 rounded-full sm:rounded-xl shadow-xl hover:bg-slate-900 transition-all flex items-center justify-center gap-2 border border-slate-700 dark:border-slate-800" title="Cetak">
             <Printer size={24} className="sm:w-[20px] sm:h-[20px]" /> <span className="hidden sm:inline text-sm font-bold">Cetak</span>
           </button>
-          <button onClick={() => setPublicStudent(null)} className="bg-white text-slate-600 border border-slate-200 w-14 h-14 sm:w-auto sm:h-auto sm:p-3 rounded-full sm:rounded-xl shadow-xl hover:bg-slate-100 transition-all flex items-center justify-center gap-2 mb-2 sm:mb-0" title="Tutup">
+          <button onClick={() => setPublicStudent(null)} className="bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 w-14 h-14 sm:w-auto sm:h-auto sm:p-3 rounded-full sm:rounded-xl shadow-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2 mb-2 sm:mb-0" title="Tutup">
             <X size={24} className="sm:w-[20px] sm:h-[20px]" />
           </button>
         </div>
 
         <div className="w-full flex justify-center p-0 sm:p-4 print:p-0">
-          <div id="share-report-card" className="bg-white w-full max-w-[800px] shrink-0 sm:shadow-2xl relative sm:my-8 print:shadow-none print:w-[800px] print:min-w-[800px] print:max-w-none animate-in fade-in slide-in-from-bottom-4 duration-700 transition-colors rounded-none sm:rounded-[32px] overflow-hidden">
+          <div id="share-report-card" className="bg-white dark:bg-slate-900 w-full max-w-[800px] shrink-0 sm:shadow-2xl relative sm:my-8 print:shadow-none print:w-[800px] print:min-w-[800px] print:max-w-none animate-in fade-in slide-in-from-bottom-4 duration-700 transition-colors rounded-none sm:rounded-[32px] overflow-hidden">
 
             {/* Header Laporan */}
-            <div className="bg-gradient-to-br from-emerald-50 via-white to-teal-50 p-6 sm:p-10 border-b border-gray-100 flex flex-col-reverse sm:flex-row justify-between items-center gap-6 text-center sm:text-left relative overflow-hidden">
+            <div className="bg-gradient-to-br from-emerald-50 via-white to-teal-50 dark:from-emerald-950/40 dark:via-slate-900 dark:to-teal-900/20 p-6 sm:p-10 border-b border-gray-100 dark:border-slate-800 flex flex-col-reverse sm:flex-row justify-between items-center gap-6 text-center sm:text-left relative overflow-hidden">
               <div className="w-full sm:w-auto relative z-10">
-                <h1 className="text-2xl sm:text-4xl font-black text-slate-800 mb-1 sm:mb-2 tracking-tight">
+                <h1 className="text-2xl sm:text-4xl font-black text-slate-800 dark:text-slate-100 mb-1 sm:mb-2 tracking-tight">
                   {publicTab === 'lesson_plan' ? "Lesson Plan Al-Qur'an" : "Mutabaah Al-Qur'an"}
                 </h1>
-                <p className="text-emerald-600 font-bold text-sm sm:text-base tracking-wide uppercase">Laporan Pemantauan Hafalan</p>
+                <p className="text-emerald-600 dark:text-emerald-500 font-bold text-sm sm:text-base tracking-wide uppercase">Laporan Pemantauan Hafalan</p>
               </div>
-              <div className="w-20 h-20 sm:w-28 sm:h-28 flex items-center justify-center shrink-0 bg-white rounded-[1.5rem] shadow-sm border border-emerald-100/50 p-3 sm:p-4 relative z-10">
+              <div className="w-20 h-20 sm:w-28 sm:h-28 flex items-center justify-center shrink-0 bg-white dark:bg-slate-800 rounded-[1.5rem] shadow-sm border border-emerald-100/50 dark:border-emerald-500/20 p-3 sm:p-4 relative z-10">
                 {institutionLogo ? <img src={institutionLogo} alt="Logo Instansi" className="w-full h-full object-contain" /> : <BookOpen size={48} className="text-emerald-500" />}
               </div>
 
@@ -728,16 +734,16 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
             </div>
 
             {/* Info Siswa */}
-            <div className="p-6 sm:p-10 flex flex-col sm:flex-row justify-between items-center gap-6 border-b border-gray-50 text-center sm:text-left bg-white z-10 relative">
+            <div className="p-6 sm:p-10 flex flex-col sm:flex-row justify-between items-center gap-6 border-b border-gray-50 dark:border-slate-800 text-center sm:text-left bg-white dark:bg-slate-900 z-10 relative">
               <div className="flex flex-col sm:flex-row items-center gap-5 sm:gap-6 w-full sm:w-auto">
-                <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-emerald-50 border-[6px] sm:border-[8px] border-emerald-100 text-emerald-600 flex items-center justify-center text-4xl sm:text-5xl font-black shrink-0 overflow-hidden shadow-lg relative">
+                <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-emerald-50 dark:bg-emerald-500/10 border-[6px] sm:border-[8px] border-emerald-100 dark:border-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-4xl sm:text-5xl font-black shrink-0 overflow-hidden shadow-lg relative">
                   {publicStudent.photo ? <img src={publicStudent.photo} alt={publicStudent.name} className="w-full h-full object-cover" /> : <span>{getInitials(publicStudent.name)}</span>}
                 </div>
                 <div>
-                  <h2 className={`font-black text-slate-800 mb-3 sm:mb-4 ${publicStudent.name.length > 24 ? 'text-xl sm:text-2xl' : publicStudent.name.length > 18 ? 'text-2xl sm:text-3xl' : 'text-3xl sm:text-4xl'} tracking-tight`}>{publicStudent.name}</h2>
+                  <h2 className={`font-black text-slate-800 dark:text-slate-100 mb-3 sm:mb-4 ${publicStudent.name.length > 24 ? 'text-xl sm:text-2xl' : publicStudent.name.length > 18 ? 'text-2xl sm:text-3xl' : 'text-3xl sm:text-4xl'} tracking-tight`}>{publicStudent.name}</h2>
                   <div className="flex flex-wrap justify-center sm:justify-start gap-2">
-                    <span className="bg-slate-100 text-slate-600 px-4 sm:px-5 py-1.5 sm:py-2 rounded-xl font-black text-[10px] sm:text-xs uppercase tracking-widest border border-slate-200/60 shadow-sm">Kelas {publicStudent.kelas || '-'}</span>
-                    <span className="bg-emerald-50 text-emerald-700 px-4 sm:px-5 py-1.5 sm:py-2 rounded-xl font-black text-[10px] sm:text-xs uppercase tracking-widest border border-emerald-100/60 shadow-sm">Klp: {publicStudent.halaqoh || '-'}</span>
+                    <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-4 sm:px-5 py-1.5 sm:py-2 rounded-xl font-black text-[10px] sm:text-xs uppercase tracking-widest border border-slate-200/60 dark:border-slate-700 shadow-sm">Kelas {publicStudent.kelas || '-'}</span>
+                    <span className="bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 px-4 sm:px-5 py-1.5 sm:py-2 rounded-xl font-black text-[10px] sm:text-xs uppercase tracking-widest border border-emerald-100/60 dark:border-emerald-500/20 shadow-sm">Klp: {publicStudent.halaqoh || '-'}</span>
                   </div>
                 </div>
               </div>
@@ -745,20 +751,20 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
 
             {/* STATUS TERAKHIR (LATEST PROGRESS) - Solusi input jarang */}
             {(latestTahsin || latestTahfidz || latestMurojaah) && !isPrintingAll && (
-              <div className="p-6 sm:p-10 bg-slate-50 border-b border-slate-100 print:hidden">
+              <div className="p-6 sm:p-10 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800 print:hidden">
                 <div className="flex items-center gap-2 mb-6">
                   <div className="w-2 h-6 bg-amber-400 rounded-full"></div>
-                  <h3 className="text-sm sm:text-base font-black text-slate-700 uppercase tracking-widest">Status Terakhir <span className="text-slate-400 normal-case text-[10px] sm:text-xs font-bold ml-1">(Pembaruan Terkini)</span></h3>
+                  <h3 className="text-sm sm:text-base font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">Status Terakhir <span className="text-slate-400 dark:text-slate-500 normal-case text-[10px] sm:text-xs font-bold ml-1">(Pembaruan Terkini)</span></h3>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* Latest Tahsin */}
                   {latestTahsin && (
-                    <div className="bg-white p-4 rounded-2xl border border-blue-100 shadow-sm relative overflow-hidden">
-                      <div className="absolute top-0 right-0 bg-blue-50 text-blue-500 text-[9px] font-black px-2 py-1 rounded-bl-xl border-b border-l border-blue-100">{formatShortDate(new Date(latestTahsin.date))}</div>
+                    <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-blue-100 dark:border-blue-500/20 shadow-sm relative overflow-hidden">
+                      <div className="absolute top-0 right-0 bg-blue-50 dark:bg-blue-500/10 text-blue-500 dark:text-blue-400 text-[9px] font-black px-2 py-1 rounded-bl-xl border-b border-l border-blue-100 dark:border-blue-500/20">{formatShortDate(new Date(latestTahsin.date))}</div>
                       <div className="flex items-center gap-2 mb-3 mt-1 sm:mt-0">
-                        <div className="p-1.5 bg-blue-100 text-blue-600 rounded-lg"><BookOpen size={14} strokeWidth={2.5} /></div>
-                        <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-blue-700 flex items-center gap-1">
+                        <div className="p-1.5 bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-lg"><BookOpen size={14} strokeWidth={2.5} /></div>
+                        <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-blue-700 dark:text-blue-400 flex items-center gap-1">
                           Tahsin
                         </span>
                       </div>
@@ -768,11 +774,11 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
 
                   {/* Latest Tahfidz */}
                   {latestTahfidz && (
-                    <div className="bg-white p-4 rounded-2xl border border-purple-100 shadow-sm relative overflow-hidden">
-                      <div className="absolute top-0 right-0 bg-purple-50 text-purple-500 text-[9px] font-black px-2 py-1 rounded-bl-xl border-b border-l border-purple-100">{formatShortDate(new Date(latestTahfidz.date))}</div>
+                    <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-purple-100 dark:border-purple-500/20 shadow-sm relative overflow-hidden">
+                      <div className="absolute top-0 right-0 bg-purple-50 dark:bg-purple-500/10 text-purple-500 dark:text-purple-400 text-[9px] font-black px-2 py-1 rounded-bl-xl border-b border-l border-purple-100 dark:border-purple-500/20">{formatShortDate(new Date(latestTahfidz.date))}</div>
                       <div className="flex items-center gap-2 mb-3 mt-1 sm:mt-0">
-                        <div className="p-1.5 bg-purple-100 text-purple-600 rounded-lg"><Mic size={14} strokeWidth={2.5} /></div>
-                        <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-purple-700 flex items-center gap-1">
+                        <div className="p-1.5 bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 rounded-lg"><Mic size={14} strokeWidth={2.5} /></div>
+                        <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-purple-700 dark:text-purple-400 flex items-center gap-1">
                           Tahfidz
                         </span>
                       </div>
@@ -782,48 +788,48 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
 
                   {/* Latest Murojaah */}
                   {latestMurojaah && (
-                    <div className="bg-white p-4 rounded-2xl border border-emerald-100 shadow-sm relative overflow-hidden">
-                      <div className="absolute top-0 right-0 bg-emerald-50 text-emerald-500 text-[9px] font-black px-2 py-1 rounded-bl-xl border-b border-l border-emerald-100">{formatShortDate(new Date(latestMurojaah.date))}</div>
+                    <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-500/20 shadow-sm relative overflow-hidden">
+                      <div className="absolute top-0 right-0 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 text-[9px] font-black px-2 py-1 rounded-bl-xl border-b border-l border-emerald-100 dark:border-emerald-500/20">{formatShortDate(new Date(latestMurojaah.date))}</div>
                       <div className="flex items-center gap-2 mb-3 mt-1 sm:mt-0">
-                        <div className="p-1.5 bg-emerald-100 text-emerald-600 rounded-lg"><Repeat size={14} strokeWidth={2.5} /></div>
-                        <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-emerald-700">Murojaah</span>
+                        <div className="p-1.5 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-lg"><Repeat size={14} strokeWidth={2.5} /></div>
+                        <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-400">Murojaah</span>
                       </div>
                       <div className="pl-1"><ExpandableText text={formatPrintData(latestMurojaah.m, '-', null, null)} /></div>
                     </div>
                   )}
                 </div>
 
-                <p className="text-[10px] sm:text-xs text-slate-400 mt-4 sm:mt-5 font-bold italic text-center sm:text-left bg-white px-4 py-2 rounded-xl border border-slate-100">
+                <p className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 mt-4 sm:mt-5 font-bold italic text-center sm:text-left bg-white dark:bg-slate-800 px-4 py-2 rounded-xl border border-slate-100 dark:border-slate-700">
                   💡 <span className="text-amber-500">Tips:</span> Menampilkan batas capaian hafalan/bacaan terakhir Ananda. Guru cukup mengisi Mutabaah sekali waktu saja, dan status terkini akan otomatis tampil di sini.
                 </p>
               </div>
             )}
 
             {/* Navigasi & Tab (Segmented Control style) */}
-            <div className="bg-slate-50/80 px-4 sm:px-10 py-5 flex flex-col lg:flex-row justify-between items-center gap-5 print:hidden border-b border-slate-100">
+            <div className="bg-slate-50/80 dark:bg-slate-900/80 px-4 sm:px-10 py-5 flex flex-col lg:flex-row justify-between items-center gap-5 print:hidden border-b border-slate-100 dark:border-slate-800">
               {/* Navigasi Arsip Mingguan */}
-              <div className="flex items-center justify-between w-full lg:w-auto bg-white rounded-2xl shadow-sm border border-slate-200/60 p-1.5">
-                <button onClick={() => changePublicWeek(-7)} className="p-2 sm:p-2.5 bg-slate-50 hover:bg-emerald-50 rounded-xl transition-colors text-slate-400 hover:text-emerald-500"><ChevronLeft size={20} /></button>
+              <div className="flex items-center justify-between w-full lg:w-auto bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-700 p-1.5">
+                <button onClick={() => changePublicWeek(-7)} className="p-2 sm:p-2.5 bg-slate-50 dark:bg-slate-900 hover:bg-emerald-50 dark:hover:bg-emerald-500/20 rounded-xl transition-colors text-slate-400 dark:text-slate-500 hover:text-emerald-500 dark:hover:text-emerald-400"><ChevronLeft size={20} /></button>
                 <div className="flex flex-col items-center px-4 sm:px-6 min-w-[140px]">
                   <span className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Periode Laporan</span>
-                  <span className="text-xs sm:text-sm font-black text-slate-700">{formatPeriode(weekDates[0], weekDates[4])}</span>
+                  <span className="text-xs sm:text-sm font-black text-slate-700 dark:text-slate-200">{formatPeriode(weekDates[0], weekDates[4])}</span>
                 </div>
-                <button onClick={() => changePublicWeek(7)} className="p-2 sm:p-2.5 bg-slate-50 hover:bg-emerald-50 rounded-xl transition-colors text-slate-400 hover:text-emerald-500"><ChevronRight size={20} /></button>
+                <button onClick={() => changePublicWeek(7)} className="p-2 sm:p-2.5 bg-slate-50 dark:bg-slate-900 hover:bg-emerald-50 dark:hover:bg-emerald-500/20 rounded-xl transition-colors text-slate-400 dark:text-slate-500 hover:text-emerald-500 dark:hover:text-emerald-400"><ChevronRight size={20} /></button>
               </div>
 
               {/* Tab Toggle */}
-              <div className="flex w-full lg:w-auto bg-slate-200/50 p-1.5 rounded-2xl">
-                <button onClick={() => setPublicTab('lesson_plan')} className={`flex-1 lg:flex-none py-2.5 sm:py-3 px-6 text-[11px] sm:text-xs font-black rounded-xl transition-all duration-300 ${publicTab === 'lesson_plan' ? 'bg-white text-emerald-600 shadow-sm ring-1 ring-slate-900/5' : 'text-slate-500 hover:text-slate-700'}`}>Target (Lesson Plan)</button>
-                <button onClick={() => setPublicTab('jurnal')} className={`flex-1 lg:flex-none py-2.5 sm:py-3 px-6 text-[11px] sm:text-xs font-black rounded-xl transition-all duration-300 ${publicTab === 'jurnal' ? 'bg-white text-blue-600 shadow-sm ring-1 ring-slate-900/5' : 'text-slate-500 hover:text-slate-700'}`}>Mutabaah</button>
+              <div className="flex w-full lg:w-auto bg-slate-200/50 dark:bg-slate-800/50 p-1.5 rounded-2xl">
+                <button onClick={() => setPublicTab('lesson_plan')} className={`flex-1 lg:flex-none py-2.5 sm:py-3 px-6 text-[11px] sm:text-xs font-black rounded-xl transition-all duration-300 ${publicTab === 'lesson_plan' ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm ring-1 ring-slate-900/5 dark:ring-0' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>Target (Lesson Plan)</button>
+                <button onClick={() => setPublicTab('jurnal')} className={`flex-1 lg:flex-none py-2.5 sm:py-3 px-6 text-[11px] sm:text-xs font-black rounded-xl transition-all duration-300 ${publicTab === 'jurnal' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm ring-1 ring-slate-900/5 dark:ring-0' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>Mutabaah</button>
               </div>
             </div>
 
             {/* Kembali ke pekan ini */}
             {formatDateObj(weekStart) !== formatDateObj(getMonday(new Date())) && !isPrintingAll && (
-              <div className="bg-amber-50/50 text-center py-2 border-b border-amber-100 print:hidden">
+              <div className="bg-amber-50/50 dark:bg-amber-500/10 text-center py-2 border-b border-amber-100 dark:border-amber-500/20 print:hidden">
                 <button
                   onClick={() => setPublicWeekStart(getMonday(new Date()))}
-                  className="text-[11px] sm:text-xs font-black text-amber-600 hover:text-amber-700 transition-colors flex items-center justify-center gap-1.5 mx-auto"
+                  className="text-[11px] sm:text-xs font-black text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 transition-colors flex items-center justify-center gap-1.5 mx-auto"
                 >
                   <RotateCcw size={14} /> Kembali ke Pekan Ini
                 </button>
@@ -831,7 +837,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
             )}
 
             {/* Daftar Hari */}
-            <div className="p-4 sm:p-10 flex flex-col gap-5 sm:gap-6 bg-[#f8fafc]">
+            <div className="p-4 sm:p-10 flex flex-col gap-5 sm:gap-6 bg-[#f8fafc] dark:bg-slate-950">
               {datesToDisplay.map((dateObj) => {
                 const dateStr = formatDateObj(dateObj);
                 const rec = publicStudent.records?.[dateStr] || {};
@@ -848,29 +854,29 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
                 const valCF = rec[k.cF] && rec[k.cF] !== '-' ? String(rec[k.cF]) : '-';
 
                 return (
-                  <div key={dateStr} className="bg-white border border-slate-200/60 rounded-[20px] sm:rounded-[2rem] p-5 sm:p-6 shadow-sm hover:shadow-md transition-all duration-300 print:break-inside-avoid relative overflow-hidden group">
+                  <div key={dateStr} className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-[20px] sm:rounded-[2rem] p-5 sm:p-6 shadow-sm hover:shadow-md transition-all duration-300 print:break-inside-avoid relative overflow-hidden group">
 
                     {/* Indicator Line */}
                     <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-emerald-400 opacity-80"></div>
 
-                    <div className="flex justify-between items-center mb-5 sm:mb-6 border-b border-slate-100 pb-4 pl-3">
+                    <div className="flex justify-between items-center mb-5 sm:mb-6 border-b border-slate-100 dark:border-slate-800 pb-4 pl-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
                           <Calendar size={20} />
                         </div>
                         <div className="flex flex-col">
-                          <span className="text-xs sm:text-sm font-black text-slate-800 uppercase tracking-wider"> {['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][dateObj.getDay()]}</span>
-                          <span className="text-[10px] sm:text-xs font-bold text-slate-400">{formatShortDate(dateObj)}</span>
+                          <span className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-wider"> {['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][dateObj.getDay()]}</span>
+                          <span className="text-[10px] sm:text-xs font-bold text-slate-400 dark:text-slate-500">{formatShortDate(dateObj)}</span>
                         </div>
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 pl-2 sm:pl-3">
                       {/* Tahsin */}
-                      <div className="bg-blue-50/40 p-4 rounded-2xl border border-blue-100/50 hover:bg-blue-50/80 transition-colors flex flex-col">
+                      <div className="bg-blue-50/40 dark:bg-blue-500/5 p-4 rounded-2xl border border-blue-100/50 dark:border-blue-500/20 hover:bg-blue-50/80 dark:hover:bg-blue-500/10 transition-colors flex flex-col">
                         <div className="flex items-center gap-2 mb-2 sm:mb-3">
-                          <div className="p-1.5 bg-blue-100 text-blue-600 rounded-lg"><BookOpen size={14} strokeWidth={2.5} /></div>
-                          <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-blue-700 flex items-center gap-1">
+                          <div className="p-1.5 bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-lg"><BookOpen size={14} strokeWidth={2.5} /></div>
+                          <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-blue-700 dark:text-blue-400 flex items-center gap-1">
                             Tahsin
                             {publicTab === 'lesson_plan' && rec?.jurnalTahsin && rec?.jurnalTahsin !== '-' && valT !== '-' && <Check size={14} className="text-emerald-500" strokeWidth={4} title="Target Tercapai" />}
                           </span>
@@ -879,10 +885,10 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
                       </div>
 
                       {/* Tahfidz */}
-                      <div className="bg-purple-50/40 p-4 rounded-2xl border border-purple-100/50 hover:bg-purple-50/80 transition-colors flex flex-col">
+                      <div className="bg-purple-50/40 dark:bg-purple-500/5 p-4 rounded-2xl border border-purple-100/50 dark:border-purple-500/20 hover:bg-purple-50/80 dark:hover:bg-purple-500/10 transition-colors flex flex-col">
                         <div className="flex items-center gap-2 mb-2 sm:mb-3">
-                          <div className="p-1.5 bg-purple-100 text-purple-600 rounded-lg"><Mic size={14} strokeWidth={2.5} /></div>
-                          <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-purple-700 flex items-center gap-1">
+                          <div className="p-1.5 bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 rounded-lg"><Mic size={14} strokeWidth={2.5} /></div>
+                          <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-purple-700 dark:text-purple-400 flex items-center gap-1">
                             Tahfidz
                             {publicTab === 'lesson_plan' && rec?.jurnalTahfidz && rec?.jurnalTahfidz !== '-' && valF !== '-' && <Check size={14} className="text-emerald-500" strokeWidth={4} title="Target Tercapai" />}
                           </span>
@@ -891,19 +897,19 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
                       </div>
 
                       {/* Murojaah */}
-                      <div className="bg-emerald-50/40 p-4 rounded-2xl border border-emerald-100/50 hover:bg-emerald-50/80 transition-colors flex flex-col">
+                      <div className="bg-emerald-50/40 dark:bg-emerald-500/5 p-4 rounded-2xl border border-emerald-100/50 dark:border-emerald-500/20 hover:bg-emerald-50/80 dark:hover:bg-emerald-500/10 transition-colors flex flex-col">
                         <div className="flex items-center gap-2 mb-2 sm:mb-3">
-                          <div className="p-1.5 bg-emerald-100 text-emerald-600 rounded-lg"><Repeat size={14} strokeWidth={2.5} /></div>
-                          <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-emerald-700">Murojaah</span>
+                          <div className="p-1.5 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-lg"><Repeat size={14} strokeWidth={2.5} /></div>
+                          <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-400">Murojaah</span>
                         </div>
                         <div className="pl-1"><ExpandableText text={valM} /></div>
                       </div>
 
                       {/* Catatan */}
-                      <div className="bg-orange-50/40 p-4 rounded-2xl border border-orange-100/50 hover:bg-orange-50/80 transition-colors flex flex-col">
+                      <div className="bg-orange-50/40 dark:bg-orange-500/5 p-4 rounded-2xl border border-orange-100/50 dark:border-orange-500/20 hover:bg-orange-50/80 dark:hover:bg-orange-500/10 transition-colors flex flex-col">
                         <div className="flex items-center gap-2 mb-2 sm:mb-3">
-                          <div className="p-1.5 bg-orange-100 text-orange-600 rounded-lg"><FileText size={14} strokeWidth={2.5} /></div>
-                          <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-orange-700">Catatan</span>
+                          <div className="p-1.5 bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400 rounded-lg"><FileText size={14} strokeWidth={2.5} /></div>
+                          <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-orange-700 dark:text-orange-400">Catatan</span>
                         </div>
                         <div className="pl-1">{renderCatatanDetail(valC, valCT, valCF)}</div>
                       </div>
@@ -918,7 +924,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
                 const r = publicStudent.records?.[ds] || {};
                 return !((r[k.t] && r[k.t] !== '-') || (r[k.tNilai] && r[k.tNilai] !== '-') || (r[k.tsNilai] && r[k.tsNilai] !== '-') || (r[k.f] && r[k.f] !== '-') || (r[k.fNilai] && r[k.fNilai] !== '-') || (r[k.m] && r[k.m] !== '-') || (r[k.c] && r[k.c] !== '-') || (r[k.cT] && r[k.cT] !== '-') || (r[k.cF] && r[k.cF] !== '-'));
               }) && (
-                  <div className="py-20 text-center flex flex-col items-center gap-3 opacity-40">
+                  <div className="py-20 text-center flex flex-col items-center gap-3 opacity-40 dark:opacity-30">
                     <Calendar size={48} />
                     <p className="font-bold">{isPrintingAll ? 'Tidak ada riwayat rekaman.' : 'Tidak ada data rekaman pada pekan ini.'}</p>
                   </div>
@@ -926,17 +932,17 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
             </div>
 
             {/* Footer Laporan */}
-            <div className="bg-slate-900 p-6 sm:p-10 flex flex-col sm:flex-row justify-between items-center gap-5 text-white text-center sm:text-left relative overflow-hidden">
+            <div className="bg-slate-900 dark:bg-black p-6 sm:p-10 flex flex-col sm:flex-row justify-between items-center gap-5 text-white text-center sm:text-left relative overflow-hidden">
               <div className="absolute inset-0 opacity-10" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff'%3E%3Cpath d='M50 5 L62 38 L95 50 L62 62 L50 95 L38 62 L5 50 L38 38 Z' /%3E%3C/g%3E%3C/svg%3E")`, backgroundSize: '40px 40px' }}></div>
               <div className="flex items-center justify-center sm:justify-start gap-4 w-full sm:w-auto relative z-10">
-                <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center backdrop-blur-sm border border-white/10 shadow-inner"><Users size={20} className="text-emerald-400" /></div>
+                <div className="w-12 h-12 rounded-2xl bg-white/10 dark:bg-white/5 flex items-center justify-center backdrop-blur-sm border border-white/10 dark:border-white/5 shadow-inner"><Users size={20} className="text-emerald-400" /></div>
                 <div className="flex flex-col">
                   <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest mb-0.5">Guru / Pembimbing</span>
                   <strong className="text-sm sm:text-base font-black text-white">{publicTeacher || '-'}</strong>
                 </div>
               </div>
               <div className="flex items-center justify-center sm:justify-start gap-4 w-full sm:w-auto relative z-10">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 flex items-center justify-center backdrop-blur-sm border border-emerald-500/20 shadow-inner"><Calendar size={20} className="text-emerald-400" /></div>
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 dark:bg-emerald-500/10 flex items-center justify-center backdrop-blur-sm border border-emerald-500/20 dark:border-emerald-500/10 shadow-inner"><Calendar size={20} className="text-emerald-400" /></div>
                 <div className="flex flex-col">
                   <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest mb-0.5">Periode Evaluasi</span>
                   <strong className="text-sm sm:text-base font-black text-white">{formatPeriode(weekDates[0], weekDates[4])}</strong>
@@ -1379,22 +1385,22 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
               </div>
               <h3 className="text-2xl font-black tracking-tight drop-shadow-sm relative z-10">{copySuccessModal.title}</h3>
             </div>
-            
+
             <div className="p-6 bg-white flex flex-col gap-4">
               <p className="text-slate-600 text-sm font-medium leading-relaxed text-center">
                 {copySuccessModal.message}
               </p>
-              
+
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center gap-3">
                 <div className="flex-1 overflow-hidden text-left">
                   <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Tautan Laporan</p>
                   <p className="text-sm font-semibold text-slate-700 truncate">{copySuccessModal.link}</p>
                 </div>
-                <button 
+                <button
                   onClick={() => {
                     copyTextToClipboard(copySuccessModal.link);
                     if (showToast) showToast("Tautan disalin!");
-                  }} 
+                  }}
                   className="w-10 h-10 bg-white border border-slate-200 rounded-lg flex items-center justify-center text-slate-500 hover:text-emerald-600 hover:border-emerald-200 hover:bg-emerald-50 transition-all shrink-0"
                   title="Salin Tautan Saja"
                 >
@@ -1402,8 +1408,8 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
                 </button>
               </div>
 
-              <button 
-                onClick={() => setCopySuccessModal({ isOpen: false, title: '', message: '', link: '' })} 
+              <button
+                onClick={() => setCopySuccessModal({ isOpen: false, title: '', message: '', link: '' })}
                 className="w-full mt-2 py-3.5 bg-slate-900 text-white hover:bg-slate-800 rounded-xl font-black shadow-lg shadow-slate-200 active:scale-95 transition-all"
               >
                 Tutup

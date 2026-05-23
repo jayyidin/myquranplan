@@ -39,7 +39,7 @@ const TabelProgresDenganPencarian = ({ students = [], onOpenModal }) => {
             </div>
 
             {/* --- Tabel Daftar Siswa (Hasil Filter) --- */}
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto hide-scrollbar overscroll-x-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
                 <table className="w-full text-center border-collapse min-w-[700px]">
                     <thead>
                         <tr className="border-b border-gray-200 dark:border-slate-800 text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
@@ -57,18 +57,18 @@ const TabelProgresDenganPencarian = ({ students = [], onOpenModal }) => {
                             filteredStudents.map((student) => (
                                 <tr
                                     key={student.id}
-                                    className="group border-b border-gray-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                                    className="group border-b border-gray-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-colors duration-200"
                                 >
-                                    <td className="p-3 text-left sticky left-0 bg-white dark:bg-slate-900/70 group-hover:bg-slate-50 dark:group-hover:bg-slate-800/50 z-10 font-semibold text-slate-700 dark:text-slate-200">
+                                    <td className="p-3 text-left sticky left-0 bg-white dark:bg-slate-900/70 group-hover:bg-slate-50 dark:group-hover:bg-slate-800/80 z-10 font-semibold text-slate-700 dark:text-slate-200 transition-colors duration-200">
                                         <div className={`leading-tight ${student.name.length > 24 ? 'text-[10px] sm:text-xs whitespace-normal line-clamp-2' : student.name.length > 18 ? 'text-xs sm:text-sm whitespace-normal line-clamp-2' : 'text-sm'}`}>
                                             {student.name}
                                         </div>
                                     </td>
                                     {/* Tombol ini akan memicu fungsi onOpenModal yang di-pass dari parent */}
-                                    <td className="p-3"><button onClick={() => onOpenModal(student, 'tahsin')} className="text-emerald-600 dark:text-emerald-400 hover:underline text-sm font-medium">Input</button></td>
-                                    <td className="p-3"><button onClick={() => onOpenModal(student, 'tahfidz')} className="text-emerald-600 dark:text-emerald-400 hover:underline text-sm font-medium">Input</button></td>
-                                    <td className="p-3"><button onClick={() => onOpenModal(student, 'murojaah')} className="text-emerald-600 dark:text-emerald-400 hover:underline text-sm font-medium">Input</button></td>
-                                    <td className="p-3"><button onClick={() => onOpenModal(student, 'catatan')} className="text-emerald-600 dark:text-emerald-400 hover:underline text-sm font-medium">Input</button></td>
+                                    <td className="p-3"><button onClick={() => onOpenModal(student, 'tahsin')} className="text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">Input</button></td>
+                                    <td className="p-3"><button onClick={() => onOpenModal(student, 'tahfidz')} className="text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">Input</button></td>
+                                    <td className="p-3"><button onClick={() => onOpenModal(student, 'murojaah')} className="text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">Input</button></td>
+                                    <td className="p-3"><button onClick={() => onOpenModal(student, 'catatan')} className="text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">Input</button></td>
                                 </tr>
                             ))
                         ) : (

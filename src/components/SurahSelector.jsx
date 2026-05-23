@@ -25,7 +25,7 @@ const SurahSelector = ({ value, onChange, surahList, placeholder = "Pilih Surat.
     // Sanitize the search term by making it lowercase and removing all non-alphanumeric characters.
     // This makes matching more lenient (e.g., "al fatihah" will match "Al-Fatihah").
     const term = searchTerm.toLowerCase().replace(/[^a-z0-9]/g, '');
-    
+
     return surahList.filter(s => {
       // Create a searchable string for each surah that includes its number and name,
       // also sanitized in the same way as the search term.
@@ -38,6 +38,7 @@ const SurahSelector = ({ value, onChange, surahList, placeholder = "Pilih Surat.
   const isInvalid = useMemo(() => {
     const term = searchTerm.trim();
     if (!term) return false;
+    if (term === '-') return false;
     if (term === value) return false; // Valid jika nilainya persis sama dengan yang sudah dipilih
 
     const sanitizedTerm = term.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -79,7 +80,7 @@ const SurahSelector = ({ value, onChange, surahList, placeholder = "Pilih Surat.
         disabled={disabled}
         className={`${className} ${isInvalid ? '!border-red-500 !text-red-600 focus:!ring-red-200 focus:!border-red-500' : ''}`}
       />
-      
+
       <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center">
         {searchTerm && !disabled && (
           <button

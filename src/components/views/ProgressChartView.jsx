@@ -211,48 +211,48 @@ const ProgressChartView = ({ students, activeHalaqoh, allStudents, weekDates, ch
   }, [globalStats.tahfidzJuzCounts]);
 
   return (
-    <div className="flex-1 w-full h-full overflow-y-auto bg-slate-50 p-4 sm:p-6 md:p-8 custom-scrollbar">
+    <div className="flex-1 w-full h-full overflow-y-auto bg-slate-50 dark:bg-slate-900/50 p-4 sm:p-6 md:p-8 custom-scrollbar transition-colors duration-500">
       <div className="max-w-6xl mx-auto space-y-6 pb-20">
-        <div className="flex items-center gap-4 mb-6 border-b border-slate-200 pb-5">
-          <div className="w-14 h-14 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center shrink-0">
+        <div className="flex items-center gap-4 mb-6 border-b border-slate-200 dark:border-slate-800 pb-5">
+          <div className="w-14 h-14 bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center shrink-0">
             <PieChart size={28} />
           </div>
           <div>
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-slate-900 tracking-tight">Statistik Pencapaian</h1>
-            <p className="text-sm text-slate-500 font-medium mt-1">Pantau distribusi level tahsin dan capaian siswa secara visual.</p>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-slate-900 dark:text-slate-100 tracking-tight">Statistik Pencapaian</h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mt-1">Pantau pencapaian level tahsin dan target tahfidz siswa secara visual.</p>
           </div>
         </div>
 
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-3 flex flex-col xl:flex-row gap-3 mb-6">
-          <div className="flex bg-slate-50 p-1.5 rounded-2xl border border-slate-200 w-full xl:w-auto">
-            <button onClick={() => setDataSourceType('all')} className={`flex-1 xl:flex-none px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-all ${dataSourceType === 'all' ? 'bg-emerald-500 text-white shadow-md' : 'text-slate-500 hover:bg-white hover:shadow-sm'}`}>Semua Siswa</button>
-            <button onClick={() => setDataSourceType('filtered')} className={`flex-1 xl:flex-none px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-all ${dataSourceType === 'filtered' ? 'bg-emerald-500 text-white shadow-md' : 'text-slate-500 hover:bg-white hover:shadow-sm'}`}>Halaqoh Aktif</button>
+        <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm p-3 flex flex-col xl:flex-row gap-3 mb-6 transition-colors">
+          <div className="flex bg-slate-50 dark:bg-slate-900/50 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700 w-full xl:w-auto">
+            <button onClick={() => setDataSourceType('all')} className={`flex-1 xl:flex-none px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-all ${dataSourceType === 'all' ? 'bg-emerald-500 text-white shadow-md' : 'text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:shadow-sm'}`}>Semua Siswa</button>
+            <button onClick={() => setDataSourceType('filtered')} className={`flex-1 xl:flex-none px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-all ${dataSourceType === 'filtered' ? 'bg-emerald-500 text-white shadow-md' : 'text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:shadow-sm'}`}>Halaqoh Aktif</button>
           </div>
 
-          <div className="flex bg-slate-50 p-1.5 rounded-2xl border border-slate-200 w-full xl:w-auto xl:ml-auto">
-            <button onClick={() => setPeriodType('all')} className={`flex-1 xl:flex-none px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-all ${periodType === 'all' ? 'bg-indigo-500 text-white shadow-md' : 'text-slate-500 hover:bg-white hover:shadow-sm'}`}>Semua Waktu</button>
-            <button onClick={() => setPeriodType('monthly')} className={`flex-1 xl:flex-none px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-all ${periodType === 'monthly' ? 'bg-indigo-500 text-white shadow-md' : 'text-slate-500 hover:bg-white hover:shadow-sm'}`}>Bulanan</button>
-            <button onClick={() => setPeriodType('weekly')} className={`flex-1 xl:flex-none px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-all ${periodType === 'weekly' ? 'bg-indigo-500 text-white shadow-md' : 'text-slate-500 hover:bg-white hover:shadow-sm'}`}>Mingguan</button>
+          <div className="flex bg-slate-50 dark:bg-slate-900/50 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700 w-full xl:w-auto xl:ml-auto">
+            <button onClick={() => setPeriodType('all')} className={`flex-1 xl:flex-none px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-all ${periodType === 'all' ? 'bg-indigo-500 text-white shadow-md' : 'text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:shadow-sm'}`}>Semua Waktu</button>
+            <button onClick={() => setPeriodType('monthly')} className={`flex-1 xl:flex-none px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-all ${periodType === 'monthly' ? 'bg-indigo-500 text-white shadow-md' : 'text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:shadow-sm'}`}>Bulanan</button>
+            <button onClick={() => setPeriodType('weekly')} className={`flex-1 xl:flex-none px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-all ${periodType === 'weekly' ? 'bg-indigo-500 text-white shadow-md' : 'text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:shadow-sm'}`}>Mingguan</button>
           </div>
 
           {periodType !== 'all' && (
-            <div className="flex items-center justify-between xl:w-[360px] bg-slate-50 rounded-2xl px-2 py-1.5 border border-slate-200">
-              <button onClick={() => periodType === 'weekly' ? changeWeek(-7) : changeMonth(-1)} className="p-2 sm:p-2.5 rounded-xl text-slate-500 hover:bg-white hover:text-indigo-600 hover:shadow-sm transition-all"><ChevronLeft size={20} /></button>
+            <div className="flex items-center justify-between xl:w-[360px] bg-slate-50 dark:bg-slate-900/50 rounded-2xl px-2 py-1.5 border border-slate-200 dark:border-slate-700">
+              <button onClick={() => periodType === 'weekly' ? changeWeek(-7) : changeMonth(-1)} className="p-2 sm:p-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:text-indigo-600 dark:hover:text-indigo-400 hover:shadow-sm transition-all"><ChevronLeft size={20} /></button>
               <div className="text-center px-2">
-                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{periodRange?.label}</div>
-                <div className="text-sm font-black text-slate-800 flex items-center justify-center gap-1.5"><Calendar size={14} className="text-indigo-500" /> {periodRange?.title}</div>
+                <div className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-0.5">{periodRange?.label}</div>
+                <div className="text-sm font-black text-slate-800 dark:text-slate-200 flex items-center justify-center gap-1.5"><Calendar size={14} className="text-indigo-500 dark:text-indigo-400" /> {periodRange?.title}</div>
               </div>
-              <button onClick={() => periodType === 'weekly' ? changeWeek(7) : changeMonth(1)} className="p-2 sm:p-2.5 rounded-xl text-slate-500 hover:bg-white hover:text-indigo-600 hover:shadow-sm transition-all"><ChevronRight size={20} /></button>
+              <button onClick={() => periodType === 'weekly' ? changeWeek(7) : changeMonth(1)} className="p-2 sm:p-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:text-indigo-600 dark:hover:text-indigo-400 hover:shadow-sm transition-all"><ChevronRight size={20} /></button>
             </div>
           )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Bar Chart Tahsin */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500 transition-colors">
             <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-2"><BookOpen className="text-blue-500" size={20} /><h2 className="text-lg font-black text-slate-800">Distribusi Tahsin</h2></div>
-              <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-md uppercase tracking-widest hidden sm:block">Level</span>
+              <div className="flex items-center gap-2"><BookOpen className="text-blue-500 dark:text-blue-400" size={20} /><h2 className="text-lg font-black text-slate-800 dark:text-slate-100">Pencapaian Tahsin</h2></div>
+              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-md uppercase tracking-widest hidden sm:block">Level</span>
             </div>
             <div className="space-y-4">
               {tahsinLabels.map(label => {
@@ -261,8 +261,8 @@ const ProgressChartView = ({ students, activeHalaqoh, allStudents, weekDates, ch
                 const barWidth = `${(count / maxTahsinCount) * 100}%`;
                 return (
                   <div key={label} className="flex flex-col gap-1.5">
-                    <div className="flex justify-between text-sm font-bold"><span className="text-slate-700">{label}</span><span className="text-slate-500">{count} Siswa ({percentage}%)</span></div>
-                    <div className="w-full bg-slate-100 rounded-full h-3.5 overflow-hidden"><div className={`h-full rounded-full transition-all duration-1000 ${label === 'Belum Ada' ? 'bg-slate-300' : 'bg-gradient-to-r from-blue-400 to-blue-500'}`} style={{ width: barWidth }} /></div>
+                    <div className="flex justify-between text-sm font-bold"><span className="text-slate-700 dark:text-slate-200">{label}</span><span className="text-slate-500 dark:text-slate-400">{count} Siswa ({percentage}%)</span></div>
+                    <div className="w-full bg-slate-100 dark:bg-slate-700/50 rounded-full h-3.5 overflow-hidden"><div className={`h-full rounded-full transition-all duration-1000 ${label === 'Belum Ada' ? 'bg-slate-300 dark:bg-slate-600' : 'bg-gradient-to-r from-blue-400 to-blue-500 dark:from-blue-500 dark:to-blue-600'}`} style={{ width: barWidth }} /></div>
                   </div>
                 );
               })}
@@ -270,10 +270,10 @@ const ProgressChartView = ({ students, activeHalaqoh, allStudents, weekDates, ch
           </div>
 
           {/* Bar Chart Tahfidz */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500 transition-colors" style={{ animationDelay: '100ms' }}>
             <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-2"><Mic className="text-purple-500" size={20} /><h2 className="text-lg font-black text-slate-800">Distribusi Tahfidz</h2></div>
-              <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-md uppercase tracking-widest hidden sm:block">Surat</span>
+              <div className="flex items-center gap-2"><Mic className="text-purple-500 dark:text-purple-400" size={20} /><h2 className="text-lg font-black text-slate-800 dark:text-slate-100">Pencapaian Tahfidz</h2></div>
+              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-md uppercase tracking-widest hidden sm:block">Surat</span>
             </div>
             <div className="space-y-4">
               {tahfidzData.labels.map(label => {
@@ -282,8 +282,8 @@ const ProgressChartView = ({ students, activeHalaqoh, allStudents, weekDates, ch
                 const barWidth = `${(count / tahfidzData.maxCount) * 100}%`;
                 return (
                   <div key={label} className="flex flex-col gap-1.5">
-                    <div className="flex justify-between text-sm font-bold"><span className="text-slate-700 truncate mr-2" title={label}>{label}</span><span className="text-slate-500 shrink-0">{count} Siswa ({percentage}%)</span></div>
-                    <div className="w-full bg-slate-100 rounded-full h-3.5 overflow-hidden"><div className={`h-full rounded-full transition-all duration-1000 ${label === 'Belum Ada' ? 'bg-slate-300' : 'bg-gradient-to-r from-purple-400 to-purple-500'}`} style={{ width: barWidth }} /></div>
+                    <div className="flex justify-between text-sm font-bold"><span className="text-slate-700 dark:text-slate-200 truncate mr-2" title={label}>{label}</span><span className="text-slate-500 dark:text-slate-400 shrink-0">{count} Siswa ({percentage}%)</span></div>
+                    <div className="w-full bg-slate-100 dark:bg-slate-700/50 rounded-full h-3.5 overflow-hidden"><div className={`h-full rounded-full transition-all duration-1000 ${label === 'Belum Ada' ? 'bg-slate-300 dark:bg-slate-600' : 'bg-gradient-to-r from-purple-400 to-purple-500 dark:from-purple-500 dark:to-purple-600'}`} style={{ width: barWidth }} /></div>
                   </div>
                 );
               })}
@@ -291,10 +291,10 @@ const ProgressChartView = ({ students, activeHalaqoh, allStudents, weekDates, ch
           </div>
 
           {/* Bar Chart Tahfidz (Juz) */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500 transition-colors" style={{ animationDelay: '200ms' }}>
             <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-2"><Mic className="text-emerald-500" size={20} /><h2 className="text-lg font-black text-slate-800">Distribusi Tahfidz</h2></div>
-              <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-md uppercase tracking-widest hidden sm:block">Juz</span>
+              <div className="flex items-center gap-2"><Mic className="text-emerald-500 dark:text-emerald-400" size={20} /><h2 className="text-lg font-black text-slate-800 dark:text-slate-100">Pencapaian Tahfidz</h2></div>
+              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-md uppercase tracking-widest hidden sm:block">Juz</span>
             </div>
             <div className="space-y-4">
               {tahfidzJuzData.labels.map(label => {
@@ -303,8 +303,8 @@ const ProgressChartView = ({ students, activeHalaqoh, allStudents, weekDates, ch
                 const barWidth = `${(count / tahfidzJuzData.maxCount) * 100}%`;
                 return (
                   <div key={label} className="flex flex-col gap-1.5">
-                    <div className="flex justify-between text-sm font-bold"><span className="text-slate-700 truncate mr-2" title={label}>{label}</span><span className="text-slate-500 shrink-0">{count} Siswa ({percentage}%)</span></div>
-                    <div className="w-full bg-slate-100 rounded-full h-3.5 overflow-hidden"><div className={`h-full rounded-full transition-all duration-1000 ${label === 'Belum Ada' ? 'bg-slate-300' : 'bg-gradient-to-r from-emerald-400 to-emerald-500'}`} style={{ width: barWidth }} /></div>
+                    <div className="flex justify-between text-sm font-bold"><span className="text-slate-700 dark:text-slate-200 truncate mr-2" title={label}>{label}</span><span className="text-slate-500 dark:text-slate-400 shrink-0">{count} Siswa ({percentage}%)</span></div>
+                    <div className="w-full bg-slate-100 dark:bg-slate-700/50 rounded-full h-3.5 overflow-hidden"><div className={`h-full rounded-full transition-all duration-1000 ${label === 'Belum Ada' ? 'bg-slate-300 dark:bg-slate-600' : 'bg-gradient-to-r from-emerald-400 to-emerald-500 dark:from-emerald-500 dark:to-emerald-600'}`} style={{ width: barWidth }} /></div>
                   </div>
                 );
               })}
@@ -313,11 +313,11 @@ const ProgressChartView = ({ students, activeHalaqoh, allStudents, weekDates, ch
 
           {/* Widget Informasi */}
           <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6 mt-2">
-            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex items-center gap-5">
-              <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center shrink-0"><Users size={32} /></div>
-              <div><p className="text-xs font-black text-slate-400 uppercase tracking-widest">Total Siswa {dataSourceType === 'all' ? 'Aktif' : 'Terfilter'}</p><p className="text-4xl font-black text-slate-800 leading-none mt-1">{globalStats.totalStudents}</p><p className="text-xs font-bold text-slate-500 mt-2 flex items-center gap-1">Halaqoh: <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-md border border-emerald-100">{dataSourceType === 'all' ? 'Semua Halaqoh' : (activeHalaqoh || 'Semua')}</span></p></div>
+            <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm flex items-center gap-5 transition-colors">
+              <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center shrink-0"><Users size={32} /></div>
+              <div><p className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Total Siswa {dataSourceType === 'all' ? 'Aktif' : 'Terfilter'}</p><p className="text-4xl font-black text-slate-800 dark:text-slate-100 leading-none mt-1">{globalStats.totalStudents}</p><p className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-2 flex items-center gap-1">Halaqoh: <span className="bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded-md border border-emerald-100 dark:border-emerald-500/20">{dataSourceType === 'all' ? 'Semua Halaqoh' : (activeHalaqoh || 'Semua')}</span></p></div>
             </div>
-            <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl p-6 sm:p-8 border border-slate-800 shadow-xl text-white relative overflow-hidden"><div className="absolute -right-10 -top-10 text-white/5"><TrendingUp size={180} /></div><div className="relative z-10"><h3 className="text-lg sm:text-xl font-black text-emerald-400 mb-3 flex items-center gap-2"><TrendingUp size={20} /> Insight Otomatis</h3><p className="text-sm sm:text-base font-medium text-slate-300 leading-relaxed">Berdasarkan data <strong className="text-white">{dataSourceType === 'all' ? 'Semua Siswa' : 'Siswa Terfilter'}</strong> {periodRange ? `periode ${periodRange.label.toLowerCase()}` : 'sepanjang waktu'}, mayoritas berada di level <strong className="text-blue-300 bg-blue-500/20 px-2 py-0.5 rounded-md">{dominantLevel}</strong> untuk Tahsin, serta capaian terbanyak Tahfidz pada <strong className="text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded-md">{topTahfidzSurah}</strong>. Terus pantau perkembangan untuk melihat transisi yang lebih detail secara berkelanjutan.</p></div></div>
+            <div className="bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-950 dark:to-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-800 dark:border-slate-800/80 shadow-xl text-white relative overflow-hidden"><div className="absolute -right-10 -top-10 text-white/5"><TrendingUp size={180} /></div><div className="relative z-10"><h3 className="text-lg sm:text-xl font-black text-emerald-400 mb-3 flex items-center gap-2"><TrendingUp size={20} /> Insight Otomatis</h3><p className="text-sm sm:text-base font-medium text-slate-300 leading-relaxed">Berdasarkan data <strong className="text-white">{dataSourceType === 'all' ? 'Semua Siswa' : 'Siswa Terfilter'}</strong> {periodRange ? `periode ${periodRange.label.toLowerCase()}` : 'sepanjang waktu'}, mayoritas berada di level <strong className="text-blue-300 bg-blue-500/20 px-2 py-0.5 rounded-md">{dominantLevel}</strong> untuk Tahsin, serta capaian terbanyak Tahfidz pada <strong className="text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded-md">{topTahfidzSurah}</strong>. Terus pantau perkembangan untuk melihat transisi yang lebih detail secara berkelanjutan.</p></div></div>
           </div>
         </div>
       </div>

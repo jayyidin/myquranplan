@@ -1383,7 +1383,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
     const list = [];
     for (let i = 0; i < len; i++) {
       const aParts = (ayats[i] || '').split('-');
-      let sStr = surats[i] || ''; if (sStr === '-') sStr = '';
+      let sStr = surats[i] || '';
       let aStr0 = aParts[0] || ''; if (aStr0 === '-') aStr0 = '';
       let nStr = nilais[i] || ''; if (nStr === '-') nStr = '';
       list.push({ id: Date.now() + Math.random(), surat: sStr, ayatStart: aStr0, ayatEnd: aParts[1] || aStr0, nilai: nStr });
@@ -1570,8 +1570,35 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
 
       if (tSurat.includes('Jilid')) {
         tKategori = tahsinCategories.find(c => tSurat.includes(c)) || ''; tSurat = '';
-        const halMatch = rawTahsinAyat.match(/Hal\. ([\d, ]+)/); if (halMatch) tHalaman = halMatch[1].split(',').map(s => s.trim());
-        const brsMatch = rawTahsinAyat.match(/Brs ([\d, ]+)/); if (brsMatch) tBaris = brsMatch[1].split(',').map(s => s.trim());
+
+        if (rawTahsinAyat.includes(' - Hal.') || rawTahsinAyat.match(/Hal\. [\d, ]+ Brs/)) {
+          const parts = rawTahsinAyat.split(' - ');
+          parts.forEach(part => {
+            const halMatch = part.match(/Hal\. ([\d, ]+)/);
+            const brsMatch = part.match(/Brs ([\d, ]+)/);
+            if (halMatch) {
+              const hArr = halMatch[1].split(',').map(s => s.trim());
+              tHalaman.push(...hArr);
+              if (brsMatch) {
+                const bArr = brsMatch[1].split(',').map(s => s.trim());
+                hArr.forEach(h => {
+                  bArr.forEach(b => tBaris.push(`${h}:${b}`));
+                });
+              }
+            }
+          });
+        } else {
+          const halMatch = rawTahsinAyat.match(/Hal\. ([\d, ]+)/); if (halMatch) tHalaman = halMatch[1].split(',').map(s => s.trim());
+          const brsMatch = rawTahsinAyat.match(/Brs ([\d, ]+)/);
+          if (brsMatch) {
+            const bArr = brsMatch[1].split(',').map(s => s.trim());
+            tHalaman.forEach(h => {
+              bArr.forEach(b => tBaris.push(`${h}:${b}`));
+            });
+          }
+        }
+        tHalaman = [...new Set(tHalaman)];
+        tBaris = [...new Set(tBaris)];
         tahsinAyatOnly = '';
       } else if (tSurat.includes('Tajwid') || tSurat.includes('Ghorib') || tSurat.includes('Gharib')) {
         tKategori = tSurat.includes('Tajwid') ? 'Tajwid' : 'Ghorib';
@@ -1660,7 +1687,35 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       return p;
     }));
   };
-  const handleToggleArray = (planId, field, value) => { setLessonPlans(plans => plans.map(p => { if (p.id === planId) { const arr = p[field] || []; let newArr = arr.includes(value) ? arr.filter(x => x !== value) : [...arr, value]; if (field === 'tahsinBaris' || field === 'tahsinHalaman') newArr.sort((a, b) => Number(a) - Number(b)); return { ...p, [field]: newArr }; } return p; })); };
+  const handleToggleArray = (planId, field, value) => {
+    setLessonPlans(plans => plans.map(p => {
+      if (p.id === planId) {
+        const arr = p[field] || [];
+        let newArr = arr.includes(value) ? arr.filter(x => x !== value) : [...arr, value];
+
+        if (field === 'tahsinHalaman') {
+          newArr.sort((a, b) => Number(a) - Number(b));
+          let currentBaris = p.tahsinBaris || [];
+          if (arr.includes(value)) {
+            currentBaris = currentBaris.filter(b => typeof b === 'string' && !b.startsWith(`${value}:`));
+          }
+          return { ...p, [field]: newArr, tahsinBaris: currentBaris };
+        } else if (field === 'tahsinBaris') {
+          newArr.sort((a, b) => {
+            if (typeof a === 'string' && typeof b === 'string' && a.includes(':') && b.includes(':')) {
+              const [ha, ba] = a.split(':');
+              const [hb, bb] = b.split(':');
+              if (Number(ha) === Number(hb)) return Number(ba) - Number(bb);
+              return Number(ha) - Number(hb);
+            }
+            return Number(a) - Number(b);
+          });
+        }
+        return { ...p, [field]: newArr };
+      }
+      return p;
+    }));
+  };
   const handleAddSurat = (planId, listName) => setLessonPlans(plans => plans.map(p => p.id === planId ? { ...p, [listName]: [...p[listName], emptySurat()] } : p));
   const handleRemoveSurat = (planId, listName, suratId) => setLessonPlans(plans => plans.map(p => p.id === planId ? { ...p, [listName]: p[listName].filter(m => m.id !== suratId) } : p));
   const handleSuratChange = (planId, listName, suratId, field, value) => {
@@ -1729,14 +1784,51 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
   const handleSave = async (options, action) => {
     if (!editingId && selectedStudents.length === 0) { showToast('Pilih minimal 1 siswa!'); return; }
     const plan = lessonPlans[0];
-    const formatS = (list) => { const v = list.filter(i => i.surat || i.nilai); return { surat: v.map(i => i.surat || '-').join(', ') || '-', ayat: v.map(i => i.surat ? getAyatRangeOrDefault(i.surat, i.ayatStart, i.ayatEnd) : '-').join(', ') || '-', nilai: v.map(i => i.nilai || '-').join(', ') || '-' }; };
+    const formatS = (list) => {
+      const v = list.filter(i => i.surat || i.nilai);
+      return { surat: v.map(i => i.surat || '-').join(', ') || '-', ayat: v.map(i => (i.surat && i.surat !== '-') ? getAyatRangeOrDefault(i.surat, i.ayatStart, i.ayatEnd) : '-').join(', ') || '-', nilai: v.map(i => i.nilai || '-').join(', ') || '-' };
+    };
     const mS = formatS(plan.murojaah), tS = formatS(plan.tahsinSuratList), fS = formatS(plan.tahfidzSuratList);
     let tahsinKat = plan.tahsinKategori, halAyat = tS.ayat;
 
     if (['Jilid 1', 'Jilid 2', 'Jilid 3', 'Jilid 4', 'Jilid 5', 'Jilid 6'].includes(tahsinKat)) {
       let res = []; const sortedHal = [...plan.tahsinHalaman].sort((a, b) => Number(a) - Number(b));
       if (sortedHal.length === 0) plan.tahsinBaris = [];
-      if (sortedHal.length > 0) res.push('Hal. ' + sortedHal.join(', ')); if (plan.tahsinBaris.length > 0) res.push('Brs ' + plan.tahsinBaris.join(', ')); halAyat = res.length > 0 ? res.join(' ') : '-';
+
+      const barisPerHal = {};
+      let hasBarisFormatBaru = false;
+      plan.tahsinBaris.forEach(b => {
+        if (typeof b === 'string' && b.includes(':')) {
+          hasBarisFormatBaru = true;
+          const [h, brs] = b.split(':');
+          if (!barisPerHal[h]) barisPerHal[h] = [];
+          barisPerHal[h].push(brs);
+        }
+      });
+
+      if (sortedHal.length > 0) {
+        if (hasBarisFormatBaru) {
+          const halParts = [];
+          sortedHal.forEach(h => {
+            let part = `Hal. ${h}`;
+            if (barisPerHal[h] && barisPerHal[h].length > 0) {
+              const sortedBrs = [...barisPerHal[h]].sort((a, b) => Number(a) - Number(b));
+              part += ` Brs ${sortedBrs.join(', ')}`;
+            }
+            halParts.push(part);
+          });
+          halAyat = halParts.join(' - ');
+        } else {
+          res.push('Hal. ' + sortedHal.join(', '));
+          if (plan.tahsinBaris.length > 0) {
+            const sortedBrs = [...plan.tahsinBaris].sort((a, b) => Number(a) - Number(b));
+            res.push('Brs ' + sortedBrs.join(', '));
+          }
+          halAyat = res.length > 0 ? res.join(' ') : '-';
+        }
+      } else {
+        halAyat = '-';
+      }
     } else if (['Tajwid', 'Ghorib', 'Gharib'].includes(tahsinKat)) {
       const sortedHal = [...plan.tahsinHalaman].sort((a, b) => Number(a) - Number(b));
       // BUGS FIXED: Do not clear surah if halaman is empty, users might want to save surah without halaman
