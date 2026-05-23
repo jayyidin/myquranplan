@@ -91,35 +91,35 @@ const SurahSelector = ({ value, onChange, surahList, placeholder = "Pilih Surat.
               onChange(''); // Hapus nilai di parent
               setIsDropdownOpen(true); // Buka kembali dropdown agar bisa melihat semua opsi
             }}
-            className="p-1 mr-0.5 text-gray-400 hover:text-red-500 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
+            className="p-1 mr-0.5 text-gray-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-full transition-colors cursor-pointer"
             title="Hapus"
           >
             <X size={14} strokeWidth={2.5} />
           </button>
         )}
-        <div className="pointer-events-none text-gray-400 pr-1">
+        <div className="pointer-events-none text-gray-400 dark:text-slate-500 pr-1">
           <ChevronDown size={18} />
         </div>
       </div>
 
       {isInvalid && (
-        <div className="absolute z-10 top-full left-0 mt-1 px-1.5 py-0.5 bg-white rounded shadow-sm border border-red-100 text-xs font-semibold text-red-500 animate-in fade-in slide-in-from-top-1 pointer-events-none flex items-center gap-1">
+        <div className="absolute z-10 top-full left-0 mt-1 px-1.5 py-0.5 bg-white dark:bg-slate-800 rounded shadow-sm border border-red-100 dark:border-red-500/20 text-xs font-semibold text-red-500 dark:text-red-400 animate-in fade-in slide-in-from-top-1 pointer-events-none flex items-center gap-1">
           <AlertCircle size={12} className="animate-bounce" />
           <span>Surat tidak ditemukan</span>
         </div>
       )}
 
       {isDropdownOpen && filteredSurahs.length > 0 && (
-        <div className="absolute z-30 top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-top-2 duration-200 origin-top">
+        <div className="absolute z-30 top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-top-2 duration-200 origin-top">
           <div className="p-2">
             {filteredSurahs.map(surah => (
               <div
                 key={surah.no}
                 onClick={() => handleSelect(surah)}
-                className="px-4 py-2.5 text-sm font-bold text-gray-800 rounded-lg hover:bg-blue-50 hover:text-blue-700 transition-colors cursor-pointer flex justify-between items-center group"
+                className="px-4 py-2.5 text-sm font-bold text-gray-800 dark:text-slate-200 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10 hover:text-blue-700 dark:hover:text-blue-400 transition-colors cursor-pointer flex justify-between items-center group"
               >
                 <span>{surah.no}. {surah.name}</span>
-                <span className="text-xs text-gray-400 font-medium group-hover:text-blue-400 transition-colors">{surah.ayat} ayat</span>
+                <span className="text-xs text-gray-400 dark:text-slate-500 font-medium group-hover:text-blue-400 dark:group-hover:text-blue-400 transition-colors">{surah.ayat} ayat</span>
               </div>
             ))}
           </div>

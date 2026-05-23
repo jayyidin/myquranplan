@@ -573,7 +573,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
     const k = publicTab === 'lesson_plan' ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan', cT: 'catatanTahsin', cF: 'catatanTahfidz' } : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan', cT: 'jurnalCatatanTahsin', cF: 'jurnalCatatanTahfidz' };
 
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 flex flex-col p-0 md:p-6 printable-area print:!static print:p-0 print:m-0 transition-all duration-500">
+      <div className="h-[100dvh] w-full bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 flex flex-col p-0 md:p-6 printable-area print:!static print:p-0 print:m-0 transition-all duration-500">
 
         {/* Header Navigasi & Aksi (Sticky Top) */}
         <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md sticky top-0 z-[100000] print:hidden flex flex-col xl:flex-row justify-between items-center p-4 sm:p-6 gap-4 shadow-sm w-full border-b border-slate-200 dark:border-slate-800" data-html2canvas-ignore="true">
@@ -694,7 +694,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
     const datesToDisplay = isPrintingAll ? allDates : weekDates;
 
     return ( // Public Student View
-      <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-gray-800 dark:text-slate-200 flex flex-col items-center p-0 md:p-6 overflow-y-auto transition-all duration-500">
+      <div className="h-[100dvh] w-full bg-slate-100 dark:bg-slate-950 text-gray-800 dark:text-slate-200 flex flex-col items-center p-0 md:p-6 overflow-y-auto overscroll-y-contain custom-scrollbar transition-all duration-500" style={{ WebkitOverflowScrolling: 'touch' }}>
         <div className="fixed bottom-6 right-6 sm:top-6 sm:right-6 sm:bottom-auto z-[100] flex flex-col-reverse sm:flex-row gap-3 print:hidden">
           <button onClick={() => setTheme && setTheme(theme === 'dark' ? 'light' : 'dark')} className="bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 w-14 h-14 sm:w-auto sm:h-auto sm:p-3 rounded-full sm:rounded-xl shadow-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2 mb-2 sm:mb-0" title="Ganti Tema">
             {theme === 'dark' ? <Sun size={24} className="sm:w-[20px] sm:h-[20px] text-amber-500" /> : <Moon size={24} className="sm:w-[20px] sm:h-[20px]" />}
@@ -979,22 +979,22 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
     });
 
     return (
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center relative overflow-hidden transition-colors duration-300">
+      <div className="h-[100dvh] w-full bg-slate-50 dark:bg-slate-950 flex flex-col items-center relative overflow-y-auto overscroll-y-contain custom-scrollbar transition-colors duration-300" style={{ WebkitOverflowScrolling: 'touch' }}>
         {/* HEADER PORTAL - AKSES LOGIN & DAFTAR */}
-        <header className="w-full bg-white/80 border-slate-100 backdrop-blur-md border-b px-4 sm:px-8 py-4 flex justify-between items-center z-50 sticky top-0 shadow-sm transition-all duration-500">
+        <header className="w-full bg-white/80 dark:bg-slate-900/80 border-slate-100 dark:border-slate-800 backdrop-blur-md border-b px-4 sm:px-8 py-4 flex justify-between items-center z-50 sticky top-0 shadow-sm transition-all duration-500">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 sm:w-10 sm:h-10">
               {institutionLogo ? <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain" /> : <BookOpen size={24} className="text-emerald-500" />}
             </div>
             <div className="flex flex-col">
-              <span className="font-arabic font-bold text-slate-800 tracking-tighter text-lg sm:text-2xl transition-all leading-tight">MyQuranPlan</span>
+              <span className="font-arabic font-bold text-slate-800 dark:text-slate-100 tracking-tighter text-lg sm:text-2xl transition-all leading-tight">MyQuranPlan</span>
               <div className="h-0.5 w-full bg-gradient-to-r from-transparent via-amber-500 to-transparent opacity-70 -mt-1"></div>
             </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
             <button
               onClick={() => { setIsParentPortal(false); setIsRegistering(false); setIsForgotPassword(false); }}
-              className="text-[10px] sm:text-xs font-bold text-slate-600 hover:text-emerald-600 px-3 py-2 rounded-xl transition-colors"
+              className="text-[10px] sm:text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 px-3 py-2 rounded-xl transition-colors"
             >
               Masuk
             </button>
@@ -1006,7 +1006,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
             </button>
             <button
               onClick={() => setTheme && setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="p-2 sm:p-2.5 bg-slate-50 text-slate-400 hover:text-amber-500 rounded-xl transition-all active:scale-90 ml-1 sm:ml-2 shadow-sm border border-slate-100"
+              className="p-2 sm:p-2.5 bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 hover:text-amber-500 rounded-xl transition-all active:scale-90 ml-1 sm:ml-2 shadow-sm border border-slate-100 dark:border-slate-700"
               title="Mode Gelap/Terang"
             >
               <div className={`transform transition-transform duration-500 ${theme === 'dark' ? 'rotate-180' : 'rotate-0'}`}>
@@ -1023,7 +1023,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
             <div className="w-20 h-20 sm:w-24 sm:h-24 mb-4 sm:mb-6 transition-transform hover:scale-110 duration-500">
               {institutionLogo ? <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain" /> : <BookOpen size={64} className="text-emerald-500" />}
             </div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-widest mb-3 sm:mb-4 animate-in fade-in slide-in-from-top-4 duration-1000">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-widest mb-3 sm:mb-4 animate-in fade-in slide-in-from-top-4 duration-1000">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
@@ -1031,15 +1031,15 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
               Ahlan wa Sahlan, Ayah & Bunda
             </div>
             <div className="flex flex-col items-center">
-              <h1 className="font-arabic text-3xl sm:text-4xl font-bold text-slate-800 tracking-tighter mb-1 transition-all">MyQuranPlan</h1>
+              <h1 className="font-arabic text-3xl sm:text-4xl font-bold text-slate-800 dark:text-slate-100 tracking-tighter mb-1 transition-all">MyQuranPlan</h1>
               <div className="h-0.5 w-32 bg-gradient-to-r from-transparent via-amber-500 to-transparent mb-2"></div>
             </div>
-            <p className="text-slate-500 font-medium max-w-md leading-relaxed">
+            <p className="text-slate-500 dark:text-slate-400 font-medium max-w-md leading-relaxed">
               Selamat datang di platform pemantauan hafalan Ananda. Silakan cari nama Ananda untuk melihat target (Lesson Plan) serta capaian harian (Mutabaah).
             </p>
           </div>
 
-          <div className="bg-white border-white rounded-[2.5rem] shadow-xl border p-6 sm:p-8 transition-all duration-500">
+          <div className="bg-white dark:bg-slate-800 border-white dark:border-slate-700 rounded-[2.5rem] shadow-xl border p-6 sm:p-8 transition-all duration-500">
             <div className="relative mb-4">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
               <input
@@ -1049,7 +1049,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
                 placeholder="Ketik nama Ananda..."
                 value={localPortalSearch}
                 onChange={(e) => setLocalPortalSearch(e.target.value)}
-                className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl pl-12 pr-4 py-4 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 text-lg font-bold text-slate-700 transition-all"
+                className="w-full bg-slate-50 dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-2xl pl-12 pr-4 py-4 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 text-lg font-bold text-slate-700 dark:text-slate-200 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500"
               />
             </div>
 
@@ -1068,7 +1068,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
                       }
                     }
                   }}
-                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl pl-10 pr-3 py-3 text-xs font-bold text-slate-600 outline-none focus:border-emerald-500 focus:bg-white transition-all cursor-pointer appearance-none"
+                  className="w-full bg-slate-50 dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl pl-10 pr-3 py-3 text-xs font-bold text-slate-600 dark:text-slate-300 outline-none focus:border-emerald-500 focus:bg-white dark:focus:bg-slate-800 transition-all cursor-pointer appearance-none"
                 >
                   <option value="">Semua Ustadz/ah</option>
                   {availableGurus.map(g => <option key={g} value={g}>{g}</option>)}
@@ -1079,7 +1079,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
                 <select
                   value={portalKelasFilter}
                   onChange={(e) => setPortalKelasFilter(e.target.value)}
-                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl pl-10 pr-3 py-3 text-xs font-bold text-slate-600 outline-none focus:border-emerald-500 focus:bg-white transition-all cursor-pointer appearance-none"
+                  className="w-full bg-slate-50 dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl pl-10 pr-3 py-3 text-xs font-bold text-slate-600 dark:text-slate-300 outline-none focus:border-emerald-500 focus:bg-white dark:focus:bg-slate-800 transition-all cursor-pointer appearance-none"
                 >
                   <option value="">Semua Kelas</option>
                   {kelasList.map(k => <option key={k} value={k}>Kelas {k}</option>)}
@@ -1091,7 +1091,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
                   value={portalHalaqohFilter}
                   onChange={(e) => setPortalHalaqohFilter(e.target.value)}
                   disabled={isHalaqohLocked}
-                  className={`w-full bg-slate-50 border-2 border-slate-100 rounded-xl pl-10 pr-3 py-3 text-xs font-bold text-slate-600 outline-none focus:border-emerald-500 focus:bg-white transition-all cursor-pointer appearance-none ${isHalaqohLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
+                  className={`w-full bg-slate-50 dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl pl-10 pr-3 py-3 text-xs font-bold text-slate-600 dark:text-slate-300 outline-none focus:border-emerald-500 focus:bg-white dark:focus:bg-slate-800 transition-all cursor-pointer appearance-none ${isHalaqohLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
                 >
                   <option value="">Semua Halaqoh</option>
                   {availableHalaqohs.map(h => <option key={h} value={h}>{h}</option>)}
@@ -1102,7 +1102,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
             {isSearching && (
               <button
                 onClick={() => { setLocalPortalSearch(''); setPortalSearch(''); setPortalKelasFilter(''); if (!isHalaqohLocked) setPortalHalaqohFilter(''); setPortalGuruFilter(''); }}
-                className="mb-6 w-full py-3.5 bg-red-50 text-red-600 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:bg-red-100 flex items-center justify-center gap-2 animate-in fade-in slide-in-from-top-1 duration-300"
+                className="mb-6 w-full py-3.5 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:bg-red-100 dark:hover:bg-red-500/20 flex items-center justify-center gap-2 animate-in fade-in slide-in-from-top-1 duration-300"
               >
                 <RotateCcw size={14} /> Reset Pencarian
               </button>
@@ -1112,15 +1112,15 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
               {isPublicLoading ? (
                 <div className="col-span-full grid grid-cols-1 md:grid-cols-2 gap-3">
                   {[...Array(6)].map((_, i) => (
-                    <div key={i} className="flex items-center justify-between p-4 bg-slate-50/50 border border-slate-100 rounded-2xl animate-pulse">
+                    <div key={i} className="flex items-center justify-between p-4 bg-slate-50/50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 rounded-2xl animate-pulse">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full bg-slate-200"></div>
+                        <div className="w-12 h-12 rounded-full bg-slate-200 dark:bg-slate-700"></div>
                         <div className="flex flex-col gap-2">
-                          <div className="h-4 w-32 sm:w-48 bg-slate-200 rounded-md"></div>
-                          <div className="h-3 w-20 sm:w-32 bg-slate-100 rounded-md"></div>
+                          <div className="h-4 w-32 sm:w-48 bg-slate-200 dark:bg-slate-700 rounded-md"></div>
+                          <div className="h-3 w-20 sm:w-32 bg-slate-100 dark:bg-slate-800 rounded-md"></div>
                         </div>
                       </div>
-                      <div className="w-5 h-5 bg-slate-100 rounded-md opacity-30"></div>
+                      <div className="w-5 h-5 bg-slate-100 dark:bg-slate-700 rounded-md opacity-30"></div>
                     </div>
                   ))}
                 </div>
@@ -1134,19 +1134,19 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
                   <button
                     key={s.id}
                     onClick={() => handleSelectStudent(s)}
-                    className="flex items-center justify-between p-4 bg-slate-50 hover:bg-emerald-50 border border-slate-100 rounded-2xl transition-all group animate-row-slide-in"
+                    className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 border border-slate-100 dark:border-slate-700 rounded-2xl transition-all group animate-row-slide-in"
                     style={{ animationDelay: `${index * 0.05}s` }}
                   >
                     <div className="flex items-center gap-4 text-left">
-                      <div className="w-12 h-12 rounded-full bg-white border-2 border-slate-200 flex items-center justify-center text-slate-400 font-black group-hover:border-emerald-500 group-hover:text-emerald-500 transition-colors overflow-hidden">
+                      <div className="w-12 h-12 rounded-full bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-400 dark:text-slate-500 font-black group-hover:border-emerald-500 dark:group-hover:border-emerald-500 group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors overflow-hidden">
                         {s.photo ? <img src={s.photo} alt={s.name} className="w-full h-full object-cover" /> : getInitials(s.name)}
                       </div>
                       <div>
-                        <p className={`font-black text-slate-800 group-hover:text-emerald-700 transition-colors ${s.name.length > 24 ? 'text-xs sm:text-sm whitespace-normal line-clamp-2 leading-tight' : s.name.length > 18 ? 'text-sm sm:text-[15px] whitespace-normal line-clamp-2 leading-tight' : 'text-base truncate'}`}>{s.name}</p>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Kelas {s.kelas || '-'} • {s.halaqoh || '-'}</p>
+                        <p className={`font-black text-slate-800 dark:text-slate-200 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors ${s.name.length > 24 ? 'text-xs sm:text-sm whitespace-normal line-clamp-2 leading-tight' : s.name.length > 18 ? 'text-sm sm:text-[15px] whitespace-normal line-clamp-2 leading-tight' : 'text-base truncate'}`}>{s.name}</p>
+                        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Kelas {s.kelas || '-'} • {s.halaqoh || '-'}</p>
                       </div>
                     </div>
-                    <ChevronRight size={20} className="text-slate-300 group-hover:text-emerald-500 transition-colors" />
+                    <ChevronRight size={20} className="text-slate-300 dark:text-slate-600 group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors" />
                   </button>
                 ))
               ) : (
@@ -1164,11 +1164,11 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col justify-center items-center p-4 sm:p-6 relative overflow-hidden z-0 transition-all duration-500">
+    <div className="min-h-[100dvh] w-full bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 flex flex-col justify-center items-center p-4 sm:p-6 relative overflow-y-auto overscroll-y-contain custom-scrollbar z-0 transition-all duration-500" style={{ WebkitOverflowScrolling: 'touch' }}>
 
-      <button onClick={() => setTheme && setTheme(theme === 'dark' ? 'light' : 'dark')} className="absolute top-4 right-4 sm:top-6 sm:right-6 z-50 p-3 bg-white/80 backdrop-blur-sm text-slate-500 hover:text-amber-500 rounded-2xl shadow-sm border border-slate-100 transition-all active:scale-90" title="Mode Gelap/Terang">
+      <button onClick={() => setTheme && setTheme(theme === 'dark' ? 'light' : 'dark')} className="absolute top-4 right-4 sm:top-6 sm:right-6 z-50 p-3 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm text-slate-500 dark:text-slate-400 hover:text-amber-500 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 transition-all active:scale-90" title="Mode Gelap/Terang">
         <div className={`transform transition-transform duration-500 ${theme === 'dark' ? 'rotate-180' : 'rotate-0'}`}>
-          {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+          {theme === 'dark' ? <Sun size={20} className="text-amber-500" /> : <Moon size={20} />}
         </div>
       </button>
 
@@ -1187,7 +1187,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
 
       <div className="w-full max-w-[420px] relative z-10 flex flex-col">
         {/* Card Login / Register */}
-        <div className="bg-white/80 border-white shadow-[0_8px_30px_rgba(0,0,0,0.04)] backdrop-blur-2xl p-8 sm:p-10 rounded-[2.5rem] border flex flex-col relative overflow-hidden transition-all duration-500">
+        <div className="bg-white/80 dark:bg-slate-900/80 border-white dark:border-slate-800 shadow-[0_8px_30px_rgba(0,0,0,0.04)] backdrop-blur-2xl p-8 sm:p-10 rounded-[2.5rem] border flex flex-col relative overflow-hidden transition-all duration-500">
           {/* Garis atas dekoratif */}
           <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-emerald-400 to-[#00e676]"></div>
 
@@ -1202,10 +1202,10 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
               )}
             </div>
             <div className="flex flex-col items-center">
-              <h1 className="font-arabic text-2xl sm:text-3xl font-bold text-slate-800 tracking-tighter transition-all">MyQuranPlan</h1>
+              <h1 className="font-arabic text-2xl sm:text-3xl font-bold text-slate-800 dark:text-slate-100 tracking-tighter transition-all">MyQuranPlan</h1>
               <div className="h-0.5 w-28 bg-gradient-to-r from-transparent via-amber-500 to-transparent mt-1"></div>
             </div>
-            <p className="text-sm text-slate-500 font-medium mt-2 text-center">
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mt-2 text-center">
               {isRegistering ? 'Daftar Akun Pengajar' : isForgotPassword ? 'Permintaan Reset Password' : 'Ahlan wa sahlan! Silakan masuk.'}
             </p>
           </div>
@@ -1222,7 +1222,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
                     type="text"
                     value={fullName}
                     onChange={(e) => { setFullName(e.target.value); setError(''); setSuccessMsg(''); }}
-                    className="w-full border-2 border-slate-100 rounded-2xl pl-11 pr-4 py-3.5 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 bg-slate-50/50 focus:bg-white text-sm font-bold text-slate-700 transition-all placeholder:text-slate-300 placeholder:font-semibold"
+                    className="w-full border-2 border-slate-100 dark:border-slate-800 rounded-2xl pl-11 pr-4 py-3.5 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 bg-slate-50/50 dark:bg-slate-950/50 focus:bg-white dark:focus:bg-slate-900 text-sm font-bold text-slate-700 dark:text-slate-200 transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600"
                     placeholder="Ust. / Usth. Ahmad..."
                     required={isRegistering}
                   />
@@ -1240,7 +1240,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
                   type="text"
                   value={username}
                   onChange={(e) => { setUsername(e.target.value); setError(''); setSuccessMsg(''); }}
-                  className="w-full border-2 border-slate-100 rounded-2xl pl-11 pr-4 py-3.5 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 bg-slate-50/50 focus:bg-white text-sm font-bold text-slate-700 transition-all placeholder:text-slate-300 placeholder:font-semibold"
+                  className="w-full border-2 border-slate-100 dark:border-slate-800 rounded-2xl pl-11 pr-4 py-3.5 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 bg-slate-50/50 dark:bg-slate-950/50 focus:bg-white dark:focus:bg-slate-900 text-sm font-bold text-slate-700 dark:text-slate-200 transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600"
                   placeholder="Masukkan username..."
                   required
                 />
@@ -1271,7 +1271,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
                       type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={(e) => { setPassword(e.target.value); setError(''); setSuccessMsg(''); }}
-                      className="w-full border-2 border-slate-100 rounded-2xl pl-11 pr-12 py-3.5 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 bg-slate-50/50 focus:bg-white text-sm font-bold text-slate-700 transition-all placeholder:text-slate-300 placeholder:font-semibold"
+                      className="w-full border-2 border-slate-100 dark:border-slate-800 rounded-2xl pl-11 pr-12 py-3.5 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 bg-slate-50/50 dark:bg-slate-950/50 focus:bg-white dark:focus:bg-slate-900 text-sm font-bold text-slate-700 dark:text-slate-200 transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600"
                       placeholder="••••••••"
                       required
                       minLength={isRegistering ? 8 : undefined}
@@ -1300,7 +1300,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
                     type={showConfirmPassword ? "text" : "password"}
                     value={confirmPassword}
                     onChange={(e) => { setConfirmPassword(e.target.value); setError(''); setSuccessMsg(''); }}
-                    className="w-full border-2 border-slate-100 rounded-2xl pl-11 pr-12 py-3.5 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 bg-slate-50/50 focus:bg-white text-sm font-bold text-slate-700 transition-all placeholder:text-slate-300 placeholder:font-semibold"
+                    className="w-full border-2 border-slate-100 dark:border-slate-800 rounded-2xl pl-11 pr-12 py-3.5 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 bg-slate-50/50 dark:bg-slate-950/50 focus:bg-white dark:focus:bg-slate-900 text-sm font-bold text-slate-700 dark:text-slate-200 transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600"
                     placeholder="Ulangi password..."
                     required={isRegistering}
                     minLength={isRegistering ? 8 : undefined}
@@ -1326,11 +1326,11 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
             </button>
           </form>
 
-          <div className="mt-6 flex flex-col gap-3 text-center border-t border-slate-100 pt-5">
+          <div className="mt-6 flex flex-col gap-3 text-center border-t border-slate-100 dark:border-slate-800 pt-5">
             {!isRegistering && !isForgotPassword && (
               <button
                 onClick={() => setIsParentPortal(true)}
-                className="w-full bg-slate-50 text-slate-500 font-black py-4 rounded-2xl hover:bg-slate-100 transition-all flex items-center justify-center gap-2 text-sm"
+                className="w-full bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 font-black py-4 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-2 text-sm"
               >
                 <Search size={18} /> Kembali ke MyQuranPlan
               </button>
@@ -1341,19 +1341,19 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
           </div>
         </div>
 
-        <p className="text-xs text-slate-400 font-bold mt-8 text-center drop-shadow-sm transition-colors">&copy; 2026 Juman Jayyidin. All rights reserved.</p>
+        <p className="text-xs text-slate-400 dark:text-slate-500 font-bold mt-8 text-center drop-shadow-sm transition-colors">&copy; 2026 Juman Jayyidin. All rights reserved.</p>
       </div>
 
       {/* Modal Error */}
       {error && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex justify-center items-center z-[200] p-4 transition-opacity animate-in fade-in duration-200">
-          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-[320px] overflow-hidden flex flex-col items-center p-8 text-center animate-in zoom-in-95 duration-300">
-            <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-5 border-4 border-red-100">
+          <div className="bg-white dark:bg-slate-800 rounded-[2rem] shadow-2xl w-full max-w-[320px] overflow-hidden flex flex-col items-center p-8 text-center animate-in zoom-in-95 duration-300 border border-transparent dark:border-slate-700">
+            <div className="w-16 h-16 bg-red-50 dark:bg-red-500/10 text-red-500 dark:text-red-400 rounded-full flex items-center justify-center mb-5 border-4 border-red-100 dark:border-red-500/20">
               <ShieldAlert size={32} strokeWidth={2.5} />
             </div>
-            <h3 className="text-xl font-black text-slate-800 mb-2 transition-colors">{isRegistering ? 'Gagal Mendaftar' : 'Akses Ditolak'}</h3>
-            <p className="text-sm text-slate-500 font-medium mb-8 leading-relaxed transition-colors">{error}</p>
-            <button onClick={() => setError('')} className="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 font-black py-3.5 rounded-xl transition-colors text-sm active:scale-95 transition-all">Mengerti</button>
+            <h3 className="text-xl font-black text-slate-800 dark:text-slate-100 mb-2 transition-colors">{isRegistering ? 'Gagal Mendaftar' : 'Akses Ditolak'}</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-8 leading-relaxed transition-colors">{error}</p>
+            <button onClick={() => setError('')} className="w-full bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-black py-3.5 rounded-xl transition-colors text-sm active:scale-95 transition-all">Mengerti</button>
           </div>
         </div>
       )}
@@ -1361,12 +1361,12 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
       {/* Modal Success */}
       {successMsg && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex justify-center items-center z-[200] p-4 transition-opacity animate-in fade-in duration-200">
-          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-[320px] overflow-hidden flex flex-col items-center p-8 text-center animate-in zoom-in-95 duration-300">
-            <div className="w-16 h-16 bg-green-50 text-green-500 rounded-full flex items-center justify-center mb-5 border-4 border-green-100">
+          <div className="bg-white dark:bg-slate-800 rounded-[2rem] shadow-2xl w-full max-w-[320px] overflow-hidden flex flex-col items-center p-8 text-center animate-in zoom-in-95 duration-300 border border-transparent dark:border-slate-700">
+            <div className="w-16 h-16 bg-green-50 dark:bg-emerald-500/10 text-green-500 dark:text-emerald-400 rounded-full flex items-center justify-center mb-5 border-4 border-green-100 dark:border-emerald-500/20">
               <CheckCircle2 size={32} strokeWidth={2.5} />
             </div>
-            <h3 className="text-xl font-black text-slate-800 mb-2 transition-colors">Pendaftaran Berhasil!</h3>
-            <p className="text-sm text-slate-500 font-medium mb-8 leading-relaxed transition-colors">{successMsg}</p>
+            <h3 className="text-xl font-black text-slate-800 dark:text-slate-100 mb-2 transition-colors">Pendaftaran Berhasil!</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-8 leading-relaxed transition-colors">{successMsg}</p>
             <button onClick={() => setSuccessMsg('')} className="w-full bg-[#00e676] hover:bg-green-500 text-white font-black py-3.5 rounded-xl transition-colors text-sm active:scale-95 shadow-md shadow-green-200">Siap, Menunggu</button>
           </div>
         </div>
@@ -1375,7 +1375,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
       {/* ===== MODAL SUCCESS COPY LINK ===== */}
       {copySuccessModal.isOpen && (
         <div className="fixed inset-0 z-[100005] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200 print:hidden">
-          <div className="bg-white rounded-[2rem] shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-300">
+          <div className="bg-white dark:bg-slate-800 rounded-[2rem] shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-300 border border-transparent dark:border-slate-700">
             <div className="bg-gradient-to-b from-emerald-500 to-emerald-600 p-6 flex flex-col items-center justify-center text-center text-white relative overflow-hidden">
               <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
               <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-black/10 rounded-full blur-2xl pointer-events-none"></div>
@@ -1386,22 +1386,22 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
               <h3 className="text-2xl font-black tracking-tight drop-shadow-sm relative z-10">{copySuccessModal.title}</h3>
             </div>
 
-            <div className="p-6 bg-white flex flex-col gap-4">
-              <p className="text-slate-600 text-sm font-medium leading-relaxed text-center">
+            <div className="p-6 bg-white dark:bg-slate-800 flex flex-col gap-4">
+              <p className="text-slate-600 dark:text-slate-300 text-sm font-medium leading-relaxed text-center">
                 {copySuccessModal.message}
               </p>
 
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center gap-3">
+              <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 flex items-center gap-3">
                 <div className="flex-1 overflow-hidden text-left">
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Tautan Laporan</p>
-                  <p className="text-sm font-semibold text-slate-700 truncate">{copySuccessModal.link}</p>
+                  <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Tautan Laporan</p>
+                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">{copySuccessModal.link}</p>
                 </div>
                 <button
                   onClick={() => {
                     copyTextToClipboard(copySuccessModal.link);
                     if (showToast) showToast("Tautan disalin!");
                   }}
-                  className="w-10 h-10 bg-white border border-slate-200 rounded-lg flex items-center justify-center text-slate-500 hover:text-emerald-600 hover:border-emerald-200 hover:bg-emerald-50 transition-all shrink-0"
+                  className="w-10 h-10 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:border-emerald-200 dark:hover:border-emerald-500/50 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-all shrink-0"
                   title="Salin Tautan Saja"
                 >
                   <Link size={18} />
@@ -1410,7 +1410,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
 
               <button
                 onClick={() => setCopySuccessModal({ isOpen: false, title: '', message: '', link: '' })}
-                className="w-full mt-2 py-3.5 bg-slate-900 text-white hover:bg-slate-800 rounded-xl font-black shadow-lg shadow-slate-200 active:scale-95 transition-all"
+                className="w-full mt-2 py-3.5 bg-slate-900 dark:bg-black text-white hover:bg-slate-800 dark:hover:bg-slate-900 rounded-xl font-black shadow-lg shadow-slate-200 dark:shadow-none active:scale-95 transition-all"
               >
                 Tutup
               </button>

@@ -2315,18 +2315,18 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
         </div>
       )}
 
-      {toastMessage && (<div className="fixed top-4 md:top-20 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-4 py-2 rounded-xl shadow-2xl z-[100010] font-bold text-xs md:text-sm animate-bounce">{toastMessage}</div>)}
+      {toastMessage && (<div className="fixed top-4 md:top-20 left-1/2 -translate-x-1/2 bg-gray-900 dark:bg-slate-100 text-white dark:text-slate-900 px-4 py-2 rounded-xl shadow-2xl z-[100010] font-bold text-xs md:text-sm animate-bounce">{toastMessage}</div>)}
 
-      <nav className="md:hidden fixed bottom-0 w-full bg-white border-t border-gray-100 flex justify-around items-center h-[70px] z-40 print:hidden">
-        <button onClick={() => setCurrentView('home')} className={`flex flex-col items-center gap-1 ${currentView === 'home' ? 'text-green-600' : 'text-gray-400'}`}><Home size={20} /><span className="text-[9px] font-bold">Beranda</span></button>
-        <button onClick={() => setCurrentView('siswa')} className={`flex flex-col items-center gap-1 ${currentView === 'siswa' ? 'text-green-600' : 'text-gray-400'}`}><Users size={20} /><span className="text-[9px] font-bold">Siswa</span></button>
-        <button onClick={() => setCurrentView('laporan')} className={`flex flex-col items-center gap-1 ${currentView === 'laporan' ? 'text-green-600' : 'text-gray-400'}`}><BarChart3 size={20} /><span className="text-[9px] font-bold">Laporan</span></button>
-        <button onClick={() => setCurrentView('arsip')} className={`flex flex-col items-center gap-1 ${currentView === 'arsip' ? 'text-green-600' : 'text-gray-400'}`}><Archive size={20} /><span className="text-[9px] font-bold">Arsip</span></button>
-        <button onClick={() => setCurrentView('statistik')} className={`flex flex-col items-center gap-1 ${currentView === 'statistik' ? 'text-green-600' : 'text-gray-400'}`}><PieChart size={20} /><span className="text-[9px] font-bold">Grafik</span></button>
+      <nav className="md:hidden fixed bottom-0 w-full bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-slate-800 flex justify-around items-center h-[70px] z-40 print:hidden transition-colors duration-500">
+        <button onClick={() => setCurrentView('home')} className={`flex flex-col items-center gap-1 transition-colors ${currentView === 'home' ? 'text-green-600 dark:text-emerald-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-400'}`}><Home size={20} /><span className="text-[9px] font-bold">Beranda</span></button>
+        <button onClick={() => setCurrentView('siswa')} className={`flex flex-col items-center gap-1 transition-colors ${currentView === 'siswa' ? 'text-green-600 dark:text-emerald-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-400'}`}><Users size={20} /><span className="text-[9px] font-bold">Siswa</span></button>
+        <button onClick={() => setCurrentView('laporan')} className={`flex flex-col items-center gap-1 transition-colors ${currentView === 'laporan' ? 'text-green-600 dark:text-emerald-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-400'}`}><BarChart3 size={20} /><span className="text-[9px] font-bold">Laporan</span></button>
+        <button onClick={() => setCurrentView('arsip')} className={`flex flex-col items-center gap-1 transition-colors ${currentView === 'arsip' ? 'text-green-600 dark:text-emerald-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-400'}`}><Archive size={20} /><span className="text-[9px] font-bold">Arsip</span></button>
+        <button onClick={() => setCurrentView('statistik')} className={`flex flex-col items-center gap-1 transition-colors ${currentView === 'statistik' ? 'text-green-600 dark:text-emerald-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-400'}`}><PieChart size={20} /><span className="text-[9px] font-bold">Grafik</span></button>
         {isSuperAdmin && (
-          <button onClick={() => setCurrentView('log')} className={`flex flex-col items-center gap-1 ${currentView === 'log' ? 'text-green-600' : 'text-gray-400'}`}><Activity size={20} /><span className="text-[9px] font-bold">Log</span></button>
+          <button onClick={() => setCurrentView('log')} className={`flex flex-col items-center gap-1 transition-colors ${currentView === 'log' ? 'text-green-600 dark:text-emerald-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-400'}`}><Activity size={20} /><span className="text-[9px] font-bold">Log</span></button>
         )}
-        <button onClick={() => setCurrentView('pengaturan')} className={`flex flex-col items-center gap-1 ${currentView === 'pengaturan' ? 'text-green-600' : 'text-gray-400'}`}><Settings size={20} /><span className="text-[9px] font-bold">Setelan</span></button>
+        <button onClick={() => setCurrentView('pengaturan')} className={`flex flex-col items-center gap-1 transition-colors ${currentView === 'pengaturan' ? 'text-green-600 dark:text-emerald-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-400'}`}><Settings size={20} /><span className="text-[9px] font-bold">Setelan</span></button>
       </nav>
     </div>
   );
