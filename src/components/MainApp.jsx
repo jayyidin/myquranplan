@@ -2011,8 +2011,19 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
           if (todayRecord || globalGhost) {
             Object.values(k).forEach(keyName => {
               const valToday = todayRecord?.[keyName];
+
+              let isCategoryEdited = false;
+              if (modalMode === 'full_bulk' || modalMode === 'full_edit') isCategoryEdited = true;
+              else if (modalMode === 'tahsin' && (keyName === k.t || keyName === k.h || keyName === k.tNilai || keyName === k.tsNilai || keyName === k.cT)) isCategoryEdited = true;
+              else if (modalMode === 'tahfidz' && (keyName === k.f || keyName === k.af || keyName === k.fNilai || keyName === k.cF)) isCategoryEdited = true;
+              else if (modalMode === 'murojaah' && keyName === k.m) isCategoryEdited = true;
+              else if (modalMode === 'catatan' && keyName === k.c) isCategoryEdited = true;
+
               if (valToday && valToday !== '-') {
                 ghostRecord[keyName] = valToday;
+              } else if (isCategoryEdited) {
+                // Jika dikosongkan secara eksplisit hari ini, jangan restore dari bayangan lama
+                ghostRecord[keyName] = '-';
               } else if (globalGhost && globalGhost[keyName] && globalGhost[keyName] !== '-') {
                 ghostRecord[keyName] = globalGhost[keyName];
               }
@@ -2048,8 +2059,30 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
 
           if (tSurat.includes('Jilid')) {
             tKategori = tahsinCategories.find(c => tSurat.includes(c)) || ''; tSurat = '';
-            const halMatch = rawTahsinAyat.match(/Hal\. ([\d, ]+)/); if (halMatch) tHalaman = halMatch[1].split(',').map(s => s.trim());
-            const brsMatch = rawTahsinAyat.match(/Brs ([\d, ]+)/); if (brsMatch) tBaris = brsMatch[1].split(',').map(s => s.trim());
+            if (rawTahsinAyat.includes(' - Hal.') || rawTahsinAyat.match(/Hal\. [\d, ]+ Brs/)) {
+              const parts = rawTahsinAyat.split(' - ');
+              parts.forEach(part => {
+                const halMatch = part.match(/Hal\. ([\d, ]+)/);
+                const brsMatch = part.match(/Brs ([\d, ]+)/);
+                if (halMatch) {
+                  const hArr = halMatch[1].split(',').map(s => s.trim());
+                  tHalaman.push(...hArr);
+                  if (brsMatch) {
+                    const bArr = brsMatch[1].split(',').map(s => s.trim());
+                    hArr.forEach(h => { bArr.forEach(b => tBaris.push(`${h}:${b}`)); });
+                  }
+                }
+              });
+            } else {
+              const halMatch = rawTahsinAyat.match(/Hal\. ([\d, ]+)/); if (halMatch) tHalaman = halMatch[1].split(',').map(s => s.trim());
+              const brsMatch = rawTahsinAyat.match(/Brs ([\d, ]+)/);
+              if (brsMatch) {
+                const bArr = brsMatch[1].split(',').map(s => s.trim());
+                tHalaman.forEach(h => { bArr.forEach(b => tBaris.push(`${h}:${b}`)); });
+              }
+            }
+            tHalaman = [...new Set(tHalaman)];
+            tBaris = [...new Set(tBaris)];
             tahsinAyatOnly = '';
           } else if (tSurat.includes('Tajwid') || tSurat.includes('Ghorib') || tSurat.includes('Gharib')) {
             tKategori = tSurat.includes('Tajwid') ? 'Tajwid' : 'Ghorib';
