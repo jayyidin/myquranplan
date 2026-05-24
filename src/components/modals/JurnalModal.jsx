@@ -47,8 +47,9 @@ export const JurnalModal = ({
 
   const handleSaveClick = async (options, action) => {
     setSavingAction(action);
-    await handleSave(options, action);
-    if (action === 'next') {
+    try {
+      await handleSave(options, action);
+    } finally {
       setSavingAction(null);
     }
   };
