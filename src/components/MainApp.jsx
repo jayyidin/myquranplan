@@ -842,6 +842,9 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
               // Jangan salin Catatan Umum (Sakit/Izin/dll)
               if (keyName === k.c) return;
 
+              // Jangan salin Nilai hafalan agar siap dinilai ulang
+              if (keyName === k.tNilai || keyName === k.tsNilai || keyName === k.fNilai) return;
+
               if (!finalRec[keyName] || finalRec[keyName] === '-') {
                 if (ghost[keyName] && ghost[keyName] !== '-') {
                   finalRec[keyName] = ghost[keyName];
@@ -1858,59 +1861,59 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
 
           const doTahsin = () => {
             if (!isOtherStudent || applyOptions.surat) {
-              finalRecord[k.t] = modalTahsin;
+              if (isCategoryEdit || !isOtherStudent || modalTahsin !== '-') finalRecord[k.t] = modalTahsin;
             }
             if (!isOtherStudent || applyOptions.ayat) {
-              finalRecord[k.h] = modalHalAyatTahsin;
+              if (isCategoryEdit || !isOtherStudent || modalHalAyatTahsin !== '-') finalRecord[k.h] = modalHalAyatTahsin;
             }
             if (!isOtherStudent || applyOptions.nilai) {
-              finalRecord[k.tNilai] = modalTahsinNilai;
-              finalRecord[k.tsNilai] = modalTahsinSuratNilai;
+              if (isCategoryEdit || !isOtherStudent || modalTahsinNilai !== '-') finalRecord[k.tNilai] = modalTahsinNilai;
+              if (isCategoryEdit || !isOtherStudent || modalTahsinSuratNilai !== '-') finalRecord[k.tsNilai] = modalTahsinSuratNilai;
             }
           };
 
           const doTahfidz = () => {
             if (!isOtherStudent || applyOptions.surat) {
-              finalRecord[k.f] = modalTahfidz;
+              if (isCategoryEdit || !isOtherStudent || modalTahfidz !== '-') finalRecord[k.f] = modalTahfidz;
             }
             if (!isOtherStudent || applyOptions.ayat) {
-              finalRecord[k.af] = modalAyatTahfidz;
+              if (isCategoryEdit || !isOtherStudent || modalAyatTahfidz !== '-') finalRecord[k.af] = modalAyatTahfidz;
             }
             if (!isOtherStudent || applyOptions.nilai) {
-              finalRecord[k.fNilai] = modalTahfidzNilai;
+              if (isCategoryEdit || !isOtherStudent || modalTahfidzNilai !== '-') finalRecord[k.fNilai] = modalTahfidzNilai;
             }
           };
 
           const doMurojaah = () => {
             if (!isOtherStudent || applyOptions.surat) {
-              finalRecord[k.m] = modalMurojaah;
+              if (isCategoryEdit || !isOtherStudent || modalMurojaah !== '-') finalRecord[k.m] = modalMurojaah;
             }
           };
 
           if (isCategoryEdit || modalMode === 'full_bulk') {
             if (modalMode === 'tahsin' || modalMode === 'full_bulk') {
-              if (modalTahsin !== '-' || modalHalAyatTahsin !== '-' || modalTahsinNilai !== '-' || modalTahsinSuratNilai !== '-') {
+              if (modalMode === 'tahsin' || modalTahsin !== '-' || modalHalAyatTahsin !== '-' || modalTahsinNilai !== '-' || modalTahsinSuratNilai !== '-') {
                 doTahsin();
               }
-              if (modalCatatanTahsin !== '-' || modalMode === 'tahsin') {
+              if (modalMode === 'tahsin' || modalCatatanTahsin !== '-') {
                 if (!isOtherStudent || applyOptions.catatan) finalRecord[k.cT] = modalCatatanTahsin;
               }
             }
             if (modalMode === 'tahfidz' || modalMode === 'full_bulk') {
-              if (modalTahfidz !== '-' || modalAyatTahfidz !== '-' || modalTahfidzNilai !== '-') {
+              if (modalMode === 'tahfidz' || modalTahfidz !== '-' || modalAyatTahfidz !== '-' || modalTahfidzNilai !== '-') {
                 doTahfidz();
               }
-              if (modalCatatanTahfidz !== '-' || modalMode === 'tahfidz') {
+              if (modalMode === 'tahfidz' || modalCatatanTahfidz !== '-') {
                 if (!isOtherStudent || applyOptions.catatan) finalRecord[k.cF] = modalCatatanTahfidz;
               }
             }
             if (modalMode === 'murojaah' || modalMode === 'full_bulk') {
-              if (modalMurojaah !== '-') {
+              if (modalMode === 'murojaah' || modalMurojaah !== '-') {
                 doMurojaah();
               }
             }
             if (modalMode === 'catatan' || modalMode === 'full_bulk') {
-              if (modalCatatan !== '-' || modalMode === 'catatan') {
+              if (modalMode === 'catatan' || modalCatatan !== '-') {
                 if (!isOtherStudent || applyOptions.catatan) finalRecord[k.c] = modalCatatan;
               }
             }
@@ -1919,9 +1922,9 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
             doTahfidz();
             doMurojaah();
             if (!isOtherStudent || applyOptions.catatan) {
-              finalRecord[k.c] = modalCatatan;
-              finalRecord[k.cT] = modalCatatanTahsin;
-              finalRecord[k.cF] = modalCatatanTahfidz;
+              if (isCategoryEdit || !isOtherStudent || modalCatatan !== '-') finalRecord[k.c] = modalCatatan;
+              if (isCategoryEdit || !isOtherStudent || modalCatatanTahsin !== '-') finalRecord[k.cT] = modalCatatanTahsin;
+              if (isCategoryEdit || !isOtherStudent || modalCatatanTahfidz !== '-') finalRecord[k.cF] = modalCatatanTahfidz;
             }
           }
           acc.push({
@@ -2001,8 +2004,22 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
           let initialDataForModal = { ...currentRecord };
 
           // Gunakan data yang baru saja disimpan pada hari sebelumnya sebagai bayangan (ghost data)
-          const ghostRecord = studentToProcess.records[plan.tanggal] || (window._lastDayData ? window._lastDayData[studentToProcess.id] : null);
-          if (ghostRecord) {
+          const todayRecord = studentToProcess.records[plan.tanggal];
+          const globalGhost = window._lastDayData ? window._lastDayData[studentToProcess.id] : null;
+
+          const ghostRecord = {};
+          if (todayRecord || globalGhost) {
+            Object.values(k).forEach(keyName => {
+              const valToday = todayRecord?.[keyName];
+              if (valToday && valToday !== '-') {
+                ghostRecord[keyName] = valToday;
+              } else if (globalGhost && globalGhost[keyName] && globalGhost[keyName] !== '-') {
+                ghostRecord[keyName] = globalGhost[keyName];
+              }
+            });
+          }
+
+          if (Object.keys(ghostRecord).length > 0) {
             Object.values(k).forEach(keyName => {
               // Jangan salin Catatan Umum (Sakit/Izin/dll)
               if (keyName === k.c) return;
