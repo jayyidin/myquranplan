@@ -796,13 +796,16 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                 const year = parseInt(parts[0], 10);
                 const month = parseInt(parts[1], 10) - 1;
                 const day = parseInt(parts[2], 10);
+                const d = new Date(year, month, day);
+                const days = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
                 const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Ags", "Sep", "Okt", "Nov", "Des"];
-                return `${day} ${months[month]} ${year}`;
+                return `${days[d.getDay()]}, ${day} ${months[month]} ${year}`;
             }
         } catch(e) {}
         const d = new Date(dateStr);
+        const days = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
         const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Ags", "Sep", "Okt", "Nov", "Des"];
-        return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+        return `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
 }
 
     const classAverages = useMemo(() => {
@@ -1345,7 +1348,22 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                                 {(materials.jadwal || []).filter(j => !jadwalFilter || j.materi.some(m => m.toLowerCase().includes(jadwalFilter.toLowerCase()))).map((jadwal, idx) => (
-                                    <div key={jadwal.id || idx} className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 relative group shadow-sm hover:shadow-md transition-all">
+                                    <div key={jadwal.id || idx} className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 relative group shadow-sm hover:shadow-md transition-all overflow-hidden">
+                                        {(() => {
+                                            const examDate = new Date(jadwal.tanggal);
+                                            if (jadwal.tanggal && jadwal.tanggal.includes('-')) {
+                                                const parts = jadwal.tanggal.split('-');
+                                                examDate.setFullYear(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+                                            }
+                                            examDate.setHours(0,0,0,0);
+                                            const today = new Date();
+                                            today.setHours(0,0,0,0);
+                                            const diffDays = Math.ceil((examDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                                            if (diffDays < 0) return <div className="absolute top-0 right-0 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 text-[9px] font-black px-2.5 py-1 rounded-bl-xl border-b border-l border-slate-200 dark:border-slate-700">SELESAI</div>;
+                                            if (diffDays === 0) return <div className="absolute top-0 right-0 bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400 text-[9px] font-black px-2.5 py-1 rounded-bl-xl border-b border-l border-red-200 dark:border-red-500/30">HARI INI</div>;
+                                            if (diffDays === 1) return <div className="absolute top-0 right-0 bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 text-[9px] font-black px-2.5 py-1 rounded-bl-xl border-b border-l border-amber-200 dark:border-amber-500/30">BESOK</div>;
+                                            return <div className="absolute top-0 right-0 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[9px] font-black px-2.5 py-1 rounded-bl-xl border-b border-l border-slate-200 dark:border-slate-700">{diffDays} HARI LAGI</div>;
+                                        })()}
                                         <div className="absolute top-3 right-3 flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all">
                                             <button onClick={() => {
                                                 setNewJadwal(jadwal);
@@ -1353,11 +1371,11 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                                             }} className="text-slate-300 hover:text-blue-500 bg-slate-50 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-500/10 p-2 rounded-xl transition-colors" title="Edit Jadwal"><Edit3 size={16} /></button>
                                             <button onClick={() => handleDeleteJadwal(jadwal.id)} className="text-slate-300 hover:text-red-500 bg-slate-50 dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-500/10 p-2 rounded-xl transition-colors" title="Hapus Jadwal"><Trash2 size={16} /></button>
                                         </div>
-                                        <div className="flex items-center gap-2 mb-3">
+                                        <div className="flex items-center gap-2 mb-3 pr-16">
                                             <div className="bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 p-2 rounded-lg"><Calendar size={16} /></div>
                                             <div className="text-indigo-600 dark:text-indigo-400 font-black text-xs uppercase tracking-widest">{formatDateForJadwal(jadwal.tanggal)}</div>
                                         </div>
-                                        <div className="font-bold text-slate-800 dark:text-slate-100 text-base leading-tight mb-4 pr-8">Ujian Al-Qur'an</div>
+                                        <div className="font-bold text-slate-800 dark:text-slate-100 text-base leading-tight mb-4">Ujian Al-Qur'an</div>
                                         <div className="flex flex-wrap gap-1.5">
                                             {jadwal.materi.map((m, i) => (
                                                 <span key={i} className="bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-300 px-2.5 py-1 rounded-lg text-[10px] font-bold">{m}</span>

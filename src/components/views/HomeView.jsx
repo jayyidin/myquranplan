@@ -228,9 +228,22 @@ const HomeView = ({
 
   const formatDateForJadwal = (dateStr) => {
     if (!dateStr) return '-';
+    try {
+        const parts = dateStr.split('-');
+        if (parts.length === 3) {
+            const year = parseInt(parts[0], 10);
+            const month = parseInt(parts[1], 10) - 1;
+            const day = parseInt(parts[2], 10);
+            const d = new Date(year, month, day);
+            const days = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+            const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Ags", "Sep", "Okt", "Nov", "Des"];
+            return `${days[d.getDay()]}, ${day} ${months[month]} ${year}`;
+        }
+    } catch(e) {}
     const d = new Date(dateStr);
+    const days = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
     const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Ags", "Sep", "Okt", "Nov", "Des"];
-    return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+    return `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
   };
 
   // Logika Cerdas: Memisahkan dan Menghitung Mundur Jadwal Ujian
@@ -243,11 +256,16 @@ const HomeView = ({
 
     jadwalUjian.forEach(j => {
       const examDate = new Date(j.tanggal);
+      if (j.tanggal && j.tanggal.includes('-')) {
+        const parts = j.tanggal.split('-');
+        examDate.setFullYear(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      }
       examDate.setHours(0, 0, 0, 0);
+      const diffDays = Math.ceil((examDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
       if (examDate >= today) {
-        upcoming.push(j);
+        upcoming.push({ ...j, daysLeft: diffDays });
       } else {
-        past.push(j);
+        past.push({ ...j, daysLeft: diffDays });
       }
     });
 
@@ -258,11 +276,7 @@ const HomeView = ({
 
     let next = null;
     if (upcoming.length > 0) {
-      const nextDate = new Date(upcoming[0].tanggal);
-      nextDate.setHours(0, 0, 0, 0);
-      const diffTime = Math.abs(nextDate - today);
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      next = { ...upcoming[0], daysLeft: diffDays };
+      next = upcoming[0];
     }
 
     return { upcomingJadwal: upcoming, pastJadwal: past, nextExam: next };
@@ -1655,12 +1669,19 @@ const HomeView = ({
                           </div>
                         </div>
                         <div className="flex flex-col items-center justify-center bg-white/10 backdrop-blur-md px-8 py-4 rounded-2xl border border-white/20 shrink-0 w-full md:w-auto text-center relative z-10">
-                          <div className="text-3xl sm:text-4xl font-black drop-shadow-md">
-                            {nextExam.daysLeft === 0 ? 'HARI INI' : `${nextExam.daysLeft}`}
-                          </div>
-                          <div className="text-xs sm:text-sm font-bold text-indigo-100 uppercase tracking-widest mt-1">
-                            {nextExam.daysLeft === 0 ? 'Sedang Berlangsung' : 'Hari Lagi'}
-                          </div>
+                          {nextExam.daysLeft === 0 ? (
+                            <div className="px-4 py-2 bg-red-500/80 rounded-xl border border-red-300/50 shadow-lg">
+                                <div className="text-2xl sm:text-3xl font-black drop-shadow-md">HARI INI</div>
+                                <div className="text-xs font-bold text-red-100 uppercase tracking-widest mt-1">Sedang Berlangsung</div>
+                            </div>
+                          ) : nextExam.daysLeft === 1 ? (
+                            <div className="px-4 py-2 bg-amber-500/80 rounded-xl border border-amber-300/50 shadow-lg">
+                                <div className="text-2xl sm:text-3xl font-black drop-shadow-md">BESOK</div>
+                                <div className="text-xs font-bold text-amber-100 uppercase tracking-widest mt-1">Persiapan</div>
+                            </div>
+                          ) : (
+                            <><div className="text-3xl sm:text-4xl font-black drop-shadow-md">{nextExam.daysLeft}</div><div className="text-xs sm:text-sm font-bold text-indigo-100 uppercase tracking-widest mt-1">Hari Lagi</div></>
+                          )}
                         </div>
                       </div>
                     )}
@@ -1671,12 +1692,21 @@ const HomeView = ({
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
                           {upcomingJadwal.map((jadwal, idx) => (
                             <div key={jadwal.id || idx} className="bg-white p-5 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
-                              <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-bl-full -mr-16 -mt-16 transition-transform group-hover:scale-110 pointer-events-none"></div>
-                              <div className="flex items-center gap-3 mb-4 relative z-10">
+                              <div className={`absolute top-0 right-0 w-32 h-32 rounded-bl-full -mr-16 -mt-16 transition-transform group-hover:scale-110 pointer-events-none ${jadwal.daysLeft === 0 ? 'bg-red-50' : jadwal.daysLeft === 1 ? 'bg-amber-50' : 'bg-indigo-50'}`}></div>
+                              <div className="flex items-center justify-between gap-3 mb-4 relative z-10">
                                 <div className="bg-indigo-50 text-indigo-600 p-2.5 rounded-xl"><Calendar size={20} /></div>
-                                <div className="text-indigo-600 font-black text-sm uppercase tracking-widest">{formatDateForJadwal(jadwal.tanggal)}</div>
+                                {jadwal.daysLeft === 0 ? (
+                                    <span className="bg-red-100 text-red-800 text-[9px] font-black px-2.5 py-1 rounded-full border border-red-200/80 shadow-sm">HARI INI</span>
+                                ) : jadwal.daysLeft === 1 ? (
+                                    <span className="bg-amber-100 text-amber-800 text-[9px] font-black px-2.5 py-1 rounded-full border border-amber-200/80 shadow-sm">BESOK</span>
+                                ) : (
+                                    <span className="bg-slate-100 text-slate-600 text-[9px] font-black px-2.5 py-1 rounded-full border border-slate-200 shadow-sm">{jadwal.daysLeft} HARI LAGI</span>
+                                )}
                               </div>
-                              <div className="font-extrabold text-slate-800 text-lg leading-tight mb-4 relative z-10">Ujian Al-Qur'an</div>
+                              <div className="font-extrabold text-slate-800 text-lg leading-tight mb-1 relative z-10">Ujian Al-Qur'an</div>
+                              <div className="text-indigo-600 font-black text-xs uppercase tracking-widest mb-4 relative z-10">
+                                {formatDateForJadwal(jadwal.tanggal)}
+                              </div>
                               <div className="flex flex-wrap gap-2 relative z-10">
                                 {jadwal.materi.map((m, i) => (
                                   <span key={i} className="bg-slate-50 border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-[11px] font-bold">{m}</span>

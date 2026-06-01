@@ -858,19 +858,34 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {studentJadwal.map((jadwal, idx) => {
                      const examDate = new Date(jadwal.tanggal);
+                     if (jadwal.tanggal && jadwal.tanggal.includes('-')) {
+                         const parts = jadwal.tanggal.split('-');
+                         if (parts.length === 3) {
+                             examDate.setFullYear(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+                             examDate.setHours(0,0,0,0);
+                         }
+                     }
                      const today = new Date();
                      today.setHours(0,0,0,0);
                      const diffTime = examDate.getTime() - today.getTime();
                      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                     const formattedDate = `${examDate.getDate()} ${['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'][examDate.getMonth()]} ${examDate.getFullYear()}`;
+                     const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+                     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
+                     const formattedDate = `${days[examDate.getDay()]}, ${examDate.getDate()} ${months[examDate.getMonth()]} ${examDate.getFullYear()}`;
 
                      return (
                         <div key={idx} className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-indigo-100 dark:border-indigo-500/20 shadow-sm relative overflow-hidden group">
                            <div className="flex items-center gap-3 mb-4">
-                             <div className="p-2.5 bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-xl"><Calendar size={18} strokeWidth={2.5} /></div>
-                             <div className="flex flex-col">
-                               <span className="text-indigo-600 dark:text-indigo-400 font-black text-sm uppercase tracking-widest leading-none">{formattedDate}</span>
-                               <span className="text-[10px] font-bold text-slate-400 mt-1">{diffDays === 0 ? 'Hari Ini' : `${diffDays} Hari Lagi`}</span>
+                             <div className={`p-2.5 rounded-xl ${diffDays === 0 ? 'bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400' : diffDays === 1 ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400' : 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400'}`}><Calendar size={18} strokeWidth={2.5} /></div>
+                             <div className="flex flex-col flex-1 min-w-0">
+                               <span className={`font-black text-sm uppercase tracking-widest leading-none truncate ${diffDays === 0 ? 'text-red-600 dark:text-red-400' : diffDays === 1 ? 'text-amber-600 dark:text-amber-400' : 'text-indigo-600 dark:text-indigo-400'}`}>{formattedDate}</span>
+                               {diffDays === 0 ? (
+                                <span className="mt-1 text-[10px] font-black px-2 py-0.5 rounded-md bg-red-500 text-white w-max">SEDANG BERLANGSUNG</span>
+                               ) : diffDays === 1 ? (
+                                <span className="mt-1 text-[10px] font-black px-2 py-0.5 rounded-md bg-amber-500 text-white w-max">BESOK</span>
+                               ) : (
+                                <span className="text-[10px] font-bold text-slate-400 mt-1">{diffDays} Hari Lagi</span>
+                               )}
                              </div>
                            </div>
                            <div className="flex flex-wrap gap-1.5">
