@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, Home, Users, BarChart3, PieChart, Activity, Settings, LogOut, X, Moon, Sun, Archive } from 'lucide-react';
+import { User, Home, Users, BarChart3, PieChart, Activity, Settings, LogOut, X, Moon, Sun, Archive, ClipboardCheck } from 'lucide-react';
 
 const MobileMenu = ({ mobileMenuOpen, setMobileMenuOpen, currentUser, theme, setTheme, currentView, setCurrentView, isSuperAdmin, onLogout }) => {
   if (!mobileMenuOpen) return null;
@@ -27,6 +27,7 @@ const MobileMenu = ({ mobileMenuOpen, setMobileMenuOpen, currentUser, theme, set
           <button onClick={() => { setCurrentView('laporan'); setMobileMenuOpen(false); }} className={`flex items-center gap-3 p-4 rounded-2xl font-bold transition-all ${currentView === 'laporan' ? 'bg-green-50 dark:bg-emerald-500/10 text-green-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'}`}><BarChart3 size={20} /> Laporan</button>
           <button onClick={() => { setCurrentView('arsip'); setMobileMenuOpen(false); }} className={`flex items-center gap-3 p-4 rounded-2xl font-bold transition-all ${currentView === 'arsip' ? 'bg-green-50 dark:bg-emerald-500/10 text-green-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'}`}><Archive size={20} /> Arsip Semester</button>
           <button onClick={() => { setCurrentView('statistik'); setMobileMenuOpen(false); }} className={`flex items-center gap-3 p-4 rounded-2xl font-bold transition-all ${currentView === 'statistik' ? 'bg-green-50 dark:bg-emerald-500/10 text-green-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'}`}><PieChart size={20} /> Statistik</button>
+          <button onClick={() => { setCurrentView('ujian'); setMobileMenuOpen(false); }} className={`flex items-center gap-3 p-4 rounded-2xl font-bold transition-all ${currentView === 'ujian' ? 'bg-green-50 dark:bg-emerald-500/10 text-green-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'}`}><ClipboardCheck size={20} /> Ujian</button>
           {isSuperAdmin && (
             <button onClick={() => { setCurrentView('log'); setMobileMenuOpen(false); }} className={`flex items-center gap-3 p-4 rounded-2xl font-bold transition-all ${currentView === 'log' ? 'bg-green-50 dark:bg-emerald-500/10 text-green-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'}`}><Activity size={20} /> Log Aktifitas</button>
           )}

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Settings, Users, Edit3, Trash2, Share2, Plus, X, Calendar, ChevronLeft, ChevronRight, BookOpen, Mic, Repeat, Printer, Check, Download, FileText, History, Link, Search, ImageDown, ChevronUp, ChevronDown, ArrowUp, Star, ChevronsUpDown, CheckCircle2 } from 'lucide-react';
 import { Tooltip } from 'react-tooltip';
 import { formatShortDate, getInitials, formatPeriode, formatPrintData, copyTextToClipboard } from '../../utils/helpers';
+import { supabase } from '../supabase';
 
 const renderTextWithHighlights = (txt) => {
   if (typeof txt !== 'string') return txt;
@@ -181,6 +182,30 @@ const HomeView = ({
   const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
   const [currentNavStudent, setCurrentNavStudent] = useState(null);
   const [copySuccessModal, setCopySuccessModal] = useState({ isOpen: false, title: '', message: '', link: '' });
+
+  // --- STATE JADWAL UJIAN ---
+  const [jadwalUjian, setJadwalUjian] = useState([]);
+  useEffect(() => {
+    const fetchJadwal = async () => {
+      try {
+        const { data } = await supabase.from('settings').select('ujian_materials').eq('id', 1).maybeSingle();
+        if (data?.ujian_materials?.jadwal) {
+          const sortedJadwal = data.ujian_materials.jadwal.sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
+          setJadwalUjian(sortedJadwal);
+        }
+      } catch (err) {
+        console.error("Gagal memuat jadwal ujian:", err);
+      }
+    };
+    fetchJadwal();
+  }, []);
+
+  const formatDateForJadwal = (dateStr) => {
+    if (!dateStr) return '-';
+    const d = new Date(dateStr);
+    const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Ags", "Sep", "Okt", "Nov", "Des"];
+    return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+  };
 
   // Auto-scroll Date Nav agar tanggal yang aktif selalu di tengah layar
   useEffect(() => {
@@ -1339,17 +1364,19 @@ const HomeView = ({
                 </div>
               </div>
             </div>
-            <div className="flex w-full md:w-auto gap-2 shrink-0 mt-1 sm:mt-0 transition-all overflow-x-auto hide-scrollbar overscroll-x-contain pb-1 md:pb-0" style={{ WebkitOverflowScrolling: 'touch' }}>
-              <button onClick={() => handleOpenModal(null, 'full_bulk', homeTab)} disabled={!activeHalaqoh} className="flex-1 md:flex-none border-2 border-transparent px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 font-black text-xs sm:text-sm transition-all bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-emerald-50 dark:hover:bg-slate-700 hover:text-emerald-600 dark:hover:text-emerald-400 hover:border-emerald-200 dark:hover:border-slate-600 disabled:opacity-50 shrink-0 shadow-sm" title="Input Massal">
-                <Edit3 size={16} className="text-[#00e676]" /> <span className="hidden sm:inline whitespace-nowrap">Input Massal</span>
-              </button>
-              <button onClick={() => requestClearAllRecordForDay(null, activeDate, homeTab)} disabled={!activeHalaqoh || filteredStudents.length === 0} className="flex-1 md:flex-none border-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 font-black text-xs sm:text-sm transition-all bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/20 hover:bg-red-100 dark:hover:bg-red-500/20 disabled:opacity-50 shrink-0 shadow-sm" title={`Kosongkan ${homeTab === 'lesson_plan' ? 'Target' : 'Capaian'} Hari Ini`}>
-                <Trash2 size={16} /> <span className="hidden sm:inline whitespace-nowrap">Kosongkan</span>
-              </button>
-              <button onClick={() => setIsClassReportVisible(true)} disabled={!activeHalaqoh || filteredStudents.length === 0} className="flex-1 md:flex-none px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 font-black text-xs sm:text-sm transition-all shadow-lg border-2 bg-gray-800 text-white border-transparent hover:bg-gray-700 disabled:opacity-50 shrink-0" title="Laporan Halaqoh">
-                <Printer size={16} /> <span className="hidden sm:inline whitespace-nowrap">Laporan Halaqoh</span>
-              </button>
-            </div>
+            {homeTab !== 'jadwal' && (
+              <div className="flex w-full md:w-auto gap-2 shrink-0 mt-1 sm:mt-0 transition-all overflow-x-auto hide-scrollbar overscroll-x-contain pb-1 md:pb-0" style={{ WebkitOverflowScrolling: 'touch' }}>
+                <button onClick={() => handleOpenModal(null, 'full_bulk', homeTab)} disabled={!activeHalaqoh} className="flex-1 md:flex-none border-2 border-transparent px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 font-black text-xs sm:text-sm transition-all bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-emerald-50 dark:hover:bg-slate-700 hover:text-emerald-600 dark:hover:text-emerald-400 hover:border-emerald-200 dark:hover:border-slate-600 disabled:opacity-50 shrink-0 shadow-sm" title="Input Massal">
+                  <Edit3 size={16} className="text-[#00e676]" /> <span className="hidden sm:inline whitespace-nowrap">Input Massal</span>
+                </button>
+                <button onClick={() => requestClearAllRecordForDay(null, activeDate, homeTab)} disabled={!activeHalaqoh || filteredStudents.length === 0} className="flex-1 md:flex-none border-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 font-black text-xs sm:text-sm transition-all bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/20 hover:bg-red-100 dark:hover:bg-red-500/20 disabled:opacity-50 shrink-0 shadow-sm" title={`Kosongkan ${homeTab === 'lesson_plan' ? 'Target' : 'Capaian'} Hari Ini`}>
+                  <Trash2 size={16} /> <span className="hidden sm:inline whitespace-nowrap">Kosongkan</span>
+                </button>
+                <button onClick={() => setIsClassReportVisible(true)} disabled={!activeHalaqoh || filteredStudents.length === 0} className="flex-1 md:flex-none px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 font-black text-xs sm:text-sm transition-all shadow-lg border-2 bg-gray-800 text-white border-transparent hover:bg-gray-700 disabled:opacity-50 shrink-0" title="Laporan Halaqoh">
+                  <Printer size={16} /> <span className="hidden sm:inline whitespace-nowrap">Laporan Halaqoh</span>
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -1369,6 +1396,11 @@ const HomeView = ({
                 <span className="sm:hidden">Mutabaah</span>
                 <span className="hidden sm:inline">Mutabaah</span>
               </button>
+              <button onClick={() => setHomeTab('jadwal')} className={`flex-1 flex items-center justify-center gap-1.5 px-2 sm:px-4 py-1.5 sm:py-2 font-black text-xs sm:text-sm rounded-lg sm:rounded-xl transition-all duration-300 min-w-fit ${homeTab === 'jadwal' ? 'bg-indigo-500 text-white shadow-md border border-indigo-600' : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'}`}>
+                {homeTab === 'jadwal' && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse shrink-0"></span>}
+                <Calendar size={16} className="hidden sm:block" />
+                <span>Jadwal Ujian</span>
+              </button>
               <button
                 onClick={() => setIsHeaderVisible(!isHeaderVisible)}
                 className="flex items-center justify-center px-2.5 py-1.5 sm:py-2 bg-white text-slate-500 hover:text-emerald-600 rounded-lg sm:rounded-xl shadow-sm border border-gray-200/50 transition-all"
@@ -1379,63 +1411,69 @@ const HomeView = ({
             </div>
 
             {/* NAVIGASI TANGGAL & MINGGU */}
-            <div className="flex items-center justify-between px-2 py-1.5 sm:px-3 sm:py-2 rounded-xl border shadow-sm w-full gap-2 transition-all duration-500 bg-white border-gray-200/80">
-              <button onClick={() => changeWeek(-7)} className="p-1.5 sm:px-3 sm:py-1.5 rounded-md flex items-center gap-1 font-bold text-xs sm:text-sm transition-colors bg-gray-50 text-gray-500 hover:bg-green-50 hover:text-green-600"><ChevronLeft size={16} /><span className="hidden sm:inline">Sebelumnya</span></button>
-              <div className="font-black text-xs sm:text-sm md:text-base text-center flex-1 sm:flex-none text-gray-700 transition-colors"><Calendar size={14} className="inline text-green-500 mr-1 sm:mr-2 align-text-bottom" /> {formatPeriode(weekDates[0], weekDates[weekDates.length - 1] || weekDates[0])}</div>
-              <button onClick={() => changeWeek(7)} className="p-1.5 sm:px-3 sm:py-1.5 bg-gray-50 hover:bg-green-50 text-gray-500 hover:text-green-600 rounded-md flex items-center gap-1 font-bold text-xs sm:text-sm transition-colors"><span className="hidden sm:inline">Selanjutnya</span><ChevronRight size={16} /></button>
-            </div>
+            {homeTab !== 'jadwal' && (
+              <div className="flex items-center justify-between px-2 py-1.5 sm:px-3 sm:py-2 rounded-xl border shadow-sm w-full gap-2 transition-all duration-500 bg-white border-gray-200/80">
+                <button onClick={() => changeWeek(-7)} className="p-1.5 sm:px-3 sm:py-1.5 rounded-md flex items-center gap-1 font-bold text-xs sm:text-sm transition-colors bg-gray-50 text-gray-500 hover:bg-green-50 hover:text-green-600"><ChevronLeft size={16} /><span className="hidden sm:inline">Sebelumnya</span></button>
+                <div className="font-black text-xs sm:text-sm md:text-base text-center flex-1 sm:flex-none text-gray-700 transition-colors"><Calendar size={14} className="inline text-green-500 mr-1 sm:mr-2 align-text-bottom" /> {formatPeriode(weekDates[0], weekDates[weekDates.length - 1] || weekDates[0])}</div>
+                <button onClick={() => changeWeek(7)} className="p-1.5 sm:px-3 sm:py-1.5 bg-gray-50 hover:bg-green-50 text-gray-500 hover:text-green-600 rounded-md flex items-center gap-1 font-bold text-xs sm:text-sm transition-colors"><span className="hidden sm:inline">Selanjutnya</span><ChevronRight size={16} /></button>
+              </div>
+            )}
 
             {/* HORIZONTAL DATE NAV (SNAP SCROLLING) */}
-            <div className="flex gap-1.5 overflow-x-auto hide-scrollbar overscroll-x-contain pb-1 w-full snap-x snap-mandatory" ref={dateNavRef} style={{ WebkitOverflowScrolling: 'touch' }}>
-              {weekDates.map((dateObj) => {
-                if (!dateObj || typeof dateObj.getDay !== 'function') return null;
-                const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
-                const dayName = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][dateObj.getDay()];
-                if (dateObj.getDay() === 0 || dateObj.getDay() === 6) return null;
-                const { status: dateStatus, count: filledCount } = getDateStatus(dateStr);
-                const targetStudents = studentsInHalaqoh || filteredStudents;
-                return ( // Removed dark mode styles
-                  <button key={dateStr} data-active={activeDate === dateStr} onClick={() => setActiveDate(dateStr)} className={`flex-1 flex flex-col shrink-0 min-w-[70px] sm:min-w-[80px] items-center justify-center p-2 rounded-xl border transition-all snap-center relative ${activeDate === dateStr ? 'bg-[#00e676] border-[#00e676] text-white shadow-md transform scale-[1.03]' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
-                    <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest mb-0.5">{dayName}</span>
-                    <span className="text-xs md:text-base font-black">{dateObj.getDate()} {['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'][dateObj.getMonth()]}</span>
-                    {dateStatus !== 'none' && (
-                      <div
-                        data-tooltip-id="home-date-tooltip"
-                        data-tooltip-content={`${filledCount} dari ${targetStudents.length} siswa terisi`}
-                        className={`absolute top-1.5 right-1.5 ${activeDate === dateStr ? 'text-white' : dateStatus === 'full' ? 'text-green-500' : 'text-amber-500'}`}
-                      >
-                        <Check size={12} strokeWidth={4} />
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+            {homeTab !== 'jadwal' && (
+              <div className="flex gap-1.5 overflow-x-auto hide-scrollbar overscroll-x-contain pb-1 w-full snap-x snap-mandatory" ref={dateNavRef} style={{ WebkitOverflowScrolling: 'touch' }}>
+                {weekDates.map((dateObj) => {
+                  if (!dateObj || typeof dateObj.getDay !== 'function') return null;
+                  const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
+                  const dayName = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][dateObj.getDay()];
+                  if (dateObj.getDay() === 0 || dateObj.getDay() === 6) return null;
+                  const { status: dateStatus, count: filledCount } = getDateStatus(dateStr);
+                  const targetStudents = studentsInHalaqoh || filteredStudents;
+                  return ( // Removed dark mode styles
+                    <button key={dateStr} data-active={activeDate === dateStr} onClick={() => setActiveDate(dateStr)} className={`flex-1 flex flex-col shrink-0 min-w-[70px] sm:min-w-[80px] items-center justify-center p-2 rounded-xl border transition-all snap-center relative ${activeDate === dateStr ? 'bg-[#00e676] border-[#00e676] text-white shadow-md transform scale-[1.03]' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+                      <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest mb-0.5">{dayName}</span>
+                      <span className="text-xs md:text-base font-black">{dateObj.getDate()} {['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'][dateObj.getMonth()]}</span>
+                      {dateStatus !== 'none' && (
+                        <div
+                          data-tooltip-id="home-date-tooltip"
+                          data-tooltip-content={`${filledCount} dari ${targetStudents.length} siswa terisi`}
+                          className={`absolute top-1.5 right-1.5 ${activeDate === dateStr ? 'text-white' : dateStatus === 'full' ? 'text-green-500' : 'text-amber-500'}`}
+                        >
+                          <Check size={12} strokeWidth={4} />
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
             {/* KOTAK PENCARIAN SISWA (SELALU TAMPIL) */}
-            <div className="sticky top-0 z-40 bg-slate-50/95 md:bg-transparent backdrop-blur-md md:backdrop-blur-none -mx-3 px-3 sm:-mx-4 sm:px-4 md:mx-0 md:px-0 py-2 md:py-0 mb-2 md:mb-3 transition-all">
-              <div className="relative shadow-sm hover:shadow-md transition-shadow rounded-xl">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
-                <input
-                  type="text"
-                  inputMode="search"
-                  enterKeyHint="search"
-                  placeholder={activeHalaqoh ? `Ketik nama untuk mencari... (${studentsInHalaqohCount} siswa)` : 'Pilih halaqoh terlebih dahulu'}
-                  value={localSearch}
-                  onChange={(e) => setLocalSearch(e.target.value)}
-                  disabled={!activeHalaqoh}
-                  className="w-full bg-white border border-gray-200/80 rounded-xl pl-10 pr-10 py-3 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-sm font-bold text-slate-700 transition-all disabled:bg-slate-50 disabled:cursor-not-allowed"
-                />
-                {localSearch && (
-                  <button onClick={() => { setLocalSearch(''); setSearchQuery(''); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 bg-gray-100 hover:bg-red-50 p-1 rounded-full transition-colors">
-                    <X size={14} />
-                  </button>
-                )}
+            {homeTab !== 'jadwal' && (
+              <div className="sticky top-0 z-40 bg-slate-50/95 md:bg-transparent backdrop-blur-md md:backdrop-blur-none -mx-3 px-3 sm:-mx-4 sm:px-4 md:mx-0 md:px-0 py-2 md:py-0 mb-2 md:mb-3 transition-all">
+                <div className="relative shadow-sm hover:shadow-md transition-shadow rounded-xl">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
+                  <input
+                    type="text"
+                    inputMode="search"
+                    enterKeyHint="search"
+                    placeholder={activeHalaqoh ? `Ketik nama untuk mencari... (${studentsInHalaqohCount} siswa)` : 'Pilih halaqoh terlebih dahulu'}
+                    value={localSearch}
+                    onChange={(e) => setLocalSearch(e.target.value)}
+                    disabled={!activeHalaqoh}
+                    className="w-full bg-white border border-gray-200/80 rounded-xl pl-10 pr-10 py-3 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-sm font-bold text-slate-700 transition-all disabled:bg-slate-50 disabled:cursor-not-allowed"
+                  />
+                  {localSearch && (
+                    <button onClick={() => { setLocalSearch(''); setSearchQuery(''); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 bg-gray-100 hover:bg-red-50 p-1 rounded-full transition-colors">
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* PETUNJUK GESER (KHUSUS MOBILE) */}
-            {activeHalaqoh && filteredStudents.length > 0 && (
+            {homeTab !== 'jadwal' && activeHalaqoh && filteredStudents.length > 0 && (
               <div className="hidden text-xs font-bold text-blue-500 flex items-center gap-1.5 px-1 -mt-2">
                 <ChevronRight size={14} className="animate-pulse" />
                 Geser tabel ke kiri untuk melihat detail
@@ -1443,7 +1481,7 @@ const HomeView = ({
             )}
 
             {/* PROGRESS BAR PENGISIAN JURNAL & RINGKASAN KEHADIRAN */}
-            {activeHalaqoh && (studentsInHalaqoh || filteredStudents).length > 0 && (() => {
+            {homeTab !== 'jadwal' && activeHalaqoh && (studentsInHalaqoh || filteredStudents).length > 0 && (() => {
               const targetStudents = studentsInHalaqoh || filteredStudents;
               let count = 0;
               let total = 0;
@@ -1531,6 +1569,34 @@ const HomeView = ({
             })()}
 
             {/* TABEL DATA WEB (TIDAK LAGI FIXED HEIGHT, SEKARANG MEMANJANG BEBAS) */}
+            {homeTab === 'jadwal' ? (
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 mt-2">
+                {jadwalUjian.length === 0 ? (
+                  <div className="text-center py-20 bg-white rounded-3xl border border-slate-200 shadow-sm flex flex-col items-center justify-center gap-3">
+                    <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-200 mb-2"><Calendar size={40} /></div>
+                    <p className="text-slate-500 font-bold">Belum ada jadwal ujian yang dipublikasikan.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+                    {jadwalUjian.map((jadwal, idx) => (
+                      <div key={jadwal.id || idx} className="bg-white p-5 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-bl-full -mr-16 -mt-16 transition-transform group-hover:scale-110 pointer-events-none"></div>
+                        <div className="flex items-center gap-3 mb-4 relative z-10">
+                          <div className="bg-indigo-50 text-indigo-600 p-2.5 rounded-xl"><Calendar size={20} /></div>
+                          <div className="text-indigo-600 font-black text-sm uppercase tracking-widest">{formatDateForJadwal(jadwal.tanggal)}</div>
+                        </div>
+                        <div className="font-extrabold text-slate-800 text-lg leading-tight mb-4 relative z-10">Ujian Al-Qur'an</div>
+                        <div className="flex flex-wrap gap-2 relative z-10">
+                          {jadwal.materi.map((m, i) => (
+                            <span key={i} className="bg-slate-50 border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-[11px] font-bold">{m}</span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
             <div key={homeTab} className="rounded-2xl shadow-sm border overflow-visible relative flex-1 flex flex-col animate-tab-content transition-colors bg-white border-gray-200 shadow-slate-200/50">
               {isLoading && (
                 <div className="absolute top-0 left-0 w-full h-1 overflow-hidden z-50 rounded-t-2xl bg-slate-50 transition-colors">
@@ -1977,6 +2043,7 @@ const HomeView = ({
                 </>
               )}
             </div>
+            )}
           </div>
         </div>
 

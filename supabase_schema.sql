@@ -9,7 +9,9 @@ CREATE TABLE settings (
   institutionname text DEFAULT 'Nama Sekolah Anda',
   institutionlogo text,
   targetreguler text DEFAULT '2 Juz',
-  targetalquran text DEFAULT ''
+  targetalquran text DEFAULT '',
+  ujian_materials jsonb DEFAULT '{"tahsin": [], "tahfidz": []}'::jsonb,
+  kkm_score integer DEFAULT 75
 );
 
 -- 2. TABEL APP_USERS
@@ -33,6 +35,7 @@ CREATE TABLE students (
   initial text,
   photo text,
   records jsonb DEFAULT '{}'::jsonb,
+  ujian_records jsonb DEFAULT '{}'::jsonb,
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now())
 );
 

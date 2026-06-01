@@ -486,7 +486,9 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
                   password: password,
                 });
                 if (signInErr) setError("Migrasi sukses, tapi auto-login gagal. Pastikan pengaturan 'Confirm email' di Supabase dalam keadaan OFF, lalu coba login lagi.");
-                else if (onLogin) onLogin({ username: userData.username, name: userData.name, role: userData.role });
+                else if (onLogin) {
+                  onLogin({ username: userData.username, name: userData.name, role: userData.role });
+                }
               }
             } else {
               if (authError.message.toLowerCase().includes('invalid login credentials')) {
@@ -501,8 +503,11 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
             if (userData.password !== '[SECURED_BY_SUPABASE]') {
               await supabase.from('app_users').update({ id: authData.user?.id, password: '[SECURED_BY_SUPABASE]' }).eq('username', userData.username);
             }
-            if (onLogin) onLogin({ username: userData.username, name: userData.name, role: userData.role });
-            else window.location.reload(); // Berjaga-jaga jika menggunakan komponen App versi lain
+            if (onLogin) {
+              onLogin({ username: userData.username, name: userData.name, role: userData.role });
+            }
+
+            return; // Supabase auth listener di App.jsx akan menangani transisi halaman SPA secara otomatis
           }
         } else {
           setError('Username tidak ditemukan! Silakan daftar terlebih dahulu.');

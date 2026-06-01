@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { BookOpen, User, Menu, Home, Users, BarChart3, PieChart, Settings, LogOut, Loader2, Edit3, Mic, Repeat, FileText, X, AlertTriangle, Link, Filter, Activity, Moon, Sun, Archive } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { BookOpen, User, Menu, Home, Users, BarChart3, PieChart, Settings, LogOut, Loader2, Edit3, Mic, Repeat, FileText, X, AlertTriangle, Link, Filter, Activity, Moon, Sun, Archive, ClipboardCheck } from 'lucide-react';
 
 // Imports
 import { supabase } from './supabase';
@@ -13,6 +13,7 @@ import ReportView from './views/ReportView';
 import SettingsView from './views/SettingsView';
 import ActivityLogView from './views/ActivityLogView';
 import ProgressChartView from './views/ProgressChartView';
+import UjianView from './views/UjianView';
 import ArchiveView from './views/ArchiveView';
 
 // Modals
@@ -60,6 +61,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
   const [institutionLogo, setInstitutionLogo] = useState('logo.png');
   const [targetReguler, setTargetReguler] = useState('2 Juz');
   const [targetAlQuran, setTargetAlQuran] = useState('');
+  const [kkmScore, setKkmScore] = useState(75);
   const [appUsers, setAppUsers] = useState([]);
 
   const [activeGuru, setActiveGuru] = useState(() => localStorage.getItem('myquranplan_active_guru') || '');
@@ -121,6 +123,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
     setInstitutionLogo,
     setTargetReguler,
     setTargetAlQuran,
+    setKkmScore,
     setStudents,
     setAppUsers,
     setIsDbReady
@@ -195,14 +198,14 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
   useEffect(() => { setNewStudent(prev => ({ ...prev, halaqoh: activeHalaqoh, kelas: prev.kelas || (kelasList.length > 0 ? kelasList[0] : '') })); }, [activeHalaqoh, kelasList]);
 
   // -- FUNGSI UTILITY --
-  const showToast = (msg) => { setToastMessage(msg); setTimeout(() => setToastMessage(null), 4000); };
+  const showToast = useCallback((msg) => { setToastMessage(msg); setTimeout(() => setToastMessage(null), 4000); }, []);
 
   // Handler khusus agar saat Ustadz diganti, Halaqoh otomatis melompat ke urutan pertama
-  const handleGuruChange = (newGuru) => {
+  const handleGuruChange = useCallback((newGuru) => {
     setActiveGuru(newGuru);
     const halaqohs = guruHalaqohData[newGuru] || [];
     setActiveHalaqoh(halaqohs.length > 0 ? halaqohs[0] : '');
-  };
+  }, [guruHalaqohData]);
 
   const updateMasterDataCloud = async (updates) => {
     // Format ulang ke lowercase untuk PostgreSQL (Supabase)
@@ -213,6 +216,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
     if (updates.institutionLogo !== undefined) mappedUpdates.institutionlogo = updates.institutionLogo;
     if (updates.targetReguler !== undefined) mappedUpdates.targetreguler = updates.targetReguler;
     if (updates.targetAlQuran !== undefined) mappedUpdates.targetalquran = updates.targetAlQuran;
+    if (updates.kkmScore !== undefined) mappedUpdates.kkm_score = updates.kkmScore;
 
     const { error } = await supabase
       .from('settings')
@@ -1176,7 +1180,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
 
     setConfirmDialog({
       isOpen: true,
-      message: `PERHATIAN PENTING!\n\nFitur "Tutup Semester" akan MENGHAPUS SELURUH RIWAYAT Mutabaah dan Target untuk SEMUA SISWA dan memindahkannya ke dalam Arsip "${semesterName.trim()}".\n\nYakin ingin memulai semester baru?`,
+      message: `PERHATIAN PENTING!\n\nFitur "Tutup Semester" akan MENGHAPUS SELURUH RIWAYAT Mutabaah, Target, beserta NILAI UJIAN untuk SEMUA SISWA dan memindahkannya ke Arsip "${semesterName.trim()}".\n\nYakin ingin memulai semester baru?`,
       onConfirm: async () => {
         setIsLoading(true);
         try {
@@ -1187,7 +1191,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
           const { error: archiveError } = await supabase.from('archived_semesters').insert([archiveData]);
           if (archiveError) throw archiveError;
 
-          const updates = students.map(student => ({ ...student, records: {} }));
+          const updates = students.map(student => ({ ...student, records: {}, ujian_records: {} }));
 
           if (updates.length === 0) {
             showToast('Tidak ada siswa untuk di-reset.');
@@ -1203,7 +1207,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
             if (error) throw error;
           }
 
-          setStudents(prev => prev.map(s => ({ ...s, records: {} })));
+          setStudents(prev => prev.map(s => ({ ...s, records: {}, ujian_records: {} })));
 
           try {
             await supabase.from('activity_logs').insert([{
@@ -2173,7 +2177,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
   if (!isDbReady) return (<div className="h-[100dvh] w-full flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 transition-colors duration-500"><Loader2 size={48} className="animate-spin text-emerald-500 mb-4" /></div>);
 
   return (
-    <div className="h-[100dvh] w-full bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 font-sans flex flex-col overflow-hidden transition-colors duration-500">
+    <div className="h-[100dvh] w-full bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 font-sans flex flex-col overflow-hidden transition-colors duration-500 print:h-auto print:overflow-visible print:block">
       {/* CSS Khusus untuk Menyembunyikan Scrollbar Bawaan (Membuat UI lebih minimalis) */}
       <style dangerouslySetInnerHTML={{
         __html: `
@@ -2198,7 +2202,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       <FilterBar currentView={currentView} isSuperAdmin={isSuperAdmin} activeGuru={activeGuru} setActiveGuru={handleGuruChange} setActiveHalaqoh={setActiveHalaqoh} guruList={guruList} currentUser={currentUser} showUnfilledOnly={showUnfilledOnly} setShowUnfilledOnly={setShowUnfilledOnly} handleCopyPortalLink={handleCopyPortalLink} activeHalaqoh={activeHalaqoh} guruHalaqohData={guruHalaqohData} students={students} />
 
       {/* Main Content Area */}
-      <main className="flex-1 w-full max-w-7xl mx-auto overflow-hidden relative flex flex-col min-h-0 transition-colors duration-500">
+      <main className="flex-1 w-full max-w-7xl mx-auto overflow-hidden relative flex flex-col min-h-0 transition-colors duration-500 print:h-auto print:overflow-visible print:block">
         {currentView === 'home' && (
           <HomeView
             activeHalaqoh={activeHalaqoh}
@@ -2230,7 +2234,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
           />
         )}
         {currentView === 'siswa' && (
-          <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar bg-slate-50 pb-24 md:pb-0">
+          <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar pb-24 md:pb-0">
             <StudentView
               activeHalaqoh={activeHalaqoh} filteredStudents={filteredStudents}
               openAddStudentModal={() => {
@@ -2249,7 +2253,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
           </div>
         )}
         {currentView === 'laporan' && (
-          <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar bg-slate-50 pb-24 md:pb-0">
+          <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar pb-24 md:pb-0">
             <ReportView
               activeHalaqoh={activeHalaqoh}
               activeGuru={activeGuru}
@@ -2277,6 +2281,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
             handleApproveUser={handleApproveUser} handleRejectUser={handleRejectUser} handleUpdateUserAccount={handleUpdateUserAccount}
             institutionName={institutionName} setInstitutionName={setInstitutionName} institutionLogo={institutionLogo} handleInstitutionLogoUpload={handleInstitutionLogoUpload} setInstitutionLogo={setInstitutionLogo} updateMasterDataCloud={updateMasterDataCloud} showToast={showToast}
             targetReguler={targetReguler} setTargetReguler={setTargetReguler} targetAlQuran={targetAlQuran} setTargetAlQuran={setTargetAlQuran}
+            kkmScore={kkmScore} setKkmScore={setKkmScore}
             kelasList={kelasList} newKelasName={newKelasName} setNewKelasName={setNewKelasName} handleAddKelas={handleAddKelas} handleDeleteKelas={handleDeleteKelas} handleReorderKelas={handleReorderKelas}
             newGuruName={newGuruName} setNewGuruName={setNewGuruName} handleAddGuru={handleAddGuru} guruList={isSuperAdmin ? guruList : [currentUser.name]}
             selectedGuruForHalaqoh={selectedGuruForHalaqoh} setSelectedGuruForHalaqoh={setSelectedGuruForHalaqoh} newHalaqohName={newHalaqohName} setNewHalaqohName={setNewHalaqohName} handleAddHalaqoh={handleAddHalaqoh}
@@ -2293,7 +2298,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
           />
         )}
         {currentView === 'statistik' && (
-          <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar bg-slate-50 pb-24 md:pb-0">
+          <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar pb-24 md:pb-0">
             <ProgressChartView
               students={filteredStudents}
               activeHalaqoh={activeHalaqoh}
@@ -2303,8 +2308,20 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
             />
           </div>
         )}
+        {currentView === 'ujian' && (
+          <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar pb-24 md:pb-0 print:h-auto print:overflow-visible print:block">
+            <UjianView
+              activeHalaqoh={activeHalaqoh}
+              filteredStudents={filteredStudents}
+              students={students}
+              setStudents={setStudents}
+              showToast={showToast}
+              currentUser={currentUser}
+            />
+          </div>
+        )}
         {currentView === 'log' && isSuperAdmin && (
-          <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar bg-slate-50 pb-24 md:pb-0">
+          <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar pb-24 md:pb-0">
             <ActivityLogView />
           </div>
         )}
@@ -2373,6 +2390,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
         <button onClick={() => setCurrentView('laporan')} className={`flex flex-col items-center gap-1 transition-colors ${currentView === 'laporan' ? 'text-green-600 dark:text-emerald-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-400'}`}><BarChart3 size={20} /><span className="text-[9px] font-bold">Laporan</span></button>
         <button onClick={() => setCurrentView('arsip')} className={`flex flex-col items-center gap-1 transition-colors ${currentView === 'arsip' ? 'text-green-600 dark:text-emerald-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-400'}`}><Archive size={20} /><span className="text-[9px] font-bold">Arsip</span></button>
         <button onClick={() => setCurrentView('statistik')} className={`flex flex-col items-center gap-1 transition-colors ${currentView === 'statistik' ? 'text-green-600 dark:text-emerald-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-400'}`}><PieChart size={20} /><span className="text-[9px] font-bold">Grafik</span></button>
+        <button onClick={() => setCurrentView('ujian')} className={`flex flex-col items-center gap-1 transition-colors ${currentView === 'ujian' ? 'text-green-600 dark:text-emerald-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-400'}`}><ClipboardCheck size={20} /><span className="text-[9px] font-bold">Ujian</span></button>
         {isSuperAdmin && (
           <button onClick={() => setCurrentView('log')} className={`flex flex-col items-center gap-1 transition-colors ${currentView === 'log' ? 'text-green-600 dark:text-emerald-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-400'}`}><Activity size={20} /><span className="text-[9px] font-bold">Log</span></button>
         )}

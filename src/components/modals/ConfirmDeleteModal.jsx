@@ -46,11 +46,11 @@ const ConfirmDeleteModal = ({
     if (!isRendered) return null;
 
     return (
-        <div onAnimationEnd={onAnimationEnd} className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in duration-300 ${isOpen ? 'fade-in' : 'fade-out'}`}>
+        <div onAnimationEnd={onAnimationEnd} className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm duration-300 ${isOpen ? 'animate-in fade-in' : 'animate-out fade-out'}`}>
             {/* Area klik di luar untuk menutup (opsional) */}
             <div className="absolute inset-0" onClick={() => !isDeleting && onClose()}></div>
 
-            <div className={`relative bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-transparent dark:border-slate-800 ${isOpen ? 'animate-in zoom-in-95' : 'animate-out zoom-out-95'}`}>
+            <div className={`relative bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-transparent dark:border-slate-800 duration-300 ${isOpen ? 'animate-in fade-in zoom-in-95' : 'animate-out fade-out zoom-out-95'}`}>
                 {/* Header */}
                 <div className="flex justify-between items-center p-4 border-b border-slate-100 dark:border-slate-800">
                     <div className="flex items-center gap-3">
