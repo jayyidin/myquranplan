@@ -700,7 +700,9 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
 
     const studentJadwal = Array.isArray(ujianMaterials.jadwal) ? (() => {
       const assignedMaterials = [];
+      const studentHalaqoh = publicStudent.halaqoh || '';
       (ujianMaterials.tahsin || []).forEach(m => {
+          if (m.halaqoh && m.halaqoh !== 'Semua' && m.halaqoh !== studentHalaqoh) return;
           if (typeof m === 'string') {
               assignedMaterials.push(m);
           } else if (m.students && (m.students.includes('all') || m.students.includes(publicStudent.id))) {
@@ -708,6 +710,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
           }
       });
       (ujianMaterials.tahfidz || []).forEach(m => {
+          if (m.halaqoh && m.halaqoh !== 'Semua' && m.halaqoh !== studentHalaqoh) return;
           if (typeof m === 'string') {
               assignedMaterials.push(m);
           } else if (m.students && (m.students.includes('all') || m.students.includes(publicStudent.id))) {
@@ -721,6 +724,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
       const upcoming = [];
       ujianMaterials.jadwal.forEach(j => {
           if (!j.tanggal || !j.materi) return;
+          if (j.halaqoh && j.halaqoh !== 'Semua' && j.halaqoh !== studentHalaqoh) return;
           const examDate = new Date(j.tanggal);
           examDate.setHours(0,0,0,0);
           if (examDate >= today) {

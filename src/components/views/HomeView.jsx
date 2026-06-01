@@ -184,7 +184,7 @@ const HomeView = ({
   const [copySuccessModal, setCopySuccessModal] = useState({ isOpen: false, title: '', message: '', link: '' });
 
   // --- STATE JADWAL UJIAN ---
-  const [jadwalUjian, setJadwalUjian] = useState([]);
+  const [allJadwal, setAllJadwal] = useState([]);
   const [isJadwalLoaded, setIsJadwalLoaded] = useState(false);
   
   useEffect(() => {
@@ -193,9 +193,9 @@ const HomeView = ({
         const { data } = await supabase.from('settings').select('ujian_materials').eq('id', 1).maybeSingle();
         const raw = data?.ujian_materials?.jadwal;
         if (Array.isArray(raw) && raw.length > 0) {
-          setJadwalUjian([...raw].sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal)));
+          setAllJadwal(raw);
         } else {
-          setJadwalUjian([]);
+          setAllJadwal([]);
         }
       } catch (err) {
         console.error("Gagal memuat jadwal ujian:", err);
@@ -210,14 +210,23 @@ const HomeView = ({
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'settings', filter: 'id=eq.1' }, (payload) => {
         const newJadwal = payload.new?.ujian_materials?.jadwal;
         if (Array.isArray(newJadwal) && newJadwal.length > 0) {
-          setJadwalUjian([...newJadwal].sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal)));
+          setAllJadwal(newJadwal);
         } else {
-          setJadwalUjian([]);
+          setAllJadwal([]);
         }
       }).subscribe();
 
     return () => supabase.removeChannel(channel);
   }, []);
+
+  const jadwalUjian = useMemo(() => {
+    const globalMats = allJadwal.filter(j => !j.halaqoh || j.halaqoh === 'Semua');
+    const localMats = allJadwal.filter(j => j.halaqoh === activeHalaqoh && activeHalaqoh);
+    const localIds = localMats.map(j => j.id);
+    const activeGlobals = globalMats.filter(j => !localIds.includes(j.id));
+    const combined = activeHalaqoh ? [...activeGlobals, ...localMats] : globalMats;
+    return combined.filter(j => !j.isHidden).sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
+  }, [allJadwal, activeHalaqoh]);
 
   // Otomatis pindah ke tab jurnal jika jadwal kosong tapi user sedang berada di tab jadwal (misal dari sisa cache)
   useEffect(() => {
