@@ -701,31 +701,57 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
     const studentJadwal = Array.isArray(ujianMaterials.jadwal) ? (() => {
       const assignedMaterials = [];
       const studentHalaqoh = publicStudent.halaqoh || '';
-      (ujianMaterials.tahsin || []).forEach(m => {
-          if (m.halaqoh && m.halaqoh !== 'Semua' && m.halaqoh !== studentHalaqoh) return;
+
+      const globalTahsin = (ujianMaterials.tahsin || []).filter(m => !m.halaqoh || m.halaqoh === 'Semua');
+      const localTahsin = (ujianMaterials.tahsin || []).filter(m => m.halaqoh === studentHalaqoh && studentHalaqoh);
+      const localTahsinNames = localTahsin.map(m => m.name);
+      const activeGlobalTahsin = globalTahsin.filter(m => !localTahsinNames.includes(m.name));
+      const combinedTahsin = studentHalaqoh ? [...activeGlobalTahsin, ...localTahsin] : globalTahsin;
+      const validTahsin = combinedTahsin.filter(m => !(m.students && m.students.includes('HIDDEN')));
+
+      validTahsin.forEach(m => {
           if (typeof m === 'string') {
               assignedMaterials.push(m);
           } else if (m.students && (m.students.includes('all') || m.students.includes(publicStudent.id))) {
               assignedMaterials.push(m.name);
           }
       });
-      (ujianMaterials.tahfidz || []).forEach(m => {
-          if (m.halaqoh && m.halaqoh !== 'Semua' && m.halaqoh !== studentHalaqoh) return;
+
+      const globalTahfidz = (ujianMaterials.tahfidz || []).filter(m => !m.halaqoh || m.halaqoh === 'Semua');
+      const localTahfidz = (ujianMaterials.tahfidz || []).filter(m => m.halaqoh === studentHalaqoh && studentHalaqoh);
+      const localTahfidzNames = localTahfidz.map(m => m.name);
+      const activeGlobalTahfidz = globalTahfidz.filter(m => !localTahfidzNames.includes(m.name));
+      const combinedTahfidz = studentHalaqoh ? [...activeGlobalTahfidz, ...localTahfidz] : globalTahfidz;
+      const validTahfidz = combinedTahfidz.filter(m => !(m.students && m.students.includes('HIDDEN')));
+
+      validTahfidz.forEach(m => {
           if (typeof m === 'string') {
               assignedMaterials.push(m);
           } else if (m.students && (m.students.includes('all') || m.students.includes(publicStudent.id))) {
               assignedMaterials.push(m.name);
           }
       });
+
+      const globalJadwal = (ujianMaterials.jadwal || []).filter(j => !j.halaqoh || j.halaqoh === 'Semua');
+      const localJadwal = (ujianMaterials.jadwal || []).filter(j => j.halaqoh === studentHalaqoh && studentHalaqoh);
+      const localJadwalIds = localJadwal.map(j => j.id);
+      const activeGlobalJadwal = globalJadwal.filter(j => !localJadwalIds.includes(j.id));
+      const combinedJadwal = studentHalaqoh ? [...activeGlobalJadwal, ...localJadwal] : globalJadwal;
+      const validJadwal = combinedJadwal.filter(j => !j.isHidden);
 
       const today = new Date();
       today.setHours(0,0,0,0);
 
       const upcoming = [];
-      ujianMaterials.jadwal.forEach(j => {
+      validJadwal.forEach(j => {
           if (!j.tanggal || !j.materi) return;
-          if (j.halaqoh && j.halaqoh !== 'Semua' && j.halaqoh !== studentHalaqoh) return;
           const examDate = new Date(j.tanggal);
+          if (j.tanggal && j.tanggal.includes('-')) {
+              const parts = j.tanggal.split('-');
+              if (parts.length === 3) {
+                  examDate.setFullYear(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+              }
+          }
           examDate.setHours(0,0,0,0);
           if (examDate >= today) {
               const relevantMaterials = j.materi.filter(mat => assignedMaterials.includes(mat));
