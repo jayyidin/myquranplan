@@ -1359,33 +1359,33 @@ const HomeView = ({
 
                   return (
                     <div key={dateStr} className="bg-white border border-gray-100 rounded-[20px] sm:rounded-[24px] p-4 sm:p-5 shadow-sm print:break-inside-avoid transition-colors">
-                      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 sm:gap-0 mb-4 sm:mb-5 border-b border-gray-50 pb-3 sm:pb-4">
-                        <span className="bg-[#00e676] text-white px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-black tracking-widest uppercase shadow-sm w-max">{dayName}</span>
-                        <span className="text-gray-400 font-bold italic text-xs sm:text-sm">{displayDate}</span>
+                      <div className="flex flex-row justify-between items-center gap-2 mb-3 sm:mb-5 border-b border-gray-50 pb-3 sm:pb-4">
+                        <span className="bg-[#00e676] text-white px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-full text-[9px] sm:text-xs font-black tracking-widest uppercase shadow-sm w-max">{dayName}</span>
+                        <span className="text-gray-400 font-bold italic text-[10px] sm:text-sm">{displayDate}</span>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 sm:gap-y-6 gap-x-4 sm:gap-x-6">
+                      <div className="grid grid-cols-2 sm:grid-cols-2 gap-y-2.5 sm:gap-y-6 gap-x-2.5 sm:gap-x-6">
                         {/* Info TAHSIN */}
-                        <div className="bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent h-full flex flex-col">
-                          <div className="flex items-center gap-1.5 mb-1.5 text-blue-500"><BookOpen size={14} /><span className="text-[10px] sm:text-xs font-black uppercase tracking-wider">Tahsin</span></div>
+                        <div className="bg-slate-50/50 sm:bg-transparent p-2.5 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent h-full flex flex-col">
+                          <div className="flex items-center gap-1.5 mb-1.5 text-blue-500"><BookOpen size={12} className="sm:w-3.5 sm:h-3.5 shrink-0" /><span className="text-[9px] sm:text-xs font-black uppercase tracking-wider truncate">Tahsin</span></div>
                           <ExpandableText text={valT} />
                         </div>
 
                         {/* Info TAHFIDZ */}
-                        <div className="bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent h-full flex flex-col">
-                          <div className="flex items-center gap-1.5 mb-1.5 text-purple-500"><Mic size={14} /><span className="text-[10px] sm:text-xs font-black uppercase tracking-wider">Tahfidz</span></div>
+                        <div className="bg-slate-50/50 sm:bg-transparent p-2.5 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent h-full flex flex-col">
+                          <div className="flex items-center gap-1.5 mb-1.5 text-purple-500"><Mic size={12} className="sm:w-3.5 sm:h-3.5 shrink-0" /><span className="text-[9px] sm:text-xs font-black uppercase tracking-wider truncate">Tahfidz</span></div>
                           <ExpandableText text={valF} />
                         </div>
 
                         {/* Info MUROJAAH */}
-                        <div className="bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent h-full flex flex-col">
-                          <div className="flex items-center gap-1.5 mb-1.5 text-emerald-500"><Repeat size={14} /><span className="text-[10px] sm:text-xs font-black uppercase tracking-wider">Murojaah</span></div>
+                        <div className="bg-slate-50/50 sm:bg-transparent p-2.5 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent h-full flex flex-col">
+                          <div className="flex items-center gap-1.5 mb-1.5 text-emerald-500"><Repeat size={12} className="sm:w-3.5 sm:h-3.5 shrink-0" /><span className="text-[9px] sm:text-xs font-black uppercase tracking-wider truncate">Murojaah</span></div>
                           <ExpandableText text={valM} />
                         </div>
 
                         {/* Info CATATAN */}
-                        <div className="bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent h-full flex flex-col">
-                          <div className="flex items-center gap-1.5 mb-1.5 text-orange-500"><FileText size={14} /><span className="text-[10px] sm:text-xs font-black uppercase tracking-wider">Catatan</span></div>
+                        <div className="bg-slate-50/50 sm:bg-transparent p-2.5 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent h-full flex flex-col">
+                          <div className="flex items-center gap-1.5 mb-1.5 text-orange-500"><FileText size={12} className="sm:w-3.5 sm:h-3.5 shrink-0" /><span className="text-[9px] sm:text-xs font-black uppercase tracking-wider truncate">Catatan</span></div>
                           {renderCatatanDetail(valC, valCT, valCF)}
                         </div>
                       </div>

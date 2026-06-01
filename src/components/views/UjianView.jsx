@@ -138,7 +138,7 @@ const TahfidzSelector = ({ value, onChange, onAdd, onEnter, placeholder, classNa
         if (!isOpen) return [];
         const allGroups = [
             { label: 'Kategori Umum', items: ['Juz 30', 'Juz 29', 'Juz 28', 'Surat Pilihan'] },
-            { label: 'Daftar Surat', items: surahList.map(s => s.name) }
+            { label: 'Daftar Surat', items: surahList.map(s => `${s.no}. ${s.name}`) }
         ];
 
         if (!searchTerm) return allGroups;
@@ -581,6 +581,9 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
     const [newTahsinAyatEnd, setNewTahsinAyatEnd] = useState('');
     const [newTahfidzAyatStart, setNewTahfidzAyatStart] = useState('');
     const [newTahfidzAyatEnd, setNewTahfidzAyatEnd] = useState('');
+
+    const tahsinSurahMatch = useMemo(() => surahList.find(s => s.name === newTahsin || `${s.no}. ${s.name}` === newTahsin), [newTahsin]);
+    const tahfidzSurahMatch = useMemo(() => surahList.find(s => s.name === newTahfidz || `${s.no}. ${s.name}` === newTahfidz), [newTahfidz]);
 
     const [isAddingJadwal, setIsAddingJadwal] = useState(false);
     const [newJadwal, setNewJadwal] = useState({ tanggal: '', materi: [] });
@@ -1447,25 +1450,25 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                             <TahsinSelector value={newTahsin} onChange={setNewTahsin} onEnter={handleAddTahsin} placeholder="Pilih Materi (Tilawah, Tajwid, dll)..." className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all text-slate-700 dark:text-slate-100 placeholder:text-slate-400 pr-10" />
                             <div className="flex items-center gap-2">
                                 <AyatSelector 
-                                    surahName={newTahsin} 
+                                    surahName={tahsinSurahMatch ? `${tahsinSurahMatch.no}. ${tahsinSurahMatch.name}` : newTahsin} 
                                     surahList={surahList} 
                                     value={newTahsinAyatStart} 
                                     onChange={setNewTahsinAyatStart} 
                                     maxAyat={newTahsinAyatEnd} 
                                     placeholder="Ayat Awal" 
                                     className="w-24 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-3 text-sm font-bold outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all text-slate-700 dark:text-slate-100 disabled:opacity-50" 
-                                    disabled={!newTahsin}
+                                    disabled={!tahsinSurahMatch}
                                 />
                                 <span className="text-slate-400 font-bold">-</span>
                                 <AyatSelector 
-                                    surahName={newTahsin} 
+                                    surahName={tahsinSurahMatch ? `${tahsinSurahMatch.no}. ${tahsinSurahMatch.name}` : newTahsin} 
                                     surahList={surahList} 
                                     value={newTahsinAyatEnd} 
                                     onChange={setNewTahsinAyatEnd} 
                                     minAyat={newTahsinAyatStart} 
                                     placeholder="Akhir" 
                                     className="w-24 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-3 text-sm font-bold outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all text-slate-700 dark:text-slate-100 disabled:opacity-50" 
-                                    disabled={!newTahsin}
+                                    disabled={!tahsinSurahMatch}
                                 />
                             </div>
                             <button onClick={() => handleAddTahsin()} className="bg-blue-500 hover:bg-blue-600 text-white px-5 py-3 rounded-xl transition-all shadow-sm shadow-blue-200 flex items-center justify-center gap-2 font-bold text-sm active:scale-95 shrink-0"><Plus size={18} /> <span className="lg:hidden">Tambah</span></button>
@@ -1481,21 +1484,23 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                                     onDragOver={(e) => handleDragOverMat(e, 'tahsin', mat.name)}
                                     onDrop={(e) => handleDropMat(e, 'tahsin', mat.name)}
                                     onDragEnd={handleDragEndMat}
-                                    className={`flex justify-between items-center bg-white dark:bg-slate-800 px-3 sm:px-5 py-3 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 border ${dragOverMatInfo?.type === 'tahsin' && dragOverMatInfo?.name === mat.name ? 'border-blue-500 scale-[1.02] shadow-md z-10 relative' : 'border-slate-100 dark:border-slate-700'} shadow-sm group hover:border-blue-200 dark:hover:border-blue-500/30 transition-all cursor-grab active:cursor-grabbing ${dragMatInfo?.type === 'tahsin' && dragMatInfo?.name === mat.name ? 'opacity-50 grayscale' : 'opacity-100'}`}>
-                                    <span className="flex items-center gap-3">
-                                        <div className="text-slate-300 group-hover:text-slate-400 cursor-grab touch-none flex items-center -ml-2 mr-1" onTouchStart={(e) => handleTouchStartMat(e, 'tahsin', mat.name)}>
+                                    className={`flex justify-between items-center bg-white dark:bg-slate-800 px-3 sm:px-5 py-3 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 border ${dragOverMatInfo?.type === 'tahsin' && dragOverMatInfo?.name === mat.name ? 'border-blue-500 scale-[1.02] shadow-md z-10 relative' : 'border-slate-100 dark:border-slate-700'} shadow-sm group hover:border-blue-200 dark:hover:border-blue-500/30 transition-all cursor-grab active:cursor-grabbing ${dragMatInfo?.type === 'tahsin' && dragMatInfo?.name === mat.name ? 'opacity-50 grayscale' : 'opacity-100'} gap-2`}>
+                                    <span className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                                        <div className="text-slate-300 group-hover:text-slate-400 cursor-grab touch-none flex items-center -ml-2 sm:-ml-2 mr-0 sm:mr-1 shrink-0" onTouchStart={(e) => handleTouchStartMat(e, 'tahsin', mat.name)}>
                                             <GripVertical size={16} />
                                         </div>
-                                        <div className="w-1.5 h-1.5 rounded-full bg-blue-400"></div>{mat.name}
-                                    {(!mat.halaqoh || mat.halaqoh === 'Semua') && <span className="ml-2 text-[9px] bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-full" title="Materi ini berlaku untuk semua halaqoh.">Global</span>}
+                                        <div className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0"></div>
+                                        <span className="truncate flex-1 text-xs sm:text-sm" title={mat.name}>{mat.name}</span>
+                                    {(!mat.halaqoh || mat.halaqoh === 'Semua') && <span className="ml-1 sm:ml-2 text-[8px] sm:text-[9px] bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-1.5 sm:px-2 py-0.5 rounded-full shrink-0" title="Materi ini berlaku untuk semua halaqoh.">Global</span>}
                                     </span>
-                                    <div className="flex items-center gap-2">
-                                        <button onClick={() => setAssignmentModal({ isOpen: true, type: 'tahsin', material: mat })} className="flex items-center gap-1.5 text-[10px] font-bold bg-slate-100 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400 px-3 py-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10 hover:text-blue-600 dark:hover:text-blue-400 transition-colors border border-slate-200 dark:border-slate-700">
+                                    <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+                                        <button onClick={() => setAssignmentModal({ isOpen: true, type: 'tahsin', material: mat })} className="flex items-center gap-1 sm:gap-1.5 text-[9px] sm:text-[10px] font-bold bg-slate-100 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400 px-2 sm:px-3 py-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10 hover:text-blue-600 dark:hover:text-blue-400 transition-colors border border-slate-200 dark:border-slate-700">
                                             <Users size={12} />
-                                            {mat.students.includes('all') ? 'Semua Siswa' : `${mat.students.length} Siswa`}
+                                            <span className="hidden sm:inline">{mat.students.includes('all') ? 'Semua Siswa' : `${mat.students.length} Siswa`}</span>
+                                            <span className="sm:hidden">{mat.students.includes('all') ? 'Semua' : `${mat.students.length}`}</span>
                                         </button>
-                                        <button onClick={() => handleEditMaterialName('tahsin', mat)} className="text-slate-300 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 p-2 rounded-lg transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100" title="Edit Nama Materi"><Edit3 size={16} /></button>
-                                        <button onClick={() => handleRemoveMaterial('tahsin', mat)} className="text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 p-2 rounded-lg transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100" title="Hapus Materi"><Trash2 size={16} /></button>
+                                        <button onClick={() => handleEditMaterialName('tahsin', mat)} className="text-slate-400 sm:text-slate-300 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 p-1.5 sm:p-2 rounded-lg transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100" title="Edit Nama Materi"><Edit3 size={14} className="sm:w-4 sm:h-4" /></button>
+                                        <button onClick={() => handleRemoveMaterial('tahsin', mat)} className="text-slate-400 sm:text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 p-1.5 sm:p-2 rounded-lg transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100" title="Hapus Materi"><Trash2 size={14} className="sm:w-4 sm:h-4" /></button>
                                     </div>
                                 </li>
                             ))}
@@ -1515,25 +1520,25 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                             <TahfidzSelector value={newTahfidz} onChange={setNewTahfidz} onEnter={handleAddTahfidz} surahList={surahList} placeholder="Pilih Materi (Surat, Juz, dll)..." className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all text-slate-700 dark:text-slate-100 placeholder:text-slate-400 pr-10" />
                             <div className="flex items-center gap-2">
                                 <AyatSelector 
-                                    surahName={newTahfidz} 
+                                    surahName={tahfidzSurahMatch ? `${tahfidzSurahMatch.no}. ${tahfidzSurahMatch.name}` : newTahfidz} 
                                     surahList={surahList} 
                                     value={newTahfidzAyatStart} 
                                     onChange={setNewTahfidzAyatStart} 
                                     maxAyat={newTahfidzAyatEnd} 
                                     placeholder="Ayat Awal" 
                                     className="w-24 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-3 text-sm font-bold outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all text-slate-700 dark:text-slate-100 disabled:opacity-50" 
-                                    disabled={!newTahfidz}
+                                    disabled={!tahfidzSurahMatch}
                                 />
                                 <span className="text-slate-400 font-bold">-</span>
                                 <AyatSelector 
-                                    surahName={newTahfidz} 
+                                    surahName={tahfidzSurahMatch ? `${tahfidzSurahMatch.no}. ${tahfidzSurahMatch.name}` : newTahfidz} 
                                     surahList={surahList} 
                                     value={newTahfidzAyatEnd} 
                                     onChange={setNewTahfidzAyatEnd} 
                                     minAyat={newTahfidzAyatStart} 
                                     placeholder="Akhir" 
                                     className="w-24 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-3 text-sm font-bold outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all text-slate-700 dark:text-slate-100 disabled:opacity-50" 
-                                    disabled={!newTahfidz}
+                                    disabled={!tahfidzSurahMatch}
                                 />
                             </div>
                             <button onClick={() => handleAddTahfidz()} className="bg-purple-500 hover:bg-purple-600 text-white px-5 py-3 rounded-xl transition-all shadow-sm shadow-purple-200 flex items-center justify-center gap-2 font-bold text-sm active:scale-95 shrink-0"><Plus size={18} /> <span className="lg:hidden">Tambah</span></button>
@@ -1549,21 +1554,23 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                                     onDragOver={(e) => handleDragOverMat(e, 'tahfidz', mat.name)}
                                     onDrop={(e) => handleDropMat(e, 'tahfidz', mat.name)}
                                     onDragEnd={handleDragEndMat}
-                                    className={`flex justify-between items-center bg-white dark:bg-slate-800 px-3 sm:px-5 py-3 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 border ${dragOverMatInfo?.type === 'tahfidz' && dragOverMatInfo?.name === mat.name ? 'border-purple-500 scale-[1.02] shadow-md z-10 relative' : 'border-slate-100 dark:border-slate-700'} shadow-sm group hover:border-purple-200 dark:hover:border-purple-500/30 transition-all cursor-grab active:cursor-grabbing ${dragMatInfo?.type === 'tahfidz' && dragMatInfo?.name === mat.name ? 'opacity-50 grayscale' : 'opacity-100'}`}>
-                                    <span className="flex items-center gap-3">
-                                        <div className="text-slate-300 group-hover:text-slate-400 cursor-grab touch-none flex items-center -ml-2 mr-1" onTouchStart={(e) => handleTouchStartMat(e, 'tahfidz', mat.name)}>
+                                    className={`flex justify-between items-center bg-white dark:bg-slate-800 px-3 sm:px-5 py-3 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 border ${dragOverMatInfo?.type === 'tahfidz' && dragOverMatInfo?.name === mat.name ? 'border-purple-500 scale-[1.02] shadow-md z-10 relative' : 'border-slate-100 dark:border-slate-700'} shadow-sm group hover:border-purple-200 dark:hover:border-purple-500/30 transition-all cursor-grab active:cursor-grabbing ${dragMatInfo?.type === 'tahfidz' && dragMatInfo?.name === mat.name ? 'opacity-50 grayscale' : 'opacity-100'} gap-2`}>
+                                    <span className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                                        <div className="text-slate-300 group-hover:text-slate-400 cursor-grab touch-none flex items-center -ml-2 sm:-ml-2 mr-0 sm:mr-1 shrink-0" onTouchStart={(e) => handleTouchStartMat(e, 'tahfidz', mat.name)}>
                                             <GripVertical size={16} />
                                         </div>
-                                        <div className="w-1.5 h-1.5 rounded-full bg-purple-400"></div>{mat.name}
-                                    {(!mat.halaqoh || mat.halaqoh === 'Semua') && <span className="ml-2 text-[9px] bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-full" title="Materi ini berlaku untuk semua halaqoh.">Global</span>}
+                                        <div className="w-1.5 h-1.5 rounded-full bg-purple-400 shrink-0"></div>
+                                        <span className="truncate flex-1 text-xs sm:text-sm" title={mat.name}>{mat.name}</span>
+                                    {(!mat.halaqoh || mat.halaqoh === 'Semua') && <span className="ml-1 sm:ml-2 text-[8px] sm:text-[9px] bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-1.5 sm:px-2 py-0.5 rounded-full shrink-0" title="Materi ini berlaku untuk semua halaqoh.">Global</span>}
                                     </span>
-                                    <div className="flex items-center gap-2">
-                                        <button onClick={() => setAssignmentModal({ isOpen: true, type: 'tahfidz', material: mat })} className="flex items-center gap-1.5 text-[10px] font-bold bg-slate-100 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400 px-3 py-1.5 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-500/10 hover:text-purple-600 dark:hover:text-purple-400 transition-colors border border-slate-200 dark:border-slate-700">
+                                    <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+                                        <button onClick={() => setAssignmentModal({ isOpen: true, type: 'tahfidz', material: mat })} className="flex items-center gap-1 sm:gap-1.5 text-[9px] sm:text-[10px] font-bold bg-slate-100 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400 px-2 sm:px-3 py-1.5 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-500/10 hover:text-purple-600 dark:hover:text-purple-400 transition-colors border border-slate-200 dark:border-slate-700">
                                             <Users size={12} />
-                                            {mat.students.includes('all') ? 'Semua Siswa' : `${mat.students.length} Siswa`}
+                                            <span className="hidden sm:inline">{mat.students.includes('all') ? 'Semua Siswa' : `${mat.students.length} Siswa`}</span>
+                                            <span className="sm:hidden">{mat.students.includes('all') ? 'Semua' : `${mat.students.length}`}</span>
                                         </button>
-                                        <button onClick={() => handleEditMaterialName('tahfidz', mat)} className="text-slate-300 hover:text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-500/10 p-2 rounded-lg transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100" title="Edit Nama Materi"><Edit3 size={16} /></button>
-                                        <button onClick={() => handleRemoveMaterial('tahfidz', mat)} className="text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 p-2 rounded-lg transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100" title="Hapus Materi"><Trash2 size={16} /></button>
+                                        <button onClick={() => handleEditMaterialName('tahfidz', mat)} className="text-slate-400 sm:text-slate-300 hover:text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-500/10 p-1.5 sm:p-2 rounded-lg transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100" title="Edit Nama Materi"><Edit3 size={14} className="sm:w-4 sm:h-4" /></button>
+                                        <button onClick={() => handleRemoveMaterial('tahfidz', mat)} className="text-slate-400 sm:text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 p-1.5 sm:p-2 rounded-lg transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100" title="Hapus Materi"><Trash2 size={14} className="sm:w-4 sm:h-4" /></button>
                                     </div>
                                 </li>
                             ))}
