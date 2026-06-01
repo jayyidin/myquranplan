@@ -702,26 +702,31 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
       const assignedMaterials = [];
       const studentHalaqoh = publicStudent.halaqoh || '';
 
-      const globalTahsin = (ujianMaterials.tahsin || []).filter(m => !m.halaqoh || m.halaqoh === 'Semua');
-      const localTahsin = (ujianMaterials.tahsin || []).filter(m => m.halaqoh === studentHalaqoh && studentHalaqoh);
-      const localTahsinNames = localTahsin.map(m => m.name);
-      const activeGlobalTahsin = globalTahsin.filter(m => !localTahsinNames.includes(m.name));
-      const combinedTahsin = studentHalaqoh ? [...activeGlobalTahsin, ...localTahsin] : globalTahsin;
+      const combinedTahsin = (ujianMaterials.tahsin || []).filter(m => {
+          if (!studentHalaqoh) return !m.halaqoh || m.halaqoh === 'Semua';
+          if (m.halaqoh === studentHalaqoh) return true;
+          const localNames = (ujianMaterials.tahsin || []).filter(x => x.halaqoh === studentHalaqoh).map(x => x.name);
+          if ((!m.halaqoh || m.halaqoh === 'Semua') && !localNames.includes(m.name)) return true;
+          return false;
+      });
       const validTahsin = combinedTahsin.filter(m => !(m.students && m.students.includes('HIDDEN')));
 
       validTahsin.forEach(m => {
           if (typeof m === 'string') {
               assignedMaterials.push(m);
-          } else if (m.students && (m.students.includes('all') || m.students.includes(publicStudent.id))) {
+          } else if (m.students && (m.students.includes('all') || m.students.some(id => String(id) === String(publicStudent.id)))) {
+          } else if (m.students && (m.students.includes('all') || m.students.some(id => String(id) === String(publicStudent.id)))) {
               assignedMaterials.push(m.name);
           }
       });
 
-      const globalTahfidz = (ujianMaterials.tahfidz || []).filter(m => !m.halaqoh || m.halaqoh === 'Semua');
-      const localTahfidz = (ujianMaterials.tahfidz || []).filter(m => m.halaqoh === studentHalaqoh && studentHalaqoh);
-      const localTahfidzNames = localTahfidz.map(m => m.name);
-      const activeGlobalTahfidz = globalTahfidz.filter(m => !localTahfidzNames.includes(m.name));
-      const combinedTahfidz = studentHalaqoh ? [...activeGlobalTahfidz, ...localTahfidz] : globalTahfidz;
+      const combinedTahfidz = (ujianMaterials.tahfidz || []).filter(m => {
+          if (!studentHalaqoh) return !m.halaqoh || m.halaqoh === 'Semua';
+          if (m.halaqoh === studentHalaqoh) return true;
+          const localNames = (ujianMaterials.tahfidz || []).filter(x => x.halaqoh === studentHalaqoh).map(x => x.name);
+          if ((!m.halaqoh || m.halaqoh === 'Semua') && !localNames.includes(m.name)) return true;
+          return false;
+      });
       const validTahfidz = combinedTahfidz.filter(m => !(m.students && m.students.includes('HIDDEN')));
 
       validTahfidz.forEach(m => {
@@ -732,11 +737,13 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
           }
       });
 
-      const globalJadwal = (ujianMaterials.jadwal || []).filter(j => !j.halaqoh || j.halaqoh === 'Semua');
-      const localJadwal = (ujianMaterials.jadwal || []).filter(j => j.halaqoh === studentHalaqoh && studentHalaqoh);
-      const localJadwalIds = localJadwal.map(j => j.id);
-      const activeGlobalJadwal = globalJadwal.filter(j => !localJadwalIds.includes(j.id));
-      const combinedJadwal = studentHalaqoh ? [...activeGlobalJadwal, ...localJadwal] : globalJadwal;
+      const combinedJadwal = (ujianMaterials.jadwal || []).filter(j => {
+          if (!studentHalaqoh) return !j.halaqoh || j.halaqoh === 'Semua';
+          if (j.halaqoh === studentHalaqoh) return true;
+          const localIds = (ujianMaterials.jadwal || []).filter(x => x.halaqoh === studentHalaqoh).map(x => x.id);
+          if ((!j.halaqoh || j.halaqoh === 'Semua') && !localIds.includes(j.id)) return true;
+          return false;
+      });
       const validJadwal = combinedJadwal.filter(j => !j.isHidden);
 
       const today = new Date();

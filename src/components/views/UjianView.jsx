@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../supabase';
-import { Award, Plus, Trash2, Settings, ClipboardList, Loader2, BookOpen, Mic, Printer, Search, ChevronDown, AlertTriangle, X, Download, FileText, ArrowLeft, Check, CalendarDays, Calendar, Users, Edit3 } from 'lucide-react';
+import { Award, Plus, Trash2, Settings, ClipboardList, Loader2, BookOpen, Mic, Printer, Search, ChevronDown, AlertTriangle, X, Download, FileText, ArrowLeft, Check, CalendarDays, Calendar, Users, Edit3, GripVertical } from 'lucide-react';
 import SurahSelector from '../SurahSelector';
+import AyatSelector from '../AyatSelector';
 import { surahList, ghoribList, tajwidList } from '../../data/constants';
 
-const TahsinSelector = ({ value, onChange, onAdd, placeholder, className }) => {
+const TahsinSelector = ({ value, onChange, onAdd, onEnter, placeholder, className }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const wrapperRef = useRef(null);
@@ -60,6 +61,9 @@ const TahsinSelector = ({ value, onChange, onAdd, placeholder, className }) => {
                 setSearchTerm('');
                 onChange('');
                 setIsOpen(false);
+            } else if (onEnter && searchTerm.trim()) {
+                onEnter();
+                setIsOpen(false);
             }
         }
     };
@@ -110,7 +114,7 @@ const TahsinSelector = ({ value, onChange, onAdd, placeholder, className }) => {
 };
 
 // Komponen Dropdown Kustom untuk Tahfidz (Mendukung Input Teks Bebas & Pencarian)
-const TahfidzSelector = ({ value, onChange, onAdd, placeholder, className, surahList }) => {
+const TahfidzSelector = ({ value, onChange, onAdd, onEnter, placeholder, className, surahList }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const wrapperRef = useRef(null);
@@ -164,6 +168,9 @@ const TahfidzSelector = ({ value, onChange, onAdd, placeholder, className, surah
                 onAdd(searchTerm.trim());
                 setSearchTerm('');
                 onChange('');
+                setIsOpen(false);
+            } else if (onEnter && searchTerm.trim()) {
+                onEnter();
                 setIsOpen(false);
             }
         }
@@ -332,7 +339,7 @@ const ScoreInput = React.memo(({ studentId, rowIndex, material, initialScore, on
 const StudentTableRow = React.memo(({ student, index, materials, hasTajwidSub, hasGhoribSub, kkmScore, onSaveScore, onPrintStudent }) => {
     const getAverage = (list) => {
         const scores = materials.tahsin
-            .filter(m => list.includes(m.name) && (m.students.includes('all') || m.students.includes(student.id)))
+            .filter(m => list.includes(m.name) && (m.students.includes('all') || m.students.some(id => String(id) === String(student.id))))
             .map(m => parseFloat(student.ujian_records?.[m.name]))
             .filter(n => !isNaN(n));
         return scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : '-';
@@ -342,7 +349,7 @@ const StudentTableRow = React.memo(({ student, index, materials, hasTajwidSub, h
         let total = 0;
         let count = 0;
         materials.tahsin.forEach(mat => {
-            if (mat.students.includes('all') || mat.students.includes(student.id)) {
+            if (mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id))) {
                 const val = parseFloat(student.ujian_records?.[mat.name]);
                 if (!isNaN(val)) {
                     total += val;
@@ -351,7 +358,7 @@ const StudentTableRow = React.memo(({ student, index, materials, hasTajwidSub, h
             }
         });
         materials.tahfidz.forEach(mat => {
-            if (mat.students.includes('all') || mat.students.includes(student.id)) {
+            if (mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id))) {
                 const val = parseFloat(student.ujian_records?.[mat.name]);
                 if (!isNaN(val)) {
                     total += val;
@@ -382,7 +389,7 @@ const StudentTableRow = React.memo(({ student, index, materials, hasTajwidSub, h
                 </div>
             </td>
             {materials.tahsin.map((mat, i) => {
-                const isAssigned = mat.students.includes('all') || mat.students.includes(student.id);
+                const isAssigned = mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id));
                 return (
                     <td key={`t-in-${i}`} className="p-3 text-center border-l border-slate-100/50 dark:border-slate-800/50 align-middle">
                         <ScoreInput studentId={student.id} rowIndex={index} material={mat.name} initialScore={student.ujian_records?.[mat.name]} onSave={onSaveScore} kkmScore={kkmScore} disabled={!isAssigned} />
@@ -401,7 +408,7 @@ const StudentTableRow = React.memo(({ student, index, materials, hasTajwidSub, h
             )}
 
             {materials.tahfidz.map((mat, i) => {
-                const isAssigned = mat.students.includes('all') || mat.students.includes(student.id);
+                const isAssigned = mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id));
                 return (
                     <td key={`f-in-${i}`} className="p-3 text-center border-l border-slate-100/50 dark:border-slate-800/50 align-middle bg-purple-50/10 dark:bg-purple-500/5">
                         <ScoreInput studentId={student.id} rowIndex={index} material={mat.name} initialScore={student.ujian_records?.[mat.name]} onSave={onSaveScore} kkmScore={kkmScore} disabled={!isAssigned} />
@@ -433,7 +440,7 @@ const StudentMobileCard = React.memo(({ student, index, materials, hasTajwidSub,
     const getAverage = (list) => {
         const scores = materials.tahsin
             .filter(m => list.includes(m.name))
-            .filter(m => m.students.includes('all') || m.students.includes(student.id))
+            .filter(m => m.students.includes('all') || m.students.some(id => String(id) === String(student.id)))
             .map(m => parseFloat(student.ujian_records?.[m.name]))
             .filter(n => !isNaN(n));
         return scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : '-';
@@ -445,14 +452,14 @@ const StudentMobileCard = React.memo(({ student, index, materials, hasTajwidSub,
         let total = 0;
         let count = 0;
         materials.tahsin.forEach(mat => {
-            const isAssigned = mat.students.includes('all') || mat.students.includes(student.id);
+            const isAssigned = mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id));
             if (isAssigned) {
                 const val = parseFloat(student.ujian_records?.[mat.name]);
                 if (!isNaN(val)) { total += val; count++; }
             }
         });
         materials.tahfidz.forEach(mat => {
-            const isAssigned = mat.students.includes('all') || mat.students.includes(student.id);
+            const isAssigned = mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id));
             if (isAssigned) {
                 const val = parseFloat(student.ujian_records?.[mat.name]);
                 if (!isNaN(val)) { total += val; count++; }
@@ -504,7 +511,7 @@ const StudentMobileCard = React.memo(({ student, index, materials, hasTajwidSub,
                         </div>
                         <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5 sm:gap-2">
                             {materials.tahsin.map((mat, i) => {
-                                const isAssigned = mat.students.includes('all') || mat.students.includes(student.id);
+                                const isAssigned = mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id));
                                 return (
                                     <div key={`t-mob-${i}`} className="bg-white dark:bg-slate-800/60 p-1.5 sm:p-2 rounded-xl border border-slate-200/60 dark:border-slate-700/60 flex flex-col justify-between items-center gap-1 shadow-sm hover:border-blue-300 dark:hover:border-blue-500/50 transition-colors">
                                         <span className={`${mat.name.length > 20 ? 'text-[8px]' : mat.name.length > 12 ? 'text-[9px]' : 'text-[10px]'} font-bold text-slate-600 dark:text-slate-300 text-center leading-tight line-clamp-2 w-full h-6 flex items-center justify-center`} title={mat.name}>{mat.name}</span>
@@ -536,7 +543,7 @@ const StudentMobileCard = React.memo(({ student, index, materials, hasTajwidSub,
                         </div>
                         <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5 sm:gap-2">
                             {materials.tahfidz.map((mat, i) => {
-                                const isAssigned = mat.students.includes('all') || mat.students.includes(student.id);
+                                const isAssigned = mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id));
                                 return (
                                     <div key={`f-mob-${i}`} className="bg-white dark:bg-slate-800/60 p-1.5 sm:p-2 rounded-xl border border-slate-200/60 dark:border-slate-700/60 flex flex-col justify-between items-center gap-1 shadow-sm hover:border-purple-300 dark:hover:border-purple-500/50 transition-colors">
                                         <span className={`${mat.name.length > 20 ? 'text-[8px]' : mat.name.length > 12 ? 'text-[9px]' : 'text-[10px]'} font-bold text-slate-600 dark:text-slate-300 text-center leading-tight line-clamp-2 w-full h-6 flex items-center justify-center`} title={mat.name}>{mat.name}</span>
@@ -570,37 +577,49 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
 
     const [newTahsin, setNewTahsin] = useState('');
     const [newTahfidz, setNewTahfidz] = useState('');
+    const [newTahsinAyatStart, setNewTahsinAyatStart] = useState('');
+    const [newTahsinAyatEnd, setNewTahsinAyatEnd] = useState('');
+    const [newTahfidzAyatStart, setNewTahfidzAyatStart] = useState('');
+    const [newTahfidzAyatEnd, setNewTahfidzAyatEnd] = useState('');
 
     const [isAddingJadwal, setIsAddingJadwal] = useState(false);
     const [newJadwal, setNewJadwal] = useState({ tanggal: '', materi: [] });
     const [jadwalFilter, setJadwalFilter] = useState('');
 
     const [selectedJadwalId, setSelectedJadwalId] = useState('');
+    const [dragMatInfo, setDragMatInfo] = useState(null);
+    const [dragOverMatInfo, setDragOverMatInfo] = useState(null);
 
     const currentTahsin = useMemo(() => {
-        const globalMats = (materials.tahsin || []).filter(m => !m.halaqoh || m.halaqoh === 'Semua');
-        const localMats = (materials.tahsin || []).filter(m => m.halaqoh === activeHalaqoh && activeHalaqoh);
-        const localNames = localMats.map(m => m.name);
-        const activeGlobals = globalMats.filter(m => !localNames.includes(m.name));
-        const combined = activeHalaqoh ? [...activeGlobals, ...localMats] : globalMats;
+        if (!activeHalaqoh) return (materials.tahsin || []).filter(m => !m.halaqoh || m.halaqoh === 'Semua').filter(m => !(m.students && m.students.includes('HIDDEN')));
+        const localNames = (materials.tahsin || []).filter(m => m.halaqoh === activeHalaqoh).map(m => m.name);
+        const combined = (materials.tahsin || []).filter(m => {
+            if (m.halaqoh === activeHalaqoh) return true;
+            if ((!m.halaqoh || m.halaqoh === 'Semua') && !localNames.includes(m.name)) return true;
+            return false;
+        });
         return combined.filter(m => !(m.students && m.students.includes('HIDDEN')));
     }, [materials.tahsin, activeHalaqoh]);
 
     const currentTahfidz = useMemo(() => {
-        const globalMats = (materials.tahfidz || []).filter(m => !m.halaqoh || m.halaqoh === 'Semua');
-        const localMats = (materials.tahfidz || []).filter(m => m.halaqoh === activeHalaqoh && activeHalaqoh);
-        const localNames = localMats.map(m => m.name);
-        const activeGlobals = globalMats.filter(m => !localNames.includes(m.name));
-        const combined = activeHalaqoh ? [...activeGlobals, ...localMats] : globalMats;
+        if (!activeHalaqoh) return (materials.tahfidz || []).filter(m => !m.halaqoh || m.halaqoh === 'Semua').filter(m => !(m.students && m.students.includes('HIDDEN')));
+        const localNames = (materials.tahfidz || []).filter(m => m.halaqoh === activeHalaqoh).map(m => m.name);
+        const combined = (materials.tahfidz || []).filter(m => {
+            if (m.halaqoh === activeHalaqoh) return true;
+            if ((!m.halaqoh || m.halaqoh === 'Semua') && !localNames.includes(m.name)) return true;
+            return false;
+        });
         return combined.filter(m => !(m.students && m.students.includes('HIDDEN')));
     }, [materials.tahfidz, activeHalaqoh]);
 
     const currentJadwal = useMemo(() => {
-        const globalMats = (materials.jadwal || []).filter(j => !j.halaqoh || j.halaqoh === 'Semua');
-        const localMats = (materials.jadwal || []).filter(j => j.halaqoh === activeHalaqoh && activeHalaqoh);
-        const localIds = localMats.map(j => j.id);
-        const activeGlobals = globalMats.filter(j => !localIds.includes(j.id));
-        const combined = activeHalaqoh ? [...activeGlobals, ...localMats] : globalMats;
+        if (!activeHalaqoh) return (materials.jadwal || []).filter(j => (!j.halaqoh || j.halaqoh === 'Semua') && !j.isHidden);
+        const localIds = (materials.jadwal || []).filter(j => j.halaqoh === activeHalaqoh).map(j => j.id);
+        const combined = (materials.jadwal || []).filter(j => {
+            if (j.halaqoh === activeHalaqoh) return true;
+            if ((!j.halaqoh || j.halaqoh === 'Semua') && !localIds.includes(j.id)) return true;
+            return false;
+        });
         return combined.filter(j => !j.isHidden);
     }, [materials.jadwal, activeHalaqoh]);
 
@@ -643,10 +662,10 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
             result = result.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()));
         }
 
-        if (activeJadwal) {
+        if (visibleTahsin.length > 0 || visibleTahfidz.length > 0) {
             result = result.filter(s => {
                 return [...visibleTahsin, ...visibleTahfidz].some(mat => 
-                    mat.students.includes('all') || mat.students.includes(s.id)
+                    mat.students.includes('all') || mat.students.some(id => String(id) === String(s.id))
                 );
             });
         }
@@ -654,13 +673,13 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
         if (showUnscoredOnly) {
             result = result.filter(s => {
                 const hasUngradedTahsin = visibleTahsin.some(mat => {                    
-                    const isAssigned = mat.students.includes('all') || mat.students.includes(s.id);
+                    const isAssigned = mat.students.includes('all') || mat.students.some(id => String(id) === String(s.id));
                     if (!isAssigned) return false;
                     const score = s.ujian_records?.[mat.name];
                     return score === undefined || score === null || score.toString().trim() === '';
                 });
                 const hasUngradedTahfidz = visibleTahfidz.some(mat => {
-                    const isAssigned = mat.students.includes('all') || mat.students.includes(s.id);
+                    const isAssigned = mat.students.includes('all') || mat.students.some(id => String(id) === String(s.id));
                     if (!isAssigned) return false;
                     const score = s.ujian_records?.[mat.name];
                     return score === undefined || score === null || score.toString().trim() === '';
@@ -821,9 +840,17 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
         });
     };
 
-    const handleAddTahsin = (val) => {
-        const valueToAdd = typeof val === 'string' ? val : newTahsin;
-        if (!valueToAdd.trim() || currentTahsin.some(m => m.name === valueToAdd.trim())) return;
+    const handleAddTahsin = () => {
+        let valueToAdd = newTahsin.trim();
+        
+        if (newTahsinAyatStart || newTahsinAyatEnd) {
+            const start = newTahsinAyatStart || '';
+            const end = newTahsinAyatEnd || '';
+            const range = start && end && start !== end ? `${start}-${end}` : (start || end);
+            valueToAdd = `${valueToAdd} ${range}`.trim();
+        }
+
+        if (!valueToAdd || currentTahsin.some(m => m.name === valueToAdd)) return;
         
         let newTahsinList = [...materials.tahsin];
         const existingLocalIndex = newTahsinList.findIndex(m => m.name === valueToAdd.trim() && m.halaqoh === activeHalaqoh);
@@ -837,11 +864,21 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
         const updated = { ...materials, tahsin: newTahsinList };
         saveMaterials(updated);
         setNewTahsin('');
+        setNewTahsinAyatStart('');
+        setNewTahsinAyatEnd('');
     };
 
-    const handleAddTahfidz = (val) => {
-        const valueToAdd = typeof val === 'string' ? val : newTahfidz;
-        if (!valueToAdd.trim() || currentTahfidz.some(m => m.name === valueToAdd.trim())) return;
+    const handleAddTahfidz = () => {
+        let valueToAdd = newTahfidz.trim();
+        
+        if (newTahfidzAyatStart || newTahfidzAyatEnd) {
+            const start = newTahfidzAyatStart || '';
+            const end = newTahfidzAyatEnd || '';
+            const range = start && end && start !== end ? `${start}-${end}` : (start || end);
+            valueToAdd = `${valueToAdd} ${range}`.trim();
+        }
+
+        if (!valueToAdd || currentTahfidz.some(m => m.name === valueToAdd)) return;
         
         let newTahfidzList = [...materials.tahfidz];
         const existingLocalIndex = newTahfidzList.findIndex(m => m.name === valueToAdd.trim() && m.halaqoh === activeHalaqoh);
@@ -855,6 +892,99 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
         const updated = { ...materials, tahfidz: newTahfidzList };
         saveMaterials(updated);
         setNewTahfidz('');
+        setNewTahfidzAyatStart('');
+        setNewTahfidzAyatEnd('');
+    };
+
+    const handleEditMaterialName = (type, matToEdit) => {
+        const newName = window.prompt(`Edit nama materi ${type}:`, matToEdit.name);
+        if (!newName || newName.trim() === '' || newName.trim() === matToEdit.name) return;
+        
+        const finalNewName = newName.trim();
+        if (materials[type].some(m => m.name === finalNewName && m.halaqoh === matToEdit.halaqoh)) {
+            showToast('Nama materi sudah ada!');
+            return;
+        }
+
+        setConfirmDialog({
+            isOpen: true,
+            message: `Yakin ingin mengubah nama materi dari "${matToEdit.name}" menjadi "${finalNewName}"? Nilai siswa yang sudah tersimpan akan otomatis disesuaikan.`,
+            onConfirm: async () => {
+                const isGlobalExists = materials[type].some(m => (!m.halaqoh || m.halaqoh === 'Semua') && m.name === matToEdit.name);
+                let newMaterials = [...materials[type]];
+
+                if (isGlobalExists && activeHalaqoh && (!matToEdit.halaqoh || matToEdit.halaqoh === 'Semua')) {
+                    newMaterials = newMaterials.filter(m => !(m.name === matToEdit.name && m.halaqoh === activeHalaqoh));
+                    const globalIndex = newMaterials.findIndex(m => m.name === matToEdit.name && (!m.halaqoh || m.halaqoh === 'Semua'));
+                    newMaterials.push({ name: matToEdit.name, students: ['HIDDEN'], halaqoh: activeHalaqoh });
+                    newMaterials.splice(globalIndex !== -1 ? globalIndex + 1 : newMaterials.length, 0, { name: finalNewName, students: matToEdit.students, halaqoh: activeHalaqoh });
+                } else {
+                    newMaterials = newMaterials.map(m => {
+                        if (m.name === matToEdit.name && m.halaqoh === matToEdit.halaqoh) {
+                            return { ...m, name: finalNewName };
+                        }
+                        return m;
+                    });
+                }
+
+                const updatedMaterialsState = { ...materials, [type]: newMaterials };
+
+                if (updatedMaterialsState.jadwal) {
+                    let newJadwalList = [...updatedMaterialsState.jadwal];
+                    if (isGlobalExists && activeHalaqoh && (!matToEdit.halaqoh || matToEdit.halaqoh === 'Semua')) {
+                        const globalsToOverride = newJadwalList.filter(j => (!j.halaqoh || j.halaqoh === 'Semua') && j.materi.includes(matToEdit.name) && !newJadwalList.some(localJ => localJ.id === j.id && localJ.halaqoh === activeHalaqoh));
+                        globalsToOverride.forEach(j => {
+                            newJadwalList.push({ ...j, halaqoh: activeHalaqoh, materi: j.materi.map(mName => mName === matToEdit.name ? finalNewName : mName), isHidden: false });
+                        });
+                        newJadwalList = newJadwalList.map(j => {
+                            if (j.halaqoh === activeHalaqoh && j.materi.includes(matToEdit.name)) return { ...j, materi: j.materi.map(mName => mName === matToEdit.name ? finalNewName : mName) };
+                            return j;
+                        });
+                    } else {
+                        newJadwalList = newJadwalList.map(j => {
+                            if (j.materi.includes(matToEdit.name) && (j.halaqoh === matToEdit.halaqoh || (!matToEdit.halaqoh && !j.halaqoh) || (matToEdit.halaqoh === 'Semua' && j.halaqoh === 'Semua'))) return { ...j, materi: j.materi.map(matName => matName === matToEdit.name ? finalNewName : matName) };
+                            return j;
+                        });
+                    }
+                    updatedMaterialsState.jadwal = newJadwalList;
+                }
+
+                saveMaterials(updatedMaterialsState);
+
+                const studentsToUpdate = students.filter(s => s.ujian_records && s.ujian_records[matToEdit.name] !== undefined);
+                if (studentsToUpdate.length > 0) {
+                    const updates = studentsToUpdate.map(s => {
+                        if (isGlobalExists && activeHalaqoh && (!matToEdit.halaqoh || matToEdit.halaqoh === 'Semua')) {
+                            if (s.halaqoh !== activeHalaqoh) return null;
+                        } else if (matToEdit.halaqoh && matToEdit.halaqoh !== 'Semua') {
+                            if (s.halaqoh !== matToEdit.halaqoh) return null;
+                        }
+
+                        const newRecords = { ...s.ujian_records };
+                        newRecords[finalNewName] = newRecords[matToEdit.name];
+                        delete newRecords[matToEdit.name];
+                        return { id: s.id, ujian_records: newRecords };
+                    }).filter(Boolean);
+
+                    if (updates.length > 0) {
+                        const CHUNK_SIZE = 250;
+                        for (let i = 0; i < updates.length; i += CHUNK_SIZE) {
+                            const chunk = updates.slice(i, i + CHUNK_SIZE);
+                            await supabase.from('students').upsert(chunk.map(u => ({ id: u.id, ujian_records: u.ujian_records })));
+                        }
+
+                        setStudents(prev => {
+                            const newStudents = [...prev];
+                            updates.forEach(u => {
+                                const idx = newStudents.findIndex(s => s.id === u.id);
+                                if (idx !== -1) newStudents[idx].ujian_records = u.ujian_records;
+                            });
+                            return newStudents;
+                        });
+                    }
+                }
+            }
+        });
     };
 
     const handleRemoveMaterial = (type, matToDelete) => {
@@ -873,6 +1003,75 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                 }
             }
         });
+    };
+
+    const handleDragStartMat = (e, type, name) => {
+        e.stopPropagation();
+        setDragMatInfo({ type, name });
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", `${type}|${name}`);
+    };
+
+    const handleDragOverMat = (e, type, name) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (dragMatInfo?.type === type && dragOverMatInfo?.name !== name) {
+            setDragOverMatInfo({ type, name });
+        }
+    };
+
+    const handleDropMat = (e, type, targetName) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!dragMatInfo || dragMatInfo.type !== type || dragMatInfo.name === targetName) {
+            setDragMatInfo(null);
+            setDragOverMatInfo(null);
+            return;
+        }
+        const draggedName = dragMatInfo.name;
+        let newMaterialsList = [...materials[type]];
+        let uniqueNames = [...new Set(newMaterialsList.map(m => m.name))];
+        const draggedIdx = uniqueNames.indexOf(draggedName);
+        const targetIdx = uniqueNames.indexOf(targetName);
+        if (draggedIdx !== -1 && targetIdx !== -1) {
+            const [draggedItemName] = uniqueNames.splice(draggedIdx, 1);
+            uniqueNames.splice(targetIdx, 0, draggedItemName);
+            newMaterialsList.sort((a, b) => uniqueNames.indexOf(a.name) - uniqueNames.indexOf(b.name));
+            saveMaterials({ ...materials, [type]: newMaterialsList });
+        }
+        setDragMatInfo(null);
+        setDragOverMatInfo(null);
+    };
+
+    const handleDragEndMat = () => { setDragMatInfo(null); setDragOverMatInfo(null); };
+
+    const handleTouchStartMat = (e, type, name) => { setDragMatInfo({ type, name }); };
+
+    const handleTouchMoveMat = (e, type) => {
+        if (!dragMatInfo || dragMatInfo.type !== type) return;
+        const touch = e.touches[0];
+        const target = document.elementFromPoint(touch.clientX, touch.clientY);
+        const li = target?.closest('[data-mat-name]');
+        if (li) {
+            const hoverName = li.getAttribute('data-mat-name');
+            const hoverType = li.getAttribute('data-mat-type');
+            if (hoverType === type && hoverName !== dragOverMatInfo?.name) setDragOverMatInfo({ type, name: hoverName });
+        }
+    };
+
+    const handleTouchEndMat = () => {
+        if (dragMatInfo && dragOverMatInfo && dragMatInfo.type === dragOverMatInfo.type && dragMatInfo.name !== dragOverMatInfo.name) {
+            const type = dragMatInfo.type; const draggedName = dragMatInfo.name; const targetName = dragOverMatInfo.name;
+            let newMaterialsList = [...materials[type]]; let uniqueNames = [...new Set(newMaterialsList.map(m => m.name))];
+            const draggedIdx = uniqueNames.indexOf(draggedName); const targetIdx = uniqueNames.indexOf(targetName);
+            if (draggedIdx !== -1 && targetIdx !== -1) {
+                const [draggedItemName] = uniqueNames.splice(draggedIdx, 1);
+                uniqueNames.splice(targetIdx, 0, draggedItemName);
+                newMaterialsList.sort((a, b) => uniqueNames.indexOf(a.name) - uniqueNames.indexOf(b.name));
+                saveMaterials({ ...materials, [type]: newMaterialsList });
+            }
+        }
+        setDragMatInfo(null); setDragOverMatInfo(null);
     };
 
     const formatDateForJadwal = (dateStr) => {
@@ -898,7 +1097,7 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
     const classAverages = useMemo(() => {
         const tahsinAvgs = visibleTahsin.map(mat => {
             const scores = displayedStudents
-                .filter(s => mat.students.includes('all') || mat.students.includes(s.id))
+                .filter(s => mat.students.includes('all') || mat.students.some(id => String(id) === String(s.id)))
                 .map(s => parseFloat(s.ujian_records?.[mat.name]))
                 .filter(n => !isNaN(n));
             return scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : '-';
@@ -906,7 +1105,7 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
 
         const tahfidzAvgs = visibleTahfidz.map(mat => {
             const scores = displayedStudents
-                .filter(s => mat.students.includes('all') || mat.students.includes(s.id))
+                .filter(s => mat.students.includes('all') || mat.students.some(id => String(id) === String(s.id)))
                 .map(s => parseFloat(s.ujian_records?.[mat.name]))
                 .filter(n => !isNaN(n));
             return scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : '-';
@@ -915,7 +1114,7 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
         const allTajwidScores = displayedStudents.flatMap(s => 
             visibleTahsin
                 .filter(m => tajwidList.includes(m.name))
-                .filter(m => m.students.includes('all') || m.students.includes(s.id))
+                .filter(m => m.students.includes('all') || m.students.some(id => String(id) === String(s.id)))
                 .map(m => parseFloat(s.ujian_records?.[m.name]))
                 .filter(n => !isNaN(n))
         );
@@ -924,7 +1123,7 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
         const allGhoribScores = displayedStudents.flatMap(s => 
             visibleTahsin
                 .filter(m => ghoribList.includes(m.name))
-                .filter(m => m.students.includes('all') || m.students.includes(s.id))
+                .filter(m => m.students.includes('all') || m.students.some(id => String(id) === String(s.id)))
                 .map(m => parseFloat(s.ujian_records?.[m.name]))
                 .filter(n => !isNaN(n))
         );
@@ -932,8 +1131,8 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
 
         let totalAll = 0; let countAll = 0;
         displayedStudents.forEach(s => {
-            visibleTahsin.forEach(mat => { if (mat.students.includes('all') || mat.students.includes(s.id)) { const val = parseFloat(s.ujian_records?.[mat.name]); if (!isNaN(val)) { totalAll += val; countAll++; } } });
-            visibleTahfidz.forEach(mat => { if (mat.students.includes('all') || mat.students.includes(s.id)) { const val = parseFloat(s.ujian_records?.[mat.name]); if (!isNaN(val)) { totalAll += val; countAll++; } } });
+            visibleTahsin.forEach(mat => { if (mat.students.includes('all') || mat.students.some(id => String(id) === String(s.id))) { const val = parseFloat(s.ujian_records?.[mat.name]); if (!isNaN(val)) { totalAll += val; countAll++; } } });
+            visibleTahfidz.forEach(mat => { if (mat.students.includes('all') || mat.students.some(id => String(id) === String(s.id))) { const val = parseFloat(s.ujian_records?.[mat.name]); if (!isNaN(val)) { totalAll += val; countAll++; } } });
         });
         const overallAvgAll = countAll > 0 ? (totalAll / countAll).toFixed(1) : '-';
 
@@ -1036,7 +1235,7 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
             let total = 0;
             let count = 0;
             visibleTahsin.forEach(mat => {
-                const isAssigned = mat.students.includes('all') || mat.students.includes(student.id);
+                const isAssigned = mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id));
                 const val = isAssigned ? (student.ujian_records?.[mat.name] || '-') : 'N/A';
                 row.push(val);
                 if (isAssigned && val !== '-' && !isNaN(parseFloat(val))) {
@@ -1045,7 +1244,7 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                 }
             });
             visibleTahfidz.forEach(mat => {
-                const isAssigned = mat.students.includes('all') || mat.students.includes(student.id);
+                const isAssigned = mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id));
                 const val = isAssigned ? (student.ujian_records?.[mat.name] || '-') : 'N/A';
                 row.push(val);
                 if (isAssigned && val !== '-' && !isNaN(parseFloat(val))) {
@@ -1244,15 +1443,50 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                                 <p className="text-xs font-bold text-slate-400 dark:text-slate-500 mt-0.5">Teori, tajwid, makharijul huruf</p>
                             </div>
                         </div>
-                        <div className="flex flex-col sm:flex-row gap-3 mb-6">
-                            <TahsinSelector value={newTahsin} onChange={setNewTahsin} onAdd={handleAddTahsin} placeholder="Pilih Materi (Tilawah, Tajwid, dll)..." className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all text-slate-700 dark:text-slate-100 placeholder:text-slate-400 pr-10" />
-                            <button onClick={() => handleAddTahsin()} className="bg-blue-500 hover:bg-blue-600 text-white px-5 py-3 rounded-xl transition-all shadow-sm shadow-blue-200 flex items-center justify-center gap-2 font-bold text-sm active:scale-95"><Plus size={18} /> <span className="sm:hidden">Tambah</span></button>
+                        <div className="flex flex-col lg:flex-row gap-3 mb-6">
+                            <TahsinSelector value={newTahsin} onChange={setNewTahsin} onEnter={handleAddTahsin} placeholder="Pilih Materi (Tilawah, Tajwid, dll)..." className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all text-slate-700 dark:text-slate-100 placeholder:text-slate-400 pr-10" />
+                            <div className="flex items-center gap-2">
+                                <AyatSelector 
+                                    surahName={newTahsin} 
+                                    surahList={surahList} 
+                                    value={newTahsinAyatStart} 
+                                    onChange={setNewTahsinAyatStart} 
+                                    maxAyat={newTahsinAyatEnd} 
+                                    placeholder="Ayat Awal" 
+                                    className="w-24 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-3 text-sm font-bold outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all text-slate-700 dark:text-slate-100 disabled:opacity-50" 
+                                    disabled={!newTahsin}
+                                />
+                                <span className="text-slate-400 font-bold">-</span>
+                                <AyatSelector 
+                                    surahName={newTahsin} 
+                                    surahList={surahList} 
+                                    value={newTahsinAyatEnd} 
+                                    onChange={setNewTahsinAyatEnd} 
+                                    minAyat={newTahsinAyatStart} 
+                                    placeholder="Akhir" 
+                                    className="w-24 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-3 text-sm font-bold outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all text-slate-700 dark:text-slate-100 disabled:opacity-50" 
+                                    disabled={!newTahsin}
+                                />
+                            </div>
+                            <button onClick={() => handleAddTahsin()} className="bg-blue-500 hover:bg-blue-600 text-white px-5 py-3 rounded-xl transition-all shadow-sm shadow-blue-200 flex items-center justify-center gap-2 font-bold text-sm active:scale-95 shrink-0"><Plus size={18} /> <span className="lg:hidden">Tambah</span></button>
                         </div>
-                        <ul className="space-y-3">
+                        <ul className="space-y-3" onTouchMove={(e) => handleTouchMoveMat(e, 'tahsin')} onTouchEnd={handleTouchEndMat}>
                             {currentTahsin.length === 0 && <li className="text-center py-8 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700"><p className="text-sm font-bold text-slate-500 dark:text-slate-400">Belum ada materi Tahsin.</p></li>}
                             {currentTahsin.map((mat, i) => (
-                                <li key={i} className="flex justify-between items-center bg-white dark:bg-slate-800 px-3 sm:px-5 py-3 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 border border-slate-100 dark:border-slate-700 shadow-sm group hover:border-blue-200 dark:hover:border-blue-500/30 transition-all">
-                                    <span className="flex items-center gap-3"><div className="w-1.5 h-1.5 rounded-full bg-blue-400"></div>{mat.name}
+                                <li key={i} 
+                                    data-mat-name={mat.name}
+                                    data-mat-type="tahsin"
+                                    draggable
+                                    onDragStart={(e) => handleDragStartMat(e, 'tahsin', mat.name)}
+                                    onDragOver={(e) => handleDragOverMat(e, 'tahsin', mat.name)}
+                                    onDrop={(e) => handleDropMat(e, 'tahsin', mat.name)}
+                                    onDragEnd={handleDragEndMat}
+                                    className={`flex justify-between items-center bg-white dark:bg-slate-800 px-3 sm:px-5 py-3 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 border ${dragOverMatInfo?.type === 'tahsin' && dragOverMatInfo?.name === mat.name ? 'border-blue-500 scale-[1.02] shadow-md z-10 relative' : 'border-slate-100 dark:border-slate-700'} shadow-sm group hover:border-blue-200 dark:hover:border-blue-500/30 transition-all cursor-grab active:cursor-grabbing ${dragMatInfo?.type === 'tahsin' && dragMatInfo?.name === mat.name ? 'opacity-50 grayscale' : 'opacity-100'}`}>
+                                    <span className="flex items-center gap-3">
+                                        <div className="text-slate-300 group-hover:text-slate-400 cursor-grab touch-none flex items-center -ml-2 mr-1" onTouchStart={(e) => handleTouchStartMat(e, 'tahsin', mat.name)}>
+                                            <GripVertical size={16} />
+                                        </div>
+                                        <div className="w-1.5 h-1.5 rounded-full bg-blue-400"></div>{mat.name}
                                     {(!mat.halaqoh || mat.halaqoh === 'Semua') && <span className="ml-2 text-[9px] bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-full" title="Materi ini berlaku untuk semua halaqoh.">Global</span>}
                                     </span>
                                     <div className="flex items-center gap-2">
@@ -1260,7 +1494,8 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                                             <Users size={12} />
                                             {mat.students.includes('all') ? 'Semua Siswa' : `${mat.students.length} Siswa`}
                                         </button>
-                                        <button onClick={() => handleRemoveMaterial('tahsin', mat)} className="text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 p-2 rounded-lg transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100"><Trash2 size={16} /></button>
+                                        <button onClick={() => handleEditMaterialName('tahsin', mat)} className="text-slate-300 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 p-2 rounded-lg transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100" title="Edit Nama Materi"><Edit3 size={16} /></button>
+                                        <button onClick={() => handleRemoveMaterial('tahsin', mat)} className="text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 p-2 rounded-lg transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100" title="Hapus Materi"><Trash2 size={16} /></button>
                                     </div>
                                 </li>
                             ))}
@@ -1276,15 +1511,50 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                                 <p className="text-xs font-bold text-slate-400 dark:text-slate-500 mt-0.5">Hafalan surah-surah Al-Qur&apos;an</p>
                             </div>
                         </div>
-                        <div className="flex flex-col sm:flex-row gap-3 mb-6">
-                            <TahfidzSelector value={newTahfidz} onChange={setNewTahfidz} onAdd={handleAddTahfidz} surahList={surahList} placeholder="Pilih Materi (Surat, Juz, dll)..." className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all text-slate-700 dark:text-slate-100 placeholder:text-slate-400 pr-10" />
-                            <button onClick={() => handleAddTahfidz()} className="bg-purple-500 hover:bg-purple-600 text-white px-5 py-3 rounded-xl transition-all shadow-sm shadow-purple-200 flex items-center justify-center gap-2 font-bold text-sm active:scale-95"><Plus size={18} /> <span className="sm:hidden">Tambah</span></button>
+                        <div className="flex flex-col lg:flex-row gap-3 mb-6">
+                            <TahfidzSelector value={newTahfidz} onChange={setNewTahfidz} onEnter={handleAddTahfidz} surahList={surahList} placeholder="Pilih Materi (Surat, Juz, dll)..." className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all text-slate-700 dark:text-slate-100 placeholder:text-slate-400 pr-10" />
+                            <div className="flex items-center gap-2">
+                                <AyatSelector 
+                                    surahName={newTahfidz} 
+                                    surahList={surahList} 
+                                    value={newTahfidzAyatStart} 
+                                    onChange={setNewTahfidzAyatStart} 
+                                    maxAyat={newTahfidzAyatEnd} 
+                                    placeholder="Ayat Awal" 
+                                    className="w-24 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-3 text-sm font-bold outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all text-slate-700 dark:text-slate-100 disabled:opacity-50" 
+                                    disabled={!newTahfidz}
+                                />
+                                <span className="text-slate-400 font-bold">-</span>
+                                <AyatSelector 
+                                    surahName={newTahfidz} 
+                                    surahList={surahList} 
+                                    value={newTahfidzAyatEnd} 
+                                    onChange={setNewTahfidzAyatEnd} 
+                                    minAyat={newTahfidzAyatStart} 
+                                    placeholder="Akhir" 
+                                    className="w-24 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-3 text-sm font-bold outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all text-slate-700 dark:text-slate-100 disabled:opacity-50" 
+                                    disabled={!newTahfidz}
+                                />
+                            </div>
+                            <button onClick={() => handleAddTahfidz()} className="bg-purple-500 hover:bg-purple-600 text-white px-5 py-3 rounded-xl transition-all shadow-sm shadow-purple-200 flex items-center justify-center gap-2 font-bold text-sm active:scale-95 shrink-0"><Plus size={18} /> <span className="lg:hidden">Tambah</span></button>
                         </div>
-                        <ul className="space-y-3">
+                        <ul className="space-y-3" onTouchMove={(e) => handleTouchMoveMat(e, 'tahfidz')} onTouchEnd={handleTouchEndMat}>
                             {currentTahfidz.length === 0 && <li className="text-center py-8 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700"><p className="text-sm font-bold text-slate-500 dark:text-slate-400">Belum ada materi Tahfidz.</p></li>}
                             {currentTahfidz.map((mat, i) => (
-                                <li key={i} className="flex justify-between items-center bg-white dark:bg-slate-800 px-3 sm:px-5 py-3 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 border border-slate-100 dark:border-slate-700 shadow-sm group hover:border-purple-200 dark:hover:border-purple-500/30 transition-all">
-                                    <span className="flex items-center gap-3"><div className="w-1.5 h-1.5 rounded-full bg-purple-400"></div>{mat.name}
+                                <li key={i} 
+                                    data-mat-name={mat.name}
+                                    data-mat-type="tahfidz"
+                                    draggable
+                                    onDragStart={(e) => handleDragStartMat(e, 'tahfidz', mat.name)}
+                                    onDragOver={(e) => handleDragOverMat(e, 'tahfidz', mat.name)}
+                                    onDrop={(e) => handleDropMat(e, 'tahfidz', mat.name)}
+                                    onDragEnd={handleDragEndMat}
+                                    className={`flex justify-between items-center bg-white dark:bg-slate-800 px-3 sm:px-5 py-3 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 border ${dragOverMatInfo?.type === 'tahfidz' && dragOverMatInfo?.name === mat.name ? 'border-purple-500 scale-[1.02] shadow-md z-10 relative' : 'border-slate-100 dark:border-slate-700'} shadow-sm group hover:border-purple-200 dark:hover:border-purple-500/30 transition-all cursor-grab active:cursor-grabbing ${dragMatInfo?.type === 'tahfidz' && dragMatInfo?.name === mat.name ? 'opacity-50 grayscale' : 'opacity-100'}`}>
+                                    <span className="flex items-center gap-3">
+                                        <div className="text-slate-300 group-hover:text-slate-400 cursor-grab touch-none flex items-center -ml-2 mr-1" onTouchStart={(e) => handleTouchStartMat(e, 'tahfidz', mat.name)}>
+                                            <GripVertical size={16} />
+                                        </div>
+                                        <div className="w-1.5 h-1.5 rounded-full bg-purple-400"></div>{mat.name}
                                     {(!mat.halaqoh || mat.halaqoh === 'Semua') && <span className="ml-2 text-[9px] bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-full" title="Materi ini berlaku untuk semua halaqoh.">Global</span>}
                                     </span>
                                     <div className="flex items-center gap-2">
@@ -1292,7 +1562,8 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                                             <Users size={12} />
                                             {mat.students.includes('all') ? 'Semua Siswa' : `${mat.students.length} Siswa`}
                                         </button>
-                                        <button onClick={() => handleRemoveMaterial('tahfidz', mat)} className="text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 p-2 rounded-lg transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100"><Trash2 size={16} /></button>
+                                        <button onClick={() => handleEditMaterialName('tahfidz', mat)} className="text-slate-300 hover:text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-500/10 p-2 rounded-lg transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100" title="Edit Nama Materi"><Edit3 size={16} /></button>
+                                        <button onClick={() => handleRemoveMaterial('tahfidz', mat)} className="text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 p-2 rounded-lg transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100" title="Hapus Materi"><Trash2 size={16} /></button>
                                     </div>
                                 </li>
                             ))}
@@ -1891,27 +2162,31 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
     const halaqohForFilter = student.halaqoh || activeHalaqoh || '';
     
     const currentTahsin = useMemo(() => {
-        const globalMats = (materials.tahsin || []).filter(m => !m.halaqoh || m.halaqoh === 'Semua');
-        const localMats = (materials.tahsin || []).filter(m => m.halaqoh === halaqohForFilter && halaqohForFilter);
-        const localNames = localMats.map(m => m.name);
-        const activeGlobals = globalMats.filter(m => !localNames.includes(m.name));
-        const combined = halaqohForFilter ? [...activeGlobals, ...localMats] : globalMats;
+        if (!halaqohForFilter) return (materials.tahsin || []).filter(m => !m.halaqoh || m.halaqoh === 'Semua').filter(m => !(m.students && m.students.includes('HIDDEN')));
+        const localNames = (materials.tahsin || []).filter(m => m.halaqoh === halaqohForFilter).map(m => m.name);
+        const combined = (materials.tahsin || []).filter(m => {
+            if (m.halaqoh === halaqohForFilter) return true;
+            if ((!m.halaqoh || m.halaqoh === 'Semua') && !localNames.includes(m.name)) return true;
+            return false;
+        });
         return combined.filter(m => !(m.students && m.students.includes('HIDDEN')));
     }, [materials.tahsin, halaqohForFilter]);
 
     const currentTahfidz = useMemo(() => {
-        const globalMats = (materials.tahfidz || []).filter(m => !m.halaqoh || m.halaqoh === 'Semua');
-        const localMats = (materials.tahfidz || []).filter(m => m.halaqoh === halaqohForFilter && halaqohForFilter);
-        const localNames = localMats.map(m => m.name);
-        const activeGlobals = globalMats.filter(m => !localNames.includes(m.name));
-        const combined = halaqohForFilter ? [...activeGlobals, ...localMats] : globalMats;
+        if (!halaqohForFilter) return (materials.tahfidz || []).filter(m => !m.halaqoh || m.halaqoh === 'Semua').filter(m => !(m.students && m.students.includes('HIDDEN')));
+        const localNames = (materials.tahfidz || []).filter(m => m.halaqoh === halaqohForFilter).map(m => m.name);
+        const combined = (materials.tahfidz || []).filter(m => {
+            if (m.halaqoh === halaqohForFilter) return true;
+            if ((!m.halaqoh || m.halaqoh === 'Semua') && !localNames.includes(m.name)) return true;
+            return false;
+        });
         return combined.filter(m => !(m.students && m.students.includes('HIDDEN')));
     }, [materials.tahfidz, halaqohForFilter]);
 
     // Deteksi apakah ada sub-materi Tajwid atau Ghorib di dalam materi Tahsin yang diujikan untuk siswa ini
-    const hasTajwidSub = useMemo(() => currentTahsin.some(mat => tajwidList.includes(mat.name) && (mat.students.includes('all') || mat.students.includes(student.id))), [currentTahsin, student.id]);
-    const hasGhoribSub = useMemo(() => currentTahsin.some(mat => ghoribList.includes(mat.name) && (mat.students.includes('all') || mat.students.includes(student.id))), [currentTahsin, student.id]);
-    const hasTahfidzAssigned = useMemo(() => currentTahfidz.some(m => m.students.includes('all') || m.students.includes(student.id)), [currentTahfidz, student.id]);
+    const hasTajwidSub = useMemo(() => currentTahsin.some(mat => tajwidList.includes(mat.name) && (mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id)))), [currentTahsin, student.id]);
+    const hasGhoribSub = useMemo(() => currentTahsin.some(mat => ghoribList.includes(mat.name) && (mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id)))), [currentTahsin, student.id]);
+    const hasTahfidzAssigned = useMemo(() => currentTahfidz.some(m => m.students.includes('all') || m.students.some(id => String(id) === String(student.id))), [currentTahfidz, student.id]);
 
     const getSubAverage = (list) => {
         const scores = currentTahsin.filter(m => list.includes(m.name) && (m.students.includes('all') || m.students.includes(student.id))).map(m => parseFloat(student.ujian_records?.[m.name])).filter(n => !isNaN(n));
@@ -1963,7 +2238,7 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
     useEffect(() => {
         const tahfidzScores = [];
         currentTahfidz.forEach(mat => {
-            if (mat.students.includes('all') || mat.students.includes(student.id)) {
+            if (mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id))) {
                 const score = student.ujian_records?.[mat.name];
                 // Selalu masukkan materi tahfidz yang ada di pengaturan ujian, meskipun nilainya kosong
                 tahfidzScores.push({ surah: mat.name, score: score !== undefined && score !== null ? score : '' });

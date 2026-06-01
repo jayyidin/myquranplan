@@ -220,11 +220,13 @@ const HomeView = ({
   }, []);
 
   const jadwalUjian = useMemo(() => {
-    const globalMats = allJadwal.filter(j => !j.halaqoh || j.halaqoh === 'Semua');
-    const localMats = allJadwal.filter(j => j.halaqoh === activeHalaqoh && activeHalaqoh);
-    const localIds = localMats.map(j => j.id);
-    const activeGlobals = globalMats.filter(j => !localIds.includes(j.id));
-    const combined = activeHalaqoh ? [...activeGlobals, ...localMats] : globalMats;
+    if (!activeHalaqoh) return allJadwal.filter(j => (!j.halaqoh || j.halaqoh === 'Semua') && !j.isHidden).sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
+    const combined = allJadwal.filter(j => {
+        if (j.halaqoh === activeHalaqoh) return true;
+        const localIds = allJadwal.filter(x => x.halaqoh === activeHalaqoh).map(x => x.id);
+        if ((!j.halaqoh || j.halaqoh === 'Semua') && !localIds.includes(j.id)) return true;
+        return false;
+    });
     return combined.filter(j => !j.isHidden).sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
   }, [allJadwal, activeHalaqoh]);
 
