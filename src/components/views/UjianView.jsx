@@ -240,7 +240,6 @@ const ScoreInput = React.memo(({ studentId, rowIndex, material, initialScore, on
                 inputMode="decimal"
                 enterKeyHint="next"
                 value={val}
-                onChange={e => setVal(e.target.value)}
                 onChange={e => {
                     let newVal = e.target.value;
                     if (newVal !== '' && !isNaN(newVal) && parseFloat(newVal) > 100) newVal = '100';
@@ -487,6 +486,7 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
 
     const [isAddingJadwal, setIsAddingJadwal] = useState(false);
     const [newJadwal, setNewJadwal] = useState({ tanggal: '', materi: [] });
+    const [jadwalFilter, setJadwalFilter] = useState('');
 
     const hasTajwidSub = useMemo(() => materials.tahsin.some(mat => tajwidList.includes(mat)), [materials.tahsin]);
     const hasGhoribSub = useMemo(() => materials.tahsin.some(mat => ghoribList.includes(mat)), [materials.tahsin]);
@@ -555,6 +555,7 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                         setMaterials({
                             tahsin: data.ujian_materials.tahsin || [],
                             tahfidz: data.ujian_materials.tahfidz || [],
+                            jadwal: data.ujian_materials.jadwal || [],
                             reportSettings: data.ujian_materials.reportSettings || {}
                         });
                     }
@@ -1110,8 +1111,19 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                                 </div>
                             )
                         ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                                {materials.jadwal.map((jadwal, idx) => (
+                            <div className="flex flex-col gap-4">
+                                <div className="relative max-w-sm">
+                                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                    <input 
+                                        type="text" 
+                                        placeholder="Cari berdasarkan nama materi..." 
+                                        value={jadwalFilter}
+                                        onChange={(e) => setJadwalFilter(e.target.value)}
+                                        className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-sm font-bold outline-none focus:border-indigo-500 transition-all text-slate-700 dark:text-slate-100"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                                {(materials.jadwal || []).filter(j => !jadwalFilter || j.materi.some(m => m.toLowerCase().includes(jadwalFilter.toLowerCase()))).map((jadwal, idx) => (
                                     <div key={jadwal.id || idx} className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 relative group shadow-sm hover:shadow-md transition-all">
                                         <button onClick={() => handleDeleteJadwal(jadwal.id)} className="absolute top-3 right-3 text-slate-300 hover:text-red-500 bg-slate-50 dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-500/10 p-2 rounded-xl transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100"><Trash2 size={16} /></button>
                                         <div className="flex items-center gap-2 mb-3">
@@ -1126,6 +1138,7 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                                         </div>
                                     </div>
                                 ))}
+                                </div>
                             </div>
                         )}
                     </div>
@@ -1595,7 +1608,6 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
         let newVal = val;
         if (field === 'score' && newVal !== '' && !isNaN(newVal) && parseFloat(newVal) > 100) newVal = '100';
         const updated = [...hafalanKelas];
-        updated[idx] = { ...updated[idx], [field]: val };
         updated[idx] = { ...updated[idx], [field]: newVal };
         setHafalanKelas(updated);
     };
@@ -1721,10 +1733,12 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
                 <div className="flex items-center gap-3 w-full sm:w-auto">
                     <button
                         onClick={onClose}
-                        className="p-2 bg-slate-700/50 hover:bg-slate-700 rounded-xl transition-colors text-slate-300 hover:text-white shrink-0"
-                        title="Kembali"
+                        className="flex items-center justify-center gap-1.5 p-2 sm:px-4 sm:py-2 bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white rounded-xl transition-all font-bold text-sm shrink-0 border border-red-500/20 hover:border-red-500"
+                        title="Tutup Pratinjau"
                     >
-                        <ArrowLeft size={18} />
+                        <ArrowLeft size={18} className="hidden sm:block" />
+                        <X size={20} className="sm:hidden" />
+                        <span className="hidden sm:inline">Tutup</span>
                     </button>
                     <div className="min-w-0 flex-1">
                         <h2 className="text-base sm:text-lg font-black tracking-tight leading-tight truncate">Cetak Raport Al-Qur&apos;an</h2>
@@ -1770,13 +1784,13 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
             </div>
 
             {/* Split Main Screen */}
-            <div className="flex flex-col lg:flex-row flex-1 overflow-hidden print:overflow-visible print:block">
+            <div className="flex flex-col lg:flex-row flex-1 overflow-y-auto lg:overflow-hidden custom-scrollbar print:overflow-visible print:block">
 
                 {/* Left Panel: Sidebar Editors */}
-                <div className="w-full lg:w-[450px] bg-slate-900 border-r border-slate-800 flex flex-col h-full overflow-y-auto custom-scrollbar shrink-0 p-6 gap-6 print:hidden">
+                <div className="w-full lg:w-[450px] bg-slate-900 lg:border-r border-b border-slate-800 flex flex-col lg:h-full lg:overflow-y-auto shrink-0 p-4 sm:p-6 gap-5 sm:gap-6 print:hidden">
 
                     {/* 1. DATA IDENTITAS CARD */}
-                    <div className="bg-slate-800/50 p-5 rounded-2xl border border-slate-700/60 flex flex-col gap-4">
+                    <div className="bg-slate-800/50 p-4 sm:p-5 rounded-2xl border border-slate-700/60 flex flex-col gap-4">
                         <div className="flex items-center gap-2 pb-2 border-b border-slate-700/50">
                             <span className="text-emerald-400 font-bold text-sm uppercase tracking-wider">1. Identitas Raport</span>
                         </div>
@@ -1827,7 +1841,7 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
                     </div>
 
                     {/* 2. NILAI UTAMA (TABLE 1) */}
-                    <div className="bg-slate-800/50 p-5 rounded-2xl border border-slate-700/60 flex flex-col gap-4">
+                    <div className="bg-slate-800/50 p-4 sm:p-5 rounded-2xl border border-slate-700/60 flex flex-col gap-4">
                         <div className="flex items-center gap-2 pb-2 border-b border-slate-700/50">
                             <span className="text-blue-400 font-bold text-sm uppercase tracking-wider">2. Nilai Sub Bidang Studi</span>
                         </div>
@@ -1839,7 +1853,6 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
                                     <input
                                         type="text"
                                         value={mainScoreValues[mat] || ''}
-                                        onChange={(e) => setMainScoreValues(prev => ({ ...prev, [mat]: e.target.value }))}
                                         onChange={(e) => {
                                             let newVal = e.target.value;
                                             if (newVal !== '' && !isNaN(newVal) && parseFloat(newVal) > 100) newVal = '100';
@@ -1856,7 +1869,6 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
                                     <input
                                         type="text"
                                         value={tahfidzOverride}
-                                        onChange={(e) => setTahfidzOverride(e.target.value)}
                                         onChange={(e) => {
                                             let newVal = e.target.value;
                                             if (newVal !== '' && !isNaN(newVal) && parseFloat(newVal) > 100) newVal = '100';
@@ -1872,7 +1884,7 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
                     </div>
 
                     {/* 3. RINCIAN SETORAN HAFALAN */}
-                    <div className="bg-slate-800/50 p-5 rounded-2xl border border-slate-700/60 flex flex-col gap-4">
+                    <div className="bg-slate-800/50 p-4 sm:p-5 rounded-2xl border border-slate-700/60 flex flex-col gap-4">
                         <div className="flex items-center gap-2 pb-2 border-b border-slate-700/50">
                             <span className="text-purple-400 font-bold text-sm uppercase tracking-wider">3. I. Hafalan Kelas (Max 22)</span>
                         </div>
@@ -1901,7 +1913,7 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
                     </div>
 
                     {/* 4. TARGET YANG TIDAK TERCAPAI (Max 8) */}
-                    <div className="bg-slate-800/50 p-5 rounded-2xl border border-slate-700/60 flex flex-col gap-4">
+                    <div className="bg-slate-800/50 p-4 sm:p-5 rounded-2xl border border-slate-700/60 flex flex-col gap-4">
                         <div className="flex items-center gap-2 pb-2 border-b border-slate-700/50">
                             <span className="text-orange-400 font-bold text-sm uppercase tracking-wider">4. II. Target Tidak Tercapai</span>
                         </div>
@@ -1927,7 +1939,7 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
                     </div>
 
                     {/* 5. ADAB DALAM HALAQOH */}
-                    <div className="bg-slate-800/50 p-5 rounded-2xl border border-slate-700/60 flex flex-col gap-4">
+                    <div className="bg-slate-800/50 p-4 sm:p-5 rounded-2xl border border-slate-700/60 flex flex-col gap-4">
                         <div className="flex items-center gap-2 pb-2 border-b border-slate-700/50">
                             <span className="text-teal-400 font-bold text-sm uppercase tracking-wider">5. III. Adab Dalam Halaqoh</span>
                         </div>
@@ -1957,7 +1969,7 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
                     </div>
 
                     {/* 6. CATATAN */}
-                    <div className="bg-slate-800/50 p-5 rounded-2xl border border-slate-700/60 flex flex-col gap-4 mb-8">
+                    <div className="bg-slate-800/50 p-4 sm:p-5 rounded-2xl border border-slate-700/60 flex flex-col gap-4 mb-4 lg:mb-8">
                         <div className="flex items-center gap-2 pb-2 border-b border-slate-700/50">
                             <span className="text-rose-400 font-bold text-sm uppercase tracking-wider">6. Catatan</span>
                         </div>
@@ -1988,7 +2000,7 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
                 </div>
 
                 {/* Right Panel: A4 Live Preview (with transforms) */}
-                <div className="flex-1 bg-slate-950 flex justify-center overflow-auto p-8 relative items-start select-none custom-scrollbar print:p-0 print:overflow-visible print:bg-white print:block">
+                <div className="flex-1 bg-slate-950 flex justify-center lg:overflow-auto p-4 sm:p-8 pb-32 lg:pb-8 relative items-start select-none custom-scrollbar print:p-0 print:overflow-visible print:bg-white print:block">
 
                     <div
                         id="zoom-wrapper"
@@ -2300,6 +2312,16 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
                 </div>
 
             </div>
+
+            {/* Tombol Tutup Melayang (Bawah) */}
+            <button
+                onClick={onClose}
+                className="fixed bottom-6 right-6 lg:bottom-8 lg:right-8 z-[100] flex items-center justify-center gap-2 px-5 py-3.5 bg-red-600 hover:bg-red-700 text-white rounded-full shadow-[0_10px_25px_rgba(220,38,38,0.4)] active:scale-95 transition-all print:hidden font-black border border-red-500"
+                title="Tutup Pratinjau"
+            >
+                <X size={20} strokeWidth={3} />
+                <span>Tutup</span>
+            </button>
         </div>
     );
 };

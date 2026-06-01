@@ -52,7 +52,7 @@ function App() {
 
   return (
     <>
-      {!currentUser ? <LoginScreen onLogin={handleLogin} theme={theme} setTheme={setTheme} /> : <MainApp currentUser={currentUser} onLogout={handleLogout} theme={theme} setTheme={setTheme} />}
+      {!currentUser ? <LoginScreen onLogin={handleLogin} theme={theme} setTheme={handleSetTheme} /> : <MainApp currentUser={currentUser} onLogout={handleLogout} theme={theme} setTheme={handleSetTheme} />}
     </>
   );
 }

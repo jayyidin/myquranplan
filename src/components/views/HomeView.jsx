@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Settings, Users, Edit3, Trash2, Share2, Plus, X, Calendar, ChevronLeft, ChevronRight, BookOpen, Mic, Repeat, Printer, Check, Download, FileText, History, Link, Search, ImageDown, ChevronUp, ChevronDown, ArrowUp, Star, ChevronsUpDown, CheckCircle2 } from 'lucide-react';
+import { Settings, Users, Edit3, Trash2, Share2, Plus, X, Calendar, ChevronLeft, ChevronRight, BookOpen, Mic, Repeat, Printer, Check, Download, FileText, History, Link, Search, ImageDown, ChevronUp, ChevronDown, ArrowUp, Star, ChevronsUpDown, CheckCircle2, CalendarDays } from 'lucide-react';
 import { Tooltip } from 'react-tooltip';
-import { formatShortDate, getInitials, formatPeriode, formatPrintData, copyTextToClipboard } from '../../utils/helpers';
+import { formatShortDate, getInitials, formatPeriode, formatPrintData, copyTextToClipboard, formatDateObj, getMonday } from '../../utils/helpers';
 import { supabase } from '../supabase';
 
 const renderTextWithHighlights = (txt) => {
@@ -185,20 +185,46 @@ const HomeView = ({
 
   // --- STATE JADWAL UJIAN ---
   const [jadwalUjian, setJadwalUjian] = useState([]);
+  const [isJadwalLoaded, setIsJadwalLoaded] = useState(false);
+  
   useEffect(() => {
     const fetchJadwal = async () => {
       try {
         const { data } = await supabase.from('settings').select('ujian_materials').eq('id', 1).maybeSingle();
-        if (data?.ujian_materials?.jadwal) {
-          const sortedJadwal = data.ujian_materials.jadwal.sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
-          setJadwalUjian(sortedJadwal);
+        const raw = data?.ujian_materials?.jadwal;
+        if (Array.isArray(raw) && raw.length > 0) {
+          setJadwalUjian([...raw].sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal)));
+        } else {
+          setJadwalUjian([]);
         }
       } catch (err) {
         console.error("Gagal memuat jadwal ujian:", err);
+      } finally {
+        setIsJadwalLoaded(true);
       }
     };
     fetchJadwal();
+
+    // Dengarkan perubahan secara real-time agar otomatis hilang di Beranda jika dikosongkan di halaman Ujian
+    const channel = supabase.channel('home_jadwal_sync')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'settings', filter: 'id=eq.1' }, (payload) => {
+        const newJadwal = payload.new?.ujian_materials?.jadwal;
+        if (Array.isArray(newJadwal) && newJadwal.length > 0) {
+          setJadwalUjian([...newJadwal].sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal)));
+        } else {
+          setJadwalUjian([]);
+        }
+      }).subscribe();
+
+    return () => supabase.removeChannel(channel);
   }, []);
+
+  // Otomatis pindah ke tab jurnal jika jadwal kosong tapi user sedang berada di tab jadwal (misal dari sisa cache)
+  useEffect(() => {
+    if (isJadwalLoaded && jadwalUjian.length === 0 && homeTab === 'jadwal') {
+      setHomeTab('jurnal');
+    }
+  }, [isJadwalLoaded, jadwalUjian, homeTab, setHomeTab]);
 
   const formatDateForJadwal = (dateStr) => {
     if (!dateStr) return '-';
@@ -206,6 +232,41 @@ const HomeView = ({
     const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Ags", "Sep", "Okt", "Nov", "Des"];
     return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
   };
+
+  // Logika Cerdas: Memisahkan dan Menghitung Mundur Jadwal Ujian
+  const { upcomingJadwal, pastJadwal, nextExam } = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const upcoming = [];
+    const past = [];
+
+    jadwalUjian.forEach(j => {
+      const examDate = new Date(j.tanggal);
+      examDate.setHours(0, 0, 0, 0);
+      if (examDate >= today) {
+        upcoming.push(j);
+      } else {
+        past.push(j);
+      }
+    });
+
+    // Urutkan ujian mendatang dari yang paling dekat
+    upcoming.sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
+    // Urutkan riwayat ujian dari yang paling baru selesai
+    past.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
+
+    let next = null;
+    if (upcoming.length > 0) {
+      const nextDate = new Date(upcoming[0].tanggal);
+      nextDate.setHours(0, 0, 0, 0);
+      const diffTime = Math.abs(nextDate - today);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      next = { ...upcoming[0], daysLeft: diffDays };
+    }
+
+    return { upcomingJadwal: upcoming, pastJadwal: past, nextExam: next };
+  }, [jadwalUjian]);
 
   // Auto-scroll Date Nav agar tanggal yang aktif selalu di tengah layar
   useEffect(() => {
@@ -1396,11 +1457,13 @@ const HomeView = ({
                 <span className="sm:hidden">Mutabaah</span>
                 <span className="hidden sm:inline">Mutabaah</span>
               </button>
-              <button onClick={() => setHomeTab('jadwal')} className={`flex-1 flex items-center justify-center gap-1.5 px-2 sm:px-4 py-1.5 sm:py-2 font-black text-xs sm:text-sm rounded-lg sm:rounded-xl transition-all duration-300 min-w-fit ${homeTab === 'jadwal' ? 'bg-indigo-500 text-white shadow-md border border-indigo-600' : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'}`}>
-                {homeTab === 'jadwal' && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse shrink-0"></span>}
-                <Calendar size={16} className="hidden sm:block" />
-                <span>Jadwal Ujian</span>
-              </button>
+              {jadwalUjian.length > 0 && (
+                <button onClick={() => setHomeTab('jadwal')} className={`flex-1 flex items-center justify-center gap-1.5 px-2 sm:px-4 py-1.5 sm:py-2 font-black text-xs sm:text-sm rounded-lg sm:rounded-xl transition-all duration-300 min-w-fit ${homeTab === 'jadwal' ? 'bg-indigo-500 text-white shadow-md border border-indigo-600' : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'}`}>
+                  {homeTab === 'jadwal' && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse shrink-0"></span>}
+                  <Calendar size={16} className="hidden sm:block" />
+                  <span>Jadwal Ujian</span>
+                </button>
+              )}
               <button
                 onClick={() => setIsHeaderVisible(!isHeaderVisible)}
                 className="flex items-center justify-center px-2.5 py-1.5 sm:py-2 bg-white text-slate-500 hover:text-emerald-600 rounded-lg sm:rounded-xl shadow-sm border border-gray-200/50 transition-all"
@@ -1577,22 +1640,75 @@ const HomeView = ({
                     <p className="text-slate-500 font-bold">Belum ada jadwal ujian yang dipublikasikan.</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-                    {jadwalUjian.map((jadwal, idx) => (
-                      <div key={jadwal.id || idx} className="bg-white p-5 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-bl-full -mr-16 -mt-16 transition-transform group-hover:scale-110 pointer-events-none"></div>
-                        <div className="flex items-center gap-3 mb-4 relative z-10">
-                          <div className="bg-indigo-50 text-indigo-600 p-2.5 rounded-xl"><Calendar size={20} /></div>
-                          <div className="text-indigo-600 font-black text-sm uppercase tracking-widest">{formatDateForJadwal(jadwal.tanggal)}</div>
+                  <div className="flex flex-col gap-8">
+                    {nextExam && (
+                      <div className="bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-indigo-200 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6 border border-indigo-400/50">
+                        <div className="absolute -right-10 -top-10 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
+                        <div className="flex items-center gap-5 relative z-10 w-full md:w-auto">
+                          <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/30 shrink-0">
+                            <CalendarDays size={32} className="text-white drop-shadow-md" />
+                          </div>
+                          <div>
+                            <p className="text-indigo-100 font-black uppercase tracking-widest text-[10px] sm:text-xs mb-1">Ujian Terdekat</p>
+                            <h3 className="text-xl sm:text-2xl font-black drop-shadow-md">{formatDateForJadwal(nextExam.tanggal)}</h3>
+                            <p className="text-sm font-medium text-indigo-50 mt-1">{nextExam.materi.length} Materi Diujikan</p>
+                          </div>
                         </div>
-                        <div className="font-extrabold text-slate-800 text-lg leading-tight mb-4 relative z-10">Ujian Al-Qur'an</div>
-                        <div className="flex flex-wrap gap-2 relative z-10">
-                          {jadwal.materi.map((m, i) => (
-                            <span key={i} className="bg-slate-50 border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-[11px] font-bold">{m}</span>
+                        <div className="flex flex-col items-center justify-center bg-white/10 backdrop-blur-md px-8 py-4 rounded-2xl border border-white/20 shrink-0 w-full md:w-auto text-center relative z-10">
+                          <div className="text-3xl sm:text-4xl font-black drop-shadow-md">
+                            {nextExam.daysLeft === 0 ? 'HARI INI' : `${nextExam.daysLeft}`}
+                          </div>
+                          <div className="text-xs sm:text-sm font-bold text-indigo-100 uppercase tracking-widest mt-1">
+                            {nextExam.daysLeft === 0 ? 'Sedang Berlangsung' : 'Hari Lagi'}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {upcomingJadwal.length > 0 && (
+                      <div>
+                        <h3 className="text-lg font-black text-slate-700 mb-4 flex items-center gap-2 px-2"><Calendar size={20} className="text-indigo-500" /> Jadwal Mendatang</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+                          {upcomingJadwal.map((jadwal, idx) => (
+                            <div key={jadwal.id || idx} className="bg-white p-5 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
+                              <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-bl-full -mr-16 -mt-16 transition-transform group-hover:scale-110 pointer-events-none"></div>
+                              <div className="flex items-center gap-3 mb-4 relative z-10">
+                                <div className="bg-indigo-50 text-indigo-600 p-2.5 rounded-xl"><Calendar size={20} /></div>
+                                <div className="text-indigo-600 font-black text-sm uppercase tracking-widest">{formatDateForJadwal(jadwal.tanggal)}</div>
+                              </div>
+                              <div className="font-extrabold text-slate-800 text-lg leading-tight mb-4 relative z-10">Ujian Al-Qur'an</div>
+                              <div className="flex flex-wrap gap-2 relative z-10">
+                                {jadwal.materi.map((m, i) => (
+                                  <span key={i} className="bg-slate-50 border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-[11px] font-bold">{m}</span>
+                                ))}
+                              </div>
+                            </div>
                           ))}
                         </div>
                       </div>
-                    ))}
+                    )}
+
+                    {pastJadwal.length > 0 && (
+                      <div>
+                        <h3 className="text-lg font-black text-slate-400 mb-4 flex items-center gap-2 px-2"><History size={20} className="text-slate-400" /> Riwayat Ujian (Selesai)</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 opacity-75 hover:opacity-100 transition-opacity">
+                          {pastJadwal.map((jadwal, idx) => (
+                            <div key={jadwal.id || idx} className="bg-slate-50 p-5 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden">
+                              <div className="flex items-center gap-3 mb-4">
+                                <div className="bg-slate-200 text-slate-500 p-2.5 rounded-xl"><Check size={20} /></div>
+                                <div className="text-slate-500 font-black text-sm uppercase tracking-widest">{formatDateForJadwal(jadwal.tanggal)}</div>
+                              </div>
+                              <div className="font-extrabold text-slate-600 text-lg leading-tight mb-4">Ujian Al-Qur'an</div>
+                              <div className="flex flex-wrap gap-2">
+                                {jadwal.materi.map((m, i) => (
+                                  <span key={i} className="bg-white border border-slate-200 text-slate-500 px-3 py-1.5 rounded-lg text-[11px] font-bold">{m}</span>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
