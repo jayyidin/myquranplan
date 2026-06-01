@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../supabase';
-import { Award, Plus, Trash2, Settings, ClipboardList, Loader2, BookOpen, Mic, Printer, Search, ChevronDown, AlertTriangle, X, Download, FileText, ArrowLeft, Check, CalendarDays, Calendar } from 'lucide-react';
+import { Award, Plus, Trash2, Settings, ClipboardList, Loader2, BookOpen, Mic, Printer, Search, ChevronDown, AlertTriangle, X, Download, FileText, ArrowLeft, Check, CalendarDays, Calendar, Users, Edit3 } from 'lucide-react';
 import SurahSelector from '../SurahSelector';
 import { surahList, ghoribList, tajwidList } from '../../data/constants';
 
-const TahsinSelector = ({ value, onChange, placeholder, className }) => {
+const TahsinSelector = ({ value, onChange, onAdd, placeholder, className }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const wrapperRef = useRef(null);
@@ -32,18 +32,36 @@ const TahsinSelector = ({ value, onChange, placeholder, className }) => {
             { label: 'Sub-Materi Ghorib', items: ghoribList }
         ];
 
-        if (!searchTerm || searchTerm === value) return allGroups;
+        if (!searchTerm) return allGroups;
 
         const lowerTerm = searchTerm.toLowerCase();
         return allGroups.map(group => ({
             label: group.label,
             items: group.items.filter(item => item.toLowerCase().includes(lowerTerm))
         })).filter(group => group.items.length > 0);
-    }, [searchTerm, isOpen, value]);
+    }, [searchTerm, isOpen]);
 
     const handleSelect = (item) => {
-        onChange(item);
+        if (onAdd) {
+            onAdd(item);
+            setSearchTerm('');
+            onChange('');
+        } else {
+            onChange(item);
+        }
         setIsOpen(false);
+    };
+
+    const handleKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (onAdd && searchTerm.trim()) {
+                onAdd(searchTerm.trim());
+                setSearchTerm('');
+                onChange('');
+                setIsOpen(false);
+            }
+        }
     };
 
     return (
@@ -54,13 +72,19 @@ const TahsinSelector = ({ value, onChange, placeholder, className }) => {
                 onChange={(e) => {
                     setSearchTerm(e.target.value);
                     onChange(e.target.value); // Sinkronisasi langsung untuk custom text
+                    setIsOpen(true); // Memastikan dropdown otomatis terbuka saat diketik
                 }}
                 onFocus={() => setIsOpen(true)}
+                onClick={() => setIsOpen(true)}
+                onKeyDown={handleKeyDown}
                 placeholder={placeholder}
                 className={className}
             />
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                <ChevronDown size={18} />
+            <div 
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 cursor-pointer text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                onClick={() => setIsOpen(!isOpen)}
+            >
+                <ChevronDown size={18} className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
             </div>
 
             {isOpen && filteredOptions.length > 0 && (
@@ -86,7 +110,7 @@ const TahsinSelector = ({ value, onChange, placeholder, className }) => {
 };
 
 // Komponen Dropdown Kustom untuk Tahfidz (Mendukung Input Teks Bebas & Pencarian)
-const TahfidzSelector = ({ value, onChange, placeholder, className, surahList }) => {
+const TahfidzSelector = ({ value, onChange, onAdd, placeholder, className, surahList }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const wrapperRef = useRef(null);
@@ -113,18 +137,36 @@ const TahfidzSelector = ({ value, onChange, placeholder, className, surahList })
             { label: 'Daftar Surat', items: surahList.map(s => s.name) }
         ];
 
-        if (!searchTerm || searchTerm === value) return allGroups;
+        if (!searchTerm) return allGroups;
 
         const lowerTerm = searchTerm.toLowerCase();
         return allGroups.map(group => ({
             label: group.label,
             items: group.items.filter(item => item.toLowerCase().includes(lowerTerm))
         })).filter(group => group.items.length > 0);
-    }, [searchTerm, isOpen, value, surahList]);
+    }, [searchTerm, isOpen, surahList]);
 
     const handleSelect = (item) => {
-        onChange(item);
+        if (onAdd) {
+            onAdd(item);
+            setSearchTerm('');
+            onChange('');
+        } else {
+            onChange(item);
+        }
         setIsOpen(false);
+    };
+
+    const handleKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (onAdd && searchTerm.trim()) {
+                onAdd(searchTerm.trim());
+                setSearchTerm('');
+                onChange('');
+                setIsOpen(false);
+            }
+        }
     };
 
     return (
@@ -135,13 +177,19 @@ const TahfidzSelector = ({ value, onChange, placeholder, className, surahList })
                 onChange={(e) => {
                     setSearchTerm(e.target.value);
                     onChange(e.target.value); // Sinkronisasi langsung untuk custom text
+                    setIsOpen(true); // Memastikan dropdown otomatis terbuka saat diketik
                 }}
                 onFocus={() => setIsOpen(true)}
+                onClick={() => setIsOpen(true)}
+                onKeyDown={handleKeyDown}
                 placeholder={placeholder}
                 className={className}
             />
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                <ChevronDown size={18} />
+            <div 
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 cursor-pointer text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                onClick={() => setIsOpen(!isOpen)}
+            >
+                <ChevronDown size={18} className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
             </div>
 
             {isOpen && filteredOptions.length > 0 && (
@@ -167,7 +215,7 @@ const TahfidzSelector = ({ value, onChange, placeholder, className, surahList })
 };
 
 // Sub-komponen Input Nilai agar lebih ringan dan tidak lag saat mengetik
-const ScoreInput = React.memo(({ studentId, rowIndex, material, initialScore, onSave, kkmScore, isMobile = false }) => {
+const ScoreInput = React.memo(({ studentId, rowIndex, material, initialScore, onSave, kkmScore, isMobile = false, disabled = false }) => {
     const [val, setVal] = useState(initialScore ?? '');
     const [isSaving, setIsSaving] = useState(false);
     const [isSaved, setIsSaved] = useState(false);
@@ -233,6 +281,16 @@ const ScoreInput = React.memo(({ studentId, rowIndex, material, initialScore, on
     const isBelowKKM = !isNaN(numVal) && numVal < kkmScore && val.toString().trim() !== '';
     const isPerfect = !isNaN(numVal) && numVal === 100 && val.toString().trim() !== '';
 
+    if (disabled) {
+        return (
+            <div className={`relative inline-block w-full ${isMobile ? '' : 'max-w-[80px]'}`}>
+                <div className="w-full px-1.5 sm:px-2 py-2.5 text-sm rounded-xl font-black text-center text-slate-300 dark:text-slate-700 bg-slate-50 dark:bg-slate-800/50">
+                    -
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className={`relative inline-block w-full ${isMobile ? '' : 'max-w-[80px]'}`}>
             <input
@@ -273,7 +331,10 @@ const ScoreInput = React.memo(({ studentId, rowIndex, material, initialScore, on
 
 const StudentTableRow = React.memo(({ student, index, materials, hasTajwidSub, hasGhoribSub, kkmScore, onSaveScore, onPrintStudent }) => {
     const getAverage = (list) => {
-        const scores = materials.tahsin.filter(m => list.includes(m)).map(m => parseFloat(student.ujian_records?.[m])).filter(n => !isNaN(n));
+        const scores = materials.tahsin
+            .filter(m => list.includes(m.name) && (m.students.includes('all') || m.students.includes(student.id)))
+            .map(m => parseFloat(student.ujian_records?.[m.name]))
+            .filter(n => !isNaN(n));
         return scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : '-';
     };
 
@@ -281,21 +342,25 @@ const StudentTableRow = React.memo(({ student, index, materials, hasTajwidSub, h
         let total = 0;
         let count = 0;
         materials.tahsin.forEach(mat => {
-            const val = parseFloat(student.ujian_records?.[mat]);
-            if (!isNaN(val)) {
-                total += val;
-                count++;
+            if (mat.students.includes('all') || mat.students.includes(student.id)) {
+                const val = parseFloat(student.ujian_records?.[mat.name]);
+                if (!isNaN(val)) {
+                    total += val;
+                    count++;
+                }
             }
         });
         materials.tahfidz.forEach(mat => {
-            const val = parseFloat(student.ujian_records?.[mat]);
-            if (!isNaN(val)) {
-                total += val;
-                count++;
+            if (mat.students.includes('all') || mat.students.includes(student.id)) {
+                const val = parseFloat(student.ujian_records?.[mat.name]);
+                if (!isNaN(val)) {
+                    total += val;
+                    count++;
+                }
             }
         });
         return count > 0 ? (total / count).toFixed(1) : '-';
-    }, [student.ujian_records, materials]);
+    }, [student.ujian_records, student.id, materials]);
 
     const isAvgBelowKKM = overallAvg !== '-' && parseFloat(overallAvg) < kkmScore;
 
@@ -317,9 +382,10 @@ const StudentTableRow = React.memo(({ student, index, materials, hasTajwidSub, h
                 </div>
             </td>
             {materials.tahsin.map((mat, i) => {
+                const isAssigned = mat.students.includes('all') || mat.students.includes(student.id);
                 return (
                     <td key={`t-in-${i}`} className="p-3 text-center border-l border-slate-100/50 dark:border-slate-800/50 align-middle">
-                        <ScoreInput studentId={student.id} rowIndex={index} material={mat} initialScore={student.ujian_records?.[mat]} onSave={onSaveScore} kkmScore={kkmScore} />
+                        <ScoreInput studentId={student.id} rowIndex={index} material={mat.name} initialScore={student.ujian_records?.[mat.name]} onSave={onSaveScore} kkmScore={kkmScore} disabled={!isAssigned} />
                     </td>
                 );
             })}
@@ -335,9 +401,10 @@ const StudentTableRow = React.memo(({ student, index, materials, hasTajwidSub, h
             )}
 
             {materials.tahfidz.map((mat, i) => {
+                const isAssigned = mat.students.includes('all') || mat.students.includes(student.id);
                 return (
                     <td key={`f-in-${i}`} className="p-3 text-center border-l border-slate-100/50 dark:border-slate-800/50 align-middle bg-purple-50/10 dark:bg-purple-500/5">
-                        <ScoreInput studentId={student.id} rowIndex={index} material={mat} initialScore={student.ujian_records?.[mat]} onSave={onSaveScore} kkmScore={kkmScore} />
+                        <ScoreInput studentId={student.id} rowIndex={index} material={mat.name} initialScore={student.ujian_records?.[mat.name]} onSave={onSaveScore} kkmScore={kkmScore} disabled={!isAssigned} />
                     </td>
                 );
             })}
@@ -364,18 +431,35 @@ const StudentTableRow = React.memo(({ student, index, materials, hasTajwidSub, h
 
 const StudentMobileCard = React.memo(({ student, index, materials, hasTajwidSub, hasGhoribSub, kkmScore, onSaveScore, onPrintStudent }) => {
     const getAverage = (list) => {
-        const scores = materials.tahsin.filter(m => list.includes(m)).map(m => parseFloat(student.ujian_records?.[m])).filter(n => !isNaN(n));
+        const scores = materials.tahsin
+            .filter(m => list.includes(m.name))
+            .filter(m => m.students.includes('all') || m.students.includes(student.id))
+            .map(m => parseFloat(student.ujian_records?.[m.name]))
+            .filter(n => !isNaN(n));
         return scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : '-';
     };
 
     const nameSize = student.name.length > 24 ? 'text-sm' : student.name.length > 18 ? 'text-[15px]' : 'text-base sm:text-lg';
 
     const overallAvg = React.useMemo(() => {
-        let total = 0; let count = 0;
-        materials.tahsin.forEach(mat => { const val = parseFloat(student.ujian_records?.[mat]); if (!isNaN(val)) { total += val; count++; } });
-        materials.tahfidz.forEach(mat => { const val = parseFloat(student.ujian_records?.[mat]); if (!isNaN(val)) { total += val; count++; } });
+        let total = 0;
+        let count = 0;
+        materials.tahsin.forEach(mat => {
+            const isAssigned = mat.students.includes('all') || mat.students.includes(student.id);
+            if (isAssigned) {
+                const val = parseFloat(student.ujian_records?.[mat.name]);
+                if (!isNaN(val)) { total += val; count++; }
+            }
+        });
+        materials.tahfidz.forEach(mat => {
+            const isAssigned = mat.students.includes('all') || mat.students.includes(student.id);
+            if (isAssigned) {
+                const val = parseFloat(student.ujian_records?.[mat.name]);
+                if (!isNaN(val)) { total += val; count++; }
+            }
+        });
         return count > 0 ? (total / count).toFixed(1) : '-';
-    }, [student.ujian_records, materials]);
+    }, [student.ujian_records, student.id, materials]);
 
     const isAvgBelowKKM = overallAvg !== '-' && parseFloat(overallAvg) < kkmScore;
 
@@ -420,10 +504,11 @@ const StudentMobileCard = React.memo(({ student, index, materials, hasTajwidSub,
                         </div>
                         <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5 sm:gap-2">
                             {materials.tahsin.map((mat, i) => {
+                                const isAssigned = mat.students.includes('all') || mat.students.includes(student.id);
                                 return (
                                     <div key={`t-mob-${i}`} className="bg-white dark:bg-slate-800/60 p-1.5 sm:p-2 rounded-xl border border-slate-200/60 dark:border-slate-700/60 flex flex-col justify-between items-center gap-1 shadow-sm hover:border-blue-300 dark:hover:border-blue-500/50 transition-colors">
-                                        <span className={`${mat.length > 20 ? 'text-[8px]' : mat.length > 12 ? 'text-[9px]' : 'text-[10px]'} font-bold text-slate-600 dark:text-slate-300 text-center leading-tight line-clamp-2 w-full h-6 flex items-center justify-center`} title={mat}>{mat}</span>
-                                        <ScoreInput studentId={student.id} rowIndex={index} material={mat} initialScore={student.ujian_records?.[mat]} onSave={onSaveScore} kkmScore={kkmScore} isMobile={true} />
+                                        <span className={`${mat.name.length > 20 ? 'text-[8px]' : mat.name.length > 12 ? 'text-[9px]' : 'text-[10px]'} font-bold text-slate-600 dark:text-slate-300 text-center leading-tight line-clamp-2 w-full h-6 flex items-center justify-center`} title={mat.name}>{mat.name}</span>
+                                        <ScoreInput studentId={student.id} rowIndex={index} material={mat.name} initialScore={student.ujian_records?.[mat.name]} onSave={onSaveScore} kkmScore={kkmScore} isMobile={true} disabled={!isAssigned} />
                                     </div>
                                 );
                             })}
@@ -451,10 +536,11 @@ const StudentMobileCard = React.memo(({ student, index, materials, hasTajwidSub,
                         </div>
                         <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5 sm:gap-2">
                             {materials.tahfidz.map((mat, i) => {
+                                const isAssigned = mat.students.includes('all') || mat.students.includes(student.id);
                                 return (
                                     <div key={`f-mob-${i}`} className="bg-white dark:bg-slate-800/60 p-1.5 sm:p-2 rounded-xl border border-slate-200/60 dark:border-slate-700/60 flex flex-col justify-between items-center gap-1 shadow-sm hover:border-purple-300 dark:hover:border-purple-500/50 transition-colors">
-                                        <span className={`${mat.length > 20 ? 'text-[8px]' : mat.length > 12 ? 'text-[9px]' : 'text-[10px]'} font-bold text-slate-600 dark:text-slate-300 text-center leading-tight line-clamp-2 w-full h-6 flex items-center justify-center`} title={mat}>{mat}</span>
-                                        <ScoreInput studentId={student.id} rowIndex={index} material={mat} initialScore={student.ujian_records?.[mat]} onSave={onSaveScore} kkmScore={kkmScore} isMobile={true} />
+                                        <span className={`${mat.name.length > 20 ? 'text-[8px]' : mat.name.length > 12 ? 'text-[9px]' : 'text-[10px]'} font-bold text-slate-600 dark:text-slate-300 text-center leading-tight line-clamp-2 w-full h-6 flex items-center justify-center`} title={mat.name}>{mat.name}</span>
+                                        <ScoreInput studentId={student.id} rowIndex={index} material={mat.name} initialScore={student.ujian_records?.[mat.name]} onSave={onSaveScore} kkmScore={kkmScore} isMobile={true} disabled={!isAssigned} />
                                     </div>
                                 );
                             })}
@@ -480,6 +566,7 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
     const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, message: '', onConfirm: null });
     const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
     const [activePrintStudent, setActivePrintStudent] = useState(null);
+    const [assignmentModal, setAssignmentModal] = useState({ isOpen: false, type: '', material: null });
 
     const [newTahsin, setNewTahsin] = useState('');
     const [newTahfidz, setNewTahfidz] = useState('');
@@ -488,8 +575,25 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
     const [newJadwal, setNewJadwal] = useState({ tanggal: '', materi: [] });
     const [jadwalFilter, setJadwalFilter] = useState('');
 
-    const hasTajwidSub = useMemo(() => materials.tahsin.some(mat => tajwidList.includes(mat)), [materials.tahsin]);
-    const hasGhoribSub = useMemo(() => materials.tahsin.some(mat => ghoribList.includes(mat)), [materials.tahsin]);
+    const [selectedJadwalId, setSelectedJadwalId] = useState('');
+
+    const activeJadwal = useMemo(() => {
+        if (!selectedJadwalId) return null;
+        return materials.jadwal?.find(j => j.id.toString() === selectedJadwalId.toString()) || null;
+    }, [selectedJadwalId, materials.jadwal]);
+
+    const visibleTahsin = useMemo(() => {
+        if (!activeJadwal) return materials.tahsin || [];
+        return (materials.tahsin || []).filter(m => activeJadwal.materi.includes(m.name));
+    }, [materials.tahsin, activeJadwal]);
+
+    const visibleTahfidz = useMemo(() => {
+        if (!activeJadwal) return materials.tahfidz || [];
+        return (materials.tahfidz || []).filter(m => activeJadwal.materi.includes(m.name));
+    }, [materials.tahfidz, activeJadwal]);
+
+    const hasTajwidSub = useMemo(() => visibleTahsin.some(mat => tajwidList.includes(mat.name)), [visibleTahsin]);
+    const hasGhoribSub = useMemo(() => visibleTahsin.some(mat => ghoribList.includes(mat.name)), [visibleTahsin]);
 
     const [localRS, setLocalRS] = useState({});
     useEffect(() => {
@@ -512,14 +616,26 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
             result = result.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()));
         }
 
+        if (activeJadwal) {
+            result = result.filter(s => {
+                return [...visibleTahsin, ...visibleTahfidz].some(mat => 
+                    mat.students.includes('all') || mat.students.includes(s.id)
+                );
+            });
+        }
+
         if (showUnscoredOnly) {
             result = result.filter(s => {
-                const hasUngradedTahsin = materials.tahsin.some(mat => {
-                    const score = s.ujian_records?.[mat];
+                const hasUngradedTahsin = visibleTahsin.some(mat => {                    
+                    const isAssigned = mat.students.includes('all') || mat.students.includes(s.id);
+                    if (!isAssigned) return false;
+                    const score = s.ujian_records?.[mat.name];
                     return score === undefined || score === null || score.toString().trim() === '';
                 });
-                const hasUngradedTahfidz = materials.tahfidz.some(mat => {
-                    const score = s.ujian_records?.[mat];
+                const hasUngradedTahfidz = visibleTahfidz.some(mat => {
+                    const isAssigned = mat.students.includes('all') || mat.students.includes(s.id);
+                    if (!isAssigned) return false;
+                    const score = s.ujian_records?.[mat.name];
                     return score === undefined || score === null || score.toString().trim() === '';
                 });
                 return hasUngradedTahsin || hasUngradedTahfidz;
@@ -527,7 +643,7 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
         }
 
         return result;
-    }, [filteredStudents, searchQuery, showUnscoredOnly, materials]);
+    }, [filteredStudents, searchQuery, showUnscoredOnly, activeJadwal, visibleTahsin, visibleTahfidz]);
 
     const studentsRef = useRef(students);
     const currentUserRef = useRef(currentUser);
@@ -551,13 +667,28 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                 if (error) throw error;
                 
                 if (isMounted && data) {
-                    if (data.ujian_materials) {
+                    if (data.ujian_materials) {                        
+                        const isOldFormatTahsin = data.ujian_materials.tahsin && data.ujian_materials.tahsin.length > 0 && typeof data.ujian_materials.tahsin[0] === 'string';
+                        const isOldFormatTahfidz = data.ujian_materials.tahfidz && data.ujian_materials.tahfidz.length > 0 && typeof data.ujian_materials.tahfidz[0] === 'string';
+
+                        const newTahsin = isOldFormatTahsin 
+                            ? data.ujian_materials.tahsin.map(name => ({ name, students: ['all'] })) 
+                            : data.ujian_materials.tahsin || [];
+                        
+                        const newTahfidz = isOldFormatTahfidz
+                            ? data.ujian_materials.tahfidz.map(name => ({ name, students: ['all'] }))
+                            : data.ujian_materials.tahfidz || [];
+
                         setMaterials({
-                            tahsin: data.ujian_materials.tahsin || [],
-                            tahfidz: data.ujian_materials.tahfidz || [],
+                            tahsin: newTahsin,
+                            tahfidz: newTahfidz,
                             jadwal: data.ujian_materials.jadwal || [],
                             reportSettings: data.ujian_materials.reportSettings || {}
                         });
+
+                        if (isOldFormatTahsin || isOldFormatTahfidz) {
+                            saveMaterials({ ...data.ujian_materials, tahsin: newTahsin, tahfidz: newTahfidz });
+                        }
                     }
                     if (data.kkm_score) setKkmScore(data.kkm_score);
                 }
@@ -588,12 +719,31 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
         }
     };
 
+    const handleSaveAssignments = (type, materialName, assignedStudentIds) => {
+        const updatedMaterials = {
+            ...materials,
+            [type]: materials[type].map(mat => 
+                mat.name === materialName 
+                ? { ...mat, students: assignedStudentIds }
+                : mat
+            )
+        };
+        saveMaterials(updatedMaterials);
+        setAssignmentModal({ isOpen: false, type: '', material: null });
+    };
+
     const handleSaveJadwal = () => {
         if (!newJadwal.tanggal || newJadwal.materi.length === 0) {
             showToast('Tanggal dan minimal satu materi harus dipilih!');
             return;
         }
-        const updatedJadwal = [...(materials.jadwal || []), { ...newJadwal, id: Date.now() }];
+        
+        let updatedJadwal;
+        if (newJadwal.id) {
+            updatedJadwal = (materials.jadwal || []).map(j => j.id === newJadwal.id ? newJadwal : j);
+        } else {
+            updatedJadwal = [...(materials.jadwal || []), { ...newJadwal, id: Date.now() }];
+        }
         saveMaterials({ ...materials, jadwal: updatedJadwal });
         setNewJadwal({ tanggal: '', materi: [] });
         setIsAddingJadwal(false);
@@ -610,16 +760,18 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
         });
     };
 
-    const handleAddTahsin = () => {
-        if (!newTahsin.trim() || materials.tahsin.includes(newTahsin.trim())) return;
-        const updated = { ...materials, tahsin: [...materials.tahsin, newTahsin.trim()] };
+    const handleAddTahsin = (val) => {
+        const valueToAdd = typeof val === 'string' ? val : newTahsin;
+        if (!valueToAdd.trim() || materials.tahsin.some(m => m.name === valueToAdd.trim())) return;
+        const updated = { ...materials, tahsin: [...materials.tahsin, { name: valueToAdd.trim(), students: ['all'] }] };
         saveMaterials(updated);
         setNewTahsin('');
     };
 
     const handleAddTahfidz = (val) => {
-        if (!val || materials.tahfidz.includes(val)) return;
-        const updated = { ...materials, tahfidz: [...materials.tahfidz, val] };
+        const valueToAdd = typeof val === 'string' ? val : newTahfidz;
+        if (!valueToAdd.trim() || materials.tahfidz.some(m => m.name === valueToAdd.trim())) return;
+        const updated = { ...materials, tahfidz: [...materials.tahfidz, { name: valueToAdd.trim(), students: ['all'] }] };
         saveMaterials(updated);
         setNewTahfidz('');
     };
@@ -627,7 +779,7 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
     const handleRemoveMaterial = (type, index) => {
         setConfirmDialog({
             isOpen: true,
-            message: 'Yakin ingin menghapus materi ini dari daftar ujian?',
+            message: 'Yakin ingin menghapus materi ini? Nilai siswa yang sudah diinput untuk materi ini akan tetap tersimpan, namun tidak akan tampil lagi di tabel.',
             onConfirm: () => {
                 const arr = [...materials[type]];
                 arr.splice(index, 1);
@@ -644,31 +796,49 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
 }
 
     const classAverages = useMemo(() => {
-        const tahsinAvgs = materials.tahsin.map(mat => {
-            const scores = displayedStudents.map(s => parseFloat(s.ujian_records?.[mat])).filter(n => !isNaN(n));
+        const tahsinAvgs = visibleTahsin.map(mat => {
+            const scores = displayedStudents
+                .filter(s => mat.students.includes('all') || mat.students.includes(s.id))
+                .map(s => parseFloat(s.ujian_records?.[mat.name]))
+                .filter(n => !isNaN(n));
             return scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : '-';
         });
 
-        const tahfidzAvgs = materials.tahfidz.map(mat => {
-            const scores = displayedStudents.map(s => parseFloat(s.ujian_records?.[mat])).filter(n => !isNaN(n));
+        const tahfidzAvgs = visibleTahfidz.map(mat => {
+            const scores = displayedStudents
+                .filter(s => mat.students.includes('all') || mat.students.includes(s.id))
+                .map(s => parseFloat(s.ujian_records?.[mat.name]))
+                .filter(n => !isNaN(n));
             return scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : '-';
         });
 
-        const allTajwidScores = displayedStudents.flatMap(s => materials.tahsin.filter(m => tajwidList.includes(m)).map(m => parseFloat(s.ujian_records?.[m])).filter(n => !isNaN(n)));
+        const allTajwidScores = displayedStudents.flatMap(s => 
+            visibleTahsin
+                .filter(m => tajwidList.includes(m.name))
+                .filter(m => m.students.includes('all') || m.students.includes(s.id))
+                .map(m => parseFloat(s.ujian_records?.[m.name]))
+                .filter(n => !isNaN(n))
+        );
         const tajwidAvg = allTajwidScores.length > 0 ? (allTajwidScores.reduce((a, b) => a + b, 0) / allTajwidScores.length).toFixed(1) : '-';
 
-        const allGhoribScores = displayedStudents.flatMap(s => materials.tahsin.filter(m => ghoribList.includes(m)).map(m => parseFloat(s.ujian_records?.[m])).filter(n => !isNaN(n)));
+        const allGhoribScores = displayedStudents.flatMap(s => 
+            visibleTahsin
+                .filter(m => ghoribList.includes(m.name))
+                .filter(m => m.students.includes('all') || m.students.includes(s.id))
+                .map(m => parseFloat(s.ujian_records?.[m.name]))
+                .filter(n => !isNaN(n))
+        );
         const ghoribAvg = allGhoribScores.length > 0 ? (allGhoribScores.reduce((a, b) => a + b, 0) / allGhoribScores.length).toFixed(1) : '-';
 
         let totalAll = 0; let countAll = 0;
         displayedStudents.forEach(s => {
-            materials.tahsin.forEach(mat => { const val = parseFloat(s.ujian_records?.[mat]); if (!isNaN(val)) { totalAll += val; countAll++; } });
-            materials.tahfidz.forEach(mat => { const val = parseFloat(s.ujian_records?.[mat]); if (!isNaN(val)) { totalAll += val; countAll++; } });
+            visibleTahsin.forEach(mat => { if (mat.students.includes('all') || mat.students.includes(s.id)) { const val = parseFloat(s.ujian_records?.[mat.name]); if (!isNaN(val)) { totalAll += val; countAll++; } } });
+            visibleTahfidz.forEach(mat => { if (mat.students.includes('all') || mat.students.includes(s.id)) { const val = parseFloat(s.ujian_records?.[mat.name]); if (!isNaN(val)) { totalAll += val; countAll++; } } });
         });
         const overallAvgAll = countAll > 0 ? (totalAll / countAll).toFixed(1) : '-';
 
         return { tahsinAvgs, tahfidzAvgs, tajwidAvg, ghoribAvg, overallAvgAll };
-    }, [displayedStudents, materials]);
+    }, [displayedStudents, visibleTahsin, visibleTahfidz]);
 
     const handleSaveScore = React.useCallback(async (studentId, materialName, score) => {
         const student = studentsRef.current.find(s => s.id === studentId);
@@ -758,19 +928,30 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
     };
 
     const handleExportCSV = () => {
-        const headers = ['Nama Siswa', ...materials.tahsin, ...materials.tahfidz, 'Rata-Rata Akhir'];
+        const tahsinHeaders = visibleTahsin.map(m => m.name);
+        const tahfidzHeaders = visibleTahfidz.map(m => m.name);
+        const headers = ['Nama Siswa', ...tahsinHeaders, ...tahfidzHeaders, 'Rata-Rata Akhir'];
         const rows = displayedStudents.map(student => {
             const row = [student.name];
-            let total = 0; let count = 0;
-            materials.tahsin.forEach(mat => {
-                const val = student.ujian_records?.[mat] || '-';
+            let total = 0;
+            let count = 0;
+            visibleTahsin.forEach(mat => {
+                const isAssigned = mat.students.includes('all') || mat.students.includes(student.id);
+                const val = isAssigned ? (student.ujian_records?.[mat.name] || '-') : 'N/A';
                 row.push(val);
-                if (val !== '-' && !isNaN(parseFloat(val))) { total += parseFloat(val); count++; }
+                if (isAssigned && val !== '-' && !isNaN(parseFloat(val))) {
+                    total += parseFloat(val);
+                    count++;
+                }
             });
-            materials.tahfidz.forEach(mat => {
-                const val = student.ujian_records?.[mat] || '-';
+            visibleTahfidz.forEach(mat => {
+                const isAssigned = mat.students.includes('all') || mat.students.includes(student.id);
+                const val = isAssigned ? (student.ujian_records?.[mat.name] || '-') : 'N/A';
                 row.push(val);
-                if (val !== '-' && !isNaN(parseFloat(val))) { total += parseFloat(val); count++; }
+                if (isAssigned && val !== '-' && !isNaN(parseFloat(val))) {
+                    total += parseFloat(val);
+                    count++;
+                }
             });
             const avg = count > 0 ? (total / count).toFixed(1) : '-';
             row.push(avg);
@@ -888,6 +1069,21 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
 
                 {activeTab === 'penilaian' && (
                     <div className="flex flex-wrap sm:flex-nowrap gap-2 w-full lg:w-auto animate-in fade-in slide-in-from-right-4 duration-300">
+                        {materials.jadwal && materials.jadwal.length > 0 && (
+                            <div className="relative">
+                                <select
+                                    value={selectedJadwalId}
+                                    onChange={(e) => setSelectedJadwalId(e.target.value)}
+                                    className="px-3 py-2 sm:px-4 sm:py-2.5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700 rounded-xl shadow-sm text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-300 cursor-pointer hover:border-emerald-500 transition-colors outline-none flex-1 sm:flex-none appearance-none pr-8"
+                                >
+                                    <option value="">Semua Jadwal Ujian</option>
+                                    {materials.jadwal.map(j => (
+                                        <option key={j.id} value={j.id}>Jadwal: {formatDateForJadwal(j.tanggal)}</option>
+                                    ))}
+                                </select>
+                                <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                            </div>
+                        )}
                         <label className="flex items-center justify-center gap-2 px-3 py-2 sm:px-4 sm:py-2.5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700 rounded-xl shadow-sm text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-300 cursor-pointer hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex-1 sm:flex-none whitespace-nowrap">
                             <input
                                 type="checkbox"
@@ -949,15 +1145,21 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                             </div>
                         </div>
                         <div className="flex flex-col sm:flex-row gap-3 mb-6">
-                            <TahsinSelector value={newTahsin} onChange={setNewTahsin} placeholder="Pilih Materi (Tilawah, Tajwid, dll)..." className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all text-slate-700 dark:text-slate-100 placeholder:text-slate-400 pr-10" />
-                            <button onClick={handleAddTahsin} className="bg-blue-500 hover:bg-blue-600 text-white px-5 py-3 rounded-xl transition-all shadow-sm shadow-blue-200 flex items-center justify-center gap-2 font-bold text-sm active:scale-95"><Plus size={18} /> <span className="sm:hidden">Tambah</span></button>
+                            <TahsinSelector value={newTahsin} onChange={setNewTahsin} onAdd={handleAddTahsin} placeholder="Pilih Materi (Tilawah, Tajwid, dll)..." className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all text-slate-700 dark:text-slate-100 placeholder:text-slate-400 pr-10" />
+                            <button onClick={() => handleAddTahsin()} className="bg-blue-500 hover:bg-blue-600 text-white px-5 py-3 rounded-xl transition-all shadow-sm shadow-blue-200 flex items-center justify-center gap-2 font-bold text-sm active:scale-95"><Plus size={18} /> <span className="sm:hidden">Tambah</span></button>
                         </div>
                         <ul className="space-y-3">
                             {materials.tahsin.length === 0 && <li className="text-center py-8 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700"><p className="text-sm font-bold text-slate-500 dark:text-slate-400">Belum ada materi Tahsin.</p></li>}
                             {materials.tahsin.map((mat, i) => (
-                                <li key={i} className="flex justify-between items-center bg-white dark:bg-slate-800 px-5 py-4 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 border border-slate-100 dark:border-slate-700 shadow-sm group hover:border-blue-200 dark:hover:border-blue-500/30 transition-all">
-                                    <span className="flex items-center gap-3"><div className="w-1.5 h-1.5 rounded-full bg-blue-400"></div>{mat}</span>
-                                    <button onClick={() => handleRemoveMaterial('tahsin', i)} className="text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 p-2 rounded-lg transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100"><Trash2 size={16} /></button>
+                                <li key={i} className="flex justify-between items-center bg-white dark:bg-slate-800 px-3 sm:px-5 py-3 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 border border-slate-100 dark:border-slate-700 shadow-sm group hover:border-blue-200 dark:hover:border-blue-500/30 transition-all">
+                                    <span className="flex items-center gap-3"><div className="w-1.5 h-1.5 rounded-full bg-blue-400"></div>{mat.name}</span>
+                                    <div className="flex items-center gap-2">
+                                        <button onClick={() => setAssignmentModal({ isOpen: true, type: 'tahsin', material: mat })} className="flex items-center gap-1.5 text-[10px] font-bold bg-slate-100 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400 px-3 py-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10 hover:text-blue-600 dark:hover:text-blue-400 transition-colors border border-slate-200 dark:border-slate-700">
+                                            <Users size={12} />
+                                            {mat.students.includes('all') ? 'Semua Siswa' : `${mat.students.length} Siswa`}
+                                        </button>
+                                        <button onClick={() => handleRemoveMaterial('tahsin', i)} className="text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 p-2 rounded-lg transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100"><Trash2 size={16} /></button>
+                                    </div>
                                 </li>
                             ))}
                         </ul>
@@ -973,15 +1175,21 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                             </div>
                         </div>
                         <div className="flex flex-col sm:flex-row gap-3 mb-6">
-                            <TahfidzSelector value={newTahfidz} onChange={setNewTahfidz} surahList={surahList} placeholder="Pilih Materi (Surat, Juz, dll)..." className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all text-slate-700 dark:text-slate-100 placeholder:text-slate-400 pr-10" />
-                            <button onClick={() => handleAddTahfidz(newTahfidz)} className="bg-purple-500 hover:bg-purple-600 text-white px-5 py-3 rounded-xl transition-all shadow-sm shadow-purple-200 flex items-center justify-center gap-2 font-bold text-sm active:scale-95"><Plus size={18} /> <span className="sm:hidden">Tambah</span></button>
+                            <TahfidzSelector value={newTahfidz} onChange={setNewTahfidz} onAdd={handleAddTahfidz} surahList={surahList} placeholder="Pilih Materi (Surat, Juz, dll)..." className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all text-slate-700 dark:text-slate-100 placeholder:text-slate-400 pr-10" />
+                            <button onClick={() => handleAddTahfidz()} className="bg-purple-500 hover:bg-purple-600 text-white px-5 py-3 rounded-xl transition-all shadow-sm shadow-purple-200 flex items-center justify-center gap-2 font-bold text-sm active:scale-95"><Plus size={18} /> <span className="sm:hidden">Tambah</span></button>
                         </div>
                         <ul className="space-y-3">
                             {materials.tahfidz.length === 0 && <li className="text-center py-8 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700"><p className="text-sm font-bold text-slate-500 dark:text-slate-400">Belum ada materi Tahfidz.</p></li>}
                             {materials.tahfidz.map((mat, i) => (
-                                <li key={i} className="flex justify-between items-center bg-white dark:bg-slate-800 px-5 py-4 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 border border-slate-100 dark:border-slate-700 shadow-sm group hover:border-purple-200 dark:hover:border-purple-500/30 transition-all">
-                                    <span className="flex items-center gap-3"><div className="w-1.5 h-1.5 rounded-full bg-purple-400"></div>{mat}</span>
-                                    <button onClick={() => handleRemoveMaterial('tahfidz', i)} className="text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 p-2 rounded-lg transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100"><Trash2 size={16} /></button>
+                                <li key={i} className="flex justify-between items-center bg-white dark:bg-slate-800 px-3 sm:px-5 py-3 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 border border-slate-100 dark:border-slate-700 shadow-sm group hover:border-purple-200 dark:hover:border-purple-500/30 transition-all">
+                                    <span className="flex items-center gap-3"><div className="w-1.5 h-1.5 rounded-full bg-purple-400"></div>{mat.name}</span>
+                                    <div className="flex items-center gap-2">
+                                        <button onClick={() => setAssignmentModal({ isOpen: true, type: 'tahfidz', material: mat })} className="flex items-center gap-1.5 text-[10px] font-bold bg-slate-100 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400 px-3 py-1.5 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-500/10 hover:text-purple-600 dark:hover:text-purple-400 transition-colors border border-slate-200 dark:border-slate-700">
+                                            <Users size={12} />
+                                            {mat.students.includes('all') ? 'Semua Siswa' : `${mat.students.length} Siswa`}
+                                        </button>
+                                        <button onClick={() => handleRemoveMaterial('tahfidz', i)} className="text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 p-2 rounded-lg transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100"><Trash2 size={16} /></button>
+                                    </div>
                                 </li>
                             ))}
                         </ul>
@@ -1051,7 +1259,10 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                                 </div>
                             </div>
                             {!isAddingJadwal && (
-                                <button onClick={() => setIsAddingJadwal(true)} className="w-full sm:w-auto bg-indigo-500 hover:bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-sm active:scale-95">
+                                <button onClick={() => {
+                                    setNewJadwal({ tanggal: '', materi: [] });
+                                    setIsAddingJadwal(true);
+                                }} className="w-full sm:w-auto bg-indigo-500 hover:bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-sm active:scale-95">
                                     <Plus size={18} /> Tambah Jadwal
                                 </button>
                             )}
@@ -1060,7 +1271,7 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                         {isAddingJadwal && (
                             <div className="bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl border border-indigo-200 dark:border-indigo-500/30 mb-6 animate-in fade-in slide-in-from-top-4">
                                 <div className="flex justify-between items-center mb-4">
-                                    <h3 className="font-black text-slate-700 dark:text-slate-200">Buat Jadwal Baru</h3>
+                                    <h3 className="font-black text-slate-700 dark:text-slate-200">{newJadwal.id ? 'Edit Jadwal Ujian' : 'Buat Jadwal Baru'}</h3>
                                     <button onClick={() => setIsAddingJadwal(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><X size={20} /></button>
                                 </div>
                                 <div className="grid grid-cols-1 gap-4 mb-4">
@@ -1072,21 +1283,21 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                                         <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Pilih Materi yang Diujikan</label>
                                         <div className="flex flex-wrap gap-2 mt-1">
                                             {materials.tahsin.map((m, i) => (
-                                                <label key={`t-${i}`} className={`cursor-pointer px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${newJadwal.materi.includes(m) ? 'bg-indigo-100 border-indigo-300 text-indigo-700 dark:bg-indigo-500/30 dark:border-indigo-500/50 dark:text-indigo-300' : 'bg-white border-slate-200 text-slate-600 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-400 hover:border-indigo-200'}`}>
-                                                    <input type="checkbox" className="hidden" checked={newJadwal.materi.includes(m)} onChange={(e) => {
-                                                        const updated = e.target.checked ? [...newJadwal.materi, m] : newJadwal.materi.filter(x => x !== m);
+                                                <label key={`t-${i}`} className={`cursor-pointer px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${newJadwal.materi.includes(m.name) ? 'bg-indigo-100 border-indigo-300 text-indigo-700 dark:bg-indigo-500/30 dark:border-indigo-500/50 dark:text-indigo-300' : 'bg-white border-slate-200 text-slate-600 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-400 hover:border-indigo-200'}`}>
+                                                    <input type="checkbox" className="hidden" checked={newJadwal.materi.includes(m.name)} onChange={(e) => {
+                                                        const updated = e.target.checked ? [...newJadwal.materi, m.name] : newJadwal.materi.filter(x => x !== m.name);
                                                         setNewJadwal({...newJadwal, materi: updated});
                                                     }} />
-                                                    {m}
+                                                    {m.name}
                                                 </label>
                                             ))}
                                             {materials.tahfidz.map((m, i) => (
-                                                <label key={`f-${i}`} className={`cursor-pointer px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${newJadwal.materi.includes(m) ? 'bg-indigo-100 border-indigo-300 text-indigo-700 dark:bg-indigo-500/30 dark:border-indigo-500/50 dark:text-indigo-300' : 'bg-white border-slate-200 text-slate-600 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-400 hover:border-indigo-200'}`}>
-                                                    <input type="checkbox" className="hidden" checked={newJadwal.materi.includes(m)} onChange={(e) => {
-                                                        const updated = e.target.checked ? [...newJadwal.materi, m] : newJadwal.materi.filter(x => x !== m);
+                                                <label key={`f-${i}`} className={`cursor-pointer px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${newJadwal.materi.includes(m.name) ? 'bg-indigo-100 border-indigo-300 text-indigo-700 dark:bg-indigo-500/30 dark:border-indigo-500/50 dark:text-indigo-300' : 'bg-white border-slate-200 text-slate-600 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-400 hover:border-indigo-200'}`}>
+                                                    <input type="checkbox" className="hidden" checked={newJadwal.materi.includes(m.name)} onChange={(e) => {
+                                                        const updated = e.target.checked ? [...newJadwal.materi, m.name] : newJadwal.materi.filter(x => x !== m.name);
                                                         setNewJadwal({...newJadwal, materi: updated});
                                                     }} />
-                                                    {m}
+                                                    {m.name}
                                                 </label>
                                             ))}
                                             {materials.tahsin.length === 0 && materials.tahfidz.length === 0 && (
@@ -1125,7 +1336,13 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                                 {(materials.jadwal || []).filter(j => !jadwalFilter || j.materi.some(m => m.toLowerCase().includes(jadwalFilter.toLowerCase()))).map((jadwal, idx) => (
                                     <div key={jadwal.id || idx} className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 relative group shadow-sm hover:shadow-md transition-all">
-                                        <button onClick={() => handleDeleteJadwal(jadwal.id)} className="absolute top-3 right-3 text-slate-300 hover:text-red-500 bg-slate-50 dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-500/10 p-2 rounded-xl transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100"><Trash2 size={16} /></button>
+                                        <div className="absolute top-3 right-3 flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all">
+                                            <button onClick={() => {
+                                                setNewJadwal(jadwal);
+                                                setIsAddingJadwal(true);
+                                            }} className="text-slate-300 hover:text-blue-500 bg-slate-50 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-500/10 p-2 rounded-xl transition-colors" title="Edit Jadwal"><Edit3 size={16} /></button>
+                                            <button onClick={() => handleDeleteJadwal(jadwal.id)} className="text-slate-300 hover:text-red-500 bg-slate-50 dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-500/10 p-2 rounded-xl transition-colors" title="Hapus Jadwal"><Trash2 size={16} /></button>
+                                        </div>
                                         <div className="flex items-center gap-2 mb-3">
                                             <div className="bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 p-2 rounded-lg"><Calendar size={16} /></div>
                                             <div className="text-indigo-600 dark:text-indigo-400 font-black text-xs uppercase tracking-widest">{formatDateForJadwal(jadwal.tanggal)}</div>
@@ -1161,29 +1378,29 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                                 <thead className="bg-slate-50/80 dark:bg-slate-800/80 backdrop-blur-md text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest sticky top-0 z-20 shadow-sm">
                                     <tr>
                                         <th rowSpan={2} className="p-3 sm:p-5 border-b border-slate-200 dark:border-slate-700 sticky left-0 bg-slate-50/95 dark:bg-slate-800/95 backdrop-blur-md z-30 w-[140px] sm:w-[200px] shadow-[4px_0_12px_rgba(0,0,0,0.03)] align-middle">Nama Siswa</th>
-                                        {materials.tahsin.length > 0 && (
-                                            <th colSpan={materials.tahsin.length + (hasTajwidSub ? 1 : 0) + (hasGhoribSub ? 1 : 0)} className="p-3 border-b border-slate-200 dark:border-slate-700 text-center text-blue-600 dark:text-blue-400 border-l border-slate-200/60 dark:border-slate-700/50">Tahsin</th>
+                                        {visibleTahsin.length > 0 && (
+                                            <th colSpan={visibleTahsin.length + (hasTajwidSub ? 1 : 0) + (hasGhoribSub ? 1 : 0)} className="p-3 border-b border-slate-200 dark:border-slate-700 text-center text-blue-600 dark:text-blue-400 border-l border-slate-200/60 dark:border-slate-700/50">Tahsin</th>
                                         )}
-                                        {materials.tahfidz.length > 0 && (
-                                            <th colSpan={materials.tahfidz.length} className="p-3 border-b border-slate-200 dark:border-slate-700 text-center text-purple-600 dark:text-purple-400 border-l border-slate-200/60 dark:border-slate-700/50 bg-purple-50/50 dark:bg-purple-500/10">Tahfidz</th>
+                                        {visibleTahfidz.length > 0 && (
+                                            <th colSpan={visibleTahfidz.length} className="p-3 border-b border-slate-200 dark:border-slate-700 text-center text-purple-600 dark:text-purple-400 border-l border-slate-200/60 dark:border-slate-700/50 bg-purple-50/50 dark:bg-purple-500/10">Tahfidz</th>
                                         )}
-                                        {materials.tahsin.length === 0 && materials.tahfidz.length === 0 && (
+                                        {visibleTahsin.length === 0 && visibleTahfidz.length === 0 && (
                                             <th rowSpan={2} className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-700 text-center border-l border-slate-200 dark:border-slate-700/50">Materi</th>
                                         )}
-                                        {(materials.tahsin.length > 0 || materials.tahfidz.length > 0) && (
+                                        {(visibleTahsin.length > 0 || visibleTahfidz.length > 0) && (
                                             <th rowSpan={2} className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-700 text-center border-l border-slate-200 dark:border-slate-700 bg-slate-100/50 dark:bg-slate-800 align-middle w-[100px]">Rata-Rata<br />Akhir</th>
                                         )}
                                         <th rowSpan={2} className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-700 text-center border-l border-slate-200 dark:border-slate-700 bg-slate-100/50 dark:bg-slate-800 align-middle w-[70px]">Rapor</th>
                                     </tr>
                                     <tr>
-                                        {materials.tahsin.map((mat, i) => (
-                                            <th key={`t-${i}`} className="p-3 sm:p-4 border-b border-slate-200 dark:border-slate-700 text-center text-blue-600 dark:text-blue-400 min-w-[120px] border-l border-slate-200/60 dark:border-slate-700/50 font-bold">{mat}</th>
+                                        {visibleTahsin.map((mat, i) => (
+                                            <th key={`t-${i}`} className="p-3 sm:p-4 border-b border-slate-200 dark:border-slate-700 text-center text-blue-600 dark:text-blue-400 min-w-[120px] border-l border-slate-200/60 dark:border-slate-700/50 font-bold">{mat.name}</th>
                                         ))}
                                         {hasTajwidSub && <th className="p-3 sm:p-4 border-b border-slate-200 dark:border-slate-700 text-center text-indigo-600 dark:text-indigo-400 min-w-[120px] border-l border-slate-200/60 dark:border-slate-700/50 bg-indigo-50/50 dark:bg-indigo-500/10 font-bold">Rata-rata Tajwid</th>}
                                         {hasGhoribSub && <th className="p-3 sm:p-4 border-b border-slate-200 dark:border-slate-700 text-center text-teal-600 dark:text-teal-400 min-w-[120px] border-l border-slate-200/60 dark:border-slate-700/50 bg-teal-50/50 dark:bg-teal-500/10 font-bold">Rata-rata Ghorib</th>}
 
-                                        {materials.tahfidz.map((mat, i) => (
-                                            <th key={`f-${i}`} className="p-3 sm:p-4 border-b border-slate-200 dark:border-slate-700 text-center text-purple-600 dark:text-purple-400 min-w-[120px] border-l border-slate-200/60 dark:border-slate-700/50 bg-purple-50/30 dark:bg-purple-900/5 font-bold">{mat}</th>
+                                        {visibleTahfidz.map((mat, i) => (
+                                            <th key={`f-${i}`} className="p-3 sm:p-4 border-b border-slate-200 dark:border-slate-700 text-center text-purple-600 dark:text-purple-400 min-w-[120px] border-l border-slate-200/60 dark:border-slate-700/50 bg-purple-50/30 dark:bg-purple-900/5 font-bold">{mat.name}</th>
                                         ))}
                                     </tr>
                                 </thead>
@@ -1194,12 +1411,12 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                                         <>
                                             {displayedStudents.map((student, index) => {
                                                 return (
-                                                    <StudentTableRow key={student.id} student={student} index={index} materials={materials} hasTajwidSub={hasTajwidSub} hasGhoribSub={hasGhoribSub} kkmScore={kkmScore} onSaveScore={handleSaveScore} onPrintStudent={setActivePrintStudent} />
+                                                    <StudentTableRow key={student.id} student={student} index={index} materials={{tahsin: visibleTahsin, tahfidz: visibleTahfidz}} hasTajwidSub={hasTajwidSub} hasGhoribSub={hasGhoribSub} kkmScore={kkmScore} onSaveScore={handleSaveScore} onPrintStudent={setActivePrintStudent} />
                                                 );
                                             })}
 
                                             {/* Baris Kalkulasi Rata-rata */}
-                                            {(materials.tahsin.length > 0 || materials.tahfidz.length > 0) && (
+                                            {(visibleTahsin.length > 0 || visibleTahfidz.length > 0) && (
                                                 <tr className="bg-slate-50 dark:bg-slate-800/50 font-black border-t-2 border-slate-200 dark:border-slate-700">
                                                     <td className="p-3 sm:p-5 sticky left-0 bg-slate-50 dark:bg-slate-800 z-10 text-xs sm:text-sm text-slate-600 dark:text-slate-300 text-right pr-4 sm:pr-6 shadow-[4px_0_12px_rgba(0,0,0,0.03)] border-r border-slate-200 dark:border-slate-700">
                                                         Rata Kelas:
@@ -1228,7 +1445,7 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                                                             </td>
                                                         );
                                                     })}
-                                                    {(materials.tahsin.length > 0 || materials.tahfidz.length > 0) && (
+                                                    {(visibleTahsin.length > 0 || visibleTahfidz.length > 0) && (
                                                         <td className="p-4 text-center border-l border-slate-200 dark:border-slate-700 font-black text-slate-800 dark:text-slate-100 bg-slate-100/50 dark:bg-slate-800">
                                                             {classAverages.overallAvgAll}
                                                         </td>
@@ -1249,7 +1466,7 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                             ) : (
                                 displayedStudents.map((student, index) => {
                                     return (
-                                        <StudentMobileCard key={student.id} student={student} index={index} materials={materials} hasTajwidSub={hasTajwidSub} hasGhoribSub={hasGhoribSub} kkmScore={kkmScore} onSaveScore={handleSaveScore} onPrintStudent={setActivePrintStudent} />
+                                        <StudentMobileCard key={student.id} student={student} index={index} materials={{tahsin: visibleTahsin, tahfidz: visibleTahfidz}} hasTajwidSub={hasTajwidSub} hasGhoribSub={hasGhoribSub} kkmScore={kkmScore} onSaveScore={handleSaveScore} onPrintStudent={setActivePrintStudent} />
                                     );
                                 })
                             )}
@@ -1257,6 +1474,15 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                     </div>
                 </div>
             )}
+
+            <AssignmentModal 
+                isOpen={assignmentModal.isOpen}
+                onClose={() => setAssignmentModal({ isOpen: false, type: '', material: null })}
+                material={assignmentModal.material}
+                type={assignmentModal.type}
+                students={filteredStudents}
+                onSave={handleSaveAssignments}
+            />
 
             {/* MODAL KONFIRMASI BERBAHAYA (CUSTOM CONFIRM) */}
             {confirmDialog.isOpen && (
@@ -1279,6 +1505,71 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                     </div>
                 </div>
             )}
+        </div>
+    );
+};
+
+const AssignmentModal = ({ isOpen, onClose, material, type, students, onSave }) => {
+    const [assigned, setAssigned] = useState([]);
+    const [search, setSearch] = useState('');
+
+    useEffect(() => {
+        if (material) {
+            setAssigned(material.students.includes('all') ? students.map(s => s.id) : material.students);
+        }
+    }, [material, students]);
+
+    if (!isOpen || !material) return null;
+
+    const filteredStudents = students.filter(s => s.name.toLowerCase().includes(search.toLowerCase()));
+
+    const toggleStudent = (id) => {
+        setAssigned(prev => prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]);
+    };
+
+    const handleSelectAll = () => {
+        setAssigned(students.map(s => s.id));
+    };
+
+    const handleDeselectAll = () => {
+        setAssigned([]);
+    };
+
+    const handleSaveClick = () => {
+        const finalAssigned = assigned.length === students.length ? ['all'] : assigned;
+        onSave(type, material.name, finalAssigned);
+    };
+
+    return (
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-300 border border-slate-200 dark:border-slate-800 flex flex-col max-h-[80vh]">
+                <div className="p-5 border-b border-slate-100 dark:border-slate-800 shrink-0">
+                    <h3 className="font-black text-slate-800 dark:text-slate-100 text-lg">Atur Siswa untuk Materi</h3>
+                    <p className="text-sm font-bold text-blue-500">{material.name}</p>
+                </div>
+                <div className="p-5 flex flex-col gap-3 overflow-y-auto custom-scrollbar flex-1">
+                    <div className="flex gap-2">
+                        <div className="relative flex-1">
+                            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Cari nama siswa..." className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl pl-9 pr-3 py-2 text-sm font-bold outline-none focus:border-blue-500" />
+                        </div>
+                        <button onClick={handleSelectAll} className="text-xs font-bold bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 px-3 rounded-lg hover:bg-blue-100 transition-colors">Pilih Semua</button>
+                        <button onClick={handleDeselectAll} className="text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 px-3 rounded-lg hover:bg-slate-200 transition-colors">Kosongkan</button>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                        {filteredStudents.map(student => (
+                            <label key={student.id} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors">
+                                <input type="checkbox" checked={assigned.includes(student.id)} onChange={() => toggleStudent(student.id)} className="w-5 h-5 rounded-md text-blue-600 focus:ring-blue-500" />
+                                <span className="font-bold text-sm text-slate-700 dark:text-slate-200">{student.name}</span>
+                            </label>
+                        ))}
+                    </div>
+                </div>
+                <div className="p-5 border-t border-slate-100 dark:border-slate-800 flex gap-3 shrink-0">
+                    <button onClick={onClose} className="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl font-bold transition-colors">Batal</button>
+                    <button onClick={handleSaveClick} className="flex-1 py-3 bg-blue-600 text-white hover:bg-blue-700 rounded-xl font-black shadow-lg shadow-blue-200 dark:shadow-none">Simpan ({assigned.length})</button>
+                </div>
+            </div>
         </div>
     );
 };
@@ -1379,7 +1670,7 @@ const SURAH_ARABIC_MAP = {
     "Asy-Syams": "الشمس",
     "Al-Lail": "الليل",
     "Ad-Duha": "الضحى",
-    "Asy-Syarh": "الشرح",
+    "Al-Insyirah": "الانشراح",
     "At-Tin": "التين",
     "Al-'Alaq": "العلق",
     "Al-Qadr": "القدر",
@@ -1396,7 +1687,7 @@ const SURAH_ARABIC_MAP = {
     "Al-Kausar": "الكوثر",
     "Al-Kafirun": "الكافرون",
     "An-Nasr": "النصر",
-    "Al-Masad": "المسد",
+    "Al-Lahab": "اللهب",
     "Al-Ikhlas": "الإخلاص",
     "Al-Falaq": "الفلق",
     "An-Nas": "الناس"
@@ -1472,30 +1763,31 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
     const tempatCetak = rs.tempatCetak || 'Bogor';
     const tanggalCetak = rs.tanggalCetak || getIndonesianDate();
 
-    // Deteksi apakah ada sub-materi Tajwid atau Ghorib di dalam materi Tahsin
-    const hasTajwidSub = useMemo(() => materials.tahsin.some(mat => tajwidList.includes(mat)), [materials.tahsin]);
-    const hasGhoribSub = useMemo(() => materials.tahsin.some(mat => ghoribList.includes(mat)), [materials.tahsin]);
+    // Deteksi apakah ada sub-materi Tajwid atau Ghorib di dalam materi Tahsin yang diujikan untuk siswa ini
+    const hasTajwidSub = useMemo(() => materials.tahsin.some(mat => tajwidList.includes(mat.name) && (mat.students.includes('all') || mat.students.includes(student.id))), [materials.tahsin, student.id]);
+    const hasGhoribSub = useMemo(() => materials.tahsin.some(mat => ghoribList.includes(mat.name) && (mat.students.includes('all') || mat.students.includes(student.id))), [materials.tahsin, student.id]);
+    const hasTahfidzAssigned = useMemo(() => materials.tahfidz.some(m => m.students.includes('all') || m.students.includes(student.id)), [materials.tahfidz, student.id]);
 
     const getSubAverage = (list) => {
-        const scores = materials.tahsin.filter(m => list.includes(m)).map(m => parseFloat(student.ujian_records?.[m])).filter(n => !isNaN(n));
+        const scores = materials.tahsin.filter(m => list.includes(m.name) && (m.students.includes('all') || m.students.includes(student.id))).map(m => parseFloat(student.ujian_records?.[m.name])).filter(n => !isNaN(n));
         return scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : '';
     };
 
     // Ringkas Bidang Studi: Gabungkan sub-materi menjadi "Tajwid" dan "Ghorib"
     const summarizedTahsin = useMemo(() => {
-        const mainMats = materials.tahsin.filter(m => !tajwidList.includes(m) && !ghoribList.includes(m));
+        const mainMats = materials.tahsin.filter(m => !tajwidList.includes(m.name) && !ghoribList.includes(m.name) && (m.students.includes('all') || m.students.includes(student.id))).map(m => m.name);
         const result = [...mainMats];
         if (hasTajwidSub && !result.includes('Tajwid')) result.push('Tajwid');
         if (hasGhoribSub && !result.includes('Ghorib')) result.push('Ghorib');
         return result;
-    }, [materials.tahsin, hasTajwidSub, hasGhoribSub]);
+    }, [materials.tahsin, hasTajwidSub, hasGhoribSub, student.id]);
 
     // Core grades
     const [mainScoreValues, setMainScoreValues] = useState(() => {
         const initial = {};
         summarizedTahsin.forEach(mat => {
-            if (mat === 'Tajwid' && hasTajwidSub && !materials.tahsin.includes('Tajwid')) initial[mat] = getSubAverage(tajwidList);
-            else if (mat === 'Ghorib' && hasGhoribSub && !materials.tahsin.includes('Ghorib')) initial[mat] = getSubAverage(ghoribList);
+            if (mat === 'Tajwid' && hasTajwidSub && !materials.tahsin.some(m => m.name === 'Tajwid')) initial[mat] = getSubAverage(tajwidList);
+            else if (mat === 'Ghorib' && hasGhoribSub && !materials.tahsin.some(m => m.name === 'Ghorib')) initial[mat] = getSubAverage(ghoribList);
             else initial[mat] = student.ujian_records?.[mat] || '';
         });
         return initial;
@@ -1525,15 +1817,17 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
     // Initialize lists
     useEffect(() => {
         const tahfidzScores = [];
-        materials.tahfidz.forEach(surah => {
-            const score = student.ujian_records?.[surah];
-            // Selalu masukkan materi tahfidz yang ada di pengaturan ujian, meskipun nilainya kosong
-            tahfidzScores.push({ surah, score: score !== undefined && score !== null ? score : '' });
+        materials.tahfidz.forEach(mat => {
+            if (mat.students.includes('all') || mat.students.includes(student.id)) {
+                const score = student.ujian_records?.[mat.name];
+                // Selalu masukkan materi tahfidz yang ada di pengaturan ujian, meskipun nilainya kosong
+                tahfidzScores.push({ surah: mat.name, score: score !== undefined && score !== null ? score : '' });
+            }
         });
 
         // Also scan student's other records that are surahs
         Object.keys(student.ujian_records || {}).forEach(key => {
-            if (!materials.tahfidz.includes(key) && surahList.some(s => s.name === key)) {
+            if (!materials.tahfidz.some(m => m.name === key) && surahList.some(s => s.name === key)) {
                 const score = student.ujian_records[key];
                 if (score !== undefined && score !== null && score.toString().trim() !== '') {
                     // Prevent duplicate
@@ -1581,7 +1875,7 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
             }
         });
 
-        if (materials.tahfidz.length > 0) {
+        if (hasTahfidzAssigned) {
             const num = parseFloat(displayTahfidz);
             if (!isNaN(num)) {
                 total += num;
@@ -1592,7 +1886,7 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
         const sum = count > 0 ? total : 0;
         const avg = count > 0 ? (total / count).toFixed(0) : '';
         return { jumlahNilai: sum || '-', rataRata: avg || '-' };
-    }, [mainScoreValues, displayTahfidz, materials]);
+    }, [mainScoreValues, displayTahfidz, hasTahfidzAssigned]);
 
     // Auto-update note if not edited
     useEffect(() => {
@@ -1863,7 +2157,7 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
                                     />
                                 </div>
                             ))}
-                            {materials.tahfidz.length > 0 && (
+                            {hasTahfidzAssigned && (
                                 <div className="flex flex-col gap-1">
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Tahfidz (Rata-rata)</label>
                                     <input
@@ -2094,7 +2388,7 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {summarizedTahsin.length > 0 || materials.tahfidz.length > 0 ? (
+                                        {summarizedTahsin.length > 0 || hasTahfidzAssigned ? (
                                             <>
                                                 {summarizedTahsin.map((mat, idx) => (
                                                     <tr key={`tahsin-${idx}`} className="h-[21px] font-semibold">
@@ -2105,7 +2399,7 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
                                                         <td className="border border-black text-center p-0.5 font-medium">{getGradeDescription(mainScoreValues[mat], kkmScore)}</td>
                                                     </tr>
                                                 ))}
-                                                {materials.tahfidz.length > 0 && (
+                                                {hasTahfidzAssigned && (
                                                     <tr className="h-[21px] font-semibold">
                                                         <td className="border border-black text-center p-0.5">{summarizedTahsin.length + 1}</td>
                                                         <td className="border border-black text-left px-2.5 py-0.5">Tahfidz</td>
