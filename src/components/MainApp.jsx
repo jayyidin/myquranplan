@@ -259,7 +259,9 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
     return students.filter(s => {
       // Dengan RLS, 'students' sudah berisi data yang diizinkan untuk user.
       // Kita hanya perlu filter berdasarkan UI (halaqoh aktif dan pencarian).
-      const isSearchMatch = (s?.name || '').toLowerCase().includes((searchQuery || '').toLowerCase());
+      const isSearchMatch = (currentView === 'home' || currentView === 'siswa') 
+        ? (s?.name || '').toLowerCase().includes((searchQuery || '').toLowerCase()) 
+        : true;
       const isInActiveHalaqoh = !activeHalaqoh || (s?.halaqoh && String(s.halaqoh).trim() === String(activeHalaqoh).trim());
 
       let isUnfilledMatch = true;
