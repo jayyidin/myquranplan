@@ -283,8 +283,8 @@ const ScoreInput = React.memo(({ studentId, rowIndex, material, initialScore, on
 
     if (disabled) {
         return (
-            <div className={`relative inline-block w-full ${isMobile ? '' : 'max-w-[80px]'}`}>
-                <div className="w-full px-1.5 sm:px-2 py-2.5 text-sm rounded-xl font-black text-center text-slate-300 dark:text-slate-700 bg-slate-50 dark:bg-slate-800/50">
+            <div className={`relative inline-block w-full ${isMobile ? '' : 'max-w-[80px]'}`} title="Siswa ini tidak ditugaskan untuk materi ini.">
+                <div className="w-full px-1.5 sm:px-2 py-2.5 text-sm rounded-xl font-black text-center text-slate-300 dark:text-slate-700 bg-slate-50 dark:bg-slate-800/50 cursor-not-allowed">
                     -
                 </div>
             </div>
@@ -752,7 +752,7 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
     const handleDeleteJadwal = (id) => {
         setConfirmDialog({
             isOpen: true,
-            message: 'Yakin ingin menghapus jadwal ujian ini?',
+            message: 'Yakin ingin menghapus jadwal ujian ini? (Catatan: Nilai ujian yang sudah diisi oleh siswa tidak akan ikut terhapus dan tetap aman di sistem).',
             onConfirm: () => {
                 const updatedJadwal = (materials.jadwal || []).filter(j => j.id !== id);
                 saveMaterials({ ...materials, jadwal: updatedJadwal });
@@ -790,6 +790,16 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
 
     const formatDateForJadwal = (dateStr) => {
         if (!dateStr) return '-';
+        try {
+            const parts = dateStr.split('-');
+            if (parts.length === 3) {
+                const year = parseInt(parts[0], 10);
+                const month = parseInt(parts[1], 10) - 1;
+                const day = parseInt(parts[2], 10);
+                const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Ags", "Sep", "Okt", "Nov", "Des"];
+                return `${day} ${months[month]} ${year}`;
+            }
+        } catch(e) {}
         const d = new Date(dateStr);
         const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Ags", "Sep", "Okt", "Nov", "Des"];
         return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
@@ -1078,7 +1088,7 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                                 >
                                     <option value="">Semua Jadwal Ujian</option>
                                     {materials.jadwal.map(j => (
-                                        <option key={j.id} value={j.id}>Jadwal: {formatDateForJadwal(j.tanggal)}</option>
+                                        <option key={j.id} value={j.id}>Jadwal: {formatDateForJadwal(j.tanggal)} ({j.materi.length} Materi)</option>
                                     ))}
                                 </select>
                                 <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
@@ -1368,7 +1378,10 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                     {/* Judul khusus cetak */}
                     <div className="hidden print:block text-center mb-6">
                         <h2 className="text-2xl font-black text-slate-800">Laporan Penilaian Ujian Al-Qur&apos;an</h2>
-                        <p className="text-slate-500 font-bold mt-1">Halaqoh: {activeHalaqoh || 'Semua Kelompok'}</p>
+                        <p className="text-slate-500 font-bold mt-1">
+                            Halaqoh: {activeHalaqoh || 'Semua Kelompok'}
+                            {activeJadwal && ` | Jadwal: ${formatDateForJadwal(activeJadwal.tanggal)}`}
+                        </p>
                     </div>
 
                     {/* TABEL GABUNGAN (TAHSIN & TAHFIDZ) */}

@@ -152,6 +152,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
   const [isPrintingAll, setIsPrintingAll] = useState(false);
   const [publicTab, setPublicTab] = useState('jurnal');
   const [copySuccessModal, setCopySuccessModal] = useState({ isOpen: false, title: '', message: '', link: '' });
+  const [ujianMaterials, setUjianMaterials] = useState({ tahsin: [], tahfidz: [], jadwal: [] });
 
   const handlePrintAll = () => {
     setIsPrintingAll(true);
@@ -244,6 +245,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
         if (data.institutionlogo || data.institutionLogo) setInstitutionLogo(data.institutionlogo || data.institutionLogo);
         setGuruHalaqohMap(data.guruhalaqohdata || data.guruHalaqohData || {});
         if (data.kelaslist || data.kelasList) setKelasList(data.kelaslist || data.kelasList);
+        if (data.ujian_materials) setUjianMaterials(data.ujian_materials);
 
         if (shareId && !publicStudent) {
           fetchPublicData(shareId, data.guruhalaqohdata || data.guruHalaqohData || {});
@@ -696,6 +698,42 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
       if (latestTahsin && latestTahfidz && latestMurojaah) break;
     }
 
+    const studentJadwal = Array.isArray(ujianMaterials.jadwal) ? (() => {
+      const assignedMaterials = [];
+      (ujianMaterials.tahsin || []).forEach(m => {
+          if (typeof m === 'string') {
+              assignedMaterials.push(m);
+          } else if (m.students && (m.students.includes('all') || m.students.includes(publicStudent.id))) {
+              assignedMaterials.push(m.name);
+          }
+      });
+      (ujianMaterials.tahfidz || []).forEach(m => {
+          if (typeof m === 'string') {
+              assignedMaterials.push(m);
+          } else if (m.students && (m.students.includes('all') || m.students.includes(publicStudent.id))) {
+              assignedMaterials.push(m.name);
+          }
+      });
+
+      const today = new Date();
+      today.setHours(0,0,0,0);
+
+      const upcoming = [];
+      ujianMaterials.jadwal.forEach(j => {
+          if (!j.tanggal || !j.materi) return;
+          const examDate = new Date(j.tanggal);
+          examDate.setHours(0,0,0,0);
+          if (examDate >= today) {
+              const relevantMaterials = j.materi.filter(mat => assignedMaterials.includes(mat));
+              if (relevantMaterials.length > 0) {
+                  upcoming.push({ ...j, relevantMaterials });
+              }
+          }
+      });
+
+      return upcoming.sort((a,b) => new Date(a.tanggal) - new Date(b.tanggal));
+    })() : [];
+
     const datesToDisplay = isPrintingAll ? allDates : weekDates;
 
     return ( // Public Student View
@@ -807,6 +845,43 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
                 <p className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 mt-4 sm:mt-5 font-bold italic text-center sm:text-left bg-white dark:bg-slate-800 px-4 py-2 rounded-xl border border-slate-100 dark:border-slate-700">
                   💡 <span className="text-amber-500">Tips:</span> Menampilkan batas capaian hafalan/bacaan terakhir Ananda. Guru cukup mengisi Mutabaah sekali waktu saja, dan status terkini akan otomatis tampil di sini.
                 </p>
+              </div>
+            )}
+
+            {/* JADWAL UJIAN MENDATANG */}
+            {studentJadwal.length > 0 && !isPrintingAll && (
+              <div className="p-6 sm:p-10 bg-indigo-50/30 dark:bg-slate-900/50 border-b border-indigo-100/50 dark:border-slate-800 print:hidden">
+                <div className="flex items-center gap-2 mb-6">
+                  <div className="w-2 h-6 bg-indigo-500 rounded-full"></div>
+                  <h3 className="text-sm sm:text-base font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">Jadwal Ujian Mendatang</h3>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {studentJadwal.map((jadwal, idx) => {
+                     const examDate = new Date(jadwal.tanggal);
+                     const today = new Date();
+                     today.setHours(0,0,0,0);
+                     const diffTime = examDate.getTime() - today.getTime();
+                     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                     const formattedDate = `${examDate.getDate()} ${['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'][examDate.getMonth()]} ${examDate.getFullYear()}`;
+
+                     return (
+                        <div key={idx} className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-indigo-100 dark:border-indigo-500/20 shadow-sm relative overflow-hidden group">
+                           <div className="flex items-center gap-3 mb-4">
+                             <div className="p-2.5 bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-xl"><Calendar size={18} strokeWidth={2.5} /></div>
+                             <div className="flex flex-col">
+                               <span className="text-indigo-600 dark:text-indigo-400 font-black text-sm uppercase tracking-widest leading-none">{formattedDate}</span>
+                               <span className="text-[10px] font-bold text-slate-400 mt-1">{diffDays === 0 ? 'Hari Ini' : `${diffDays} Hari Lagi`}</span>
+                             </div>
+                           </div>
+                           <div className="flex flex-wrap gap-1.5">
+                             {jadwal.relevantMaterials.map((m, i) => (
+                                <span key={i} className="bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 px-2.5 py-1 rounded-lg text-[10px] font-bold border border-indigo-100/50 dark:border-indigo-500/20">{m}</span>
+                             ))}
+                           </div>
+                        </div>
+                     )
+                  })}
+                </div>
               </div>
             )}
 
