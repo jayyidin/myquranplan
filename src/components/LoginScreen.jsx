@@ -715,7 +715,8 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
           if (typeof m === 'string') {
               assignedMaterials.push(m);
           } else if (m.students && (m.students.includes('all') || m.students.some(id => String(id) === String(publicStudent.id)))) {
-          } else if (m.students && (m.students.includes('all') || m.students.some(id => String(id) === String(publicStudent.id)))) {
+              assignedMaterials.push(m.name);
+          } else if (!m.students) {
               assignedMaterials.push(m.name);
           }
       });
@@ -732,7 +733,9 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
       validTahfidz.forEach(m => {
           if (typeof m === 'string') {
               assignedMaterials.push(m);
-          } else if (m.students && (m.students.includes('all') || m.students.includes(publicStudent.id))) {
+          } else if (m.students && (m.students.includes('all') || m.students.some(id => String(id) === String(publicStudent.id)))) {
+              assignedMaterials.push(m.name);
+          } else if (!m.students) {
               assignedMaterials.push(m.name);
           }
       });

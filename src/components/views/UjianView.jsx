@@ -339,7 +339,7 @@ const ScoreInput = React.memo(({ studentId, rowIndex, material, initialScore, on
 const StudentTableRow = React.memo(({ student, index, materials, hasTajwidSub, hasGhoribSub, kkmScore, onSaveScore, onPrintStudent }) => {
     const getAverage = (list) => {
         const scores = materials.tahsin
-            .filter(m => list.includes(m.name) && (m.students.includes('all') || m.students.some(id => String(id) === String(student.id))))
+            .filter(m => list.includes(m.name) && (!m.students || m.students.includes('all') || m.students.some(id => String(id) === String(student.id))))
             .map(m => parseFloat(student.ujian_records?.[m.name]))
             .filter(n => !isNaN(n));
         return scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : '-';
@@ -349,7 +349,7 @@ const StudentTableRow = React.memo(({ student, index, materials, hasTajwidSub, h
         let total = 0;
         let count = 0;
         materials.tahsin.forEach(mat => {
-            if (mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id))) {
+            if (!mat.students || mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id))) {
                 const val = parseFloat(student.ujian_records?.[mat.name]);
                 if (!isNaN(val)) {
                     total += val;
@@ -358,7 +358,7 @@ const StudentTableRow = React.memo(({ student, index, materials, hasTajwidSub, h
             }
         });
         materials.tahfidz.forEach(mat => {
-            if (mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id))) {
+            if (!mat.students || mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id))) {
                 const val = parseFloat(student.ujian_records?.[mat.name]);
                 if (!isNaN(val)) {
                     total += val;
@@ -370,6 +370,9 @@ const StudentTableRow = React.memo(({ student, index, materials, hasTajwidSub, h
     }, [student.ujian_records, student.id, materials]);
 
     const isAvgBelowKKM = overallAvg !== '-' && parseFloat(overallAvg) < kkmScore;
+
+    const studentHasTajwid = React.useMemo(() => materials.tahsin.some(m => tajwidList.includes(m.name) && (!m.students || m.students.includes('all') || m.students.some(id => String(id) === String(student.id)))), [materials.tahsin, student.id]);
+    const studentHasGhorib = React.useMemo(() => materials.tahsin.some(m => ghoribList.includes(m.name) && (!m.students || m.students.includes('all') || m.students.some(id => String(id) === String(student.id)))), [materials.tahsin, student.id]);
 
     return (
         <tr className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors group animate-row-slide-in" style={{ animationDelay: `${index * 0.05}s` }}>
@@ -389,7 +392,7 @@ const StudentTableRow = React.memo(({ student, index, materials, hasTajwidSub, h
                 </div>
             </td>
             {materials.tahsin.map((mat, i) => {
-                const isAssigned = mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id));
+                const isAssigned = !mat.students || mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id));
                 return (
                     <td key={`t-in-${i}`} className="p-3 text-center border-l border-slate-100/50 dark:border-slate-800/50 align-middle">
                         <ScoreInput studentId={student.id} rowIndex={index} material={mat.name} initialScore={student.ujian_records?.[mat.name]} onSave={onSaveScore} kkmScore={kkmScore} disabled={!isAssigned} />
@@ -397,18 +400,18 @@ const StudentTableRow = React.memo(({ student, index, materials, hasTajwidSub, h
                 );
             })}
             {hasTajwidSub && (
-                <td className="p-3 text-center border-l border-slate-100/50 dark:border-slate-800/50 align-middle font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50/30 dark:bg-indigo-500/10">
-                    {getAverage(tajwidList)}
+                <td className={`p-3 text-center border-l border-slate-100/50 dark:border-slate-800/50 align-middle font-black ${studentHasTajwid ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50/30 dark:bg-indigo-500/10' : 'text-slate-300 dark:text-slate-700 bg-slate-50/30 dark:bg-slate-800/30'}`}>
+                    {studentHasTajwid ? getAverage(tajwidList) : '-'}
                 </td>
             )}
             {hasGhoribSub && (
-                <td className="p-3 text-center border-l border-slate-100/50 dark:border-slate-800/50 align-middle font-black text-teal-600 dark:text-teal-400 bg-teal-50/30 dark:bg-teal-500/10">
-                    {getAverage(ghoribList)}
+                <td className={`p-3 text-center border-l border-slate-100/50 dark:border-slate-800/50 align-middle font-black ${studentHasGhorib ? 'text-teal-600 dark:text-teal-400 bg-teal-50/30 dark:bg-teal-500/10' : 'text-slate-300 dark:text-slate-700 bg-slate-50/30 dark:bg-slate-800/30'}`}>
+                    {studentHasGhorib ? getAverage(ghoribList) : '-'}
                 </td>
             )}
 
             {materials.tahfidz.map((mat, i) => {
-                const isAssigned = mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id));
+                const isAssigned = !mat.students || mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id));
                 return (
                     <td key={`f-in-${i}`} className="p-3 text-center border-l border-slate-100/50 dark:border-slate-800/50 align-middle bg-purple-50/10 dark:bg-purple-500/5">
                         <ScoreInput studentId={student.id} rowIndex={index} material={mat.name} initialScore={student.ujian_records?.[mat.name]} onSave={onSaveScore} kkmScore={kkmScore} disabled={!isAssigned} />
@@ -437,10 +440,13 @@ const StudentTableRow = React.memo(({ student, index, materials, hasTajwidSub, h
 });
 
 const StudentMobileCard = React.memo(({ student, index, materials, hasTajwidSub, hasGhoribSub, kkmScore, onSaveScore, onPrintStudent }) => {
+    const studentHasTajwid = React.useMemo(() => materials.tahsin.some(m => tajwidList.includes(m.name) && (!m.students || m.students.includes('all') || m.students.some(id => String(id) === String(student.id)))), [materials.tahsin, student.id]);
+    const studentHasGhorib = React.useMemo(() => materials.tahsin.some(m => ghoribList.includes(m.name) && (!m.students || m.students.includes('all') || m.students.some(id => String(id) === String(student.id)))), [materials.tahsin, student.id]);
+
     const getAverage = (list) => {
         const scores = materials.tahsin
             .filter(m => list.includes(m.name))
-            .filter(m => m.students.includes('all') || m.students.some(id => String(id) === String(student.id)))
+            .filter(m => !m.students || m.students.includes('all') || m.students.some(id => String(id) === String(student.id)))
             .map(m => parseFloat(student.ujian_records?.[m.name]))
             .filter(n => !isNaN(n));
         return scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : '-';
@@ -452,14 +458,14 @@ const StudentMobileCard = React.memo(({ student, index, materials, hasTajwidSub,
         let total = 0;
         let count = 0;
         materials.tahsin.forEach(mat => {
-            const isAssigned = mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id));
+            const isAssigned = !mat.students || mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id));
             if (isAssigned) {
                 const val = parseFloat(student.ujian_records?.[mat.name]);
                 if (!isNaN(val)) { total += val; count++; }
             }
         });
         materials.tahfidz.forEach(mat => {
-            const isAssigned = mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id));
+            const isAssigned = !mat.students || mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id));
             if (isAssigned) {
                 const val = parseFloat(student.ujian_records?.[mat.name]);
                 if (!isNaN(val)) { total += val; count++; }
@@ -511,7 +517,8 @@ const StudentMobileCard = React.memo(({ student, index, materials, hasTajwidSub,
                         </div>
                         <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5 sm:gap-2">
                             {materials.tahsin.map((mat, i) => {
-                                const isAssigned = mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id));
+                                const isAssigned = !mat.students || mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id));
+                                if (!isAssigned) return null;
                                 return (
                                     <div key={`t-mob-${i}`} className="bg-white dark:bg-slate-800/60 p-1.5 sm:p-2 rounded-xl border border-slate-200/60 dark:border-slate-700/60 flex flex-col justify-between items-center gap-1 shadow-sm hover:border-blue-300 dark:hover:border-blue-500/50 transition-colors">
                                         <span className={`${mat.name.length > 20 ? 'text-[8px]' : mat.name.length > 12 ? 'text-[9px]' : 'text-[10px]'} font-bold text-slate-600 dark:text-slate-300 text-center leading-tight line-clamp-2 w-full h-6 flex items-center justify-center`} title={mat.name}>{mat.name}</span>
@@ -519,13 +526,13 @@ const StudentMobileCard = React.memo(({ student, index, materials, hasTajwidSub,
                                     </div>
                                 );
                             })}
-                            {hasTajwidSub && (
+                            {hasTajwidSub && studentHasTajwid && (
                                 <div className="bg-indigo-50/60 dark:bg-indigo-500/10 p-1.5 sm:p-2 rounded-xl border border-indigo-100 dark:border-indigo-500/20 flex flex-col justify-center items-center gap-0.5 shadow-sm">
                                     <span className="text-[8px] sm:text-[9px] font-bold text-indigo-500 dark:text-indigo-400 text-center leading-tight h-6 flex items-center justify-center">Rata Tajwid</span>
                                     <span className="text-sm sm:text-base font-black text-indigo-700 dark:text-indigo-300 py-1">{getAverage(tajwidList)}</span>
                                 </div>
                             )}
-                            {hasGhoribSub && (
+                            {hasGhoribSub && studentHasGhorib && (
                                 <div className="bg-teal-50/60 dark:bg-teal-500/10 p-1.5 sm:p-2 rounded-xl border border-teal-100 dark:border-teal-500/20 flex flex-col justify-center items-center gap-0.5 shadow-sm">
                                     <span className="text-[8px] sm:text-[9px] font-bold text-teal-500 dark:text-teal-400 text-center leading-tight h-6 flex items-center justify-center">Rata Ghorib</span>
                                     <span className="text-sm sm:text-base font-black text-teal-700 dark:text-teal-300 py-1">{getAverage(ghoribList)}</span>
@@ -543,7 +550,8 @@ const StudentMobileCard = React.memo(({ student, index, materials, hasTajwidSub,
                         </div>
                         <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5 sm:gap-2">
                             {materials.tahfidz.map((mat, i) => {
-                                const isAssigned = mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id));
+                                const isAssigned = !mat.students || mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id));
+                                if (!isAssigned) return null;
                                 return (
                                     <div key={`f-mob-${i}`} className="bg-white dark:bg-slate-800/60 p-1.5 sm:p-2 rounded-xl border border-slate-200/60 dark:border-slate-700/60 flex flex-col justify-between items-center gap-1 shadow-sm hover:border-purple-300 dark:hover:border-purple-500/50 transition-colors">
                                         <span className={`${mat.name.length > 20 ? 'text-[8px]' : mat.name.length > 12 ? 'text-[9px]' : 'text-[10px]'} font-bold text-slate-600 dark:text-slate-300 text-center leading-tight line-clamp-2 w-full h-6 flex items-center justify-center`} title={mat.name}>{mat.name}</span>
@@ -644,6 +652,11 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
     const hasTajwidSub = useMemo(() => visibleTahsin.some(mat => tajwidList.includes(mat.name)), [visibleTahsin]);
     const hasGhoribSub = useMemo(() => visibleTahsin.some(mat => ghoribList.includes(mat.name)), [visibleTahsin]);
 
+    const studentsInHalaqoh = useMemo(() => {
+        if (!activeHalaqoh) return students;
+        return students.filter(s => s.halaqoh === activeHalaqoh);
+    }, [students, activeHalaqoh]);
+
     const [localRS, setLocalRS] = useState({});
     useEffect(() => {
         const rs = materials.reportSettings || {};
@@ -668,7 +681,7 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
         if (visibleTahsin.length > 0 || visibleTahfidz.length > 0) {
             result = result.filter(s => {
                 return [...visibleTahsin, ...visibleTahfidz].some(mat => 
-                    mat.students.includes('all') || mat.students.some(id => String(id) === String(s.id))
+                    !mat.students || mat.students.includes('all') || mat.students.some(id => String(id) === String(s.id))
                 );
             });
         }
@@ -676,13 +689,13 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
         if (showUnscoredOnly) {
             result = result.filter(s => {
                 const hasUngradedTahsin = visibleTahsin.some(mat => {                    
-                    const isAssigned = mat.students.includes('all') || mat.students.some(id => String(id) === String(s.id));
+                    const isAssigned = !mat.students || mat.students.includes('all') || mat.students.some(id => String(id) === String(s.id));
                     if (!isAssigned) return false;
                     const score = s.ujian_records?.[mat.name];
                     return score === undefined || score === null || score.toString().trim() === '';
                 });
                 const hasUngradedTahfidz = visibleTahfidz.some(mat => {
-                    const isAssigned = mat.students.includes('all') || mat.students.some(id => String(id) === String(s.id));
+                    const isAssigned = !mat.students || mat.students.includes('all') || mat.students.some(id => String(id) === String(s.id));
                     if (!isAssigned) return false;
                     const score = s.ujian_records?.[mat.name];
                     return score === undefined || score === null || score.toString().trim() === '';
@@ -1100,7 +1113,7 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
     const classAverages = useMemo(() => {
         const tahsinAvgs = visibleTahsin.map(mat => {
             const scores = displayedStudents
-                .filter(s => mat.students.includes('all') || mat.students.some(id => String(id) === String(s.id)))
+                .filter(s => !mat.students || mat.students.includes('all') || mat.students.some(id => String(id) === String(s.id)))
                 .map(s => parseFloat(s.ujian_records?.[mat.name]))
                 .filter(n => !isNaN(n));
             return scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : '-';
@@ -1108,7 +1121,7 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
 
         const tahfidzAvgs = visibleTahfidz.map(mat => {
             const scores = displayedStudents
-                .filter(s => mat.students.includes('all') || mat.students.some(id => String(id) === String(s.id)))
+                .filter(s => !mat.students || mat.students.includes('all') || mat.students.some(id => String(id) === String(s.id)))
                 .map(s => parseFloat(s.ujian_records?.[mat.name]))
                 .filter(n => !isNaN(n));
             return scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : '-';
@@ -1117,7 +1130,7 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
         const allTajwidScores = displayedStudents.flatMap(s => 
             visibleTahsin
                 .filter(m => tajwidList.includes(m.name))
-                .filter(m => m.students.includes('all') || m.students.some(id => String(id) === String(s.id)))
+                .filter(m => !m.students || m.students.includes('all') || m.students.some(id => String(id) === String(s.id)))
                 .map(m => parseFloat(s.ujian_records?.[m.name]))
                 .filter(n => !isNaN(n))
         );
@@ -1126,7 +1139,7 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
         const allGhoribScores = displayedStudents.flatMap(s => 
             visibleTahsin
                 .filter(m => ghoribList.includes(m.name))
-                .filter(m => m.students.includes('all') || m.students.some(id => String(id) === String(s.id)))
+                .filter(m => !m.students || m.students.includes('all') || m.students.some(id => String(id) === String(s.id)))
                 .map(m => parseFloat(s.ujian_records?.[m.name]))
                 .filter(n => !isNaN(n))
         );
@@ -1134,8 +1147,8 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
 
         let totalAll = 0; let countAll = 0;
         displayedStudents.forEach(s => {
-            visibleTahsin.forEach(mat => { if (mat.students.includes('all') || mat.students.some(id => String(id) === String(s.id))) { const val = parseFloat(s.ujian_records?.[mat.name]); if (!isNaN(val)) { totalAll += val; countAll++; } } });
-            visibleTahfidz.forEach(mat => { if (mat.students.includes('all') || mat.students.some(id => String(id) === String(s.id))) { const val = parseFloat(s.ujian_records?.[mat.name]); if (!isNaN(val)) { totalAll += val; countAll++; } } });
+            visibleTahsin.forEach(mat => { if (!mat.students || mat.students.includes('all') || mat.students.some(id => String(id) === String(s.id))) { const val = parseFloat(s.ujian_records?.[mat.name]); if (!isNaN(val)) { totalAll += val; countAll++; } } });
+            visibleTahfidz.forEach(mat => { if (!mat.students || mat.students.includes('all') || mat.students.some(id => String(id) === String(s.id))) { const val = parseFloat(s.ujian_records?.[mat.name]); if (!isNaN(val)) { totalAll += val; countAll++; } } });
         });
         const overallAvgAll = countAll > 0 ? (totalAll / countAll).toFixed(1) : '-';
 
@@ -1238,7 +1251,7 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
             let total = 0;
             let count = 0;
             visibleTahsin.forEach(mat => {
-                const isAssigned = mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id));
+                const isAssigned = !mat.students || mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id));
                 const val = isAssigned ? (student.ujian_records?.[mat.name] || '-') : 'N/A';
                 row.push(val);
                 if (isAssigned && val !== '-' && !isNaN(parseFloat(val))) {
@@ -1247,7 +1260,7 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                 }
             });
             visibleTahfidz.forEach(mat => {
-                const isAssigned = mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id));
+                const isAssigned = !mat.students || mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id));
                 const val = isAssigned ? (student.ujian_records?.[mat.name] || '-') : 'N/A';
                 row.push(val);
                 if (isAssigned && val !== '-' && !isNaN(parseFloat(val))) {
@@ -1883,7 +1896,7 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                 onClose={() => setAssignmentModal({ isOpen: false, type: '', material: null })}
                 material={assignmentModal.material}
                 type={assignmentModal.type}
-                students={filteredStudents}
+                students={studentsInHalaqoh}
                 onSave={handleSaveAssignments}
             />
 
@@ -1918,7 +1931,7 @@ const AssignmentModal = ({ isOpen, onClose, material, type, students, onSave }) 
 
     useEffect(() => {
         if (material) {
-            setAssigned(material.students.includes('all') ? students.map(s => s.id) : material.students);
+            setAssigned(!material.students || material.students.includes('all') ? students.map(s => s.id) : material.students);
         }
     }, [material, students]);
 
@@ -1931,11 +1944,21 @@ const AssignmentModal = ({ isOpen, onClose, material, type, students, onSave }) 
     };
 
     const handleSelectAll = () => {
-        setAssigned(students.map(s => s.id));
+        if (search) {
+            const idsToAdd = filteredStudents.map(s => s.id);
+            setAssigned(prev => [...new Set([...prev, ...idsToAdd])]);
+        } else {
+            setAssigned(students.map(s => s.id));
+        }
     };
 
     const handleDeselectAll = () => {
-        setAssigned([]);
+        if (search) {
+            const idsToRemove = filteredStudents.map(s => s.id);
+            setAssigned(prev => prev.filter(id => !idsToRemove.includes(id)));
+        } else {
+            setAssigned([]);
+        }
     };
 
     const handleSaveClick = () => {
@@ -2191,18 +2214,18 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
     }, [materials.tahfidz, halaqohForFilter]);
 
     // Deteksi apakah ada sub-materi Tajwid atau Ghorib di dalam materi Tahsin yang diujikan untuk siswa ini
-    const hasTajwidSub = useMemo(() => currentTahsin.some(mat => tajwidList.includes(mat.name) && (mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id)))), [currentTahsin, student.id]);
-    const hasGhoribSub = useMemo(() => currentTahsin.some(mat => ghoribList.includes(mat.name) && (mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id)))), [currentTahsin, student.id]);
-    const hasTahfidzAssigned = useMemo(() => currentTahfidz.some(m => m.students.includes('all') || m.students.some(id => String(id) === String(student.id))), [currentTahfidz, student.id]);
+    const hasTajwidSub = useMemo(() => currentTahsin.some(mat => tajwidList.includes(mat.name) && (!mat.students || mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id)))), [currentTahsin, student.id]);
+    const hasGhoribSub = useMemo(() => currentTahsin.some(mat => ghoribList.includes(mat.name) && (!mat.students || mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id)))), [currentTahsin, student.id]);
+    const hasTahfidzAssigned = useMemo(() => currentTahfidz.some(m => !m.students || m.students.includes('all') || m.students.some(id => String(id) === String(student.id))), [currentTahfidz, student.id]);
 
     const getSubAverage = (list) => {
-        const scores = currentTahsin.filter(m => list.includes(m.name) && (m.students.includes('all') || m.students.includes(student.id))).map(m => parseFloat(student.ujian_records?.[m.name])).filter(n => !isNaN(n));
+        const scores = currentTahsin.filter(m => list.includes(m.name) && (!m.students || m.students.includes('all') || m.students.some(id => String(id) === String(student.id)))).map(m => parseFloat(student.ujian_records?.[m.name])).filter(n => !isNaN(n));
         return scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : '';
     };
 
     // Ringkas Bidang Studi: Gabungkan sub-materi menjadi "Tajwid" dan "Ghorib"
     const summarizedTahsin = useMemo(() => {
-        const mainMats = currentTahsin.filter(m => !tajwidList.includes(m.name) && !ghoribList.includes(m.name) && (m.students.includes('all') || m.students.includes(student.id))).map(m => m.name);
+        const mainMats = currentTahsin.filter(m => !tajwidList.includes(m.name) && !ghoribList.includes(m.name) && (!m.students || m.students.includes('all') || m.students.some(id => String(id) === String(student.id)))).map(m => m.name);
         const result = [...mainMats];
         if (hasTajwidSub && !result.includes('Tajwid')) result.push('Tajwid');
         if (hasGhoribSub && !result.includes('Ghorib')) result.push('Ghorib');
@@ -2245,7 +2268,7 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
     useEffect(() => {
         const tahfidzScores = [];
         currentTahfidz.forEach(mat => {
-            if (mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id))) {
+            if (!mat.students || mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id))) {
                 const score = student.ujian_records?.[mat.name];
                 // Selalu masukkan materi tahfidz yang ada di pengaturan ujian, meskipun nilainya kosong
                 tahfidzScores.push({ surah: mat.name, score: score !== undefined && score !== null ? score : '' });
