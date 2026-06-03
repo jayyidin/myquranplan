@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { Suspense, lazy, useState, useEffect, useMemo, useCallback } from 'react';
 import { BookOpen, User, Menu, Home, Users, BarChart3, PieChart, Settings, LogOut, Loader2, Edit3, Mic, Repeat, FileText, X, AlertTriangle, Link, Filter, Activity, Archive, ClipboardCheck } from 'lucide-react';
 
 // Imports
@@ -7,14 +7,20 @@ import { surahList, tahsinCategories, ghoribList, tajwidList } from '../data/con
 import { getMonday, formatDateObj, formatShortDate, copyTextToClipboard } from '../utils/helpers';
 
 // Views
-import HomeView from './views/HomeView';
-import StudentView from './views/StudentView';
-import ReportView from './views/ReportView';
-import SettingsView from './views/SettingsView';
-import ActivityLogView from './views/ActivityLogView';
-import ProgressChartView from './views/ProgressChartView';
-import UjianView from './views/UjianView';
-import ArchiveView from './views/ArchiveView';
+const HomeView = lazy(() => import('./views/HomeView'));
+const StudentView = lazy(() => import('./views/StudentView'));
+const ReportView = lazy(() => import('./views/ReportView'));
+const SettingsView = lazy(() => import('./views/SettingsView'));
+const ActivityLogView = lazy(() => import('./views/ActivityLogView'));
+const ProgressChartView = lazy(() => import('./views/ProgressChartView'));
+const UjianView = lazy(() => import('./views/UjianView'));
+const ArchiveView = lazy(() => import('./views/ArchiveView'));
+
+const ViewLoading = () => (
+  <div className="flex-1 w-full h-full flex items-center justify-center text-slate-500 dark:text-slate-400">
+    <Loader2 size={28} className="animate-spin text-emerald-500" />
+  </div>
+);
 
 // Modals
 import { AddStudentModal, EditStudentModal } from './modals/StudentModals';
@@ -1981,6 +1987,21 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       });
 
       if (action === 'next') {
+        if (homeTab === 'jurnal') {
+          const visibleStudents = filteredStudents.length > 0 ? filteredStudents : studentsInHalaqoh;
+          const currentIndex = visibleStudents.findIndex(s => s.id === editingId);
+          const nextStudent = currentIndex >= 0 ? visibleStudents[currentIndex + 1] : null;
+
+          if (nextStudent) {
+            showToast('Data berhasil disimpan! Lanjut ke siswa berikutnya.');
+            handleOpenModal(nextStudent, modalMode, homeTab);
+          } else {
+            showToast('Data berhasil disimpan! Sudah sampai siswa terakhir.');
+            handleCloseModal();
+          }
+          return;
+        }
+
         // Gunakan local time agar tidak terkena bug zona waktu (UTC) yang membuat tanggal tersangkut
         const [year, month, day] = plan.tanggal.split('-').map(Number);
         const currentDate = new Date(year, month - 1, day);
@@ -2205,128 +2226,130 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
 
       {/* Main Content Area */}
       <main className="flex-1 w-full max-w-7xl mx-auto overflow-hidden relative flex flex-col min-h-0 transition-colors duration-500 print:h-auto print:overflow-visible print:block">
-        {currentView === 'home' && (
-          <HomeView
-            activeHalaqoh={activeHalaqoh}
-            activeGuru={activeGuru}
-            homeTab={homeTab}
-            setHomeTab={handleTabChange}
-            weekStart={weekStart}
-            changeWeek={changeWeek}
-            activeDate={activeDate}
-            setActiveDate={setActiveDate}
-            weekDates={weekDates}
-            filteredStudents={filteredStudents}
-            handleOpenModal={handleOpenModal}
-            requestClearRecord={requestClearRecord}
-            requestClearAllRecordForDay={requestClearAllRecordForDay}
-            handleAutoFillFromGhost={handleAutoFillFromGhost}
-            setSharingStudent={setSharingStudent}
-            handleRemoveData={handleRemoveData}
-            getStatusColor={getStatusColor}
-            institutionLogo={institutionLogo}
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            studentsInHalaqohCount={studentsInHalaqoh.length}
-            studentsInHalaqoh={studentsInHalaqoh}
-            isLoading={isLoading}
-            targetReguler={targetReguler}
-            targetAlQuran={targetAlQuran}
-            showToast={showToast}
-          />
-        )}
-        {currentView === 'siswa' && (
-          <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar pb-24 md:pb-0">
-            <StudentView
-              activeHalaqoh={activeHalaqoh} filteredStudents={filteredStudents}
-              openAddStudentModal={() => {
-                setNewStudent({ name: '', kelas: kelasList.length > 0 ? kelasList[0] : '', halaqoh: activeHalaqoh, photo: null });
-                setIsAddStudentModalOpen(true);
-              }}
-              openEditStudentModal={(s) => { setEditStudentData({ id: s.id, name: s.name, kelas: s.kelas, halaqoh: s.halaqoh, photo: s.photo || null }); setIsEditStudentModalOpen(true); }}
-              requestDeleteStudent={requestDeleteStudent} isSuperAdmin={isSuperAdmin}
-              openCropModal={openCropModal}
-              uploadingPhotoId={uploadingPhotoId}
-              uploadProgress={uploadProgress}
-              onReorderStudents={handleReorderStudents}
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-            />
-          </div>
-        )}
-        {currentView === 'laporan' && (
-          <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar pb-24 md:pb-0">
-            <ReportView
+        <Suspense fallback={<ViewLoading />}>
+          {currentView === 'home' && (
+            <HomeView
               activeHalaqoh={activeHalaqoh}
               activeGuru={activeGuru}
+              homeTab={homeTab}
+              setHomeTab={handleTabChange}
+              weekStart={weekStart}
+              changeWeek={changeWeek}
               activeDate={activeDate}
               setActiveDate={setActiveDate}
               weekDates={weekDates}
-              changeWeek={changeWeek}
               filteredStudents={filteredStudents}
+              handleOpenModal={handleOpenModal}
+              requestClearRecord={requestClearRecord}
+              requestClearAllRecordForDay={requestClearAllRecordForDay}
+              handleAutoFillFromGhost={handleAutoFillFromGhost}
+              setSharingStudent={setSharingStudent}
+              handleRemoveData={handleRemoveData}
+              getStatusColor={getStatusColor}
+              institutionLogo={institutionLogo}
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              studentsInHalaqohCount={studentsInHalaqoh.length}
+              studentsInHalaqoh={studentsInHalaqoh}
+              isLoading={isLoading}
+              targetReguler={targetReguler}
+              targetAlQuran={targetAlQuran}
+              showToast={showToast}
+            />
+          )}
+          {currentView === 'siswa' && (
+            <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar pb-24 md:pb-0">
+              <StudentView
+                activeHalaqoh={activeHalaqoh} filteredStudents={filteredStudents}
+                openAddStudentModal={() => {
+                  setNewStudent({ name: '', kelas: kelasList.length > 0 ? kelasList[0] : '', halaqoh: activeHalaqoh, photo: null });
+                  setIsAddStudentModalOpen(true);
+                }}
+                openEditStudentModal={(s) => { setEditStudentData({ id: s.id, name: s.name, kelas: s.kelas, halaqoh: s.halaqoh, photo: s.photo || null }); setIsEditStudentModalOpen(true); }}
+                requestDeleteStudent={requestDeleteStudent} isSuperAdmin={isSuperAdmin}
+                openCropModal={openCropModal}
+                uploadingPhotoId={uploadingPhotoId}
+                uploadProgress={uploadProgress}
+                onReorderStudents={handleReorderStudents}
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+              />
+            </div>
+          )}
+          {currentView === 'laporan' && (
+            <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar pb-24 md:pb-0">
+              <ReportView
+                activeHalaqoh={activeHalaqoh}
+                activeGuru={activeGuru}
+                activeDate={activeDate}
+                setActiveDate={setActiveDate}
+                weekDates={weekDates}
+                changeWeek={changeWeek}
+                filteredStudents={filteredStudents}
+                institutionLogo={institutionLogo}
+                guruHalaqohData={guruHalaqohData}
+              />
+            </div>
+          )}
+          {currentView === 'arsip' && (
+            <ArchiveView
+              isSuperAdmin={isSuperAdmin}
+              currentUser={currentUser}
               institutionLogo={institutionLogo}
               guruHalaqohData={guruHalaqohData}
             />
-          </div>
-        )}
-        {currentView === 'arsip' && (
-          <ArchiveView
-            isSuperAdmin={isSuperAdmin}
-            currentUser={currentUser}
-            institutionLogo={institutionLogo}
-            guruHalaqohData={guruHalaqohData}
-          />
-        )}
-        {currentView === 'pengaturan' && (
-          <SettingsView
-            isSuperAdmin={isSuperAdmin} appUsers={appUsers}
-            handleApproveUser={handleApproveUser} handleRejectUser={handleRejectUser} handleUpdateUserAccount={handleUpdateUserAccount}
-            institutionName={institutionName} setInstitutionName={setInstitutionName} institutionLogo={institutionLogo} handleInstitutionLogoUpload={handleInstitutionLogoUpload} setInstitutionLogo={setInstitutionLogo} updateMasterDataCloud={updateMasterDataCloud} showToast={showToast}
-            targetReguler={targetReguler} setTargetReguler={setTargetReguler} targetAlQuran={targetAlQuran} setTargetAlQuran={setTargetAlQuran}
-            kkmScore={kkmScore} setKkmScore={setKkmScore}
-            kelasList={kelasList} newKelasName={newKelasName} setNewKelasName={setNewKelasName} handleAddKelas={handleAddKelas} handleDeleteKelas={handleDeleteKelas} handleReorderKelas={handleReorderKelas}
-            newGuruName={newGuruName} setNewGuruName={setNewGuruName} handleAddGuru={handleAddGuru} guruList={isSuperAdmin ? guruList : [currentUser.name]}
-            selectedGuruForHalaqoh={selectedGuruForHalaqoh} setSelectedGuruForHalaqoh={setSelectedGuruForHalaqoh} newHalaqohName={newHalaqohName} setNewHalaqohName={setNewHalaqohName} handleAddHalaqoh={handleAddHalaqoh}
-            currentUser={currentUser} guruHalaqohData={guruHalaqohData} editingGuru={editingGuru} setEditingGuru={setEditingGuru} handleSaveEditGuru={handleSaveEditGuru} requestDeleteGuru={requestDeleteGuru}
-            editingHalaqoh={editingHalaqoh} setEditingHalaqoh={setEditingHalaqoh} handleSaveEditHalaqoh={handleSaveEditHalaqoh} requestDeleteHalaqoh={requestDeleteHalaqoh} handleReorderHalaqoh={handleReorderHalaqoh}
-            handleReorderGuru={handleReorderGuru}
-            students={students} openEditStudentModal={(s) => { setEditStudentData({ id: s.id, name: s.name, kelas: s.kelas, halaqoh: s.halaqoh, photo: s.photo || null }); setIsEditStudentModalOpen(true); }}
-            requestDeleteStudent={requestDeleteStudent} requestBulkDeleteStudents={requestBulkDeleteStudents} requestBulkEditStudents={requestBulkEditStudents} handleBulkSaveStudents={handleBulkSaveStudents} onLogout={onLogout}
-            handleCleanLessonPlanValues={handleCleanLessonPlanValues}
-            handleResetTeacherPassword={handleResetTeacherPassword}
-            handleCloseSemester={handleCloseSemester}
-            handleBackupData={handleBackupData}
-            handleLinkAccount={handleLinkAccount}
-          />
-        )}
-        {currentView === 'statistik' && (
-          <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar pb-24 md:pb-0">
-            <ProgressChartView
-              students={filteredStudents}
-              activeHalaqoh={activeHalaqoh}
-              allStudents={students}
-              weekDates={weekDates}
-              changeWeek={changeWeek}
+          )}
+          {currentView === 'pengaturan' && (
+            <SettingsView
+              isSuperAdmin={isSuperAdmin} appUsers={appUsers}
+              handleApproveUser={handleApproveUser} handleRejectUser={handleRejectUser} handleUpdateUserAccount={handleUpdateUserAccount}
+              institutionName={institutionName} setInstitutionName={setInstitutionName} institutionLogo={institutionLogo} handleInstitutionLogoUpload={handleInstitutionLogoUpload} setInstitutionLogo={setInstitutionLogo} updateMasterDataCloud={updateMasterDataCloud} showToast={showToast}
+              targetReguler={targetReguler} setTargetReguler={setTargetReguler} targetAlQuran={targetAlQuran} setTargetAlQuran={setTargetAlQuran}
+              kkmScore={kkmScore} setKkmScore={setKkmScore}
+              kelasList={kelasList} newKelasName={newKelasName} setNewKelasName={setNewKelasName} handleAddKelas={handleAddKelas} handleDeleteKelas={handleDeleteKelas} handleReorderKelas={handleReorderKelas}
+              newGuruName={newGuruName} setNewGuruName={setNewGuruName} handleAddGuru={handleAddGuru} guruList={isSuperAdmin ? guruList : [currentUser.name]}
+              selectedGuruForHalaqoh={selectedGuruForHalaqoh} setSelectedGuruForHalaqoh={setSelectedGuruForHalaqoh} newHalaqohName={newHalaqohName} setNewHalaqohName={setNewHalaqohName} handleAddHalaqoh={handleAddHalaqoh}
+              currentUser={currentUser} guruHalaqohData={guruHalaqohData} editingGuru={editingGuru} setEditingGuru={setEditingGuru} handleSaveEditGuru={handleSaveEditGuru} requestDeleteGuru={requestDeleteGuru}
+              editingHalaqoh={editingHalaqoh} setEditingHalaqoh={setEditingHalaqoh} handleSaveEditHalaqoh={handleSaveEditHalaqoh} requestDeleteHalaqoh={requestDeleteHalaqoh} handleReorderHalaqoh={handleReorderHalaqoh}
+              handleReorderGuru={handleReorderGuru}
+              students={students} openEditStudentModal={(s) => { setEditStudentData({ id: s.id, name: s.name, kelas: s.kelas, halaqoh: s.halaqoh, photo: s.photo || null }); setIsEditStudentModalOpen(true); }}
+              requestDeleteStudent={requestDeleteStudent} requestBulkDeleteStudents={requestBulkDeleteStudents} requestBulkEditStudents={requestBulkEditStudents} handleBulkSaveStudents={handleBulkSaveStudents} onLogout={onLogout}
+              handleCleanLessonPlanValues={handleCleanLessonPlanValues}
+              handleResetTeacherPassword={handleResetTeacherPassword}
+              handleCloseSemester={handleCloseSemester}
+              handleBackupData={handleBackupData}
+              handleLinkAccount={handleLinkAccount}
             />
-          </div>
-        )}
-        {currentView === 'ujian' && (
-          <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar pb-24 md:pb-0 print:h-auto print:overflow-visible print:block">
-            <UjianView
-              activeHalaqoh={activeHalaqoh}
-              filteredStudents={filteredStudents}
-              students={students}
-              setStudents={setStudents}
-              showToast={showToast}
-              currentUser={currentUser}
-            />
-          </div>
-        )}
-        {currentView === 'log' && isSuperAdmin && (
-          <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar pb-24 md:pb-0">
-            <ActivityLogView />
-          </div>
-        )}
+          )}
+          {currentView === 'statistik' && (
+            <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar pb-24 md:pb-0">
+              <ProgressChartView
+                students={filteredStudents}
+                activeHalaqoh={activeHalaqoh}
+                allStudents={students}
+                weekDates={weekDates}
+                changeWeek={changeWeek}
+              />
+            </div>
+          )}
+          {currentView === 'ujian' && (
+            <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar pb-24 md:pb-0 print:h-auto print:overflow-visible print:block">
+              <UjianView
+                activeHalaqoh={activeHalaqoh}
+                filteredStudents={filteredStudents}
+                students={students}
+                setStudents={setStudents}
+                showToast={showToast}
+                currentUser={currentUser}
+              />
+            </div>
+          )}
+          {currentView === 'log' && isSuperAdmin && (
+            <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar pb-24 md:pb-0">
+              <ActivityLogView />
+            </div>
+          )}
+        </Suspense>
       </main>
 
       {/* RENDER MODALS */}

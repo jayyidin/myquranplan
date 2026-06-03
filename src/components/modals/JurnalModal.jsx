@@ -591,7 +591,7 @@ export const JurnalModal = ({
                 {savingAction === 'close' ? 'Menyimpan...' : 'Simpan'}
               </button>
               {editingId && selectedStudents.length <= 1 && (
-                <button onClick={() => handleSaveClick(copyOptions, 'next')} disabled={savingAction !== null} className="flex-1 w-full flex justify-center items-center gap-1.5 sm:gap-2 bg-blue-500 hover:bg-blue-600 text-white py-4 rounded-2xl font-black text-xs sm:text-sm active:scale-95 transition-all shadow-md shadow-blue-200 disabled:opacity-70 disabled:cursor-not-allowed" title="Simpan nilai dan langsung lanjut ke hari berikutnya">
+                <button onClick={() => handleSaveClick(copyOptions, 'next')} disabled={savingAction !== null} className="flex-1 w-full flex justify-center items-center gap-1.5 sm:gap-2 bg-blue-500 hover:bg-blue-600 text-white py-4 rounded-2xl font-black text-xs sm:text-sm active:scale-95 transition-all shadow-md shadow-blue-200 disabled:opacity-70 disabled:cursor-not-allowed" title={homeTab === 'lesson_plan' ? 'Simpan nilai dan langsung lanjut ke hari berikutnya' : 'Simpan nilai dan langsung lanjut ke siswa berikutnya'}>
                   {savingAction === 'next' ? (
                     <><Loader2 size={16} className="animate-spin" /> Lanjut...</>
                   ) : (

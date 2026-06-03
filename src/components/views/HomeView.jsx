@@ -1419,31 +1419,33 @@ const HomeView = ({
 
         {/* BLOK 1: HEADER HALAMAN (SHRINK-0 = SELALU TERKUNCI DI ATAS, TIDAK IKUT SCROLL) */}
         {isHeaderVisible && (
-          <div className="bg-white border-gray-200 shrink-0 z-40 border-b px-4 sm:px-6 md:px-8 py-2 sm:py-3 flex flex-col md:flex-row justify-between items-start md:items-center gap-2 sm:gap-4 transition-all animate-in slide-in-from-top-2 fade-in duration-300">
-            <div className="w-full md:w-auto flex items-center gap-1.5 sm:gap-3">
-              <div className="hidden sm:flex w-16 md:w-20 h-16 md:h-20 items-center justify-center shrink-0">
+          <div className="bg-white border-gray-200 shrink-0 z-40 border-b px-3 sm:px-6 md:px-8 py-2 sm:py-3 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-2 sm:gap-4 transition-all animate-in slide-in-from-top-2 fade-in duration-300 overflow-hidden">
+            <div className="w-full md:w-auto flex items-center gap-2 sm:gap-3 min-w-0">
+              <div className="hidden sm:flex w-14 md:w-20 h-14 md:h-20 items-center justify-center shrink-0">
                 {institutionLogo && institutionLogo !== 'logo.png' && institutionLogo !== '' ? (
                   <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain" />
                 ) : (
-                  <BookOpen size={80} className="text-green-600" />
+                  <BookOpen size={64} className="text-green-600 md:w-20 md:h-20" />
                 )}
               </div>
-              <div>
-                <h1 className="text-base sm:text-xl md:text-2xl font-bold mb-0.5 sm:mb-1 text-slate-700">
+              <div className="min-w-0 flex-1">
+                <h1 className="text-[15px] sm:text-xl md:text-2xl font-bold leading-tight mb-1 text-slate-700 truncate">
                   {homeTab === 'lesson_plan' ? "Lesson Plan Al-Qur'an" : "Mutabaah Al-Qur'an"}
                 </h1>
-                <div className="flex flex-wrap sm:flex-row sm:items-center gap-x-3 gap-y-1 text-gray-500 font-medium text-[9px] sm:text-xs mt-0.5 sm:mt-1">
-                  <span className="flex items-center gap-1.5 min-w-0">
-                    <span className="shrink-0">Halaqoh:</span> <strong className={`text-green-700 bg-green-50 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md border border-green-100 whitespace-normal break-words ${(activeHalaqoh || '').length > 20 ? 'text-[8px] sm:text-[10px] leading-tight' : (activeHalaqoh || '').length > 15 ? 'text-[9px] sm:text-[11px] leading-tight' : ''}`}>{String(activeHalaqoh || '-')}</strong>
+                <div className="flex flex-wrap items-center gap-1.5 text-gray-500 font-medium text-[9px] sm:text-xs">
+                  <span className="flex items-center gap-1 min-w-0 max-w-full rounded-lg border border-green-100 bg-green-50 px-2 py-1">
+                    <span className="shrink-0 text-green-700/70">Halaqoh</span>
+                    <strong className={`min-w-0 truncate text-green-700 ${(activeHalaqoh || '').length > 22 ? 'text-[8px] sm:text-[10px]' : (activeHalaqoh || '').length > 15 ? 'text-[9px] sm:text-[11px]' : 'text-[10px] sm:text-xs'}`}>{String(activeHalaqoh || '-')}</strong>
                   </span>
                   <span className="hidden md:inline text-gray-300 shrink-0">•</span>
-                  <span className="flex items-center gap-1.5 min-w-0">
-                    <span className="shrink-0">Ustadz/ah:</span> <strong className={`text-blue-700 bg-blue-50 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md border border-blue-100 transition-colors whitespace-normal break-words ${(activeGuru || '').length > 20 ? 'text-[8px] sm:text-[10px] leading-tight' : (activeGuru || '').length > 15 ? 'text-[9px] sm:text-[11px] leading-tight' : ''}`}>{String(activeGuru || '-')}</strong>
+                  <span className="flex items-center gap-1 min-w-0 max-w-full rounded-lg border border-blue-100 bg-blue-50 px-2 py-1">
+                    <span className="shrink-0 text-blue-700/70">Ustadz/ah</span>
+                    <strong className={`min-w-0 truncate text-blue-700 ${(activeGuru || '').length > 22 ? 'text-[8px] sm:text-[10px]' : (activeGuru || '').length > 15 ? 'text-[9px] sm:text-[11px]' : 'text-[10px] sm:text-xs'}`}>{String(activeGuru || '-')}</strong>
                   </span>
                   <span className="hidden md:inline text-gray-300 shrink-0">•</span>
-                  <span className="flex items-center gap-1.5 min-w-0" title="Target Hafalan Sekolah">
-                    <span className="shrink-0">Target:</span>
-                    <strong className="text-amber-700 bg-amber-50 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md border border-amber-100 transition-colors whitespace-normal break-words">
+                  <span className="flex items-center gap-1 min-w-0 max-w-full rounded-lg border border-amber-100 bg-amber-50 px-2 py-1" title="Target Hafalan Sekolah">
+                    <span className="shrink-0 text-amber-700/70">Target</span>
+                    <strong className="min-w-0 truncate text-[10px] sm:text-xs text-amber-700">
                       {targetReguler || '2 Juz'} {targetAlQuran ? `/ ${targetAlQuran}` : ''}
                     </strong>
                   </span>
@@ -1451,15 +1453,15 @@ const HomeView = ({
               </div>
             </div>
             {homeTab !== 'jadwal' && (
-              <div className="flex w-full md:w-auto gap-2 shrink-0 mt-1 sm:mt-0 transition-all overflow-x-auto hide-scrollbar overscroll-x-contain pb-1 md:pb-0" style={{ WebkitOverflowScrolling: 'touch' }}>
-                <button onClick={() => handleOpenModal(null, 'full_bulk', homeTab)} disabled={!activeHalaqoh} className="flex-1 md:flex-none border-2 border-transparent px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 font-black text-xs sm:text-sm transition-all bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-emerald-50 dark:hover:bg-slate-700 hover:text-emerald-600 dark:hover:text-emerald-400 hover:border-emerald-200 dark:hover:border-slate-600 disabled:opacity-50 shrink-0 shadow-sm" title="Input Massal">
-                  <Edit3 size={16} className="text-[#00e676]" /> <span className="hidden sm:inline whitespace-nowrap">Input Massal</span>
+              <div className="grid grid-cols-3 md:flex w-full md:w-auto gap-1.5 sm:gap-2 shrink-0 mt-1 sm:mt-0 transition-all">
+                <button onClick={() => handleOpenModal(null, 'full_bulk', homeTab)} disabled={!activeHalaqoh} className="min-w-0 md:min-w-fit border-2 border-transparent px-2 sm:px-4 py-2 sm:py-2.5 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 font-black text-[10px] sm:text-sm transition-all bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-emerald-50 dark:hover:bg-slate-700 hover:text-emerald-600 dark:hover:text-emerald-400 hover:border-emerald-200 dark:hover:border-slate-600 disabled:opacity-50 shadow-sm" title="Input Massal">
+                  <Edit3 size={15} className="text-[#00e676] shrink-0 sm:w-4 sm:h-4" /> <span className="hidden sm:inline whitespace-nowrap">Input Massal</span>
                 </button>
-                <button onClick={() => requestClearAllRecordForDay(null, activeDate, homeTab)} disabled={!activeHalaqoh || filteredStudents.length === 0} className="flex-1 md:flex-none border-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 font-black text-xs sm:text-sm transition-all bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/20 hover:bg-red-100 dark:hover:bg-red-500/20 disabled:opacity-50 shrink-0 shadow-sm" title={`Kosongkan ${homeTab === 'lesson_plan' ? 'Target' : 'Capaian'} Hari Ini`}>
-                  <Trash2 size={16} /> <span className="hidden sm:inline whitespace-nowrap">Kosongkan</span>
+                <button onClick={() => requestClearAllRecordForDay(null, activeDate, homeTab)} disabled={!activeHalaqoh || filteredStudents.length === 0} className="min-w-0 md:min-w-fit border-2 px-2 sm:px-4 py-2 sm:py-2.5 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 font-black text-[10px] sm:text-sm transition-all bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/20 hover:bg-red-100 dark:hover:bg-red-500/20 disabled:opacity-50 shadow-sm" title={`Kosongkan ${homeTab === 'lesson_plan' ? 'Target' : 'Capaian'} Hari Ini`}>
+                  <Trash2 size={15} className="shrink-0 sm:w-4 sm:h-4" /> <span className="hidden sm:inline whitespace-nowrap">Kosongkan</span>
                 </button>
-                <button onClick={() => setIsClassReportVisible(true)} disabled={!activeHalaqoh || filteredStudents.length === 0} className="flex-1 md:flex-none px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 font-black text-xs sm:text-sm transition-all shadow-lg border-2 bg-gray-800 text-white border-transparent hover:bg-gray-700 disabled:opacity-50 shrink-0" title="Laporan Halaqoh">
-                  <Printer size={16} /> <span className="hidden sm:inline whitespace-nowrap">Laporan Halaqoh</span>
+                <button onClick={() => setIsClassReportVisible(true)} disabled={!activeHalaqoh || filteredStudents.length === 0} className="min-w-0 md:min-w-fit px-2 sm:px-4 py-2 sm:py-2.5 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 font-black text-[10px] sm:text-sm transition-all shadow-lg border-2 bg-gray-800 text-white border-transparent hover:bg-gray-700 disabled:opacity-50" title="Laporan Halaqoh">
+                  <Printer size={15} className="shrink-0 sm:w-4 sm:h-4" /> <span className="hidden sm:inline whitespace-nowrap">Laporan Halaqoh</span>
                 </button>
               </div>
             )}
@@ -1471,27 +1473,27 @@ const HomeView = ({
           <div className="flex flex-col gap-3 sm:gap-4 w-full mx-auto pb-32 md:pb-8">
 
             {/* TOMBOL TAB & NAVIGASI */}
-            <div className="flex flex-row rounded-xl sm:rounded-2xl p-1 gap-1 shadow-inner transition-colors bg-slate-100/80">
-              <button onClick={() => setHomeTab('lesson_plan')} className={`flex-1 flex items-center justify-center gap-1.5 px-2 sm:px-4 py-1.5 sm:py-2 font-black text-xs sm:text-sm rounded-lg sm:rounded-xl transition-all duration-300 min-w-fit ${homeTab === 'lesson_plan' ? 'bg-green-500 text-white shadow-md border border-green-600' : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'}`}>
+            <div className="flex flex-row rounded-xl sm:rounded-2xl p-1 gap-1 shadow-inner transition-colors bg-slate-100/80 overflow-hidden">
+              <button onClick={() => setHomeTab('lesson_plan')} className={`min-w-0 flex-1 flex items-center justify-center gap-1 px-1.5 sm:px-4 py-1.5 sm:py-2 font-black text-[10px] sm:text-sm rounded-lg sm:rounded-xl transition-all duration-300 ${homeTab === 'lesson_plan' ? 'bg-green-500 text-white shadow-md border border-green-600' : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'}`}>
                 {homeTab === 'lesson_plan' && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse shrink-0"></span>}
-                <span className="sm:hidden">Lesson Plan</span>
+                <span className="sm:hidden truncate">Lesson</span>
                 <span className="hidden sm:inline">Target (Lesson Plan)</span>
               </button>
-              <button onClick={() => setHomeTab('jurnal')} className={`flex-1 flex items-center justify-center gap-1.5 px-2 sm:px-4 py-1.5 sm:py-2 font-black text-xs sm:text-sm rounded-lg sm:rounded-xl transition-all duration-300 min-w-fit ${homeTab === 'jurnal' ? 'bg-blue-500 text-white shadow-md border border-blue-600' : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'}`}>
+              <button onClick={() => setHomeTab('jurnal')} className={`min-w-0 flex-1 flex items-center justify-center gap-1 px-1.5 sm:px-4 py-1.5 sm:py-2 font-black text-[10px] sm:text-sm rounded-lg sm:rounded-xl transition-all duration-300 ${homeTab === 'jurnal' ? 'bg-blue-500 text-white shadow-md border border-blue-600' : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'}`}>
                 {homeTab === 'jurnal' && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse shrink-0"></span>}
-                <span className="sm:hidden">Mutabaah</span>
+                <span className="sm:hidden truncate">Mutabaah</span>
                 <span className="hidden sm:inline">Mutabaah</span>
               </button>
               {jadwalUjian.length > 0 && (
-                <button onClick={() => setHomeTab('jadwal')} className={`flex-1 flex items-center justify-center gap-1.5 px-2 sm:px-4 py-1.5 sm:py-2 font-black text-xs sm:text-sm rounded-lg sm:rounded-xl transition-all duration-300 min-w-fit ${homeTab === 'jadwal' ? 'bg-indigo-500 text-white shadow-md border border-indigo-600' : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'}`}>
+                <button onClick={() => setHomeTab('jadwal')} className={`min-w-0 flex-1 flex items-center justify-center gap-1 px-1.5 sm:px-4 py-1.5 sm:py-2 font-black text-[10px] sm:text-sm rounded-lg sm:rounded-xl transition-all duration-300 ${homeTab === 'jadwal' ? 'bg-indigo-500 text-white shadow-md border border-indigo-600' : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'}`}>
                   {homeTab === 'jadwal' && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse shrink-0"></span>}
                   <Calendar size={16} className="hidden sm:block" />
-                  <span>Jadwal Ujian</span>
+                  <span className="truncate"><span className="sm:hidden">Jadwal</span><span className="hidden sm:inline">Jadwal Ujian</span></span>
                 </button>
               )}
               <button
                 onClick={() => setIsHeaderVisible(!isHeaderVisible)}
-                className="flex items-center justify-center px-2.5 py-1.5 sm:py-2 bg-white text-slate-500 hover:text-emerald-600 rounded-lg sm:rounded-xl shadow-sm border border-gray-200/50 transition-all"
+                className="shrink-0 flex items-center justify-center w-8 sm:w-10 py-1.5 sm:py-2 bg-white text-slate-500 hover:text-emerald-600 rounded-lg sm:rounded-xl shadow-sm border border-gray-200/50 transition-all"
                 title={isHeaderVisible ? "Sembunyikan Header Atas" : "Tampilkan Header Atas"}
               >
                 {isHeaderVisible ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
@@ -1500,10 +1502,10 @@ const HomeView = ({
 
             {/* NAVIGASI TANGGAL & MINGGU */}
             {homeTab !== 'jadwal' && (
-              <div className="flex items-center justify-between px-2 py-1.5 sm:px-3 sm:py-2 rounded-xl border shadow-sm w-full gap-2 transition-all duration-500 bg-white border-gray-200/80">
-                <button onClick={() => changeWeek(-7)} className="p-1.5 sm:px-3 sm:py-1.5 rounded-md flex items-center gap-1 font-bold text-xs sm:text-sm transition-colors bg-gray-50 text-gray-500 hover:bg-green-50 hover:text-green-600"><ChevronLeft size={16} /><span className="hidden sm:inline">Sebelumnya</span></button>
-                <div className="font-black text-xs sm:text-sm md:text-base text-center flex-1 sm:flex-none text-gray-700 transition-colors"><Calendar size={14} className="inline text-green-500 mr-1 sm:mr-2 align-text-bottom" /> {formatPeriode(weekDates[0], weekDates[weekDates.length - 1] || weekDates[0])}</div>
-                <button onClick={() => changeWeek(7)} className="p-1.5 sm:px-3 sm:py-1.5 bg-gray-50 hover:bg-green-50 text-gray-500 hover:text-green-600 rounded-md flex items-center gap-1 font-bold text-xs sm:text-sm transition-colors"><span className="hidden sm:inline">Selanjutnya</span><ChevronRight size={16} /></button>
+              <div className="flex items-center justify-between px-2 py-1.5 sm:px-3 sm:py-2 rounded-xl border shadow-sm w-full gap-1.5 sm:gap-2 transition-all duration-500 bg-white border-gray-200/80">
+                <button onClick={() => changeWeek(-7)} className="shrink-0 p-1.5 sm:px-3 sm:py-1.5 rounded-md flex items-center gap-1 font-bold text-[10px] sm:text-sm transition-colors bg-gray-50 text-gray-500 hover:bg-green-50 hover:text-green-600"><ChevronLeft size={16} /><span className="hidden sm:inline">Sebelumnya</span></button>
+                <div className="min-w-0 font-black text-[11px] sm:text-sm md:text-base leading-tight text-center flex-1 text-gray-700 transition-colors truncate"><Calendar size={14} className="inline text-green-500 mr-1 sm:mr-2 align-text-bottom shrink-0" /> {formatPeriode(weekDates[0], weekDates[weekDates.length - 1] || weekDates[0])}</div>
+                <button onClick={() => changeWeek(7)} className="shrink-0 p-1.5 sm:px-3 sm:py-1.5 bg-gray-50 hover:bg-green-50 text-gray-500 hover:text-green-600 rounded-md flex items-center gap-1 font-bold text-[10px] sm:text-sm transition-colors"><span className="hidden sm:inline">Selanjutnya</span><ChevronRight size={16} /></button>
               </div>
             )}
 

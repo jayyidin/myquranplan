@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap');
 @import "tailwindcss";
 
 /* --- CSS KUSTOM MYQURANPLAN --- */
@@ -68,9 +69,6 @@
     display: none;
   }
 }
-
-/* Font Arab */
-@import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap');
 
 .font-arabic {
   font-family: 'Amiri', serif;
