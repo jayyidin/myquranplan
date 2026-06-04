@@ -1092,7 +1092,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
     }
     const baseUrl = window.location.origin + window.location.pathname;
     const shareUrl = `${baseUrl}?portalHalaqoh=${encodeURIComponent(activeHalaqoh)}&date=${activeDate}`;
-    const textToCopy = `Assalamu'alaikum Warahmatullahi Wabarakatuh\n\nBerikut adalah tautan Portal Pemantauan Hafalan untuk Halaqoh *${activeHalaqoh}*:\n\n${shareUrl}\n\nSilakan klik nama Ananda untuk melihat rincian Lesson Plan dan Mutabaah.\nTerima kasih.`;
+    const textToCopy = `Assalamu'alaikum Warahmatullahi Wabarakatuh\n\nBerikut adalah tautan Portal Pemantauan Pembelajaran Al-Qur'an untuk Halaqoh *${activeHalaqoh}*:\n\n${shareUrl}\n\nSilakan klik nama Ananda untuk langsung melihat Mutabaah hari ini. Target tetap tersedia pada halaman masing-masing siswa.\nTerima kasih.`;
 
     const copied = await copyTextToClipboard(textToCopy);
     if (copied) {

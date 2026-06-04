@@ -64,7 +64,7 @@ const renderTextWithHighlights = (txt) => {
 
 const ExpandableText = ({ text }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  if (!text || text === '-') return <div className="text-xs sm:text-sm font-bold text-gray-800">-</div>;
+  if (!text || text === '-') return <div className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100">-</div>;
 
   const safeText = String(text);
   const isLong = safeText.length > 50 || safeText.split('\n').length > 2;
@@ -72,13 +72,13 @@ const ExpandableText = ({ text }) => {
 
   return (
     <div className="flex flex-col items-start w-full">
-      <div className={`${textSizeClass} font-bold text-gray-800 whitespace-pre-wrap ${!isExpanded && isLong ? 'line-clamp-2 print:line-clamp-none' : ''}`}>
+      <div className={`${textSizeClass} font-bold text-slate-800 dark:text-slate-100 whitespace-pre-wrap ${!isExpanded && isLong ? 'line-clamp-2 print:line-clamp-none' : ''}`}>
         {renderTextWithHighlights(safeText)}
       </div>
       {isLong && (
         <button
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsExpanded(!isExpanded); }}
-          className="text-[9px] sm:text-[10px] font-black text-emerald-500 hover:text-emerald-600 mt-1 active:scale-95 transition-all bg-emerald-50 px-2 py-0.5 rounded-md print:hidden"
+          className="text-[9px] sm:text-[10px] font-black text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 mt-1 active:scale-95 transition-all bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded-md print:hidden"
           data-html2canvas-ignore="true"
         >
           {isExpanded ? 'Tutup' : 'Lihat Selengkapnya'}
@@ -117,6 +117,13 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [institutionLogo, setInstitutionLogo] = useState(null);
+  const [institutionName, setInstitutionName] = useState('Sekolah');
+  const [portalAcademicYear, setPortalAcademicYear] = useState(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const startYear = now.getMonth() >= 6 ? year : year - 1;
+    return `${startYear}-${startYear + 1}`;
+  });
   const [toastMessage, setToastMessage] = useState(null);
   const showToast = (msg) => { setToastMessage(msg); setTimeout(() => setToastMessage(null), 4000); };
 
@@ -183,7 +190,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekEnd.getDate() + 4);
     const periode = formatPeriode(weekStart, weekEnd);
-    const textToCopy = `Assalamu'alaikum Warahmatullahi Wabarakatuh\n\nBerikut adalah tautan Laporan Halaqoh *${publicClassHalaqoh}* periode *${periode}*:\n\n${shareUrl}\n\nTerima kasih.`;
+    const textToCopy = `Assalamu'alaikum Warahmatullahi Wabarakatuh\n\nBerikut adalah tautan Pemantauan Pembelajaran Al-Qur'an Halaqoh *${publicClassHalaqoh}* periode *${periode}*:\n\n${shareUrl}\n\nTerima kasih.`;
 
     const copied = await copyTextToClipboard(textToCopy);
     if (copied) {
@@ -211,7 +218,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekEnd.getDate() + 4);
     const periode = formatPeriode(weekStart, weekEnd);
-    const textToCopy = `Assalamu'alaikum Warahmatullahi Wabarakatuh\n\nBerikut adalah tautan Laporan Al-Qur'an ananda *${publicStudent.name}* periode *${periode}*:\n\n${shareUrl}\n\nTerima kasih.`;
+    const textToCopy = `Assalamu'alaikum Warahmatullahi Wabarakatuh\n\nBerikut adalah tautan Pemantauan Pembelajaran Al-Qur'an ananda *${publicStudent.name}* periode *${periode}*:\n\n${shareUrl}\n\nTerima kasih.`;
 
     const copied = await copyTextToClipboard(textToCopy);
     if (copied) {
@@ -243,9 +250,14 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
       const { data } = await supabase.from('settings').select('*').limit(1).maybeSingle();
       if (data && isMounted) {
         if (data.institutionlogo || data.institutionLogo) setInstitutionLogo(data.institutionlogo || data.institutionLogo);
+        if (data.institutionname || data.institutionName) setInstitutionName(data.institutionname || data.institutionName);
         setGuruHalaqohMap(data.guruhalaqohdata || data.guruHalaqohData || {});
         if (data.kelaslist || data.kelasList) setKelasList(data.kelaslist || data.kelasList);
-        if (data.ujian_materials) setUjianMaterials(data.ujian_materials);
+        if (data.ujian_materials) {
+          setUjianMaterials(data.ujian_materials);
+          const rawYear = data.ujian_materials?.reportSettings?.tahunPelajaran;
+          if (rawYear) setPortalAcademicYear(String(rawYear).replace(/\s*\/\s*/g, '-'));
+        }
 
         if (shareId && !publicStudent) {
           fetchPublicData(shareId, data.guruhalaqohdata || data.guruHalaqohData || {});
@@ -297,6 +309,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
   }, [isParentPortal]);
 
   const handleSelectStudent = (student) => {
+    setPublicTab('jurnal');
     setPublicStudent(student);
 
     // Cari nama guru secara otomatis
@@ -315,6 +328,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
     try {
       const { data: sData } = await supabase.from('students').select('*').eq('id', studentId).maybeSingle();
       if (sData) {
+        setPublicTab('jurnal');
         setPublicStudent(sData);
 
         // Cari guru berdasarkan halaqoh
@@ -585,12 +599,8 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
         {/* Header Navigasi & Aksi (Sticky Top) */}
         <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md sticky top-0 z-[100000] print:hidden flex flex-col xl:flex-row justify-between items-center p-4 sm:p-6 gap-4 shadow-sm w-full border-b border-slate-200 dark:border-slate-800" data-html2canvas-ignore="true">
 
-          {/* Bagian Kiri: Tab & Minggu */}
+          {/* Bagian Kiri: Minggu */}
           <div className="flex flex-col sm:flex-row items-center gap-3 w-full xl:w-auto">
-            <div className="flex gap-2 w-full sm:w-auto bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl">
-              <button onClick={() => setPublicTab('lesson_plan')} className={`flex-1 sm:flex-none px-5 py-3 sm:py-2 text-xs sm:text-sm font-black rounded-xl transition-all ${publicTab === 'lesson_plan' ? 'bg-emerald-500 text-white shadow-md' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>Target (Lesson Plan)</button>
-              <button onClick={() => setPublicTab('jurnal')} className={`flex-1 sm:flex-none px-5 py-3 sm:py-2 text-xs sm:text-sm font-black rounded-xl transition-all ${publicTab === 'jurnal' ? 'bg-blue-500 text-white shadow-md' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>Mutabaah</button>
-            </div>
             <div className="flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-2 py-1.5 shadow-sm w-full sm:w-auto">
               <button onClick={() => changePublicWeek(-7)} className="p-2 sm:p-2 bg-slate-50 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-500/20 text-slate-400 dark:text-slate-500 hover:text-emerald-500 dark:hover:text-emerald-400 rounded-lg transition-colors"><ChevronLeft size={18} /></button>
               <span className="text-xs sm:text-sm font-bold whitespace-nowrap px-4 text-slate-700 dark:text-slate-200">{formatPeriode(weekDates[0], weekDates[4])}</span>
@@ -805,7 +815,12 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
                 <h1 className="text-2xl sm:text-4xl font-black text-slate-800 dark:text-slate-100 mb-1 sm:mb-2 tracking-tight">
                   {publicTab === 'lesson_plan' ? "Lesson Plan Al-Qur'an" : "Mutabaah Al-Qur'an"}
                 </h1>
-                <p className="text-emerald-600 dark:text-emerald-500 font-bold text-sm sm:text-base tracking-wide uppercase">Laporan Pemantauan Hafalan</p>
+                <p className="text-emerald-600 dark:text-emerald-400 font-bold text-xs sm:text-sm tracking-wide uppercase leading-snug">
+                  Pemantauan Pembelajaran Al-Qur'an {institutionName}
+                </p>
+                <p className="mt-1 text-[10px] sm:text-xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                  Tahun Ajaran {portalAcademicYear}
+                </p>
               </div>
               <div className="w-20 h-20 sm:w-28 sm:h-28 flex items-center justify-center shrink-0 bg-white dark:bg-slate-800 rounded-[1.5rem] shadow-sm border border-emerald-100/50 dark:border-emerald-500/20 p-3 sm:p-4 relative z-10">
                 {institutionLogo ? <img src={institutionLogo} alt="Logo Instansi" className="w-full h-full object-contain" /> : <BookOpen size={48} className="text-emerald-500" />}
@@ -882,9 +897,6 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
                   )}
                 </div>
 
-                <p className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 mt-4 sm:mt-5 font-bold italic text-center sm:text-left bg-white dark:bg-slate-800 px-4 py-2 rounded-xl border border-slate-100 dark:border-slate-700">
-                  💡 <span className="text-amber-500">Tips:</span> Menampilkan batas capaian hafalan/bacaan terakhir Ananda. Guru cukup mengisi Mutabaah sekali waktu saja, dan status terkini akan otomatis tampil di sini.
-                </p>
               </div>
             )}
 
@@ -1103,7 +1115,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
     const availableHalaqohs = portalGuruFilter
       ? (guruHalaqohMap[portalGuruFilter] || []).sort()
       : Array.from(new Set(Object.keys(guruHalaqohMap).filter(k => k !== '_order_').flatMap(k => guruHalaqohMap[k]))).sort();
-    const isSearching = portalSearch.trim() !== '' || portalKelasFilter !== '' || (!isHalaqohLocked && portalHalaqohFilter !== '') || portalGuruFilter !== '';
+    const isSearching = portalSearch.trim() !== '' || portalKelasFilter !== '' || portalHalaqohFilter !== '' || portalGuruFilter !== '';
 
     const filtered = allStudents.filter(s => {
       const matchSearch = s.name.toLowerCase().includes(portalSearch.toLowerCase());
@@ -1170,7 +1182,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
               <div className="h-0.5 w-32 bg-gradient-to-r from-transparent via-amber-500 to-transparent mb-2"></div>
             </div>
             <p className="text-slate-500 dark:text-slate-400 font-medium max-w-md leading-relaxed">
-              Selamat datang di platform pemantauan hafalan Ananda. Silakan cari nama Ananda untuk melihat target (Lesson Plan) serta capaian harian (Mutabaah).
+              Selamat datang di platform pemantauan pembelajaran Al-Qur'an Ananda. Silakan cari nama Ananda untuk melihat target serta capaian harian Mutabaah.
             </p>
           </div>
 
