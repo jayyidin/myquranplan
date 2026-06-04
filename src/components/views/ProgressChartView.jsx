@@ -4,6 +4,26 @@ import { formatPeriode } from '../../utils/helpers';
 
 const MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 const TAHSIN_LEVELS = ['Jilid 1', 'Jilid 2', 'Jilid 3', 'Jilid 4', 'Jilid 5', 'Jilid 6', 'Al-Qur\'an', 'Tajwid', 'Ghorib', 'Belum Ada'];
+const JURNAL_KEYS = {
+  t: 'jurnalTahsin',
+  h: 'jurnalHalAyatTahsin',
+  tNilai: 'jurnalTahsinNilai',
+  tsNilai: 'jurnalTahsinSuratNilai',
+  f: 'jurnalTahfidz',
+  af: 'jurnalAyatTahfidz',
+  fNilai: 'jurnalTahfidzNilai',
+  c: 'jurnalCatatan'
+};
+const LESSON_KEYS = {
+  t: 'tahsin',
+  h: 'halAyatTahsin',
+  tNilai: 'tahsinNilai',
+  tsNilai: 'tahsinSuratNilai',
+  f: 'tahfidz',
+  af: 'ayatTahfidz',
+  fNilai: 'tahfidzNilai',
+  c: 'catatan'
+};
 
 const getMonthTitle = (dateInput) => {
   const date = new Date(dateInput);
@@ -16,17 +36,86 @@ const createEmptyTahsinCounts = () => TAHSIN_LEVELS.reduce((acc, level) => {
   return acc;
 }, {});
 
+const hasValue = (value) => {
+  if (value === undefined || value === null) return false;
+  const text = String(value).trim();
+  return text !== '' && text !== '-';
+};
+
+const isInactiveRecord = (record, keys) => {
+  const note = String(record?.[keys.c] || '').toLowerCase();
+  return ['libur', 'sakit', 'izin', 'alpa', 'tidak hadir'].some(keyword => note.includes(keyword));
+};
+
+const isInPeriod = (dateStr, periodRange) => {
+  if (!periodRange) return true;
+  const dateObj = new Date(dateStr);
+  return dateObj >= periodRange.start && dateObj <= periodRange.end;
+};
+
+const getRecordProgress = (record, keys) => ({
+  tahsin: record?.[keys.t],
+  tahsinDetail: record?.[keys.h],
+  tahsinNilai: record?.[keys.tNilai],
+  tahsinSuratNilai: record?.[keys.tsNilai],
+  tahfidz: record?.[keys.f],
+  tahfidzDetail: record?.[keys.af],
+  tahfidzNilai: record?.[keys.fNilai]
+});
+
+const getLatestProgress = (student, periodRange) => {
+  const latest = { tahsin: null, tahfidz: null };
+  const dates = Object.keys(student.records || {})
+    .filter(dateStr => isInPeriod(dateStr, periodRange))
+    .sort((a, b) => new Date(b) - new Date(a));
+
+  for (const dateStr of dates) {
+    const record = student.records?.[dateStr];
+    if (!record) continue;
+
+    const journalProgress = getRecordProgress(record, JURNAL_KEYS);
+    const lessonProgress = getRecordProgress(record, LESSON_KEYS);
+
+    if (!latest.tahsin) {
+      if (!isInactiveRecord(record, JURNAL_KEYS) && (hasValue(journalProgress.tahsin) || hasValue(journalProgress.tahsinDetail) || hasValue(journalProgress.tahsinNilai) || hasValue(journalProgress.tahsinSuratNilai))) {
+        latest.tahsin = journalProgress;
+      } else if (!isInactiveRecord(record, LESSON_KEYS) && (hasValue(lessonProgress.tahsin) || hasValue(lessonProgress.tahsinDetail) || hasValue(lessonProgress.tahsinNilai) || hasValue(lessonProgress.tahsinSuratNilai))) {
+        latest.tahsin = lessonProgress;
+      }
+    }
+
+    if (!latest.tahfidz) {
+      if (!isInactiveRecord(record, JURNAL_KEYS) && (hasValue(journalProgress.tahfidz) || hasValue(journalProgress.tahfidzDetail) || hasValue(journalProgress.tahfidzNilai))) {
+        latest.tahfidz = journalProgress;
+      } else if (!isInactiveRecord(record, LESSON_KEYS) && (hasValue(lessonProgress.tahfidz) || hasValue(lessonProgress.tahfidzDetail) || hasValue(lessonProgress.tahfidzNilai))) {
+        latest.tahfidz = lessonProgress;
+      }
+    }
+
+    if (latest.tahsin && latest.tahfidz) break;
+  }
+
+  return latest;
+};
+
 const getTahsinLevel = (latestTahsin) => {
   if (!latestTahsin) return 'Belum Ada';
-  if (latestTahsin.includes('Jilid 1')) return 'Jilid 1';
-  if (latestTahsin.includes('Jilid 2')) return 'Jilid 2';
-  if (latestTahsin.includes('Jilid 3')) return 'Jilid 3';
-  if (latestTahsin.includes('Jilid 4')) return 'Jilid 4';
-  if (latestTahsin.includes('Jilid 5')) return 'Jilid 5';
-  if (latestTahsin.includes('Jilid 6')) return 'Jilid 6';
-  if (latestTahsin.includes('Al-Qur\'an') || latestTahsin.includes('Al Quran')) return 'Al-Qur\'an';
-  if (latestTahsin.includes('Tajwid')) return 'Tajwid';
-  if (latestTahsin.includes('Ghorib') || latestTahsin.includes('Gharib')) return 'Ghorib';
+
+  const tahsinText = String(latestTahsin.tahsin || '').trim();
+  const detailText = String(latestTahsin.tahsinDetail || '').trim();
+  const combinedText = `${tahsinText} ${detailText}`.trim();
+
+  if (!hasValue(combinedText) && !hasValue(latestTahsin.tahsinNilai) && !hasValue(latestTahsin.tahsinSuratNilai)) return 'Belum Ada';
+
+  const jilidMatch = combinedText.match(/Jilid\s*([1-6])/i);
+  if (jilidMatch) return `Jilid ${jilidMatch[1]}`;
+  if (/Tajwid/i.test(combinedText)) return 'Tajwid';
+  if (/Ghorib|Gharib/i.test(combinedText)) return 'Ghorib';
+  if (/Al[\s-]?Qur[’']?an|Al\s+Quran|Qur[’']?an|Quran/i.test(combinedText)) return 'Al-Qur\'an';
+
+  // Di beranda, kategori Al-Qur'an disimpan sebagai nama surat/ayat, bukan selalu teks "Al-Qur'an".
+  if (hasValue(tahsinText) || hasValue(detailText) || hasValue(latestTahsin.tahsinNilai) || hasValue(latestTahsin.tahsinSuratNilai)) return 'Al-Qur\'an';
+
   return 'Belum Ada';
 };
 
@@ -140,27 +229,8 @@ const ProgressChartView = ({ students, activeHalaqoh, allStudents, weekDates, ch
     let totalStudents = dataSource.length;
 
     dataSource.forEach(student => {
-      // Mencari nilai/level tahsin dan tahfidz terakhir dari rekaman jurnal
-      let latestTahsin = null;
-      let latestTahfidz = null;
-      const dates = Object.keys(student.records || {})
-        .filter(d => {
-          if (!periodRange) return true;
-          const dateObj = new Date(d);
-          return dateObj >= periodRange.start && dateObj <= periodRange.end;
-        })
-        .sort((a, b) => new Date(b) - new Date(a));
-      for (const d of dates) {
-        if (!latestTahsin) {
-          const t = student.records[d]?.jurnalTahsin || student.records[d]?.tahsin;
-          if (t && t !== '-') latestTahsin = t;
-        }
-        if (!latestTahfidz) {
-          const f = student.records[d]?.jurnalTahfidz || student.records[d]?.tahfidz;
-          if (f && f !== '-') latestTahfidz = f;
-        }
-        if (latestTahsin && latestTahfidz) break;
-      }
+      // Samakan dengan beranda: Tahsin dan Tahfidz diambil dari update terakhir masing-masing.
+      const { tahsin: latestTahsin, tahfidz: latestTahfidz } = getLatestProgress(student, periodRange);
 
       // Hitung Tahsin
       const tahsinLevel = getTahsinLevel(latestTahsin);
@@ -174,8 +244,8 @@ const ProgressChartView = ({ students, activeHalaqoh, allStudents, weekDates, ch
       classTahsinCounts[className].counts[tahsinLevel]++;
 
       // Hitung Tahfidz
-      if (latestTahfidz) {
-        const surah = latestTahfidz.split(',')[0].trim();
+      if (latestTahfidz?.tahfidz) {
+        const surah = String(latestTahfidz.tahfidz).split(',')[0].trim();
         tahfidzCounts[surah] = (tahfidzCounts[surah] || 0) + 1;
         const juz = getJuzFromSurah(surah);
         tahfidzJuzCounts[juz] = (tahfidzJuzCounts[juz] || 0) + 1;
