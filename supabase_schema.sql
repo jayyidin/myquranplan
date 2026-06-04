@@ -32,12 +32,31 @@ CREATE TABLE students (
   name text NOT NULL,
   kelas text,
   halaqoh text,
-  initial text,
-  photo text,
-  records jsonb DEFAULT '{}'::jsonb,
-  ujian_records jsonb DEFAULT '{}'::jsonb,
-  created_at timestamp with time zone DEFAULT timezone('utc'::text, now())
-);
+    initial text,
+    photo text,
+    student_status text DEFAULT 'active',
+    graduated_at timestamp with time zone,
+    graduation_year text,
+    previous_halaqoh text,
+    previous_teacher text,
+    previous_halaqoh_released_at timestamp with time zone,
+    previous_tahsin_summary text,
+    previous_tahfidz_summary text,
+    records jsonb DEFAULT '{}'::jsonb,
+    ujian_records jsonb DEFAULT '{}'::jsonb,
+    created_at timestamp with time zone DEFAULT timezone('utc'::text, now())
+  );
+
+  -- Kolom tambahan untuk fitur Alumni, Tahun Ajaran Baru, dan bayangan mutasi.
+  -- Jalankan bagian ALTER ini pada database lama yang sudah pernah dibuat.
+  ALTER TABLE students ADD COLUMN IF NOT EXISTS student_status text DEFAULT 'active';
+  ALTER TABLE students ADD COLUMN IF NOT EXISTS graduated_at timestamp with time zone;
+  ALTER TABLE students ADD COLUMN IF NOT EXISTS graduation_year text;
+  ALTER TABLE students ADD COLUMN IF NOT EXISTS previous_halaqoh text;
+  ALTER TABLE students ADD COLUMN IF NOT EXISTS previous_teacher text;
+  ALTER TABLE students ADD COLUMN IF NOT EXISTS previous_halaqoh_released_at timestamp with time zone;
+  ALTER TABLE students ADD COLUMN IF NOT EXISTS previous_tahsin_summary text;
+  ALTER TABLE students ADD COLUMN IF NOT EXISTS previous_tahfidz_summary text;
 
 -- 4. TABEL ACTIVITY LOGS (Untuk Log Aktifitas Guru)
 CREATE TABLE activity_logs (

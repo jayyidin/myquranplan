@@ -24,9 +24,9 @@ const AppHeader = ({
         </div>
 
         <nav className="hidden md:flex items-center gap-6 font-bold text-sm text-gray-500 dark:text-slate-400">
-          {['home', 'siswa', 'laporan', 'arsip', 'statistik', 'ujian'].map(view => (
+          {['home', 'siswa', ...(isSuperAdmin ? ['mutasi'] : []), 'laporan', 'arsip', 'statistik', 'ujian'].map(view => (
             <button key={view} onClick={() => setCurrentView(view)} className={`relative pb-1 group transition-colors ${currentView === view ? 'text-green-600' : 'hover:text-green-600'}`}>
-              {view === 'home' ? 'Beranda' : view === 'siswa' ? 'Data Siswa' : view.charAt(0).toUpperCase() + view.slice(1)}
+              {view === 'home' ? 'Beranda' : view === 'siswa' ? 'Data Siswa' : view === 'mutasi' ? 'Mutasi' : view.charAt(0).toUpperCase() + view.slice(1)}
               <span className={`absolute bottom-0 left-0 h-0.5 transition-all duration-300 ${currentView === view ? 'w-full' : 'w-0 group-hover:w-full'} bg-green-600`}></span>
             </button>
           ))}

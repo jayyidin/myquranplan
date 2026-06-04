@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useState, useEffect, useMemo, useCallback } from 'react';
-import { BookOpen, User, Menu, Home, Users, BarChart3, PieChart, Settings, LogOut, Loader2, Edit3, Mic, Repeat, FileText, X, AlertTriangle, Link, Filter, Activity, Archive, ClipboardCheck } from 'lucide-react';
+import { BookOpen, User, Menu, Home, Users, BarChart3, PieChart, Settings, LogOut, Loader2, Edit3, Mic, Repeat, FileText, X, AlertTriangle, Link, Filter, Activity, Archive, ClipboardCheck, ArrowUpDown } from 'lucide-react';
 
 // Imports
 import { supabase } from './supabase';
@@ -15,12 +15,164 @@ const ActivityLogView = lazy(() => import('./views/ActivityLogView'));
 const ProgressChartView = lazy(() => import('./views/ProgressChartView'));
 const UjianView = lazy(() => import('./views/UjianView'));
 const ArchiveView = lazy(() => import('./views/ArchiveView'));
+const HalaqohTransferView = lazy(() => import('./views/HalaqohTransferView'));
 
 const ViewLoading = () => (
   <div className="flex-1 w-full h-full flex items-center justify-center text-slate-500 dark:text-slate-400">
     <Loader2 size={28} className="animate-spin text-emerald-500" />
   </div>
 );
+
+const isGraduatedStudent = (student) => {
+  const status = String(student?.student_status || '').trim().toLowerCase();
+  return status === 'lulus' || status === 'alumni';
+};
+
+const getClassGrade = (kelas) => {
+  const match = String(kelas || '').match(/\d+/);
+  return match ? Number(match[0]) : null;
+};
+
+const promoteClassName = (kelas) => {
+  const text = String(kelas || '').trim();
+  const grade = getClassGrade(text);
+  if (!grade || grade >= 6) return text;
+  return text ? text.replace(/\d+/, String(grade + 1)) : `Kelas ${grade + 1}`;
+};
+
+const getDefaultSchoolYear = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const startYear = now.getMonth() >= 5 ? year : year - 1;
+  return `${startYear}/${startYear + 1}`;
+};
+
+const hasProgressValue = (value) => {
+  if (value === undefined || value === null) return false;
+  const text = String(value).trim();
+  return text !== '' && text !== '-';
+};
+
+const cleanProgressText = (value) => {
+  if (!hasProgressValue(value)) return '';
+  return String(value).split(',').map(item => item.trim()).filter(hasProgressValue).join(', ');
+};
+
+const getJuzFromSurahName = (surahString) => {
+  if (!hasProgressValue(surahString)) return '';
+  const explicitJuz = String(surahString).match(/Juz\s*(\d+)/i);
+  if (explicitJuz) return `Juz ${explicitJuz[1]}`;
+  const match = String(surahString).match(/^(\d+)\./);
+  if (!match) return '';
+
+  const no = Number(match[1]);
+  if (no >= 78 && no <= 114) return 'Juz 30';
+  if (no >= 67 && no <= 77) return 'Juz 29';
+  if (no >= 58 && no <= 66) return 'Juz 28';
+  if (no >= 51 && no <= 57) return 'Juz 27';
+  if (no >= 46 && no <= 50) return 'Juz 26';
+  if (no >= 41 && no <= 45) return 'Juz 25';
+  if (no >= 39 && no <= 40) return 'Juz 24';
+  if (no >= 36 && no <= 38) return 'Juz 23';
+  if (no >= 33 && no <= 35) return 'Juz 22';
+  if (no >= 29 && no <= 32) return 'Juz 21';
+  if (no >= 27 && no <= 28) return 'Juz 20';
+  if (no >= 25 && no <= 26) return 'Juz 19';
+  if (no >= 23 && no <= 24) return 'Juz 18';
+  if (no >= 21 && no <= 22) return 'Juz 17';
+  if (no >= 19 && no <= 20) return 'Juz 16';
+  if (no >= 17 && no <= 18) return 'Juz 15';
+  if (no >= 15 && no <= 16) return 'Juz 14';
+  if (no >= 13 && no <= 14) return 'Juz 13';
+  if (no === 12) return 'Juz 12';
+  if (no >= 10 && no <= 11) return 'Juz 11';
+  if (no === 9) return 'Juz 10';
+  if (no === 8) return 'Juz 9';
+  if (no === 7) return 'Juz 8';
+  if (no === 6) return 'Juz 7';
+  if (no === 5) return 'Juz 6';
+  if (no === 4) return 'Juz 4';
+  if (no === 3) return 'Juz 3';
+  if (no >= 1 && no <= 2) return 'Juz 1';
+  return '';
+};
+
+const splitTahsinProgressDetail = (detail) => {
+  const text = hasProgressValue(detail) ? String(detail).trim() : '';
+  if (!text) return { materi: '', ayat: '' };
+  if (text.includes(' / ')) {
+    const [materi, ...ayatParts] = text.split(' / ');
+    return { materi: materi.trim(), ayat: ayatParts.join(' / ').trim() };
+  }
+  if (/^[\d,\-\s]+$/.test(text) || /Semua Ayat/i.test(text)) return { materi: '', ayat: text };
+  return { materi: text, ayat: '' };
+};
+
+const formatTilawahProgress = (surahList, ayatText) => {
+  const ayatList = hasProgressValue(ayatText) ? String(ayatText).split(',').map(item => item.trim()) : [];
+  return surahList
+    .map((surah, index) => [surah, cleanProgressText(ayatList[index] || '')].filter(hasProgressValue).join(' '))
+    .filter(hasProgressValue)
+    .join('\n');
+};
+
+const formatTahsinSnapshot = (tahsin, detail) => {
+  const tahsinText = hasProgressValue(tahsin) ? String(tahsin).trim() : '';
+  const detailText = hasProgressValue(detail) ? String(detail).trim() : '';
+  if (!tahsinText && !detailText) return '-';
+
+  const jilidMatch = tahsinText.match(/Jilid\s*([1-6])/i);
+  if (jilidMatch) {
+    const pageMatch = detailText.match(/Hal\.\s*[\d,\s]+(?:Brs\s*[\d,\s:]+)?/i);
+    const pageText = pageMatch ? pageMatch[0].replace(/\s+/g, ' ').trim() : detailText;
+    return [`Jilid ${jilidMatch[1]}`, pageText].filter(hasProgressValue).join('\n');
+  }
+
+  if (/Tajwid|Ghorib|Gharib/i.test(tahsinText)) {
+    const category = /Tajwid/i.test(tahsinText) ? 'Tajwid' : 'Ghorib';
+    const surahs = tahsinText.split(',').slice(1).map(item => item.trim()).filter(hasProgressValue);
+    const { materi, ayat } = splitTahsinProgressDetail(detailText);
+    return [category, materi, formatTilawahProgress(surahs, ayat)].filter(hasProgressValue).join('\n');
+  }
+
+  const surahs = tahsinText.split(',').map(item => item.trim()).filter(hasProgressValue);
+  return formatTilawahProgress(surahs, detailText) || [tahsinText || "Al-Qur'an", cleanProgressText(detailText)].filter(hasProgressValue).join(' ');
+};
+
+const formatTahfidzSnapshot = (tahfidz, detail) => {
+  if (!hasProgressValue(tahfidz) && !hasProgressValue(detail)) return '-';
+  const surahs = hasProgressValue(tahfidz) ? String(tahfidz).split(',').map(item => item.trim()).filter(hasProgressValue) : [];
+  const ayatList = hasProgressValue(detail) ? String(detail).split(',').map(item => item.trim()) : [];
+  if (surahs.length === 0) return cleanProgressText(detail);
+
+  return surahs.map((surah, index) => {
+    const juz = getJuzFromSurahName(surah);
+    const ayat = cleanProgressText(ayatList[index] || '');
+    return [juz, surah, ayat].filter(hasProgressValue).join(' ');
+  }).join('\n');
+};
+
+const getLatestMutationProgressSnapshot = (student) => {
+  const dates = Object.keys(student?.records || {}).sort((a, b) => new Date(b) - new Date(a));
+  const latest = { tahsin: null, tahfidz: null };
+  for (const date of dates) {
+    const record = student.records?.[date];
+    if (!record) continue;
+
+    if (!latest.tahsin && (hasProgressValue(record.jurnalTahsin) || hasProgressValue(record.jurnalHalAyatTahsin))) {
+      latest.tahsin = formatTahsinSnapshot(record.jurnalTahsin, record.jurnalHalAyatTahsin);
+    }
+    if (!latest.tahfidz && (hasProgressValue(record.jurnalTahfidz) || hasProgressValue(record.jurnalAyatTahfidz))) {
+      latest.tahfidz = formatTahfidzSnapshot(record.jurnalTahfidz, record.jurnalAyatTahfidz);
+    }
+    if (latest.tahsin && latest.tahfidz) break;
+  }
+
+  return {
+    tahsin: latest.tahsin || '-',
+    tahfidz: latest.tahfidz || '-'
+  };
+};
 
 // Modals
 import { AddStudentModal, EditStudentModal } from './modals/StudentModals';
@@ -39,7 +191,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [currentView, setCurrentView] = useState(() => {
     const saved = localStorage.getItem('myquranplan_current_view');
-    if (saved === 'log' && !isSuperAdmin) return 'home';
+    if ((saved === 'log' || saved === 'mutasi') && !isSuperAdmin) return 'home';
     return saved || 'home';
   });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -260,9 +412,32 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
     return new Blob([u8arr], { type: mime });
   };
 
+  const activeStudents = useMemo(() => students.filter(s => !isGraduatedStudent(s)), [students]);
+
+  const getTeacherForHalaqoh = useCallback((halaqoh) => {
+    const target = String(halaqoh || '').trim();
+    if (!target) return '';
+    for (const [guru, halaqohs] of Object.entries(guruHalaqohData || {})) {
+      if (guru === '_order_') continue;
+      if (Array.isArray(halaqohs) && halaqohs.some(h => String(h || '').trim() === target)) return guru;
+    }
+    return '';
+  }, [guruHalaqohData]);
+
+  const buildReleasedStudentShadow = useCallback((student, releasedAt = new Date().toISOString()) => {
+    const snapshot = getLatestMutationProgressSnapshot(student);
+    return {
+      previous_halaqoh: student?.halaqoh || student?.previous_halaqoh || '',
+      previous_teacher: getTeacherForHalaqoh(student?.halaqoh) || student?.previous_teacher || '',
+      previous_halaqoh_released_at: releasedAt,
+      previous_tahsin_summary: snapshot.tahsin,
+      previous_tahfidz_summary: snapshot.tahfidz
+    };
+  }, [getTeacherForHalaqoh]);
+
   // Filter siswa yang sangat ketat: Jika bukan SuperAdmin, hanya tampilkan siswa yang ada di halaqoh guru tersebut
   const filteredStudents = useMemo(() => {
-    return students.filter(s => {
+    return activeStudents.filter(s => {
       // Dengan RLS, 'students' sudah berisi data yang diizinkan untuk user.
       // Kita hanya perlu filter berdasarkan UI (halaqoh aktif dan pencarian).
       const isSearchMatch = (currentView === 'home' || currentView === 'siswa') 
@@ -297,11 +472,11 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       }
       return isInActiveHalaqoh && isSearchMatch && isUnfilledMatch;
     });
-  }, [students, searchQuery, activeHalaqoh, showUnfilledOnly, currentView, homeTab, activeDate, isSuperAdmin, currentUser?.name, guruHalaqohData]);
+  }, [activeStudents, searchQuery, activeHalaqoh, showUnfilledOnly, currentView, homeTab, activeDate, isSuperAdmin, currentUser?.name, guruHalaqohData]);
 
   // Hitung jumlah siswa di halaqoh aktif (sebelum difilter oleh pencarian) untuk placeholder
   const studentsInHalaqoh = useMemo(() => {
-    return students.filter(s => {
+    return activeStudents.filter(s => {
       // Logika ini juga disederhanakan karena RLS sudah bekerja.
       const isInActiveHalaqoh = !activeHalaqoh || (s?.halaqoh && String(s.halaqoh).trim() === String(activeHalaqoh).trim());
 
@@ -315,7 +490,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       }
       return isInActiveHalaqoh;
     });
-  }, [students, activeHalaqoh, isSuperAdmin, currentUser?.name, guruHalaqohData]);
+  }, [activeStudents, activeHalaqoh, isSuperAdmin, currentUser?.name, guruHalaqohData]);
 
   // -- FUNGSI PENGATURAN (SETTINGS) --
   const handleApproveUser = async (user) => {
@@ -939,6 +1114,167 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       showToast(`${student.name} ditambahkan!`);
     }
   };
+
+  const handleMoveStudentsToHalaqoh = async (studentIds, targetHalaqoh) => {
+    if (!isSuperAdmin) {
+      showToast('Hanya Super Admin yang dapat memindahkan halaqoh siswa.');
+      return;
+    }
+
+    const ids = Array.from(new Set((studentIds || []).filter(Boolean)));
+    if (ids.length === 0) return;
+
+    const target = String(targetHalaqoh || '').trim();
+    const changedStudents = students.filter(s => ids.includes(s.id) && String(s.halaqoh || '').trim() !== target);
+    if (changedStudents.length === 0) {
+      showToast('Siswa sudah berada di halaqoh tersebut.');
+      return;
+    }
+
+    const previousStudents = students;
+    const releasedAt = new Date().toISOString();
+    const changedStudentMap = new Map(changedStudents.map(student => {
+      const releasingFromHalaqoh = !target && hasProgressValue(student.halaqoh);
+      const nextStudent = target
+        ? {
+            ...student,
+            halaqoh: target,
+            previous_halaqoh: '',
+            previous_teacher: '',
+            previous_halaqoh_released_at: null,
+            previous_tahsin_summary: '',
+            previous_tahfidz_summary: ''
+          }
+        : {
+            ...student,
+            ...(releasingFromHalaqoh ? buildReleasedStudentShadow(student, releasedAt) : {}),
+            halaqoh: ''
+          };
+
+      return [student.id, nextStudent];
+    }));
+
+    setStudents(prev => prev.map(s => changedStudentMap.get(s.id) || s));
+
+    try {
+      const updates = Array.from(changedStudentMap.values());
+      const CHUNK_SIZE = 250;
+      for (let i = 0; i < updates.length; i += CHUNK_SIZE) {
+        const chunk = updates.slice(i, i + CHUNK_SIZE);
+        const { error } = await supabase.from('students').upsert(chunk);
+        if (error) throw error;
+      }
+
+      try {
+        await supabase.from('activity_logs').insert([{
+          guru_name: currentUser?.name || 'System / Unknown',
+          action: 'Mutasi Halaqoh Siswa',
+          details: `Tujuan: ${target || 'Belum Ada Halaqoh'}\nSiswa (${changedStudents.length}): ${changedStudents.map(s => s.name).join(', ')}`
+        }]);
+      } catch (logErr) {
+        console.error('Gagal mencatat log aktivitas mutasi:', logErr);
+      }
+
+      showToast(`${changedStudents.length} siswa dipindahkan ke ${target || 'Belum Ada Halaqoh'}.`);
+    } catch (error) {
+      console.error(error);
+      setStudents(previousStudents);
+      showToast('Gagal memindahkan siswa.');
+    }
+  };
+
+  const requestStartNewSchoolYear = () => {
+    if (!isSuperAdmin) {
+      showToast('Hanya Super Admin yang dapat memulai tahun ajaran baru.');
+      return;
+    }
+
+    const activeStudentList = students.filter(s => !isGraduatedStudent(s));
+    if (activeStudentList.length === 0) {
+      showToast('Tidak ada siswa aktif untuk diproses.');
+      return;
+    }
+
+    const defaultYear = getDefaultSchoolYear();
+    const schoolYear = window.prompt('Masukkan tahun ajaran baru (contoh: 2026/2027):', defaultYear);
+    if (!schoolYear || !schoolYear.trim()) return;
+
+    const graduatingStudents = activeStudentList.filter(s => {
+      const grade = getClassGrade(s.kelas);
+      return grade && grade >= 6;
+    });
+    const promotedStudents = activeStudentList.filter(s => {
+      const grade = getClassGrade(s.kelas);
+      return grade && grade < 6;
+    });
+    const releasedOnlyStudents = activeStudentList.filter(s => !getClassGrade(s.kelas));
+
+    setConfirmDialog({
+      isOpen: true,
+      message: `Mulai tahun ajaran ${schoolYear.trim()}?\n\n${graduatingStudents.length} siswa kelas 6 akan ditandai sebagai alumni.\n${promotedStudents.length} siswa kelas 1-5 akan dinaikkan kelasnya.\n${releasedOnlyStudents.length} siswa tanpa angka kelas hanya dilepas dari halaqoh.\n\nSemua siswa aktif akan dilepas dari halaqoh/ustadz-ah. Riwayat mutabaah, ujian, dan profil tetap disimpan.\n\nLanjutkan?`,
+      onConfirm: async () => {
+        const previousStudents = students;
+        const graduatedAt = new Date().toISOString();
+        const targetYear = schoolYear.trim();
+        const updatedStudents = students.map(student => {
+          if (isGraduatedStudent(student)) return student;
+
+          const grade = getClassGrade(student.kelas);
+          const shadow = hasProgressValue(student.halaqoh) ? buildReleasedStudentShadow(student, graduatedAt) : {};
+          if (grade && grade >= 6) {
+            return {
+              ...student,
+              ...shadow,
+              halaqoh: '',
+              student_status: 'lulus',
+              graduated_at: graduatedAt,
+              graduation_year: targetYear
+            };
+          }
+
+          return {
+            ...student,
+            ...shadow,
+            halaqoh: '',
+            kelas: grade && grade < 6 ? promoteClassName(student.kelas) : student.kelas,
+            student_status: 'active',
+            graduated_at: null,
+            graduation_year: null
+          };
+        });
+
+        setStudents(updatedStudents);
+
+        try {
+          const updates = updatedStudents.filter(s => activeStudentList.some(active => active.id === s.id));
+          const CHUNK_SIZE = 250;
+          for (let i = 0; i < updates.length; i += CHUNK_SIZE) {
+            const chunk = updates.slice(i, i + CHUNK_SIZE);
+            const { error } = await supabase.from('students').upsert(chunk);
+            if (error) throw error;
+          }
+
+          try {
+            await supabase.from('activity_logs').insert([{
+              guru_name: currentUser?.name || 'System / Unknown',
+              action: 'Ganti Tahun Ajaran',
+              details: `Tahun ajaran: ${targetYear}\nAlumni kelas 6: ${graduatingStudents.length}\nNaik kelas: ${promotedStudents.length}\nLepas halaqoh saja: ${releasedOnlyStudents.length}`
+            }]);
+          } catch (logErr) {
+            console.error('Gagal mencatat log ganti tahun ajaran:', logErr);
+          }
+
+          setActiveHalaqoh('');
+          showToast(`Tahun ajaran ${targetYear} diproses. ${graduatingStudents.length} siswa menjadi alumni.`);
+        } catch (error) {
+          console.error(error);
+          setStudents(previousStudents);
+          showToast('Gagal memproses tahun ajaran. Pastikan kolom alumni dan bayangan mutasi sudah ditambahkan di Supabase.');
+        }
+      }
+    });
+  };
+
   const handleSaveNewStudent = async (e) => {
     e.preventDefault();
     try {
@@ -2276,6 +2612,17 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
               />
             </div>
           )}
+          {currentView === 'mutasi' && isSuperAdmin && (
+            <HalaqohTransferView
+              isSuperAdmin={isSuperAdmin}
+              students={students}
+              guruHalaqohData={guruHalaqohData}
+              guruList={guruList}
+              kelasList={kelasList}
+              onMoveStudents={handleMoveStudentsToHalaqoh}
+              onStartNewSchoolYear={requestStartNewSchoolYear}
+            />
+          )}
           {currentView === 'laporan' && (
             <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar pb-24 md:pb-0">
               <ReportView
@@ -2326,7 +2673,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
               <ProgressChartView
                 students={filteredStudents}
                 activeHalaqoh={activeHalaqoh}
-                allStudents={students}
+                allStudents={activeStudents}
                 weekDates={weekDates}
                 changeWeek={changeWeek}
               />
@@ -2337,7 +2684,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
               <UjianView
                 activeHalaqoh={activeHalaqoh}
                 filteredStudents={filteredStudents}
-                students={students}
+                students={activeStudents}
                 setStudents={setStudents}
                 showToast={showToast}
                 currentUser={currentUser}
@@ -2355,7 +2702,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       {/* RENDER MODALS */}
       <AddStudentModal
         isOpen={isAddStudentModalOpen} onClose={() => setIsAddStudentModalOpen(false)} isSuperAdmin={isSuperAdmin} addStudentMode={addStudentMode} setAddStudentMode={setAddStudentMode}
-        masterSearchQuery={masterSearchQuery} setMasterSearchQuery={setMasterSearchQuery} students={students.filter(s => !s.halaqoh || s.halaqoh.trim() === '')} activeHalaqoh={activeHalaqoh} handleAssignFromMaster={handleAssignFromMaster} newStudent={newStudent} setNewStudent={setNewStudent} handlePhotoUpload={handlePhotoUpload} kelasList={kelasList} handleSaveNewStudent={handleSaveNewStudent} getInitials={getInitials}
+        masterSearchQuery={masterSearchQuery} setMasterSearchQuery={setMasterSearchQuery} students={activeStudents.filter(s => !s.halaqoh || s.halaqoh.trim() === '')} activeHalaqoh={activeHalaqoh} handleAssignFromMaster={handleAssignFromMaster} newStudent={newStudent} setNewStudent={setNewStudent} handlePhotoUpload={handlePhotoUpload} kelasList={kelasList} handleSaveNewStudent={handleSaveNewStudent} getInitials={getInitials}
         guruHalaqohData={getFilteredHalaqohDataForEdit()}
       />
       <EditStudentModal
@@ -2409,9 +2756,16 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
 
       {toastMessage && (<div className="fixed top-4 md:top-20 left-1/2 -translate-x-1/2 bg-gray-900 dark:bg-slate-100 text-white dark:text-slate-900 px-4 py-2 rounded-xl shadow-2xl z-[100010] font-bold text-xs md:text-sm animate-bounce">{toastMessage}</div>)}
 
+      <div className="md:hidden fixed bottom-[70px] left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 border-t border-slate-100 dark:border-slate-800 px-3 py-1 text-center text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 print:hidden backdrop-blur-md">
+        &copy; {new Date().getFullYear()} Juman Jayyidin. All rights reserved.
+      </div>
+
       <nav className="md:hidden fixed bottom-0 w-full bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-slate-800 flex justify-around items-center h-[70px] z-40 print:hidden transition-colors duration-500">
         <button onClick={() => setCurrentView('home')} className={`flex flex-col items-center gap-1 transition-colors ${currentView === 'home' ? 'text-green-600 dark:text-emerald-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-400'}`}><Home size={20} /><span className="text-[9px] font-bold">Beranda</span></button>
         <button onClick={() => setCurrentView('siswa')} className={`flex flex-col items-center gap-1 transition-colors ${currentView === 'siswa' ? 'text-green-600 dark:text-emerald-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-400'}`}><Users size={20} /><span className="text-[9px] font-bold">Siswa</span></button>
+        {isSuperAdmin && (
+          <button onClick={() => setCurrentView('mutasi')} className={`flex flex-col items-center gap-1 transition-colors ${currentView === 'mutasi' ? 'text-green-600 dark:text-emerald-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-400'}`}><ArrowUpDown size={20} /><span className="text-[9px] font-bold">Mutasi</span></button>
+        )}
         <button onClick={() => setCurrentView('laporan')} className={`flex flex-col items-center gap-1 transition-colors ${currentView === 'laporan' ? 'text-green-600 dark:text-emerald-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-400'}`}><BarChart3 size={20} /><span className="text-[9px] font-bold">Laporan</span></button>
         <button onClick={() => setCurrentView('arsip')} className={`flex flex-col items-center gap-1 transition-colors ${currentView === 'arsip' ? 'text-green-600 dark:text-emerald-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-400'}`}><Archive size={20} /><span className="text-[9px] font-bold">Arsip</span></button>
         <button onClick={() => setCurrentView('statistik')} className={`flex flex-col items-center gap-1 transition-colors ${currentView === 'statistik' ? 'text-green-600 dark:text-emerald-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-400'}`}><PieChart size={20} /><span className="text-[9px] font-bold">Grafik</span></button>

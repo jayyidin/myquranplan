@@ -419,7 +419,7 @@ const StudentTableRow = React.memo(({ student, index, materials, hasTajwidSub, h
                 );
             })}
             {materials.tahsin.length === 0 && materials.tahfidz.length === 0 && (
-                <td className="p-3 text-center border-l border-slate-100/50 dark:border-slate-800/50 align-middle text-slate-500 dark:text-slate-400 text-sm font-bold bg-slate-50/30 dark:bg-slate-800/30">Belum ada materi.</td>
+                <td className="p-3 text-center border-l border-slate-100/50 dark:border-slate-800/50 align-middle text-slate-500 dark:text-slate-400 text-sm font-bold bg-slate-50/30 dark:bg-slate-800/30">Belum ada materi terjadwal.</td>
             )}
             {(materials.tahsin.length > 0 || materials.tahfidz.length > 0) && (
                 <td className={`p-3 text-center border-l border-slate-200 dark:border-slate-700 align-middle font-black ${isAvgBelowKKM ? 'text-red-600 dark:text-red-400 bg-red-50/50 dark:bg-red-500/10' : 'text-slate-800 dark:text-slate-100 bg-slate-50/50 dark:bg-slate-800/50'}`}>
@@ -564,7 +564,7 @@ const StudentMobileCard = React.memo(({ student, index, materials, hasTajwidSub,
                 )}
 
                 {materials.tahsin.length === 0 && materials.tahfidz.length === 0 && (
-                    <p className="text-sm text-slate-500 dark:text-slate-400 font-bold text-center py-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">Belum ada materi ujian.</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 font-bold text-center py-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">Belum ada materi terjadwal.</p>
                 )}
             </div>
         </div>
@@ -639,15 +639,20 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
         return currentJadwal.find(j => j.id.toString() === selectedJadwalId.toString()) || null;
     }, [selectedJadwalId, currentJadwal]);
 
+    const scheduledMaterialNames = useMemo(() => {
+        const source = activeJadwal ? [activeJadwal] : currentJadwal;
+        return new Set(source.flatMap(j => Array.isArray(j.materi) ? j.materi : []).filter(Boolean));
+    }, [activeJadwal, currentJadwal]);
+
     const visibleTahsin = useMemo(() => {
-        if (!activeJadwal) return currentTahsin;
-        return currentTahsin.filter(m => activeJadwal.materi.includes(m.name));
-    }, [currentTahsin, activeJadwal]);
+        if (scheduledMaterialNames.size === 0) return [];
+        return currentTahsin.filter(m => scheduledMaterialNames.has(m.name));
+    }, [currentTahsin, scheduledMaterialNames]);
 
     const visibleTahfidz = useMemo(() => {
-        if (!activeJadwal) return currentTahfidz;
-        return currentTahfidz.filter(m => activeJadwal.materi.includes(m.name));
-    }, [currentTahfidz, activeJadwal]);
+        if (scheduledMaterialNames.size === 0) return [];
+        return currentTahfidz.filter(m => scheduledMaterialNames.has(m.name));
+    }, [currentTahfidz, scheduledMaterialNames]);
 
     const hasTajwidSub = useMemo(() => visibleTahsin.some(mat => tajwidList.includes(mat.name)), [visibleTahsin]);
     const hasGhoribSub = useMemo(() => visibleTahsin.some(mat => ghoribList.includes(mat.name)), [visibleTahsin]);
@@ -705,7 +710,7 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
         }
 
         return result;
-    }, [filteredStudents, searchQuery, showUnscoredOnly, activeJadwal, visibleTahsin, visibleTahfidz]);
+    }, [filteredStudents, searchQuery, showUnscoredOnly, visibleTahsin, visibleTahfidz]);
 
     const studentsRef = useRef(students);
     const currentUserRef = useRef(currentUser);
@@ -1312,7 +1317,7 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
     }
 
     return (
-        <div className="p-4 sm:p-6 w-full max-w-5xl mx-auto animate-in fade-in duration-500">
+        <div className="p-4 sm:p-6 w-full max-w-7xl mx-auto animate-in fade-in duration-500">
             {/* Style khusus untuk cetak halaman ujian */}
             <style dangerouslySetInnerHTML={{
                 __html: `
@@ -1362,66 +1367,72 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                         <span className="text-base sm:text-lg font-black text-slate-700 dark:text-slate-200 leading-none mt-1">{filteredStudents.length}</span>
                     </div>
                     <div className="flex-1 sm:flex-none px-4 py-1.5 sm:py-2 flex flex-col items-center justify-center">
-                        <span className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">Materi</span>
-                        <span className="text-base sm:text-lg font-black text-slate-700 dark:text-slate-200 leading-none mt-1">{currentTahsin.length + currentTahfidz.length}</span>
+                        <span className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">Terjadwal</span>
+                        <span className="text-base sm:text-lg font-black text-slate-700 dark:text-slate-200 leading-none mt-1">{visibleTahsin.length + visibleTahfidz.length}</span>
                     </div>
                 </div>
             </div>
 
             {/* Tab Navigasi & Aksi */}
-            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6 print:hidden">
-                <div className="flex flex-row w-full lg:w-fit bg-slate-100/80 dark:bg-slate-800/80 p-1.5 rounded-xl sm:rounded-2xl gap-1 shadow-inner transition-colors overflow-x-auto hide-scrollbar">
-                    <button onClick={() => setActiveTab('penilaian')} className={`flex-1 lg:flex-none flex items-center justify-center gap-1.5 px-3 sm:px-6 py-2 sm:py-2.5 font-black text-xs sm:text-sm rounded-lg sm:rounded-xl transition-all duration-300 min-w-fit ${activeTab === 'penilaian' ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-md border border-slate-200/50 dark:border-slate-600' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-slate-700/50'}`}>
-                        <ClipboardList size={16} className="sm:w-[18px] sm:h-[18px]" /> <span className="hidden sm:inline">Penilaian</span><span className="sm:hidden">Nilai</span>
-                    </button>
-                    <button onClick={() => setActiveTab('jadwal')} className={`flex-1 lg:flex-none flex items-center justify-center gap-1.5 px-3 sm:px-6 py-2 sm:py-2.5 font-black text-xs sm:text-sm rounded-lg sm:rounded-xl transition-all duration-300 min-w-fit ${activeTab === 'jadwal' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-md border border-slate-200/50 dark:border-slate-600' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-slate-700/50'}`}>
-                        <Calendar size={16} className="sm:w-[18px] sm:h-[18px]" /> Jadwal
-                    </button>
-                    <button onClick={() => setActiveTab('materi')} className={`flex-1 lg:flex-none flex items-center justify-center gap-1.5 px-3 sm:px-6 py-2 sm:py-2.5 font-black text-xs sm:text-sm rounded-lg sm:rounded-xl transition-all duration-300 min-w-fit ${activeTab === 'materi' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-md border border-slate-200/50 dark:border-slate-600' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-slate-700/50'}`}>
-                        <Settings size={16} className="sm:w-[18px] sm:h-[18px]" /> <span className="hidden sm:inline">Atur Materi</span><span className="sm:hidden">Materi</span>
-                    </button>
-                </div>
+            <div className="mb-6 print:hidden">
+                <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 p-2.5 sm:p-3 shadow-sm">
+                    <div className="flex flex-col gap-3">
+                        <div className="rounded-xl bg-slate-100/80 dark:bg-slate-800/80 p-1.5 shadow-inner w-full lg:w-fit">
+                            <div className="grid grid-cols-3 gap-1 min-w-0 lg:min-w-[520px]">
+                                <button onClick={() => setActiveTab('penilaian')} className={`min-w-0 flex items-center justify-center gap-1.5 rounded-lg px-2.5 sm:px-4 py-2.5 text-[11px] sm:text-sm font-black transition-all duration-300 whitespace-nowrap ${activeTab === 'penilaian' ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm border border-slate-200/70 dark:border-slate-600' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>
+                                    <ClipboardList size={16} className="shrink-0" /> <span className="hidden sm:inline">Penilaian</span><span className="sm:hidden">Nilai</span>
+                                </button>
+                                <button onClick={() => setActiveTab('jadwal')} className={`min-w-0 flex items-center justify-center gap-1.5 rounded-lg px-2.5 sm:px-4 py-2.5 text-[11px] sm:text-sm font-black transition-all duration-300 whitespace-nowrap ${activeTab === 'jadwal' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm border border-slate-200/70 dark:border-slate-600' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>
+                                    <Calendar size={16} className="shrink-0" /> Jadwal
+                                </button>
+                                <button onClick={() => setActiveTab('materi')} className={`min-w-0 flex items-center justify-center gap-1.5 rounded-lg px-2.5 sm:px-4 py-2.5 text-[11px] sm:text-sm font-black transition-all duration-300 whitespace-nowrap ${activeTab === 'materi' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm border border-slate-200/70 dark:border-slate-600' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>
+                                    <Settings size={16} className="shrink-0" /> <span className="hidden sm:inline">Atur Materi</span><span className="sm:hidden">Materi</span>
+                                </button>
+                            </div>
+                        </div>
 
-                {activeTab === 'penilaian' && (
-                    <div className="flex flex-wrap sm:flex-nowrap gap-2 w-full lg:w-auto animate-in fade-in slide-in-from-right-4 duration-300">
-                        {currentJadwal && currentJadwal.length > 0 && (
-                            <div className="relative">
-                                <select
-                                    value={selectedJadwalId}
-                                    onChange={(e) => setSelectedJadwalId(e.target.value)}
-                                    className="px-3 py-2 sm:px-4 sm:py-2.5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700 rounded-xl shadow-sm text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-300 cursor-pointer hover:border-emerald-500 transition-colors outline-none flex-1 sm:flex-none appearance-none pr-8"
-                                >
-                                    <option value="">Semua Jadwal Ujian</option>
-                                    {currentJadwal.map(j => (
-                                        <option key={j.id} value={j.id}>Jadwal: {formatDateForJadwal(j.tanggal)} ({j.materi.length} Materi)</option>
-                                    ))}
-                                </select>
-                                <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                        {activeTab === 'penilaian' && (
+                            <div className="grid grid-cols-2 md:grid-cols-[minmax(0,1fr)_150px_92px_92px_92px] xl:grid-cols-[minmax(280px,430px)_150px_92px_92px_92px] gap-2 w-full min-w-0 animate-in fade-in slide-in-from-top-2 duration-300">
+                                {currentJadwal && currentJadwal.length > 0 ? (
+                                    <div className="relative col-span-2 md:col-span-1 min-w-0">
+                                        <select
+                                            value={selectedJadwalId}
+                                            onChange={(e) => setSelectedJadwalId(e.target.value)}
+                                            className="w-full h-10 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 pr-9 text-xs sm:text-sm font-black text-slate-700 dark:text-slate-200 shadow-sm outline-none appearance-none cursor-pointer transition-colors hover:border-emerald-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                                        >
+                                            <option value="">Semua Materi Terjadwal</option>
+                                            {currentJadwal.map(j => (
+                                                <option key={j.id} value={j.id}>Jadwal: {formatDateForJadwal(j.tanggal)} ({j.materi.length} Materi)</option>
+                                            ))}
+                                        </select>
+                                        <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                    </div>
+                                ) : (
+                                    <div className="hidden sm:block" />
+                                )}
+                                <label className="h-10 flex items-center justify-center gap-2 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 text-xs sm:text-sm font-black text-slate-600 dark:text-slate-300 shadow-sm cursor-pointer transition-colors hover:text-emerald-600 dark:hover:text-emerald-400 whitespace-nowrap">
+                                    <input
+                                        type="checkbox"
+                                        checked={showUnscoredOnly}
+                                        onChange={(e) => setShowUnscoredOnly(e.target.checked)}
+                                        className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer shrink-0"
+                                    />
+                                    Belum Dinilai
+                                </label>
+                                <button onClick={handleExportCSV} className="h-10 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3 flex items-center justify-center gap-2 font-black text-xs sm:text-sm transition-all shadow-sm active:scale-95 whitespace-nowrap">
+                                    <Download size={16} className="shrink-0" /> <span>Excel</span>
+                                </button>
+                                <button onClick={handleDownloadPDF} disabled={isDownloadingPdf} className="h-10 rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-3 flex items-center justify-center gap-2 font-black text-xs sm:text-sm transition-all shadow-sm active:scale-95 whitespace-nowrap disabled:opacity-50">
+                                    {isDownloadingPdf ? <Loader2 size={16} className="animate-spin shrink-0" /> : <FileText size={16} className="shrink-0" />}
+                                    <span>PDF</span>
+                                </button>
+                                <button onClick={handlePrint} className="h-10 rounded-xl bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white px-3 flex items-center justify-center gap-2 font-black text-xs sm:text-sm transition-all shadow-sm active:scale-95 whitespace-nowrap">
+                                    <Printer size={16} className="shrink-0" /> <span>Cetak</span>
+                                </button>
                             </div>
                         )}
-                        <label className="flex items-center justify-center gap-2 px-3 py-2 sm:px-4 sm:py-2.5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700 rounded-xl shadow-sm text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-300 cursor-pointer hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex-1 sm:flex-none whitespace-nowrap">
-                            <input
-                                type="checkbox"
-                                checked={showUnscoredOnly}
-                                onChange={(e) => setShowUnscoredOnly(e.target.checked)}
-                                className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer shrink-0"
-                            />
-                            Belum Dinilai
-                        </label>
-                        <div className="flex gap-2 flex-1 sm:flex-none">
-                            <button onClick={handleExportCSV} className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl flex items-center justify-center gap-2 font-bold text-xs sm:text-sm transition-all shadow-md active:scale-95 whitespace-nowrap">
-                                <Download size={16} className="sm:w-[18px] sm:h-[18px]" /> <span className="hidden sm:inline">Excel</span>
-                            </button>
-                            <button onClick={handleDownloadPDF} disabled={isDownloadingPdf} className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl flex items-center justify-center gap-2 font-bold text-xs sm:text-sm transition-all shadow-md active:scale-95 whitespace-nowrap disabled:opacity-50">
-                                {isDownloadingPdf ? <Loader2 size={16} className="animate-spin sm:w-[18px] sm:h-[18px]" /> : <FileText size={16} className="sm:w-[18px] sm:h-[18px]" />}
-                                <span className="hidden sm:inline">{isDownloadingPdf ? 'Memproses...' : 'PDF'}</span>
-                            </button>
-                            <button onClick={handlePrint} className="flex-1 sm:flex-none bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl flex items-center justify-center gap-2 font-bold text-xs sm:text-sm transition-all shadow-md active:scale-95 whitespace-nowrap">
-                                <Printer size={16} className="sm:w-[18px] sm:h-[18px]" /> <span className="hidden sm:inline">Cetak</span>
-                            </button>
-                        </div>
                     </div>
-                )}
+                </div>
             </div>
 
             {/* KOTAK PENCARIAN SISWA (MENGAMBANG) */}
