@@ -271,6 +271,15 @@ const ScoreInput = React.memo(({ studentId, rowIndex, material, initialScore, on
                 const prevInput = document.querySelector(`input[data-mat-id="${matId}"][data-row-index="${rowIndex - 1}"]:not([data-is-mobile="true"])`);
                 if (prevInput) prevInput.focus();
             }
+        } else if (!isMobile && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
+            const inputs = Array.from(document.querySelectorAll(`input[data-score-input="true"][data-row-index="${rowIndex}"]:not([data-is-mobile="true"])`));
+            const currentIndex = inputs.indexOf(e.target);
+            if (currentIndex === -1) return;
+            const nextIndex = e.key === 'ArrowRight' ? currentIndex + 1 : currentIndex - 1;
+            if (inputs[nextIndex]) {
+                e.preventDefault();
+                inputs[nextIndex].focus();
+            }
         }
     };
 
@@ -290,8 +299,8 @@ const ScoreInput = React.memo(({ studentId, rowIndex, material, initialScore, on
 
     if (disabled) {
         return (
-            <div className={`relative inline-block w-full ${isMobile ? '' : 'max-w-[80px]'}`} title="Siswa ini tidak ditugaskan untuk materi ini.">
-                <div className="w-full px-1.5 sm:px-2 py-2.5 text-sm rounded-xl font-black text-center text-slate-300 dark:text-slate-700 bg-slate-50 dark:bg-slate-800/50 cursor-not-allowed">
+            <div className={`relative inline-block w-full ${isMobile ? '' : 'max-w-[92px]'}`} title="Siswa ini tidak ditugaskan untuk materi ini.">
+                <div className="w-full min-h-[42px] px-1.5 sm:px-2 py-2.5 text-sm rounded-xl font-black text-center text-slate-300 dark:text-slate-700 bg-slate-50 dark:bg-slate-800/50 cursor-not-allowed">
                     -
                 </div>
             </div>
@@ -299,25 +308,33 @@ const ScoreInput = React.memo(({ studentId, rowIndex, material, initialScore, on
     }
 
     return (
-        <div className={`relative inline-block w-full ${isMobile ? '' : 'max-w-[80px]'}`}>
+        <div className={`relative inline-block w-full ${isMobile ? '' : 'max-w-[92px]'}`}>
             <input
                 type="text"
                 inputMode="decimal"
                 enterKeyHint="next"
+                autoComplete="off"
+                aria-label={`Nilai ${material}`}
                 value={val}
                 onChange={e => {
                     let newVal = e.target.value;
+                    newVal = newVal.replace(',', '.').replace(/[^\d.]/g, '');
+                    const firstDot = newVal.indexOf('.');
+                    if (firstDot !== -1) {
+                        newVal = newVal.slice(0, firstDot + 1) + newVal.slice(firstDot + 1).replace(/\./g, '');
+                    }
                     if (newVal !== '' && !isNaN(newVal) && parseFloat(newVal) > 100) newVal = '100';
                     setVal(newVal);
                 }}
                 onBlur={handleBlur}
                 onFocus={handleFocus}
                 onKeyDown={handleKeyDown}
+                onWheel={(e) => e.currentTarget.blur()}
                 data-score-input="true"
                 data-is-mobile={isMobile ? "true" : "false"}
                 data-mat-id={material.replace(/[^a-zA-Z0-9]/g, '')}
                 data-row-index={rowIndex}
-                className={`w-full px-1.5 sm:px-2 ${isMobile ? ((val ?? '').toString().length > 3 ? 'py-1.5 text-xs sm:text-sm' : 'py-1.5 text-sm sm:text-base') + ' shadow-inner rounded-lg' : 'py-2.5 text-sm rounded-xl'} font-black text-center outline-none transition-all duration-300 focus:ring-4 focus:scale-105 focus:z-20 relative !text-black ${isSaving ? 'animate-pulse !bg-amber-50 !border-amber-300 shadow-sm focus:!border-amber-500 focus:!ring-amber-500/20' :
+                className={`w-full min-h-[42px] px-1.5 sm:px-2 ${isMobile ? ((val ?? '').toString().length > 3 ? 'py-2 text-sm' : 'py-2 text-base') + ' shadow-inner rounded-xl' : 'py-2.5 text-sm rounded-xl'} font-black text-center outline-none transition-all duration-300 focus:ring-4 focus:scale-105 focus:z-20 relative !text-black ${isSaving ? 'animate-pulse !bg-amber-50 !border-amber-300 shadow-sm focus:!border-amber-500 focus:!ring-amber-500/20' :
                     isSaved ? 'scale-110 -translate-y-1 !bg-emerald-100 !border-emerald-400 shadow-[0_5px_15px_rgba(16,185,129,0.3)] z-10 relative focus:!border-emerald-500 focus:!ring-emerald-500/30' :
                         isPerfect ? '!bg-yellow-50 !border-yellow-300 focus:!border-yellow-500 focus:!ring-yellow-500/20 shadow-[0_0_10px_rgba(234,179,8,0.2)]' :
                             isBelowKKM ? '!bg-red-50 !border-red-300 focus:!border-red-500 focus:!ring-red-500/20' :
@@ -376,7 +393,7 @@ const StudentTableRow = React.memo(({ student, index, materials, hasTajwidSub, h
 
     return (
         <tr className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors group animate-row-slide-in" style={{ animationDelay: `${index * 0.05}s` }}>
-            <td className="p-3 sm:p-5 sticky left-0 bg-white dark:bg-slate-900 group-hover:bg-slate-50/80 dark:group-hover:bg-slate-800/50 transition-colors z-10 shadow-[4px_0_12px_rgba(0,0,0,0.02)] border-r border-transparent group-hover:border-slate-100 dark:group-hover:border-slate-800">
+            <td className="p-3 sm:p-4 sticky left-0 bg-white dark:bg-slate-900 group-hover:bg-slate-50/80 dark:group-hover:bg-slate-800/50 transition-colors z-10 shadow-[6px_0_16px_rgba(15,23,42,0.06)] border-r border-slate-100 dark:border-slate-800 min-w-[260px] w-[260px] max-w-[260px]">
                 <div className="flex items-center gap-2 sm:gap-3">
                     <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[10px] sm:text-xs font-bold text-slate-500 dark:text-slate-400 shrink-0 overflow-hidden">
                         {student.photo ? (
@@ -386,7 +403,7 @@ const StudentTableRow = React.memo(({ student, index, materials, hasTajwidSub, h
                         )}
                     </div>
                     <div className="flex flex-col min-w-0">
-                        <span className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-200 leading-tight truncate">{student.name}</span>
+                        <span className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-200 leading-tight whitespace-normal line-clamp-2">{student.name}</span>
                         <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mt-0.5">Kelas {student.kelas || '-'}</span>
                     </div>
                 </div>
@@ -515,12 +532,12 @@ const StudentMobileCard = React.memo(({ student, index, materials, hasTajwidSub,
                             <BookOpen size={16} className="text-blue-500" />
                             <h4 className="font-black text-sm text-slate-700 dark:text-slate-300 uppercase tracking-widest">Tahsin</h4>
                         </div>
-                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5 sm:gap-2">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-2.5">
                             {materials.tahsin.map((mat, i) => {
                                 const isAssigned = !mat.students || mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id));
                                 if (!isAssigned) return null;
                                 return (
-                                    <div key={`t-mob-${i}`} className="bg-white dark:bg-slate-800/60 p-1.5 sm:p-2 rounded-xl border border-slate-200/60 dark:border-slate-700/60 flex flex-col justify-between items-center gap-1 shadow-sm hover:border-blue-300 dark:hover:border-blue-500/50 transition-colors">
+                                    <div key={`t-mob-${i}`} className="bg-white dark:bg-slate-800/60 p-2 rounded-xl border border-slate-200/60 dark:border-slate-700/60 flex flex-col justify-between items-center gap-1.5 shadow-sm hover:border-blue-300 dark:hover:border-blue-500/50 transition-colors min-w-0">
                                         <span className={`${mat.name.length > 20 ? 'text-[8px]' : mat.name.length > 12 ? 'text-[9px]' : 'text-[10px]'} font-bold text-slate-600 dark:text-slate-300 text-center leading-tight line-clamp-2 w-full h-6 flex items-center justify-center`} title={mat.name}>{mat.name}</span>
                                         <ScoreInput studentId={student.id} rowIndex={index} material={mat.name} initialScore={student.ujian_records?.[mat.name]} onSave={onSaveScore} kkmScore={kkmScore} isMobile={true} disabled={!isAssigned} />
                                     </div>
@@ -548,12 +565,12 @@ const StudentMobileCard = React.memo(({ student, index, materials, hasTajwidSub,
                             <Mic size={16} className="text-purple-500" />
                             <h4 className="font-black text-sm text-slate-700 dark:text-slate-300 uppercase tracking-widest">Tahfidz</h4>
                         </div>
-                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5 sm:gap-2">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-2.5">
                             {materials.tahfidz.map((mat, i) => {
                                 const isAssigned = !mat.students || mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id));
                                 if (!isAssigned) return null;
                                 return (
-                                    <div key={`f-mob-${i}`} className="bg-white dark:bg-slate-800/60 p-1.5 sm:p-2 rounded-xl border border-slate-200/60 dark:border-slate-700/60 flex flex-col justify-between items-center gap-1 shadow-sm hover:border-purple-300 dark:hover:border-purple-500/50 transition-colors">
+                                    <div key={`f-mob-${i}`} className="bg-white dark:bg-slate-800/60 p-2 rounded-xl border border-slate-200/60 dark:border-slate-700/60 flex flex-col justify-between items-center gap-1.5 shadow-sm hover:border-purple-300 dark:hover:border-purple-500/50 transition-colors min-w-0">
                                         <span className={`${mat.name.length > 20 ? 'text-[8px]' : mat.name.length > 12 ? 'text-[9px]' : 'text-[10px]'} font-bold text-slate-600 dark:text-slate-300 text-center leading-tight line-clamp-2 w-full h-6 flex items-center justify-center`} title={mat.name}>{mat.name}</span>
                                         <ScoreInput studentId={student.id} rowIndex={index} material={mat.name} initialScore={student.ujian_records?.[mat.name]} onSave={onSaveScore} kkmScore={kkmScore} isMobile={true} disabled={!isAssigned} />
                                     </div>
@@ -573,7 +590,7 @@ const StudentMobileCard = React.memo(({ student, index, materials, hasTajwidSub,
 
 const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, showToast, currentUser }) => {
     const [activeTab, setActiveTab] = useState('penilaian'); // 'penilaian' | 'jadwal' | 'materi'
-    const [materials, setMaterials] = useState({ tahsin: [], tahfidz: [], jadwal: [], reportSettings: {} });
+    const [materials, setMaterials] = useState({ tahsin: [], tahfidz: [], jadwal: [], reportSettings: {}, institutionName: '' });
     const [isLoading, setIsLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [kkmScore, setKkmScore] = useState(75);
@@ -674,6 +691,13 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
 
     const hasTajwidSub = useMemo(() => visibleTahsin.some(mat => tajwidList.includes(mat.name)), [visibleTahsin]);
     const hasGhoribSub = useMemo(() => visibleTahsin.some(mat => ghoribList.includes(mat.name)), [visibleTahsin]);
+    const scoreColumnCount = visibleTahsin.length + visibleTahfidz.length + (hasTajwidSub ? 1 : 0) + (hasGhoribSub ? 1 : 0);
+    const examTableMinWidth = 260 + Math.max(scoreColumnCount, 1) * 142 + (visibleTahsin.length > 0 || visibleTahfidz.length > 0 ? 104 : 150) + 78;
+    const renderHeaderLabel = (label) => (
+        <span className="block max-w-[128px] mx-auto whitespace-normal break-normal leading-snug line-clamp-3" title={label}>
+            {label}
+        </span>
+    );
 
     const studentsInHalaqoh = useMemo(() => {
         if (!activeHalaqoh) return students;
@@ -686,13 +710,13 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
         setLocalRS({
             semester: rs.semester || (new Date().getMonth() >= 6 ? 'Ganjil' : 'Genap'),
             tahunPelajaran: rs.tahunPelajaran || (new Date().getMonth() >= 6 ? `${new Date().getFullYear()}/${new Date().getFullYear() + 1}` : `${new Date().getFullYear() - 1}/${new Date().getFullYear()}`),
-            namaSekolah: rs.namaSekolah || 'SDIT AL FITYAN SCHOOL BOGOR',
+            namaSekolah: rs.namaSekolah || materials.institutionName || 'SDIT AL FITYAN SCHOOL BOGOR',
             alamatSekolah: rs.alamatSekolah || 'Jl. Bengkel Roda, Kp. Cipiicung.\nDesa Mekarsari. Kec. Cileungsi. Bogor',
             kepalaSekolah: rs.kepalaSekolah || 'Mei Tri Listari, S.Pd.I, M. Pd',
             tempatCetak: rs.tempatCetak || 'Bogor',
             tanggalCetak: rs.tanggalCetak || getIndonesianDate()
         });
-    }, [materials.reportSettings]);
+    }, [materials.reportSettings, materials.institutionName]);
 
     const displayedStudents = useMemo(() => {
         let result = filteredStudents;
@@ -768,7 +792,8 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                             tahsin: newTahsin,
                             tahfidz: newTahfidz,
                             jadwal: data.ujian_materials.jadwal || [],
-                            reportSettings: data.ujian_materials.reportSettings || {}
+                            reportSettings: data.ujian_materials.reportSettings || {},
+                            institutionName: data.institutionname || data.institutionName || ''
                         });
 
                         if (isOldFormatTahsin || isOldFormatTahfidz) {
@@ -799,7 +824,7 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
         if (error) {
             showToast('Gagal menyimpan perubahan materi.');
         } else {
-            setMaterials(newMats);
+            setMaterials(prev => ({ ...newMats, institutionName: prev.institutionName || newMats.institutionName || '' }));
             showToast('Pengaturan berhasil diperbarui!');
         }
     };
@@ -1819,11 +1844,11 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
 
                     {/* TABEL GABUNGAN (TAHSIN & TAHFIDZ) */}
                     <div id="ujian-report-container" className="flex flex-col md:bg-white md:dark:bg-slate-900 md:rounded-3xl md:shadow-[0_8px_30px_rgba(0,0,0,0.04)] md:border md:border-slate-200/80 md:dark:border-slate-800 transition-colors">
-                        <div className="hidden md:block overflow-x-auto custom-scrollbar print:!block print:overflow-visible">
-                            <table className="w-full text-left border-collapse">
-                                <thead className="bg-slate-50/80 dark:bg-slate-800/80 backdrop-blur-md text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest sticky top-0 z-20 shadow-sm">
+                        <div className="hidden md:block max-w-full overflow-x-auto overscroll-x-contain custom-scrollbar rounded-3xl print:!block print:overflow-visible" style={{ WebkitOverflowScrolling: 'touch' }}>
+                            <table className="w-full text-left border-collapse table-auto" style={{ minWidth: `${examTableMinWidth}px` }}>
+                                <thead className="bg-slate-50/95 dark:bg-slate-800/95 backdrop-blur-md text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest sticky top-0 z-20 shadow-sm">
                                     <tr>
-                                        <th rowSpan={2} className="p-3 sm:p-5 border-b border-slate-200 dark:border-slate-700 sticky left-0 bg-slate-50/95 dark:bg-slate-800/95 backdrop-blur-md z-30 w-[140px] sm:w-[200px] shadow-[4px_0_12px_rgba(0,0,0,0.03)] align-middle">Nama Siswa</th>
+                                        <th rowSpan={2} className="p-3 sm:p-4 border-b border-slate-200 dark:border-slate-700 sticky left-0 bg-slate-50/95 dark:bg-slate-800/95 backdrop-blur-md z-30 min-w-[260px] w-[260px] max-w-[260px] shadow-[6px_0_16px_rgba(15,23,42,0.08)] align-middle text-left">Nama Siswa</th>
                                         {visibleTahsin.length > 0 && (
                                             <th colSpan={visibleTahsin.length + (hasTajwidSub ? 1 : 0) + (hasGhoribSub ? 1 : 0)} className="p-3 border-b border-slate-200 dark:border-slate-700 text-center text-blue-600 dark:text-blue-400 border-l border-slate-200/60 dark:border-slate-700/50">Tahsin</th>
                                         )}
@@ -1831,22 +1856,22 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                                             <th colSpan={visibleTahfidz.length} className="p-3 border-b border-slate-200 dark:border-slate-700 text-center text-purple-600 dark:text-purple-400 border-l border-slate-200/60 dark:border-slate-700/50 bg-purple-50/50 dark:bg-purple-500/10">Tahfidz</th>
                                         )}
                                         {visibleTahsin.length === 0 && visibleTahfidz.length === 0 && (
-                                            <th rowSpan={2} className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-700 text-center border-l border-slate-200 dark:border-slate-700/50">Materi</th>
+                                            <th rowSpan={2} className="p-3 sm:p-4 border-b border-slate-200 dark:border-slate-700 text-center border-l border-slate-200 dark:border-slate-700/50 min-w-[150px] w-[150px] whitespace-nowrap leading-tight">Materi</th>
                                         )}
                                         {(visibleTahsin.length > 0 || visibleTahfidz.length > 0) && (
-                                            <th rowSpan={2} className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-700 text-center border-l border-slate-200 dark:border-slate-700 bg-slate-100/50 dark:bg-slate-800 align-middle w-[100px]">Rata-Rata<br />Akhir</th>
+                                            <th rowSpan={2} className="p-3 sm:p-4 border-b border-slate-200 dark:border-slate-700 text-center border-l border-slate-200 dark:border-slate-700 bg-slate-100/50 dark:bg-slate-800 align-middle min-w-[104px] w-[104px] whitespace-normal leading-tight">Rata-Rata<br />Akhir</th>
                                         )}
-                                        <th rowSpan={2} className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-700 text-center border-l border-slate-200 dark:border-slate-700 bg-slate-100/50 dark:bg-slate-800 align-middle w-[70px]">Rapor</th>
+                                        <th rowSpan={2} className="p-3 sm:p-4 border-b border-slate-200 dark:border-slate-700 text-center border-l border-slate-200 dark:border-slate-700 bg-slate-100/50 dark:bg-slate-800 align-middle min-w-[78px] w-[78px]">Rapor</th>
                                     </tr>
                                     <tr>
                                         {visibleTahsin.map((mat, i) => (
-                                            <th key={`t-${i}`} className="p-3 sm:p-4 border-b border-slate-200 dark:border-slate-700 text-center text-blue-600 dark:text-blue-400 min-w-[120px] border-l border-slate-200/60 dark:border-slate-700/50 font-bold">{mat.name}</th>
+                                            <th key={`t-${i}`} className="p-2.5 sm:p-3 border-b border-slate-200 dark:border-slate-700 text-center text-blue-600 dark:text-blue-400 min-w-[142px] w-[142px] max-w-[142px] border-l border-slate-200/60 dark:border-slate-700/50 font-bold align-middle">{renderHeaderLabel(mat.name)}</th>
                                         ))}
-                                        {hasTajwidSub && <th className="p-3 sm:p-4 border-b border-slate-200 dark:border-slate-700 text-center text-indigo-600 dark:text-indigo-400 min-w-[120px] border-l border-slate-200/60 dark:border-slate-700/50 bg-indigo-50/50 dark:bg-indigo-500/10 font-bold">Rata-rata Tajwid</th>}
-                                        {hasGhoribSub && <th className="p-3 sm:p-4 border-b border-slate-200 dark:border-slate-700 text-center text-teal-600 dark:text-teal-400 min-w-[120px] border-l border-slate-200/60 dark:border-slate-700/50 bg-teal-50/50 dark:bg-teal-500/10 font-bold">Rata-rata Ghorib</th>}
+                                        {hasTajwidSub && <th className="p-2.5 sm:p-3 border-b border-slate-200 dark:border-slate-700 text-center text-indigo-600 dark:text-indigo-400 min-w-[142px] w-[142px] max-w-[142px] border-l border-slate-200/60 dark:border-slate-700/50 bg-indigo-50/50 dark:bg-indigo-500/10 font-bold align-middle">{renderHeaderLabel('Rata-rata Tajwid')}</th>}
+                                        {hasGhoribSub && <th className="p-2.5 sm:p-3 border-b border-slate-200 dark:border-slate-700 text-center text-teal-600 dark:text-teal-400 min-w-[142px] w-[142px] max-w-[142px] border-l border-slate-200/60 dark:border-slate-700/50 bg-teal-50/50 dark:bg-teal-500/10 font-bold align-middle">{renderHeaderLabel('Rata-rata Ghorib')}</th>}
 
                                         {visibleTahfidz.map((mat, i) => (
-                                            <th key={`f-${i}`} className="p-3 sm:p-4 border-b border-slate-200 dark:border-slate-700 text-center text-purple-600 dark:text-purple-400 min-w-[120px] border-l border-slate-200/60 dark:border-slate-700/50 bg-purple-50/30 dark:bg-purple-900/5 font-bold">{mat.name}</th>
+                                            <th key={`f-${i}`} className="p-2.5 sm:p-3 border-b border-slate-200 dark:border-slate-700 text-center text-purple-600 dark:text-purple-400 min-w-[142px] w-[142px] max-w-[142px] border-l border-slate-200/60 dark:border-slate-700/50 bg-purple-50/30 dark:bg-purple-900/5 font-bold align-middle">{renderHeaderLabel(mat.name)}</th>
                                         ))}
                                     </tr>
                                 </thead>
@@ -1864,7 +1889,7 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                                             {/* Baris Kalkulasi Rata-rata */}
                                             {(visibleTahsin.length > 0 || visibleTahfidz.length > 0) && (
                                                 <tr className="bg-slate-50 dark:bg-slate-800/50 font-black border-t-2 border-slate-200 dark:border-slate-700">
-                                                    <td className="p-3 sm:p-5 sticky left-0 bg-slate-50 dark:bg-slate-800 z-10 text-xs sm:text-sm text-slate-600 dark:text-slate-300 text-right pr-4 sm:pr-6 shadow-[4px_0_12px_rgba(0,0,0,0.03)] border-r border-slate-200 dark:border-slate-700">
+                                                    <td className="p-3 sm:p-4 sticky left-0 bg-slate-50 dark:bg-slate-800 z-10 text-xs sm:text-sm text-slate-600 dark:text-slate-300 text-right pr-4 sm:pr-6 shadow-[6px_0_16px_rgba(15,23,42,0.08)] border-r border-slate-200 dark:border-slate-700 min-w-[260px] w-[260px] max-w-[260px]">
                                                         Rata Kelas:
                                                     </td>
                                                     {classAverages.tahsinAvgs.map((avg, i) => {
@@ -2213,7 +2238,7 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
     const rs = materials.reportSettings || {};
     const semester = rs.semester || (new Date().getMonth() >= 6 ? 'Ganjil' : 'Genap');
     const tahunPelajaran = rs.tahunPelajaran || (new Date().getMonth() >= 6 ? `${new Date().getFullYear()}/${new Date().getFullYear() + 1}` : `${new Date().getFullYear() - 1}/${new Date().getFullYear()}`);
-    const namaSekolah = rs.namaSekolah || 'SDIT AL FITYAN SCHOOL BOGOR';
+    const namaSekolah = rs.namaSekolah || materials.institutionName || 'SDIT AL FITYAN SCHOOL BOGOR';
     const alamatSekolah = rs.alamatSekolah || 'Jl. Bengkel Roda, Kp. Cipiicung.\nDesa Mekarsari. Kec. Cileungsi. Bogor';
     const kepalaSekolah = rs.kepalaSekolah || 'Mei Tri Listari, S.Pd.I, M. Pd';
     const tempatCetak = rs.tempatCetak || 'Bogor';
@@ -2371,12 +2396,14 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
     // Auto-update note if not edited
     useEffect(() => {
         if (!isNoteEdited) {
-            const arabicPredicate = getArabicPredicate(rataRata);
-            const genderTerm = gender === 'P' ? 'sholihah' : 'sholeh';
+            const tahfidzPredicateScore = displayTahfidz || rataRata;
+            const arabicPredicate = getArabicPredicate(tahfidzPredicateScore);
+            const normalizedGender = String(gender || '').trim().toUpperCase();
+            const genderTerm = normalizedGender === 'P' || normalizedGender.includes('PEREMPUAN') ? 'sholihah' : 'sholih';
             const defaultNote = `Alhamdulillah ananda ${student.name} yang ${genderTerm} telah menyelesaikan materi pembelajaran Al Qur'an dengan predikat ${arabicPredicate === '-' ? 'ممتاز' : arabicPredicate}. Pertahankan prestasimu dalam mempelajari Al Qur'an`;
-            setCatatan(defaultNote);
+            setCatatan(defaultNote.endsWith('.') ? defaultNote : `${defaultNote}.`);
         }
-    }, [student.name, gender, rataRata, isNoteEdited]);
+    }, [student.name, gender, rataRata, displayTahfidz, isNoteEdited]);
 
     const handleHafalanChange = (idx, field, val) => {
         let newVal = val;
@@ -2445,7 +2472,7 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
     };
 
     return (
-        <div className="fixed inset-0 z-50 bg-slate-900 flex flex-col h-screen text-slate-100 overflow-hidden font-sans print:static print:h-auto print:overflow-visible print:bg-white print:text-black">
+        <div className="fixed inset-0 z-50 bg-slate-900 flex flex-col h-[100dvh] text-slate-100 overflow-hidden font-sans print:static print:h-auto print:overflow-visible print:bg-white print:text-black">
             {/* Stylesheet specifically to print A4 page beautifully */}
             <style dangerouslySetInnerHTML={{
                 __html: `
@@ -2558,10 +2585,10 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
             </div>
 
             {/* Split Main Screen */}
-            <div className="flex flex-col lg:flex-row flex-1 overflow-y-auto lg:overflow-hidden custom-scrollbar print:overflow-visible print:block">
+            <div className="flex flex-col lg:flex-row flex-1 min-h-0 overflow-y-auto lg:overflow-hidden custom-scrollbar print:overflow-visible print:block">
 
                 {/* Left Panel: Sidebar Editors */}
-                <div className="w-full lg:w-[450px] bg-slate-900 lg:border-r border-b border-slate-800 flex flex-col lg:h-full lg:overflow-y-auto shrink-0 p-4 sm:p-6 gap-5 sm:gap-6 print:hidden">
+                <div className="w-full lg:w-[450px] bg-slate-900 lg:border-r border-b border-slate-800 flex flex-col lg:h-full lg:min-h-0 lg:overflow-y-auto overscroll-y-contain custom-scrollbar shrink-0 p-4 sm:p-6 gap-5 sm:gap-6 print:hidden" style={{ WebkitOverflowScrolling: 'touch' }}>
 
                     {/* 1. DATA IDENTITAS CARD */}
                     <div className="bg-slate-800/50 p-4 sm:p-5 rounded-2xl border border-slate-700/60 flex flex-col gap-4">
@@ -2692,17 +2719,17 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
                             <span className="text-orange-400 font-bold text-sm uppercase tracking-wider">4. II. Target Tidak Tercapai</span>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-2 sm:gap-3">
                             {targets.map((tgt, i) => (
-                                <div key={i} className="flex gap-2 items-center bg-slate-950/60 p-2 rounded-xl border border-slate-800">
-                                    <span className="text-xs font-black text-slate-500 w-5 text-center">{i + 1}</span>
+                                <div key={i} className="flex gap-2 items-center bg-slate-950/60 p-2 rounded-xl border border-slate-800 min-w-0">
+                                    <span className="text-xs font-black text-slate-500 w-6 text-center shrink-0">{i + 1}</span>
                                     <input
                                         type="text"
                                         list="surah-list-options"
                                         value={tgt}
                                         onChange={(e) => handleTargetChange(i, e.target.value)}
-                                        placeholder="Nama Surat (Bisa diketik)"
-                                        className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 flex-1 text-xs outline-none focus:border-orange-500 text-slate-200 font-bold"
+                                        placeholder="Nama surat"
+                                        className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-2 w-full min-w-0 text-xs outline-none focus:border-orange-500 text-slate-200 font-bold placeholder:text-slate-600"
                                     />
                                 </div>
                             ))}
@@ -2774,7 +2801,7 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
                 </div>
 
                 {/* Right Panel: A4 Live Preview (with transforms) */}
-                <div className="flex-1 bg-slate-950 flex justify-center lg:overflow-auto p-4 sm:p-8 pb-32 lg:pb-8 relative items-start select-none custom-scrollbar print:p-0 print:overflow-visible print:bg-white print:block">
+                <div className="flex-1 min-h-0 bg-slate-950 flex justify-start sm:justify-center overflow-auto p-4 sm:p-8 pb-32 lg:pb-8 relative items-start select-none custom-scrollbar print:p-0 print:overflow-visible print:bg-white print:block" style={{ WebkitOverflowScrolling: 'touch' }}>
 
                     <div
                         id="zoom-wrapper"

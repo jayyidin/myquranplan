@@ -2537,17 +2537,19 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
 
   return (
     <div className="h-[100dvh] w-full bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 font-sans flex flex-col overflow-hidden transition-colors duration-500 print:h-auto print:overflow-visible print:block">
-      {/* CSS Khusus untuk Menyembunyikan Scrollbar Bawaan (Membuat UI lebih minimalis) */}
+      {/* CSS scrollbar halus untuk panel panjang dan tabel lebar */}
       <style dangerouslySetInnerHTML={{
         __html: `
-        /* Chrome, Safari, Edge, Opera */
         .custom-scrollbar::-webkit-scrollbar {
-          display: none;
+          width: 8px;
+          height: 8px;
         }
-        /* Firefox, IE */
         .custom-scrollbar {
           -ms-overflow-style: none;
-          scrollbar-width: none;
+          scrollbar-width: thin;
+          scrollbar-color: #cbd5e1 transparent;
+          overscroll-behavior: contain;
+          -webkit-overflow-scrolling: touch;
         }
       `}} />
 

@@ -595,7 +595,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
     const k = publicTab === 'lesson_plan' ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan', cT: 'catatanTahsin', cF: 'catatanTahfidz' } : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan', cT: 'jurnalCatatanTahsin', cF: 'jurnalCatatanTahfidz' };
 
     return (
-      <div className="h-[100dvh] w-full bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 flex flex-col p-0 md:p-6 printable-area print:!static print:p-0 print:m-0 transition-all duration-500">
+      <div className="min-h-[100dvh] w-full bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 flex flex-col p-0 md:p-6 printable-area print:!static print:p-0 print:m-0 transition-all duration-500">
 
         {/* Header Navigasi & Aksi (Sticky Top) */}
         <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md sticky top-0 z-[100000] print:hidden flex flex-col xl:flex-row justify-between items-center p-4 sm:p-6 gap-4 shadow-sm w-full border-b border-slate-200 dark:border-slate-800" data-html2canvas-ignore="true">
@@ -802,7 +802,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
     const datesToDisplay = isPrintingAll ? allDates : weekDates;
 
     return ( // Public Student View
-      <div className="h-[100dvh] w-full bg-slate-100 dark:bg-slate-950 text-gray-800 dark:text-slate-200 flex flex-col items-center p-0 md:p-6 overflow-y-auto overscroll-y-contain custom-scrollbar transition-all duration-500" style={{ WebkitOverflowScrolling: 'touch' }}>
+      <div className="min-h-[100dvh] w-full bg-slate-100 dark:bg-slate-950 text-gray-800 dark:text-slate-200 flex flex-col items-center p-0 md:p-6 overflow-y-auto overflow-x-hidden overscroll-y-contain custom-scrollbar transition-all duration-500" style={{ WebkitOverflowScrolling: 'touch' }}>
         <div className="fixed bottom-6 right-6 sm:top-6 sm:right-6 sm:bottom-auto z-[100] flex flex-col-reverse sm:flex-row gap-3 print:hidden">
           <button onClick={() => setTheme && setTheme(theme === 'dark' ? 'light' : 'dark')} className="bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 w-14 h-14 sm:w-auto sm:h-auto sm:p-3 rounded-full sm:rounded-xl shadow-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2 mb-2 sm:mb-0" title="Ganti Tema">
             {theme === 'dark' ? <Sun size={24} className="sm:w-[20px] sm:h-[20px] text-amber-500" /> : <Moon size={24} className="sm:w-[20px] sm:h-[20px]" />}
@@ -1138,14 +1138,10 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
           </div>
         </div>
 
-        <div className="mt-8 mb-12 text-center flex flex-col items-center gap-2 print:hidden">
+        <div className="mt-8 mb-10 text-center flex flex-col items-center gap-2 print:hidden">
           <div className="w-12 h-1 overflow-hidden bg-slate-200 rounded-full mb-2">
             <div className="h-full bg-emerald-500 w-1/2 mx-auto"></div>
           </div>
-          <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">&copy; {new Date().getFullYear()} Juman Jayyidin</p>
-        </div>
-        <div className="fixed bottom-0 left-0 right-0 z-[90] bg-white/90 dark:bg-slate-950/90 border-t border-slate-100 dark:border-slate-800 px-3 py-2 text-center text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 backdrop-blur-md print:hidden">
-          &copy; {new Date().getFullYear()} Juman Jayyidin. All rights reserved.
         </div>
       </div>
     );
@@ -1168,7 +1164,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
     });
 
     return (
-      <div className="h-[100dvh] w-full bg-slate-50 dark:bg-slate-950 flex flex-col items-center relative overflow-y-auto overscroll-y-contain custom-scrollbar transition-colors duration-300" style={{ WebkitOverflowScrolling: 'touch' }}>
+      <div className="min-h-[100dvh] w-full bg-slate-50 dark:bg-slate-950 flex flex-col items-center relative overflow-y-auto overflow-x-hidden overscroll-y-contain custom-scrollbar transition-colors duration-300" style={{ WebkitOverflowScrolling: 'touch' }}>
         {/* HEADER PORTAL - AKSES LOGIN & DAFTAR */}
         <header className="w-full bg-white/80 dark:bg-slate-900/80 border-slate-100 dark:border-slate-800 backdrop-blur-md border-b px-4 sm:px-8 py-4 flex justify-between items-center z-50 sticky top-0 shadow-sm transition-all duration-500">
           <div className="flex items-center gap-2">
@@ -1177,6 +1173,11 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
             </div>
             <div className="flex flex-col">
               <span className="font-arabic font-bold text-slate-800 dark:text-slate-100 tracking-tighter text-lg sm:text-2xl transition-all leading-tight">MyQuranPlan</span>
+              {institutionName && (
+                <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 leading-none truncate max-w-[170px] sm:max-w-[240px]">
+                  {institutionName}
+                </span>
+              )}
               <div className="h-0.5 w-full bg-gradient-to-r from-transparent via-amber-500 to-transparent opacity-70 -mt-1"></div>
             </div>
           </div>
@@ -1220,6 +1221,11 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
             <div className="flex flex-col items-center">
               <h1 className="font-arabic text-3xl sm:text-4xl font-bold text-slate-800 dark:text-slate-100 tracking-tighter mb-1 transition-all">MyQuranPlan</h1>
               <div className="h-0.5 w-32 bg-gradient-to-r from-transparent via-amber-500 to-transparent mb-2"></div>
+              {institutionName && (
+                <div className="mb-2 text-[10px] sm:text-xs font-black uppercase tracking-[0.18em] text-emerald-600 dark:text-emerald-400 max-w-full break-words">
+                  {institutionName}
+                </div>
+              )}
             </div>
             <p className="text-slate-500 dark:text-slate-400 font-medium max-w-md leading-relaxed">
               Selamat datang di platform pemantauan pembelajaran Al-Qur'an Ananda. Silakan cari nama Ananda untuk melihat target serta capaian harian Mutabaah.
@@ -1342,19 +1348,13 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
             </div>
           </div>
         </div>
-        {/* Footer for Parent Portal */}
-        <footer className="w-full py-10 text-center z-10">
-          <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">&copy; {new Date().getFullYear()} Juman Jayyidin. All rights reserved.</p>
-        </footer>
-        <div className="fixed bottom-0 left-0 right-0 z-[90] bg-white/90 dark:bg-slate-950/90 border-t border-slate-100 dark:border-slate-800 px-3 py-2 text-center text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 backdrop-blur-md print:hidden">
-          &copy; {new Date().getFullYear()} Juman Jayyidin. All rights reserved.
-        </div>
+        <div className="w-full h-8 shrink-0 print:hidden" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-[100dvh] w-full bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 flex flex-col justify-center items-center p-4 sm:p-6 relative overflow-y-auto overscroll-y-contain custom-scrollbar z-0 transition-all duration-500" style={{ WebkitOverflowScrolling: 'touch' }}>
+    <div className="min-h-[100dvh] w-full bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 flex flex-col justify-start sm:justify-center items-center px-4 py-6 sm:p-6 relative overflow-y-auto overflow-x-hidden overscroll-y-contain custom-scrollbar z-0 transition-all duration-500" style={{ WebkitOverflowScrolling: 'touch' }}>
 
       <button onClick={() => setTheme && setTheme(theme === 'dark' ? 'light' : 'dark')} className="absolute top-4 right-4 sm:top-6 sm:right-6 z-50 p-3 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm text-slate-500 dark:text-slate-400 hover:text-amber-500 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 transition-all active:scale-90" title="Mode Gelap/Terang">
         <div className={`transform transition-transform duration-500 ${theme === 'dark' ? 'rotate-180' : 'rotate-0'}`}>
@@ -1362,7 +1362,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
         </div>
       </button>
 
-      <div className="w-full max-w-[420px] relative z-10 flex flex-col">
+      <div className="w-full max-w-[420px] relative z-10 flex flex-col my-auto sm:my-0">
         {/* Card Login / Register */}
         <div className="bg-white/80 dark:bg-slate-900/80 border-white dark:border-slate-800 shadow-[0_8px_30px_rgba(0,0,0,0.04)] backdrop-blur-2xl p-8 sm:p-10 rounded-[2.5rem] border flex flex-col relative overflow-hidden transition-all duration-500">
           {/* Garis atas dekoratif */}
@@ -1381,6 +1381,11 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
             <div className="flex flex-col items-center">
               <h1 className="font-arabic text-2xl sm:text-3xl font-bold text-slate-800 dark:text-slate-100 tracking-tighter transition-all">MyQuranPlan</h1>
               <div className="h-0.5 w-28 bg-gradient-to-r from-transparent via-amber-500 to-transparent mt-1"></div>
+              {institutionName && (
+                <div className="mt-2 text-[10px] font-black uppercase tracking-[0.16em] text-emerald-600 dark:text-emerald-400 text-center max-w-[300px] leading-snug">
+                  {institutionName}
+                </div>
+              )}
             </div>
             <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mt-2 text-center">
               {isRegistering ? 'Daftar Akun Pengajar' : isForgotPassword ? 'Permintaan Reset Password' : 'Ahlan wa sahlan! Silakan masuk.'}
@@ -1518,10 +1523,6 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
           </div>
         </div>
 
-        <p className="text-xs text-slate-400 dark:text-slate-500 font-bold mt-8 text-center drop-shadow-sm transition-colors">&copy; {new Date().getFullYear()} Juman Jayyidin. All rights reserved.</p>
-      </div>
-      <div className="fixed bottom-0 left-0 right-0 z-[90] bg-slate-50/90 dark:bg-slate-950/90 border-t border-slate-100 dark:border-slate-800 px-3 py-2 text-center text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 backdrop-blur-md">
-        &copy; {new Date().getFullYear()} Juman Jayyidin. All rights reserved.
       </div>
 
       {/* Modal Error */}
