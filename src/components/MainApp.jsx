@@ -2756,7 +2756,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
 
       {toastMessage && (<div className="fixed top-4 md:top-20 left-1/2 -translate-x-1/2 bg-gray-900 dark:bg-slate-100 text-white dark:text-slate-900 px-4 py-2 rounded-xl shadow-2xl z-[100010] font-bold text-xs md:text-sm animate-bounce">{toastMessage}</div>)}
 
-      <div className="md:hidden fixed bottom-[70px] left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 border-t border-slate-100 dark:border-slate-800 px-3 py-1 text-center text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 print:hidden backdrop-blur-md">
+      <div className="fixed bottom-[70px] md:bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 border-t border-slate-100 dark:border-slate-800 px-3 py-1.5 text-center text-[9px] md:text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 print:hidden backdrop-blur-md pointer-events-none">
         &copy; {new Date().getFullYear()} Juman Jayyidin. All rights reserved.
       </div>
 

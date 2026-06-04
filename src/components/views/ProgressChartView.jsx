@@ -420,7 +420,7 @@ const ProgressChartView = ({ students, activeHalaqoh, allStudents, weekDates, ch
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Bar Chart Tahsin */}
-          <div className="bg-white dark:bg-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200 dark:border-slate-700 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500 transition-colors">
+          <div className="hidden bg-white dark:bg-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200 dark:border-slate-700 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500 transition-colors">
             <div className="flex items-center justify-between gap-3 mb-4 sm:mb-6">
               <div className="flex items-center gap-2 min-w-0"><BookOpen className="text-blue-500 dark:text-blue-400 shrink-0" size={19} /><h2 className="text-base sm:text-lg font-black text-slate-800 dark:text-slate-100 truncate">Pencapaian Tahsin</h2></div>
               <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-md uppercase tracking-widest hidden sm:block">Level</span>
@@ -441,7 +441,7 @@ const ProgressChartView = ({ students, activeHalaqoh, allStudents, weekDates, ch
           </div>
 
           {/* Bar Chart Tahfidz */}
-          <div className="bg-white dark:bg-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200 dark:border-slate-700 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500 transition-colors" style={{ animationDelay: '100ms' }}>
+          <div className="hidden bg-white dark:bg-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200 dark:border-slate-700 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500 transition-colors" style={{ animationDelay: '100ms' }}>
             <div className="flex items-center justify-between gap-3 mb-4 sm:mb-6">
               <div className="flex items-center gap-2 min-w-0"><Mic className="text-purple-500 dark:text-purple-400 shrink-0" size={19} /><h2 className="text-base sm:text-lg font-black text-slate-800 dark:text-slate-100 truncate">Pencapaian Tahfidz</h2></div>
               <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-md uppercase tracking-widest hidden sm:block">Surat</span>
@@ -462,7 +462,7 @@ const ProgressChartView = ({ students, activeHalaqoh, allStudents, weekDates, ch
           </div>
 
           {/* Bar Chart Tahfidz (Juz) */}
-          <div className="bg-white dark:bg-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200 dark:border-slate-700 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500 transition-colors" style={{ animationDelay: '200ms' }}>
+          <div className="hidden bg-white dark:bg-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200 dark:border-slate-700 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500 transition-colors" style={{ animationDelay: '200ms' }}>
             <div className="flex items-center justify-between gap-3 mb-4 sm:mb-6">
               <div className="flex items-center gap-2 min-w-0"><Mic className="text-emerald-500 dark:text-emerald-400 shrink-0" size={19} /><h2 className="text-base sm:text-lg font-black text-slate-800 dark:text-slate-100 truncate">Pencapaian Tahfidz</h2></div>
               <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-md uppercase tracking-widest hidden sm:block">Juz</span>
@@ -490,6 +490,25 @@ const ProgressChartView = ({ students, activeHalaqoh, allStudents, weekDates, ch
                 <h2 className="text-base sm:text-lg font-black text-slate-800 dark:text-slate-100 truncate">Pencapaian Per Level</h2>
               </div>
               <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-md uppercase tracking-widest self-start sm:self-auto">Tahsin</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3 mb-4 sm:mb-5">
+              {tahsinLabels.map(label => {
+                const count = globalStats.tahsinCounts[label];
+                const percentage = globalStats.totalStudents > 0 ? Math.round((count / globalStats.totalStudents) * 100) : 0;
+                const barWidth = `${(count / maxTahsinCount) * 100}%`;
+                return (
+                  <div key={`summary-${label}`} className="rounded-xl border border-slate-100 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-900/40 p-3">
+                    <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 text-[11px] sm:text-xs font-black">
+                      <span className="text-slate-700 dark:text-slate-200 truncate" title={label}>{label}</span>
+                      <span className="text-slate-500 dark:text-slate-400 whitespace-nowrap">{count} ({percentage}%)</span>
+                    </div>
+                    <div className="mt-2 h-2.5 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 overflow-hidden">
+                      <div className={`h-full rounded-full ${label === 'Belum Ada' ? 'bg-slate-300 dark:bg-slate-600' : 'bg-gradient-to-r from-blue-400 to-cyan-500 dark:from-blue-500 dark:to-cyan-600'}`} style={{ width: barWidth }} />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
             {levelClassRows.length > 0 ? (
@@ -539,6 +558,39 @@ const ProgressChartView = ({ students, activeHalaqoh, allStudents, weekDates, ch
                 <h2 className="text-base sm:text-lg font-black text-slate-800 dark:text-slate-100 truncate">Pencapaian Tahfidz Per Juz & Surat</h2>
               </div>
               <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-md uppercase tracking-widest self-start sm:self-auto">Juz / Surat</span>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-5">
+              <div className="rounded-2xl border border-purple-100 dark:border-purple-500/20 bg-purple-50/40 dark:bg-purple-500/5 p-3 sm:p-4">
+                <div className="text-[10px] font-black text-purple-600 dark:text-purple-300 uppercase tracking-widest mb-3">Ringkasan Surat</div>
+                <div className="space-y-2.5">
+                  {tahfidzData.labels.map(label => {
+                    const count = tahfidzData.counts[label];
+                    const percentage = globalStats.totalStudents > 0 ? Math.round((count / globalStats.totalStudents) * 100) : 0;
+                    return (
+                      <div key={`surah-summary-${label}`} className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 text-[11px] sm:text-xs font-black">
+                        <span className="text-slate-700 dark:text-slate-200 truncate" title={label}>{label}</span>
+                        <span className="text-slate-500 dark:text-slate-400 whitespace-nowrap">{count} ({percentage}%)</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-emerald-100 dark:border-emerald-500/20 bg-emerald-50/40 dark:bg-emerald-500/5 p-3 sm:p-4">
+                <div className="text-[10px] font-black text-emerald-600 dark:text-emerald-300 uppercase tracking-widest mb-3">Ringkasan Juz</div>
+                <div className="space-y-2.5">
+                  {tahfidzJuzData.labels.map(label => {
+                    const count = tahfidzJuzData.counts[label];
+                    const percentage = globalStats.totalStudents > 0 ? Math.round((count / globalStats.totalStudents) * 100) : 0;
+                    return (
+                      <div key={`juz-summary-${label}`} className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 text-[11px] sm:text-xs font-black">
+                        <span className="text-slate-700 dark:text-slate-200 truncate" title={label}>{label}</span>
+                        <span className="text-slate-500 dark:text-slate-400 whitespace-nowrap">{count} ({percentage}%)</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
 
             {tahfidzGroupedRows.length > 0 ? (

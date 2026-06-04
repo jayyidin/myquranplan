@@ -623,6 +623,24 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
         return combined.filter(m => !(m.students && m.students.includes('HIDDEN')));
     }, [materials.tahfidz, activeHalaqoh]);
 
+    const sortScheduledMateri = React.useCallback((materiList = []) => {
+        const tahsinOrder = new Map(currentTahsin.map((m, index) => [m.name, index]));
+        const tahfidzOrder = new Map(currentTahfidz.map((m, index) => [m.name, index]));
+
+        return [...materiList].filter(Boolean).sort((a, b) => {
+            const aIsTahsin = tahsinOrder.has(a);
+            const bIsTahsin = tahsinOrder.has(b);
+            const aIsTahfidz = tahfidzOrder.has(a);
+            const bIsTahfidz = tahfidzOrder.has(b);
+
+            if (aIsTahsin && bIsTahsin) return tahsinOrder.get(a) - tahsinOrder.get(b);
+            if (aIsTahfidz && bIsTahfidz) return tahfidzOrder.get(a) - tahfidzOrder.get(b);
+            if (aIsTahsin !== bIsTahsin) return aIsTahsin ? -1 : 1;
+            if (aIsTahfidz !== bIsTahfidz) return aIsTahfidz ? 1 : -1;
+            return String(a).localeCompare(String(b), 'id', { numeric: true, sensitivity: 'base' });
+        });
+    }, [currentTahsin, currentTahfidz]);
+
     const currentJadwal = useMemo(() => {
         if (!activeHalaqoh) return (materials.jadwal || []).filter(j => (!j.halaqoh || j.halaqoh === 'Semua') && !j.isHidden);
         const localIds = (materials.jadwal || []).filter(j => j.halaqoh === activeHalaqoh).map(j => j.id);
@@ -826,16 +844,17 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
             return;
         }
         
+        const sortedJadwal = { ...newJadwal, materi: sortScheduledMateri(newJadwal.materi) };
         let updatedJadwal = [...(materials.jadwal || [])];
         if (newJadwal.id) {
             if ((!newJadwal.halaqoh || newJadwal.halaqoh === 'Semua') && activeHalaqoh) {
                 updatedJadwal = updatedJadwal.filter(j => !(j.id === newJadwal.id && j.halaqoh === activeHalaqoh));
-                updatedJadwal.push({ ...newJadwal, halaqoh: activeHalaqoh, isHidden: false });
+                updatedJadwal.push({ ...sortedJadwal, halaqoh: activeHalaqoh, isHidden: false });
             } else {
-                updatedJadwal = updatedJadwal.map(j => (j.id === newJadwal.id && j.halaqoh === newJadwal.halaqoh) ? newJadwal : j);
+                updatedJadwal = updatedJadwal.map(j => (j.id === newJadwal.id && j.halaqoh === newJadwal.halaqoh) ? sortedJadwal : j);
             }
         } else {
-            updatedJadwal.push({ ...newJadwal, id: Date.now(), halaqoh: activeHalaqoh || 'Semua' });
+            updatedJadwal.push({ ...sortedJadwal, id: Date.now(), halaqoh: activeHalaqoh || 'Semua' });
         }
         saveMaterials({ ...materials, jadwal: updatedJadwal });
         setNewJadwal({ tanggal: '', materi: [] });
@@ -1761,7 +1780,7 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                                             {(!jadwal.halaqoh || jadwal.halaqoh === 'Semua') && activeHalaqoh && (
                                                 <span className="text-[9px] bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-2 py-1 rounded-md font-bold">Jadwal Global</span>
                                             )}
-                                            <button onClick={() => { setNewJadwal(jadwal); setIsAddingJadwal(true); }} className="text-slate-300 hover:text-blue-500 bg-slate-50 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-500/10 p-2 rounded-xl transition-colors" title="Edit Jadwal"><Edit3 size={16} /></button>
+                                            <button onClick={() => { setNewJadwal({ ...jadwal, materi: sortScheduledMateri(jadwal.materi) }); setIsAddingJadwal(true); }} className="text-slate-300 hover:text-blue-500 bg-slate-50 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-500/10 p-2 rounded-xl transition-colors" title="Edit Jadwal"><Edit3 size={16} /></button>
                                             <button onClick={() => handleDeleteJadwal(jadwal)} className="text-slate-300 hover:text-red-500 bg-slate-50 dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-500/10 p-2 rounded-xl transition-colors" title="Hapus Jadwal"><Trash2 size={16} /></button>
                                         </div>
                                         <div className="flex items-center gap-2 mb-3 pr-16">
@@ -1773,7 +1792,7 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                                             {(!jadwal.halaqoh || jadwal.halaqoh === 'Semua') && <span className="ml-2 text-[9px] bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-full align-middle font-bold">Global</span>}
                                         </div>
                                         <div className="flex flex-wrap gap-1.5">
-                                            {jadwal.materi.map((m, i) => (
+                                            {sortScheduledMateri(jadwal.materi).map((m, i) => (
                                                 <span key={i} className="bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-300 px-2.5 py-1 rounded-lg text-[10px] font-bold">{m}</span>
                                             ))}
                                         </div>

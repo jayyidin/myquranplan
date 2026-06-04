@@ -3,6 +3,7 @@ import { Settings, Users, Edit3, Trash2, Share2, Plus, X, Calendar, ChevronLeft,
 import { Tooltip } from 'react-tooltip';
 import { formatShortDate, getInitials, formatPeriode, formatPrintData, copyTextToClipboard, formatDateObj, getMonday } from '../../utils/helpers';
 import { supabase } from '../supabase';
+import { isLessonProgressAchieved } from '../../utils/progressAchievement';
 
 const renderTextWithHighlights = (txt) => {
   if (typeof txt !== 'string') return txt;
@@ -1031,8 +1032,24 @@ const HomeView = ({
                           const valCT = rec?.[k.cT] && rec?.[k.cT] !== '-' ? String(rec[k.cT]) : '';
                           const valCF = rec?.[k.cF] && rec?.[k.cF] !== '-' ? String(rec[k.cF]) : '';
 
-                          const isTahsinAchieved = homeTab === 'lesson_plan' && (valT !== '-' || valTNilai !== '-' || valTSNilai !== '-') && (rec?.jurnalTahsin && rec?.jurnalTahsin !== '-');
-                          const isTahfidzAchieved = homeTab === 'lesson_plan' && (valF !== '-' || valFNilai !== '-') && (rec?.jurnalTahfidz && rec?.jurnalTahfidz !== '-');
+                          const isTahsinAchieved = homeTab === 'lesson_plan' && isLessonProgressAchieved({
+                            targetText: rec?.tahsin,
+                            targetDetail: rec?.halAyatTahsin,
+                            targetNilai: rec?.tahsinNilai,
+                            targetSuratNilai: rec?.tahsinSuratNilai,
+                            actualText: rec?.jurnalTahsin,
+                            actualDetail: rec?.jurnalHalAyatTahsin,
+                            actualNilai: rec?.jurnalTahsinNilai,
+                            actualSuratNilai: rec?.jurnalTahsinSuratNilai
+                          });
+                          const isTahfidzAchieved = homeTab === 'lesson_plan' && isLessonProgressAchieved({
+                            targetText: rec?.tahfidz,
+                            targetDetail: rec?.ayatTahfidz,
+                            targetNilai: rec?.tahfidzNilai,
+                            actualText: rec?.jurnalTahfidz,
+                            actualDetail: rec?.jurnalAyatTahfidz,
+                            actualNilai: rec?.jurnalTahfidzNilai
+                          });
 
                           return (
                             <React.Fragment key={dateStr + '-data'}>
@@ -1178,8 +1195,24 @@ const HomeView = ({
                             const valCT = rec?.[k.cT] && rec?.[k.cT] !== '-' ? String(rec[k.cT]) : '';
                             const valCF = rec?.[k.cF] && rec?.[k.cF] !== '-' ? String(rec[k.cF]) : '';
 
-                            const isTahsinAchieved = homeTab === 'lesson_plan' && valT !== '-' && (rec?.jurnalTahsin && rec?.jurnalTahsin !== '-');
-                            const isTahfidzAchieved = homeTab === 'lesson_plan' && valF !== '-' && (rec?.jurnalTahfidz && rec?.jurnalTahfidz !== '-');
+                            const isTahsinAchieved = homeTab === 'lesson_plan' && isLessonProgressAchieved({
+                              targetText: rec?.tahsin,
+                              targetDetail: rec?.halAyatTahsin,
+                              targetNilai: rec?.tahsinNilai,
+                              targetSuratNilai: rec?.tahsinSuratNilai,
+                              actualText: rec?.jurnalTahsin,
+                              actualDetail: rec?.jurnalHalAyatTahsin,
+                              actualNilai: rec?.jurnalTahsinNilai,
+                              actualSuratNilai: rec?.jurnalTahsinSuratNilai
+                            });
+                            const isTahfidzAchieved = homeTab === 'lesson_plan' && isLessonProgressAchieved({
+                              targetText: rec?.tahfidz,
+                              targetDetail: rec?.ayatTahfidz,
+                              targetNilai: rec?.tahfidzNilai,
+                              actualText: rec?.jurnalTahfidz,
+                              actualDetail: rec?.jurnalAyatTahfidz,
+                              actualNilai: rec?.jurnalTahfidzNilai
+                            });
 
                             const hasData = valM !== '-' || valT !== '-' || valF !== '-' || valC !== '' || valCT !== '' || valCF !== '';
                             if (!hasData) return null;
@@ -1582,8 +1615,30 @@ const HomeView = ({
                   if (r) {
                     const hasTahsinTarget = (r.tahsin && r.tahsin !== '-') || (r.halAyatTahsin && r.halAyatTahsin !== '-') || (r.tahsinNilai && r.tahsinNilai !== '-') || (r.tahsinSuratNilai && r.tahsinSuratNilai !== '-');
                     const hasTahfidzTarget = (r.tahfidz && r.tahfidz !== '-') || (r.ayatTahfidz && r.ayatTahfidz !== '-') || (r.tahfidzNilai && r.tahfidzNilai !== '-');
-                    if (hasTahsinTarget) { total++; if (r.jurnalTahsin && r.jurnalTahsin !== '-') count++; }
-                    if (hasTahfidzTarget) { total++; if (r.jurnalTahfidz && r.jurnalTahfidz !== '-') count++; }
+                    if (hasTahsinTarget) {
+                      total++;
+                      if (isLessonProgressAchieved({
+                        targetText: r.tahsin,
+                        targetDetail: r.halAyatTahsin,
+                        targetNilai: r.tahsinNilai,
+                        targetSuratNilai: r.tahsinSuratNilai,
+                        actualText: r.jurnalTahsin,
+                        actualDetail: r.jurnalHalAyatTahsin,
+                        actualNilai: r.jurnalTahsinNilai,
+                        actualSuratNilai: r.jurnalTahsinSuratNilai
+                      })) count++;
+                    }
+                    if (hasTahfidzTarget) {
+                      total++;
+                      if (isLessonProgressAchieved({
+                        targetText: r.tahfidz,
+                        targetDetail: r.ayatTahfidz,
+                        targetNilai: r.tahfidzNilai,
+                        actualText: r.jurnalTahfidz,
+                        actualDetail: r.jurnalAyatTahfidz,
+                        actualNilai: r.jurnalTahfidzNilai
+                      })) count++;
+                    }
                   }
                 });
                 if (total === 0) total = targetStudents.length;
@@ -1825,10 +1880,6 @@ const HomeView = ({
                           const valCT = record?.[k.cT] || '-';
                           const valCF = record?.[k.cF] || '-';
 
-                          // Jurnal Check for Target Achieved
-                          const jT = record?.jurnalTahsin || '-';
-                          const jF = record?.jurnalTahfidz || '-';
-
                           // Inisial untuk avatar web
                           const initials = getInitials(student?.name);
 
@@ -1845,8 +1896,24 @@ const HomeView = ({
                           const isMurojaahEmpty = valM === '-';
                           const isCatatanEmpty = !hasAnyCatatan(valC, valCT, valCF);
 
-                          const isTahsinAchieved = homeTab === 'lesson_plan' && !isTahsinNoSurat && jT !== '-';
-                          const isTahfidzAchieved = homeTab === 'lesson_plan' && !isTahfidzNoSurat && jF !== '-';
+                          const isTahsinAchieved = homeTab === 'lesson_plan' && isLessonProgressAchieved({
+                            targetText: record?.tahsin,
+                            targetDetail: record?.halAyatTahsin,
+                            targetNilai: record?.tahsinNilai,
+                            targetSuratNilai: record?.tahsinSuratNilai,
+                            actualText: record?.jurnalTahsin,
+                            actualDetail: record?.jurnalHalAyatTahsin,
+                            actualNilai: record?.jurnalTahsinNilai,
+                            actualSuratNilai: record?.jurnalTahsinSuratNilai
+                          });
+                          const isTahfidzAchieved = homeTab === 'lesson_plan' && isLessonProgressAchieved({
+                            targetText: record?.tahfidz,
+                            targetDetail: record?.ayatTahfidz,
+                            targetNilai: record?.tahfidzNilai,
+                            actualText: record?.jurnalTahfidz,
+                            actualDetail: record?.jurnalAyatTahfidz,
+                            actualNilai: record?.jurnalTahfidzNilai
+                          });
 
                           const hasGhostMurojaah = isMurojaahEmpty && lastRec && lastRec[k.m] && lastRec[k.m] !== '-';
                           const hasGhostCatatan = isCatatanEmpty && lastRec && hasAnyCatatan(lastRec[k.c], lastRec[k.cT], lastRec[k.cF]);
@@ -2023,9 +2090,6 @@ const HomeView = ({
                       const valCT = record?.[k.cT] || '-';
                       const valCF = record?.[k.cF] || '-';
 
-                      const jT = record?.jurnalTahsin || '-';
-                      const jF = record?.jurnalTahfidz || '-';
-
                       const lastRec = ghostDataMap[student.id];
                       const isTahsinNoSurat = valT === '-' && valH === '-';
                       const hasTahsinGrade = valTNilai !== '-' || valTSNilai !== '-';
@@ -2037,8 +2101,24 @@ const HomeView = ({
                       const isMurojaahEmpty = valM === '-';
                       const isCatatanEmpty = valC === '-' && valCT === '-' && valCF === '-';
 
-                      const isTahsinAchieved = homeTab === 'lesson_plan' && !isTahsinNoSurat && jT !== '-';
-                      const isTahfidzAchieved = homeTab === 'lesson_plan' && !isTahfidzNoSurat && jF !== '-';
+                      const isTahsinAchieved = homeTab === 'lesson_plan' && isLessonProgressAchieved({
+                        targetText: record?.tahsin,
+                        targetDetail: record?.halAyatTahsin,
+                        targetNilai: record?.tahsinNilai,
+                        targetSuratNilai: record?.tahsinSuratNilai,
+                        actualText: record?.jurnalTahsin,
+                        actualDetail: record?.jurnalHalAyatTahsin,
+                        actualNilai: record?.jurnalTahsinNilai,
+                        actualSuratNilai: record?.jurnalTahsinSuratNilai
+                      });
+                      const isTahfidzAchieved = homeTab === 'lesson_plan' && isLessonProgressAchieved({
+                        targetText: record?.tahfidz,
+                        targetDetail: record?.ayatTahfidz,
+                        targetNilai: record?.tahfidzNilai,
+                        actualText: record?.jurnalTahfidz,
+                        actualDetail: record?.jurnalAyatTahfidz,
+                        actualNilai: record?.jurnalTahfidzNilai
+                      });
                       const hasGhostMurojaah = isMurojaahEmpty && lastRec && lastRec[k.m] && lastRec[k.m] !== '-';
                       const hasGhostCatatan = isCatatanEmpty && lastRec && (lastRec[k.c] !== '-' || lastRec[k.cT] !== '-' || lastRec[k.cF] !== '-');
                       const isAbsent = !isCatatanEmpty && ['alpa', 'sakit', 'izin', 'tidak hadir'].some(keyword => String(valC).toLowerCase().includes(keyword));
@@ -2220,7 +2300,7 @@ const HomeView = ({
 
         {/* Toggle Scroll Navigasi Siswa Mengambang */}
         {filteredStudents.length > 0 && (
-          <div className="fixed bottom-24 md:bottom-8 left-4 md:left-8 z-50 flex flex-col items-start gap-3 print:hidden">
+          <div className="hidden md:flex fixed bottom-8 left-8 z-50 flex-col items-start gap-3 print:hidden">
             {isNavMenuOpen && currentNavStudent && (
               <div className="flex items-center bg-white p-1.5 sm:p-2 rounded-2xl shadow-2xl border border-slate-100 animate-in fade-in slide-in-from-bottom-4 duration-300 relative">
                 <button

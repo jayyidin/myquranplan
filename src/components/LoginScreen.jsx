@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { supabase } from './supabase';
 import { formatShortDate, getInitials, formatPeriode, formatPrintData, getMonday, formatDateObj, getMonthYear, getDayName, copyTextToClipboard } from '../utils/helpers';
+import { isAttendanceNote, isLessonProgressAchieved } from '../utils/progressAchievement';
 
 const renderTextWithHighlights = (txt) => {
   if (typeof txt !== 'string') return txt;
@@ -720,6 +721,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
           return false;
       });
       const validTahsin = combinedTahsin.filter(m => !(m.students && m.students.includes('HIDDEN')));
+      const tahsinOrder = new Map(validTahsin.map((m, index) => [typeof m === 'string' ? m : m.name, index]));
 
       validTahsin.forEach(m => {
           if (typeof m === 'string') {
@@ -739,6 +741,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
           return false;
       });
       const validTahfidz = combinedTahfidz.filter(m => !(m.students && m.students.includes('HIDDEN')));
+      const tahfidzOrder = new Map(validTahfidz.map((m, index) => [typeof m === 'string' ? m : m.name, index]));
 
       validTahfidz.forEach(m => {
           if (typeof m === 'string') {
@@ -774,7 +777,19 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
           }
           examDate.setHours(0,0,0,0);
           if (examDate >= today) {
-              const relevantMaterials = j.materi.filter(mat => assignedMaterials.includes(mat));
+              const relevantMaterials = j.materi
+                .filter(mat => assignedMaterials.includes(mat))
+                .sort((a, b) => {
+                  const aTahsin = tahsinOrder.has(a);
+                  const bTahsin = tahsinOrder.has(b);
+                  const aTahfidz = tahfidzOrder.has(a);
+                  const bTahfidz = tahfidzOrder.has(b);
+                  if (aTahsin && bTahsin) return tahsinOrder.get(a) - tahsinOrder.get(b);
+                  if (aTahfidz && bTahfidz) return tahfidzOrder.get(a) - tahfidzOrder.get(b);
+                  if (aTahsin !== bTahsin) return aTahsin ? -1 : 1;
+                  if (aTahfidz !== bTahfidz) return aTahfidz ? 1 : -1;
+                  return String(a).localeCompare(String(b), 'id', { numeric: true, sensitivity: 'base' });
+                });
               if (relevantMaterials.length > 0) {
                   upcoming.push({ ...j, relevantMaterials });
               }
@@ -826,9 +841,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
                 {institutionLogo ? <img src={institutionLogo} alt="Logo Instansi" className="w-full h-full object-contain" /> : <BookOpen size={48} className="text-emerald-500" />}
               </div>
 
-              {/* Decorative Shapes */}
-              <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-emerald-100/40 rounded-full blur-3xl pointer-events-none"></div>
-              <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-64 h-64 bg-teal-100/40 rounded-full blur-3xl pointer-events-none"></div>
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.08),transparent_38%),radial-gradient(circle_at_bottom_left,rgba(20,184,166,0.06),transparent_36%)] pointer-events-none"></div>
             </div>
 
             {/* Info Siswa */}
@@ -999,16 +1012,42 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
                 const valC = rec[k.c] && rec[k.c] !== '-' ? String(rec[k.c]) : '-';
                 const valCT = rec[k.cT] && rec[k.cT] !== '-' ? String(rec[k.cT]) : '-';
                 const valCF = rec[k.cF] && rec[k.cF] !== '-' ? String(rec[k.cF]) : '-';
+                const isInactiveDay = publicTab === 'jurnal' && [valC, valCT, valCF].some(isAttendanceNote);
+                const dayCardClass = isInactiveDay
+                  ? 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 opacity-80'
+                  : 'bg-white dark:bg-slate-900 border-slate-200/60 dark:border-slate-800';
+                const indicatorClass = isInactiveDay ? 'bg-slate-400' : 'bg-emerald-400';
+                const dateIconClass = isInactiveDay
+                  ? 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
+                  : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400';
+                const tahsinAchieved = isLessonProgressAchieved({
+                  targetText: rec?.tahsin,
+                  targetDetail: rec?.halAyatTahsin,
+                  targetNilai: rec?.tahsinNilai,
+                  targetSuratNilai: rec?.tahsinSuratNilai,
+                  actualText: rec?.jurnalTahsin,
+                  actualDetail: rec?.jurnalHalAyatTahsin,
+                  actualNilai: rec?.jurnalTahsinNilai,
+                  actualSuratNilai: rec?.jurnalTahsinSuratNilai
+                });
+                const tahfidzAchieved = isLessonProgressAchieved({
+                  targetText: rec?.tahfidz,
+                  targetDetail: rec?.ayatTahfidz,
+                  targetNilai: rec?.tahfidzNilai,
+                  actualText: rec?.jurnalTahfidz,
+                  actualDetail: rec?.jurnalAyatTahfidz,
+                  actualNilai: rec?.jurnalTahfidzNilai
+                });
 
                 return (
-                  <div key={dateStr} className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-[20px] sm:rounded-[2rem] p-5 sm:p-6 shadow-sm hover:shadow-md transition-all duration-300 print:break-inside-avoid relative overflow-hidden group">
+                  <div key={dateStr} className={`${dayCardClass} border rounded-[20px] sm:rounded-[2rem] p-5 sm:p-6 shadow-sm hover:shadow-md transition-all duration-300 print:break-inside-avoid relative overflow-hidden group`}>
 
                     {/* Indicator Line */}
-                    <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-emerald-400 opacity-80"></div>
+                    <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${indicatorClass} opacity-80`}></div>
 
                 <div className="flex justify-between items-center mb-4 sm:mb-6 border-b border-slate-100 dark:border-slate-800 pb-3 sm:pb-4 pl-1 sm:pl-3">
                   <div className="flex items-center gap-2.5 sm:gap-3">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                    <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center ${dateIconClass}`}>
                       <Calendar size={16} className="sm:w-5 sm:h-5" />
                         </div>
                         <div className="flex flex-col">
@@ -1020,31 +1059,31 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
 
                 <div className="grid grid-cols-2 sm:grid-cols-2 gap-2.5 sm:gap-5 pl-0 sm:pl-3">
                       {/* Tahsin */}
-                  <div className="bg-blue-50/40 dark:bg-blue-500/5 p-3 sm:p-4 rounded-[1rem] sm:rounded-2xl border border-blue-100/50 dark:border-blue-500/20 hover:bg-blue-50/80 dark:hover:bg-blue-500/10 transition-colors flex flex-col h-full">
+                  <div className={`${isInactiveDay ? 'bg-slate-50 dark:bg-slate-800/70 border-slate-200 dark:border-slate-700 grayscale' : 'bg-blue-50/40 dark:bg-blue-500/5 border-blue-100/50 dark:border-blue-500/20 hover:bg-blue-50/80 dark:hover:bg-blue-500/10'} p-3 sm:p-4 rounded-[1rem] sm:rounded-2xl border transition-colors flex flex-col h-full`}>
                     <div className="flex items-start sm:items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3">
                       <div className="p-1 sm:p-1.5 bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-md sm:rounded-lg shrink-0"><BookOpen size={12} className="sm:w-3.5 sm:h-3.5" strokeWidth={2.5} /></div>
                       <span className="text-[9px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest text-blue-700 dark:text-blue-400 flex items-center gap-1 flex-wrap">
                             Tahsin
-                        {publicTab === 'lesson_plan' && rec?.jurnalTahsin && rec?.jurnalTahsin !== '-' && valT !== '-' && <Check size={12} className="text-emerald-500 sm:w-3.5 sm:h-3.5" strokeWidth={4} title="Target Tercapai" />}
+                        {publicTab === 'lesson_plan' && tahsinAchieved && valT !== '-' && <Check size={12} className="text-emerald-500 sm:w-3.5 sm:h-3.5" strokeWidth={4} title="Target Tercapai" />}
                           </span>
                         </div>
                     <div className="pl-0 sm:pl-1 flex-1"><ExpandableText text={valT} /></div>
                       </div>
 
                       {/* Tahfidz */}
-                  <div className="bg-purple-50/40 dark:bg-purple-500/5 p-3 sm:p-4 rounded-[1rem] sm:rounded-2xl border border-purple-100/50 dark:border-purple-500/20 hover:bg-purple-50/80 dark:hover:bg-purple-500/10 transition-colors flex flex-col h-full">
+                  <div className={`${isInactiveDay ? 'bg-slate-50 dark:bg-slate-800/70 border-slate-200 dark:border-slate-700 grayscale' : 'bg-purple-50/40 dark:bg-purple-500/5 border-purple-100/50 dark:border-purple-500/20 hover:bg-purple-50/80 dark:hover:bg-purple-500/10'} p-3 sm:p-4 rounded-[1rem] sm:rounded-2xl border transition-colors flex flex-col h-full`}>
                     <div className="flex items-start sm:items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3">
                       <div className="p-1 sm:p-1.5 bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 rounded-md sm:rounded-lg shrink-0"><Mic size={12} className="sm:w-3.5 sm:h-3.5" strokeWidth={2.5} /></div>
                       <span className="text-[9px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest text-purple-700 dark:text-purple-400 flex items-center gap-1 flex-wrap">
                             Tahfidz
-                        {publicTab === 'lesson_plan' && rec?.jurnalTahfidz && rec?.jurnalTahfidz !== '-' && valF !== '-' && <Check size={12} className="text-emerald-500 sm:w-3.5 sm:h-3.5" strokeWidth={4} title="Target Tercapai" />}
+                        {publicTab === 'lesson_plan' && tahfidzAchieved && valF !== '-' && <Check size={12} className="text-emerald-500 sm:w-3.5 sm:h-3.5" strokeWidth={4} title="Target Tercapai" />}
                           </span>
                         </div>
                     <div className="pl-0 sm:pl-1 flex-1"><ExpandableText text={valF} /></div>
                       </div>
 
                       {/* Murojaah */}
-                  <div className="bg-emerald-50/40 dark:bg-emerald-500/5 p-3 sm:p-4 rounded-[1rem] sm:rounded-2xl border border-emerald-100/50 dark:border-emerald-500/20 hover:bg-emerald-50/80 dark:hover:bg-emerald-500/10 transition-colors flex flex-col h-full">
+                  <div className={`${isInactiveDay ? 'bg-slate-50 dark:bg-slate-800/70 border-slate-200 dark:border-slate-700 grayscale' : 'bg-emerald-50/40 dark:bg-emerald-500/5 border-emerald-100/50 dark:border-emerald-500/20 hover:bg-emerald-50/80 dark:hover:bg-emerald-500/10'} p-3 sm:p-4 rounded-[1rem] sm:rounded-2xl border transition-colors flex flex-col h-full`}>
                     <div className="flex items-start sm:items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3">
                       <div className="p-1 sm:p-1.5 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-md sm:rounded-lg shrink-0"><Repeat size={12} className="sm:w-3.5 sm:h-3.5" strokeWidth={2.5} /></div>
                       <span className="text-[9px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest text-emerald-700 dark:text-emerald-400 flex items-center gap-1 flex-wrap">Murojaah</span>
@@ -1053,7 +1092,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
                       </div>
 
                       {/* Catatan */}
-                  <div className="bg-orange-50/40 dark:bg-orange-500/5 p-3 sm:p-4 rounded-[1rem] sm:rounded-2xl border border-orange-100/50 dark:border-orange-500/20 hover:bg-orange-50/80 dark:hover:bg-orange-500/10 transition-colors flex flex-col h-full">
+                  <div className={`${isInactiveDay ? 'bg-slate-50 dark:bg-slate-800/70 border-slate-200 dark:border-slate-700 grayscale' : 'bg-orange-50/40 dark:bg-orange-500/5 border-orange-100/50 dark:border-orange-500/20 hover:bg-orange-50/80 dark:hover:bg-orange-500/10'} p-3 sm:p-4 rounded-[1rem] sm:rounded-2xl border transition-colors flex flex-col h-full`}>
                     <div className="flex items-start sm:items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3">
                       <div className="p-1 sm:p-1.5 bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400 rounded-md sm:rounded-lg shrink-0"><FileText size={12} className="sm:w-3.5 sm:h-3.5" strokeWidth={2.5} /></div>
                       <span className="text-[9px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest text-orange-700 dark:text-orange-400 flex items-center gap-1 flex-wrap">Catatan</span>
@@ -1099,11 +1138,14 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
           </div>
         </div>
 
-        <div className="mt-8 mb-12 text-center flex flex-col items-center gap-2">
+        <div className="mt-8 mb-12 text-center flex flex-col items-center gap-2 print:hidden">
           <div className="w-12 h-1 overflow-hidden bg-slate-200 rounded-full mb-2">
             <div className="h-full bg-emerald-500 w-1/2 mx-auto"></div>
           </div>
-          <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">&copy; 2026 Juman Jayyidin</p>
+          <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">&copy; {new Date().getFullYear()} Juman Jayyidin</p>
+        </div>
+        <div className="fixed bottom-0 left-0 right-0 z-[90] bg-white/90 dark:bg-slate-950/90 border-t border-slate-100 dark:border-slate-800 px-3 py-2 text-center text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 backdrop-blur-md print:hidden">
+          &copy; {new Date().getFullYear()} Juman Jayyidin. All rights reserved.
         </div>
       </div>
     );
@@ -1162,8 +1204,6 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
             </button>
           </div>
         </header>
-
-        <div className="absolute inset-0 opacity-[0.03] pointer-events-none transition-opacity" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%2310b981'%3E%3Cpath d='M50 5 L62 38 L95 50 L62 62 L50 95 L38 62 L5 50 L38 38 Z' /%3E%3Cpath d='M50 5 L62 38 L95 50 L62 62 L50 95 L38 62 L5 50 L38 38 Z' transform='rotate(45 50 50)' /%3E%3C/g%3E%3C/svg%3E")`, backgroundSize: '100px 100px' }}></div>
 
         <div className="w-full max-w-4xl z-10 px-4 sm:px-8 py-8 md:py-12 flex-1">
           <div className="flex flex-col items-center mb-6 sm:mb-8 text-center px-4">
@@ -1304,8 +1344,11 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
         </div>
         {/* Footer for Parent Portal */}
         <footer className="w-full py-10 text-center z-10">
-          <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">&copy; 2026 Juman Jayyidin. All rights reserved.</p>
+          <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">&copy; {new Date().getFullYear()} Juman Jayyidin. All rights reserved.</p>
         </footer>
+        <div className="fixed bottom-0 left-0 right-0 z-[90] bg-white/90 dark:bg-slate-950/90 border-t border-slate-100 dark:border-slate-800 px-3 py-2 text-center text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 backdrop-blur-md print:hidden">
+          &copy; {new Date().getFullYear()} Juman Jayyidin. All rights reserved.
+        </div>
       </div>
     );
   }
@@ -1318,19 +1361,6 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
           {theme === 'dark' ? <Sun size={20} className="text-amber-500" /> : <Moon size={20} />}
         </div>
       </button>
-
-      {/* Pola Islami Samar (Islamic Geometric Pattern) */}
-      <div
-        className="absolute inset-0 opacity-[0.03] pointer-events-none -z-20"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%2310b981'%3E%3Cpath d='M50 5 L62 38 L95 50 L62 62 L50 95 L38 62 L5 50 L38 38 Z' /%3E%3Cpath d='M50 5 L62 38 L95 50 L62 62 L50 95 L38 62 L5 50 L38 38 Z' transform='rotate(45 50 50)' /%3E%3C/g%3E%3C/svg%3E")`,
-          backgroundSize: '100px 100px'
-        }}
-      ></div>
-
-      {/* Efek Background Modern (Blobs) */}
-      <div className="absolute top-[-10%] left-[-10%] w-[300px] h-[300px] sm:w-[500px] sm:h-[500px] bg-green-300/30 rounded-full mix-blend-multiply filter blur-[60px] sm:blur-[80px] opacity-70 animate-pulse -z-10"></div>
-      <div className="absolute bottom-[-10%] right-[-10%] w-[300px] h-[300px] sm:w-[500px] sm:h-[500px] bg-blue-300/30 rounded-full mix-blend-multiply filter blur-[60px] sm:blur-[80px] opacity-70 animate-pulse -z-10" style={{ animationDelay: '2s' }}></div>
 
       <div className="w-full max-w-[420px] relative z-10 flex flex-col">
         {/* Card Login / Register */}
@@ -1488,7 +1518,10 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
           </div>
         </div>
 
-        <p className="text-xs text-slate-400 dark:text-slate-500 font-bold mt-8 text-center drop-shadow-sm transition-colors">&copy; 2026 Juman Jayyidin. All rights reserved.</p>
+        <p className="text-xs text-slate-400 dark:text-slate-500 font-bold mt-8 text-center drop-shadow-sm transition-colors">&copy; {new Date().getFullYear()} Juman Jayyidin. All rights reserved.</p>
+      </div>
+      <div className="fixed bottom-0 left-0 right-0 z-[90] bg-slate-50/90 dark:bg-slate-950/90 border-t border-slate-100 dark:border-slate-800 px-3 py-2 text-center text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 backdrop-blur-md">
+        &copy; {new Date().getFullYear()} Juman Jayyidin. All rights reserved.
       </div>
 
       {/* Modal Error */}
