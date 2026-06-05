@@ -800,7 +800,7 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                             saveMaterials({ ...data.ujian_materials, tahsin: newTahsin, tahfidz: newTahfidz });
                         }
                     }
-                    if (data.kkm_score) setKkmScore(data.kkm_score);
+                    if (data.kkm_score !== undefined && data.kkm_score !== null) setKkmScore(data.kkm_score);
                 }
                 if (isMounted) setIsLoading(false);
             } catch (error) {
@@ -827,6 +827,24 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
             setMaterials(prev => ({ ...newMats, institutionName: prev.institutionName || newMats.institutionName || '' }));
             showToast('Pengaturan berhasil diperbarui!');
         }
+    };
+
+    const handleSaveReportSettings = async () => {
+        const normalizedKkm = Math.min(100, Math.max(0, parseInt(kkmScore, 10) || 75));
+        const updatedMaterials = { ...materials, reportSettings: localRS };
+        const { error } = await supabase
+            .from('settings')
+            .update({ ujian_materials: updatedMaterials, kkm_score: normalizedKkm })
+            .eq('id', 1);
+
+        if (error) {
+            showToast('Gagal menyimpan pengaturan raport.');
+            return;
+        }
+
+        setKkmScore(normalizedKkm);
+        setMaterials(prev => ({ ...updatedMaterials, institutionName: prev.institutionName || updatedMaterials.institutionName || '' }));
+        showToast('Pengaturan raport dan KKM berhasil diperbarui!');
     };
 
     const handleSaveAssignments = (type, materialName, materialHalaqoh, assignedStudentIds) => {
@@ -1655,11 +1673,30 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                                     <p className="text-xs font-bold text-slate-400 dark:text-slate-500 mt-0.5">Identitas sekolah & periode untuk cetak raport</p>
                                 </div>
                             </div>
-                            <button onClick={() => saveMaterials({ ...materials, reportSettings: localRS })} className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-xl transition-all shadow-sm shadow-emerald-200 flex items-center justify-center gap-2 font-bold text-sm active:scale-95">
+                            <button onClick={handleSaveReportSettings} className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-xl transition-all shadow-sm shadow-emerald-200 flex items-center justify-center gap-2 font-bold text-sm active:scale-95">
                                 <Check size={18} /> Simpan Pengaturan
                             </button>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                            <div className="flex flex-col gap-2">
+                                <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest">KKM Nilai Ujian</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    value={kkmScore}
+                                    onChange={e => {
+                                        const rawValue = e.target.value;
+                                        if (rawValue === '') {
+                                            setKkmScore('');
+                                            return;
+                                        }
+                                        const nextValue = Math.min(100, Math.max(0, parseInt(rawValue, 10) || 0));
+                                        setKkmScore(nextValue);
+                                    }}
+                                    className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm font-black outline-none focus:border-emerald-500 text-slate-700 dark:text-slate-100 transition-all"
+                                />
+                            </div>
                             <div className="flex flex-col gap-2">
                                 <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Semester</label>
                                 <select value={localRS.semester || ''} onChange={e => setLocalRS({ ...localRS, semester: e.target.value })} className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm font-bold outline-none focus:border-emerald-500 text-slate-700 dark:text-slate-100 transition-all">
@@ -2226,6 +2263,14 @@ function getIndonesianDate() {
     return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
 }
 
+const getInitialReportZoom = () => {
+    if (typeof window === 'undefined') return 0.85;
+    if (window.innerWidth < 380) return 0.42;
+    if (window.innerWidth < 480) return 0.45;
+    if (window.innerWidth < 768) return 0.5;
+    return 0.85;
+};
+
 // --- Full Quran Assessment Report Wizard Component ---
 
 const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, activeHalaqoh }) => {
@@ -2316,7 +2361,7 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
     // Catatan
     const [catatan, setCatatan] = useState('');
     const [isNoteEdited, setIsNoteEdited] = useState(false);
-    const [zoom, setZoom] = useState(window.innerWidth < 768 ? 0.45 : 0.85);
+    const [zoom, setZoom] = useState(getInitialReportZoom);
     const [isDownloading, setIsDownloading] = useState(false);
 
     // Initialize lists
@@ -2472,7 +2517,7 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
     };
 
     return (
-        <div className="fixed inset-0 z-50 bg-slate-900 flex flex-col h-[100dvh] text-slate-100 overflow-hidden font-sans print:static print:h-auto print:overflow-visible print:bg-white print:text-black">
+        <div className="fixed inset-0 z-50 bg-slate-950 sm:bg-slate-900 flex flex-col h-[100dvh] text-slate-100 overflow-hidden font-sans print:static print:h-auto print:overflow-visible print:bg-white print:text-black">
             {/* Stylesheet specifically to print A4 page beautifully */}
             <style dangerouslySetInnerHTML={{
                 __html: `
@@ -2530,11 +2575,11 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
             `}} />
 
             {/* Top Navigation Bar */}
-            <div className="bg-slate-800 border-b border-slate-700 px-4 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row items-center justify-between gap-3 z-10 shrink-0 print:hidden">
+            <div className="bg-slate-900 sm:bg-slate-800 border-b border-slate-800 sm:border-slate-700 px-3 sm:px-6 py-2.5 sm:py-4 flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-3 z-10 shrink-0 print:hidden shadow-lg shadow-black/10">
                 <div className="flex items-center gap-3 w-full sm:w-auto">
                     <button
                         onClick={onClose}
-                        className="flex items-center justify-center gap-1.5 p-2 sm:px-4 sm:py-2 bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white rounded-xl transition-all font-bold text-sm shrink-0 border border-red-500/20 hover:border-red-500"
+                        className="flex items-center justify-center gap-1.5 p-2.5 sm:px-4 sm:py-2 bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white rounded-xl transition-all font-bold text-sm shrink-0 border border-red-500/20 hover:border-red-500"
                         title="Tutup Pratinjau"
                     >
                         <ArrowLeft size={18} className="hidden sm:block" />
@@ -2547,7 +2592,7 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+                <div className="grid grid-cols-2 sm:flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
                     {/* Zoom Slider */}
                     <div className="hidden lg:flex items-center gap-2 bg-slate-700/50 px-4 py-2 rounded-xl border border-slate-700 mr-2">
                         <span className="text-xs font-bold text-slate-400">Zoom:</span>
@@ -2566,7 +2611,7 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
                     <button
                         onClick={handleDownloadPDF}
                         disabled={isDownloading}
-                        className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-5 py-2.5 rounded-xl font-bold text-[11px] sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition-all active:scale-95 disabled:opacity-50"
+                        className="min-w-0 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-5 py-2.5 rounded-xl font-bold text-[11px] sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition-all active:scale-95 disabled:opacity-50"
                     >
                         {isDownloading ? <Loader2 size={16} className="animate-spin sm:w-4 sm:h-4 w-3.5 h-3.5" /> : <FileText size={16} className="sm:w-4 sm:h-4 w-3.5 h-3.5" />}
                         <span className="hidden sm:inline">Unduh PDF</span>
@@ -2575,7 +2620,7 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
 
                     <button
                         onClick={handlePrint}
-                        className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white px-3 sm:px-5 py-2.5 rounded-xl font-bold text-[11px] sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition-all active:scale-95"
+                        className="min-w-0 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white px-3 sm:px-5 py-2.5 rounded-xl font-bold text-[11px] sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition-all active:scale-95"
                     >
                         <Printer size={16} className="sm:w-4 sm:h-4 w-3.5 h-3.5" />
                         <span className="hidden sm:inline">Cetak (Browser)</span>
@@ -2588,10 +2633,10 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
             <div className="flex flex-col lg:flex-row flex-1 min-h-0 overflow-y-auto lg:overflow-hidden custom-scrollbar print:overflow-visible print:block">
 
                 {/* Left Panel: Sidebar Editors */}
-                <div className="w-full lg:w-[450px] bg-slate-900 lg:border-r border-b border-slate-800 flex flex-col lg:h-full lg:min-h-0 lg:overflow-y-auto overscroll-y-contain custom-scrollbar shrink-0 p-4 sm:p-6 gap-5 sm:gap-6 print:hidden" style={{ WebkitOverflowScrolling: 'touch' }}>
+                <div className="w-full lg:w-[450px] bg-slate-950 sm:bg-slate-900 lg:border-r border-b border-slate-800 flex flex-col lg:h-full lg:min-h-0 lg:overflow-y-auto overscroll-y-contain custom-scrollbar shrink-0 p-3 sm:p-6 gap-3.5 sm:gap-6 print:hidden" style={{ WebkitOverflowScrolling: 'touch' }}>
 
                     {/* 1. DATA IDENTITAS CARD */}
-                    <div className="bg-slate-800/50 p-4 sm:p-5 rounded-2xl border border-slate-700/60 flex flex-col gap-4">
+                    <div className="bg-slate-900 sm:bg-slate-800/50 p-4 sm:p-5 rounded-2xl border border-slate-800 sm:border-slate-700/60 flex flex-col gap-4">
                         <div className="flex items-center gap-2 pb-2 border-b border-slate-700/50">
                             <span className="text-emerald-400 font-bold text-sm uppercase tracking-wider">1. Identitas Raport</span>
                         </div>
@@ -2642,7 +2687,7 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
                     </div>
 
                     {/* 2. NILAI UTAMA (TABLE 1) */}
-                    <div className="bg-slate-800/50 p-4 sm:p-5 rounded-2xl border border-slate-700/60 flex flex-col gap-4">
+                    <div className="bg-slate-900 sm:bg-slate-800/50 p-4 sm:p-5 rounded-2xl border border-slate-800 sm:border-slate-700/60 flex flex-col gap-4">
                         <div className="flex items-center gap-2 pb-2 border-b border-slate-700/50">
                             <span className="text-blue-400 font-bold text-sm uppercase tracking-wider">2. Nilai Sub Bidang Studi</span>
                         </div>
@@ -2685,7 +2730,7 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
                     </div>
 
                     {/* 3. RINCIAN SETORAN HAFALAN */}
-                    <div className="bg-slate-800/50 p-4 sm:p-5 rounded-2xl border border-slate-700/60 flex flex-col gap-4">
+                    <div className="bg-slate-900 sm:bg-slate-800/50 p-4 sm:p-5 rounded-2xl border border-slate-800 sm:border-slate-700/60 flex flex-col gap-4">
                         <div className="flex items-center gap-2 pb-2 border-b border-slate-700/50">
                             <span className="text-purple-400 font-bold text-sm uppercase tracking-wider">3. I. Hafalan Kelas (Max 22)</span>
                         </div>
@@ -2714,7 +2759,7 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
                     </div>
 
                     {/* 4. TARGET YANG TIDAK TERCAPAI (Max 8) */}
-                    <div className="bg-slate-800/50 p-4 sm:p-5 rounded-2xl border border-slate-700/60 flex flex-col gap-4">
+                    <div className="bg-slate-900 sm:bg-slate-800/50 p-4 sm:p-5 rounded-2xl border border-slate-800 sm:border-slate-700/60 flex flex-col gap-4">
                         <div className="flex items-center gap-2 pb-2 border-b border-slate-700/50">
                             <span className="text-orange-400 font-bold text-sm uppercase tracking-wider">4. II. Target Tidak Tercapai</span>
                         </div>
@@ -2740,7 +2785,7 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
                     </div>
 
                     {/* 5. ADAB DALAM HALAQOH */}
-                    <div className="bg-slate-800/50 p-4 sm:p-5 rounded-2xl border border-slate-700/60 flex flex-col gap-4">
+                    <div className="bg-slate-900 sm:bg-slate-800/50 p-4 sm:p-5 rounded-2xl border border-slate-800 sm:border-slate-700/60 flex flex-col gap-4">
                         <div className="flex items-center gap-2 pb-2 border-b border-slate-700/50">
                             <span className="text-teal-400 font-bold text-sm uppercase tracking-wider">5. III. Adab Dalam Halaqoh</span>
                         </div>
@@ -2770,7 +2815,7 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
                     </div>
 
                     {/* 6. CATATAN */}
-                    <div className="bg-slate-800/50 p-4 sm:p-5 rounded-2xl border border-slate-700/60 flex flex-col gap-4 mb-4 lg:mb-8">
+                    <div className="bg-slate-900 sm:bg-slate-800/50 p-4 sm:p-5 rounded-2xl border border-slate-800 sm:border-slate-700/60 flex flex-col gap-4 mb-4 lg:mb-8">
                         <div className="flex items-center gap-2 pb-2 border-b border-slate-700/50">
                             <span className="text-rose-400 font-bold text-sm uppercase tracking-wider">6. Catatan</span>
                         </div>
@@ -2801,7 +2846,7 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
                 </div>
 
                 {/* Right Panel: A4 Live Preview (with transforms) */}
-                <div className="flex-1 min-h-0 bg-slate-950 flex justify-start sm:justify-center overflow-auto p-4 sm:p-8 pb-32 lg:pb-8 relative items-start select-none custom-scrollbar print:p-0 print:overflow-visible print:bg-white print:block" style={{ WebkitOverflowScrolling: 'touch' }}>
+                <div className="flex-1 min-h-0 bg-slate-950 flex justify-center overflow-auto p-2 sm:p-8 pb-28 lg:pb-8 relative items-start select-none custom-scrollbar print:p-0 print:overflow-visible print:bg-white print:block" style={{ WebkitOverflowScrolling: 'touch' }}>
 
                     <div
                         id="zoom-wrapper"
@@ -3117,7 +3162,7 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
             {/* Tombol Tutup Melayang (Bawah) */}
             <button
                 onClick={onClose}
-                className="fixed bottom-6 right-6 lg:bottom-8 lg:right-8 z-[100] flex items-center justify-center gap-2 px-5 py-3.5 bg-red-600 hover:bg-red-700 text-white rounded-full shadow-[0_10px_25px_rgba(220,38,38,0.4)] active:scale-95 transition-all print:hidden font-black border border-red-500"
+                className="fixed left-4 right-4 bottom-4 lg:left-auto lg:right-8 lg:bottom-8 z-[100] flex items-center justify-center gap-2 px-5 py-3.5 bg-red-600 hover:bg-red-700 text-white rounded-2xl lg:rounded-full shadow-[0_10px_25px_rgba(220,38,38,0.4)] active:scale-95 transition-all print:hidden font-black border border-red-500"
                 title="Tutup Pratinjau"
             >
                 <X size={20} strokeWidth={3} />

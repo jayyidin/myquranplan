@@ -37,7 +37,28 @@ const promoteClassName = (kelas) => {
   const text = String(kelas || '').trim();
   const grade = getClassGrade(text);
   if (!grade || grade >= 6) return text;
-  return text ? text.replace(/\d+/, String(grade + 1)) : `Kelas ${grade + 1}`;
+  return String(grade + 1);
+};
+
+const buildNumericKelasList = (currentKelasList = [], nextStudents = []) => {
+  const grades = new Set();
+  const nonNumericClasses = [];
+
+  currentKelasList.forEach(kelas => {
+    const grade = getClassGrade(kelas);
+    if (grade) grades.add(grade);
+    else if (hasProgressValue(kelas)) nonNumericClasses.push(String(kelas).trim());
+  });
+
+  nextStudents.forEach(student => {
+    const grade = getClassGrade(student.kelas);
+    if (grade) grades.add(grade);
+  });
+
+  return [
+    ...Array.from(grades).sort((a, b) => a - b).map(String),
+    ...Array.from(new Set(nonNumericClasses))
+  ];
 };
 
 const getDefaultSchoolYear = () => {
@@ -1247,6 +1268,8 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
 
         try {
           const updates = updatedStudents.filter(s => activeStudentList.some(active => active.id === s.id));
+          const nextKelasList = buildNumericKelasList(kelasList, updates);
+          let isKelasListSynced = false;
           const CHUNK_SIZE = 250;
           for (let i = 0; i < updates.length; i += CHUNK_SIZE) {
             const chunk = updates.slice(i, i + CHUNK_SIZE);
@@ -1254,18 +1277,34 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
             if (error) throw error;
           }
 
+          if (nextKelasList.length > 0) {
+            const { error: kelasError } = await supabase
+              .from('settings')
+              .update({ kelaslist: nextKelasList })
+              .eq('id', 1);
+            if (kelasError) {
+              console.error('Gagal memperbarui master kelas:', kelasError);
+            } else {
+              setKelasList(nextKelasList);
+              isKelasListSynced = true;
+            }
+          }
+
           try {
             await supabase.from('activity_logs').insert([{
               guru_name: currentUser?.name || 'System / Unknown',
               action: 'Ganti Tahun Ajaran',
-              details: `Tahun ajaran: ${targetYear}\nAlumni kelas 6: ${graduatingStudents.length}\nNaik kelas: ${promotedStudents.length}\nLepas halaqoh saja: ${releasedOnlyStudents.length}`
+              details: `Tahun ajaran: ${targetYear}\nAlumni kelas 6: ${graduatingStudents.length}\nNaik kelas: ${promotedStudents.length}\nLepas halaqoh saja: ${releasedOnlyStudents.length}\nMaster kelas: ${nextKelasList.join(', ')}`
             }]);
           } catch (logErr) {
             console.error('Gagal mencatat log ganti tahun ajaran:', logErr);
           }
 
           setActiveHalaqoh('');
-          showToast(`Tahun ajaran ${targetYear} diproses. ${graduatingStudents.length} siswa menjadi alumni.`);
+          showToast(isKelasListSynced
+            ? `Tahun ajaran ${targetYear} diproses. Kelas siswa aktif kini memakai angka tanpa rombel.`
+            : `Tahun ajaran ${targetYear} diproses, tetapi master kelas gagal diperbarui.`
+          );
         } catch (error) {
           console.error(error);
           setStudents(previousStudents);

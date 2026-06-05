@@ -318,6 +318,8 @@ const HalaqohColumn = ({ group, students, progressMap, selectedIds, draggingIds,
 
 const HalaqohTransferView = ({ isSuperAdmin, students = [], guruHalaqohData = {}, guruList = [], kelasList = [], onMoveStudents, onStartNewSchoolYear }) => {
   const [search, setSearch] = useState('');
+  const [masterSearch, setMasterSearch] = useState('');
+  const [masterKelasFilter, setMasterKelasFilter] = useState('');
   const [groupSearch, setGroupSearch] = useState('');
   const [kelasFilter, setKelasFilter] = useState('');
   const [teacherFilter, setTeacherFilter] = useState('');
@@ -394,6 +396,22 @@ const HalaqohTransferView = ({ isSuperAdmin, students = [], guruHalaqohData = {}
       .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0) || String(a.name).localeCompare(String(b.name), 'id', { sensitivity: 'base' }));
   }, [visibleStudentsByStatus, search, kelasFilter]);
 
+  const masterFilteredStudentIds = useMemo(() => {
+    const query = masterSearch.trim().toLowerCase();
+    if (!query && !masterKelasFilter) return null;
+
+    return new Set(
+      visibleStudentsByStatus
+        .filter(student => !hasValue(student.halaqoh))
+        .filter(student => {
+          const matchesSearch = !query || String(student.name || '').toLowerCase().includes(query);
+          const matchesKelas = !masterKelasFilter || String(student.kelas || '') === masterKelasFilter;
+          return matchesSearch && matchesKelas;
+        })
+        .map(student => student.id)
+    );
+  }, [visibleStudentsByStatus, masterSearch, masterKelasFilter]);
+
   const studentsByHalaqoh = useMemo(() => {
     const map = halaqohGroups.reduce((acc, group) => {
       acc[group.value] = [];
@@ -402,6 +420,7 @@ const HalaqohTransferView = ({ isSuperAdmin, students = [], guruHalaqohData = {}
 
     filteredStudents.forEach(student => {
       const halaqoh = hasValue(student.halaqoh) ? student.halaqoh : UNASSIGNED;
+      if (halaqoh === UNASSIGNED && masterFilteredStudentIds && !masterFilteredStudentIds.has(student.id)) return;
       if (!map[halaqoh]) {
         map[halaqoh] = [];
       }
@@ -409,7 +428,7 @@ const HalaqohTransferView = ({ isSuperAdmin, students = [], guruHalaqohData = {}
     });
 
     return map;
-  }, [filteredStudents, halaqohGroups]);
+  }, [filteredStudents, halaqohGroups, masterFilteredStudentIds]);
 
   const teacherStats = useMemo(() => {
     return availableTeacherFilters.map(teacher => {
@@ -438,6 +457,11 @@ const HalaqohTransferView = ({ isSuperAdmin, students = [], guruHalaqohData = {}
   const clearSelection = () => {
     setSelectedIds([]);
     setBulkTarget('');
+  };
+
+  const clearMasterFilters = () => {
+    setMasterSearch('');
+    setMasterKelasFilter('');
   };
 
   const getMoveIds = (studentId) => {
@@ -597,10 +621,12 @@ const HalaqohTransferView = ({ isSuperAdmin, students = [], guruHalaqohData = {}
               </button>
             </div>
 
-            {(kelasFilter || teacherFilter || groupSearch || statusFilter !== 'active') && !mobileFiltersOpen && (
+            {(kelasFilter || teacherFilter || groupSearch || masterSearch || masterKelasFilter || statusFilter !== 'active') && !mobileFiltersOpen && (
               <div className="flex gap-1.5 overflow-x-auto custom-scrollbar pb-0.5">
                 {groupSearch && <span className="shrink-0 rounded-lg bg-slate-100 dark:bg-slate-800 px-2 py-1 text-[9px] font-black text-slate-500 dark:text-slate-300">Halaqoh: {groupSearch}</span>}
                 {kelasFilter && <span className="shrink-0 rounded-lg bg-blue-50 dark:bg-blue-500/10 px-2 py-1 text-[9px] font-black text-blue-600 dark:text-blue-300">{kelasFilter}</span>}
+                {masterSearch && <span className="shrink-0 rounded-lg bg-cyan-50 dark:bg-cyan-500/10 px-2 py-1 text-[9px] font-black text-cyan-700 dark:text-cyan-300">Master: {masterSearch}</span>}
+                {masterKelasFilter && <span className="shrink-0 rounded-lg bg-cyan-50 dark:bg-cyan-500/10 px-2 py-1 text-[9px] font-black text-cyan-700 dark:text-cyan-300">Master Kelas {masterKelasFilter}</span>}
                 {teacherFilter && <span className="shrink-0 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 px-2 py-1 text-[9px] font-black text-emerald-600 dark:text-emerald-300">{teacherFilter}</span>}
                 {statusFilter !== 'active' && <span className="shrink-0 rounded-lg bg-amber-50 dark:bg-amber-500/10 px-2 py-1 text-[9px] font-black text-amber-600 dark:text-amber-300">{statusFilter === 'alumni' ? 'Alumni' : 'Semua'}</span>}
               </div>
@@ -632,6 +658,36 @@ const HalaqohTransferView = ({ isSuperAdmin, students = [], guruHalaqohData = {}
                       <option value="">Semua Pengajar</option>
                       {availableTeacherFilters.map(teacher => <option key={teacher} value={teacher}>{teacher}</option>)}
                     </select>
+                  </div>
+                  <div className="rounded-xl border border-cyan-100 dark:border-cyan-500/20 bg-cyan-50/60 dark:bg-cyan-500/10 p-2">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <span className="text-[9px] font-black uppercase tracking-widest text-cyan-700 dark:text-cyan-300">Filter Master Siswa</span>
+                      {(masterSearch || masterKelasFilter) && (
+                        <button type="button" onClick={clearMasterFilters} className="text-[9px] font-black text-cyan-700 dark:text-cyan-300 underline underline-offset-2">
+                          Reset
+                        </button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-1 gap-2">
+                      <div className="relative">
+                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-cyan-500" />
+                        <input
+                          value={masterSearch}
+                          onChange={(e) => setMasterSearch(e.target.value)}
+                          placeholder="Cari siswa di master..."
+                          className="w-full h-10 rounded-xl border border-cyan-100 dark:border-cyan-500/20 bg-white dark:bg-slate-800 pl-9 pr-9 text-sm font-bold text-slate-700 dark:text-slate-100 outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
+                        />
+                        {masterSearch && (
+                          <button type="button" onClick={() => setMasterSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1 text-slate-400 hover:bg-red-50 hover:text-red-500">
+                            <X size={15} />
+                          </button>
+                        )}
+                      </div>
+                      <select value={masterKelasFilter} onChange={(e) => setMasterKelasFilter(e.target.value)} className="h-10 rounded-xl border border-cyan-100 dark:border-cyan-500/20 bg-white dark:bg-slate-800 px-3 text-xs font-black text-slate-600 dark:text-slate-200 outline-none focus:border-cyan-400">
+                        <option value="">Semua Kelas Master</option>
+                        {kelasList.map(kelas => <option key={kelas} value={kelas}>Kelas {kelas}</option>)}
+                      </select>
+                    </div>
                   </div>
                   <div className="grid grid-cols-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-1">
                     {[
@@ -754,6 +810,38 @@ const HalaqohTransferView = ({ isSuperAdmin, students = [], guruHalaqohData = {}
                 <span className="block text-[8px] sm:text-[9px] font-black uppercase tracking-widest opacity-70 leading-tight">{item.groupCount} halaqoh - {item.studentCount} siswa</span>
               </button>
             ))}
+          </div>
+
+          <div className="hidden md:grid mt-2 grid-cols-[160px_minmax(220px,1fr)_180px_auto] items-center gap-2 rounded-xl border border-cyan-100 dark:border-cyan-500/20 bg-cyan-50/70 dark:bg-cyan-500/10 p-2">
+            <div className="px-2 text-[10px] font-black uppercase tracking-widest text-cyan-700 dark:text-cyan-300">
+              Filter Master Siswa
+            </div>
+            <div className="relative min-w-0">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-cyan-500" />
+              <input
+                value={masterSearch}
+                onChange={(e) => setMasterSearch(e.target.value)}
+                placeholder="Cari siswa yang belum punya halaqoh..."
+                className="w-full rounded-xl border border-cyan-100 dark:border-cyan-500/20 bg-white dark:bg-slate-800 pl-9 pr-9 py-2.5 text-sm font-bold text-slate-700 dark:text-slate-100 outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
+              />
+              {masterSearch && (
+                <button type="button" onClick={() => setMasterSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1 text-slate-400 hover:bg-red-50 hover:text-red-500">
+                  <X size={15} />
+                </button>
+              )}
+            </div>
+            <select value={masterKelasFilter} onChange={(e) => setMasterKelasFilter(e.target.value)} className="rounded-xl border border-cyan-100 dark:border-cyan-500/20 bg-white dark:bg-slate-800 px-3 py-2.5 text-xs sm:text-sm font-black text-slate-600 dark:text-slate-200 outline-none focus:border-cyan-400">
+              <option value="">Semua Kelas Master</option>
+              {kelasList.map(kelas => <option key={kelas} value={kelas}>Kelas {kelas}</option>)}
+            </select>
+            <button
+              type="button"
+              onClick={clearMasterFilters}
+              disabled={!masterSearch && !masterKelasFilter}
+              className="rounded-xl border border-cyan-100 dark:border-cyan-500/20 bg-white dark:bg-slate-800 px-4 py-2.5 text-xs sm:text-sm font-black text-cyan-700 dark:text-cyan-300 disabled:opacity-40"
+            >
+              Reset
+            </button>
           </div>
 
           {selectedIds.length > 0 && (
