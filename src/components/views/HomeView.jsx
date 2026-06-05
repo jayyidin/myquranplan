@@ -1130,14 +1130,14 @@ const HomeView = ({
 
       {/* ===== MODAL PREVIEW CETAK LAPORAN KELAS ===== */}
       {isClassReportVisible && (
-        <div className="fixed inset-0 z-[99999] flex justify-center items-start bg-slate-900/80 p-0 md:p-6 pb-32 md:pb-6 overflow-y-auto custom-scrollbar printable-area print:!static print:p-0 print:m-0 print:overflow-visible">
+        <div className="fixed inset-0 z-[99999] h-[100dvh] min-h-0 flex justify-center items-start bg-slate-900/80 p-0 md:p-6 pb-[calc(env(safe-area-inset-bottom)+8rem)] md:pb-6 overflow-y-auto overscroll-y-contain custom-scrollbar printable-area print:!static print:h-auto print:p-0 print:m-0 print:overflow-visible" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}>
           {(() => {
             const workDays = weekDates.filter(d => d && d.getDay() !== 0 && d.getDay() !== 6);
             const totalPages = workDays.length > 3 ? 2 : 1;
             return (
               <>
                 {/* Tombol Aksi */}
-                <div className="fixed bottom-6 right-6 md:bottom-auto md:top-6 md:right-6 flex flex-col-reverse md:flex-row gap-3 z-[100000] print:hidden" data-html2canvas-ignore="true">
+                <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+1rem)] right-4 md:bottom-auto md:top-6 md:right-6 flex flex-col-reverse md:flex-row gap-3 z-[100000] print:hidden" data-html2canvas-ignore="true">
                   <button onClick={handleCopyClassShareLink} className="bg-blue-600 text-white px-5 py-3 md:py-2.5 rounded-2xl md:rounded-xl font-bold flex items-center justify-center gap-2 shadow-xl hover:bg-blue-700 transition-colors">
                     <Link size={18} />
                     <span className="inline">Salin Link</span>
@@ -1162,7 +1162,7 @@ const HomeView = ({
                 </div>
 
                 {/* Konten Laporan */}
-                <div className="w-full flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar flex flex-col md:items-center p-0 md:p-4 print:p-0 print:overflow-visible relative">
+                <div className="w-full flex-1 min-h-0 overflow-x-hidden flex flex-col md:items-center p-0 md:p-4 print:p-0 print:overflow-visible relative">
 
                   {/* MOBILE VIEW (CARD-BASED) */}
                   <div className="md:hidden w-full flex flex-col gap-4 print:hidden px-4 py-4 pb-24">
@@ -1291,10 +1291,10 @@ const HomeView = ({
 
       {/* ===== MODAL SHARE LAPORAN INDIVIDU ===== */}
       {shareStudent && (
-        <div className="fixed inset-0 z-[99999] flex justify-center items-start bg-slate-900/80 p-0 md:p-6 pb-32 md:pb-6 overflow-y-auto custom-scrollbar printable-area print:!static print:p-0 print:m-0 print:overflow-visible">
+        <div className="fixed inset-0 z-[99999] h-[100dvh] min-h-0 flex justify-center items-start bg-slate-900/80 p-0 md:p-6 pb-[calc(env(safe-area-inset-bottom)+8rem)] md:pb-6 overflow-y-auto overscroll-y-contain custom-scrollbar printable-area print:!static print:h-auto print:p-0 print:m-0 print:overflow-visible" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}>
 
           {/* Tombol Aksi Web (Floating Bottom on Mobile) */}
-          <div className="fixed bottom-6 right-6 sm:bottom-auto sm:top-6 sm:right-6 flex flex-col-reverse sm:flex-row gap-3 z-[100000] print:hidden" data-html2canvas-ignore="true">
+          <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+1rem)] right-4 sm:bottom-auto sm:top-6 sm:right-6 flex flex-col-reverse sm:flex-row gap-3 z-[100000] print:hidden" data-html2canvas-ignore="true">
             <button onClick={handleCopyShareLink} className="bg-blue-600 text-white w-14 h-14 sm:w-auto sm:h-auto sm:px-5 sm:py-2.5 rounded-full sm:rounded-xl font-bold flex items-center justify-center gap-2 shadow-xl hover:bg-blue-700 transition-colors" title="Salin Link Orang Tua">
               <Link size={20} className="sm:w-[18px] sm:h-[18px]" /> <span className="hidden sm:inline">Salin Link Orang Tua</span>
             </button>
