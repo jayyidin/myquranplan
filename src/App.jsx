@@ -3,6 +3,7 @@ import React, { Suspense, lazy, useEffect, useState } from 'react';
 
 const MainApp = lazy(() => import('./components/MainApp.jsx'));
 const LoginScreen = lazy(() => import('./components/LoginScreen.jsx'));
+const getStoredTheme = () => (localStorage.getItem('theme') === 'dark' ? 'dark' : 'light');
 
 const AppLoading = () => (
   <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400">
@@ -16,10 +17,7 @@ function App() {
     return savedUser ? JSON.parse(savedUser) : null;
   });
   const [theme, setTheme] = useState(() => {
-    if (localStorage.getItem('theme')) {
-      return localStorage.getItem('theme');
-    }
-    return 'light';
+    return getStoredTheme();
   });
 
   // Efek untuk mengaplikasikan class dark pada elemen html
@@ -38,8 +36,9 @@ function App() {
   }, [theme]);
 
   const handleSetTheme = (newTheme) => {
-    setTheme(newTheme);
-    localStorage.setItem('theme', newTheme);
+    const nextTheme = newTheme === 'dark' ? 'dark' : 'light';
+    setTheme(nextTheme);
+    localStorage.setItem('theme', nextTheme);
   };
 
   const handleLogin = (userData) => {

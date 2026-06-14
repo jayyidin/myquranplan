@@ -4,14 +4,13 @@ import MainApp from './MainApp';
 import LoginScreen from './LoginScreen';
 import { Loader2 } from 'lucide-react';
 
+const getStoredTheme = () => (localStorage.getItem('theme') === 'dark' ? 'dark' : 'light');
+
 function App() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState(() => {
-    if (localStorage.getItem('theme')) {
-      return localStorage.getItem('theme');
-    }
-    return 'light';
+    return getStoredTheme();
   });
 
   useEffect(() => {
@@ -46,8 +45,9 @@ function App() {
   }, [theme]);
 
   const handleSetTheme = (newTheme) => {
-    setTheme(newTheme);
-    localStorage.setItem('theme', newTheme);
+    const nextTheme = newTheme === 'dark' ? 'dark' : 'light';
+    setTheme(nextTheme);
+    localStorage.setItem('theme', nextTheme);
   };
 
 

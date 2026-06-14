@@ -45,6 +45,24 @@ const SelectShell = ({ children, className = '' }) => (
   </div>
 );
 
+const QuickNavButton = ({ icon: Icon, label, detail, onClick, tone = 'text-slate-500 bg-white border-slate-200 hover:border-emerald-200 hover:text-emerald-700 hover:bg-emerald-50' }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={`min-w-[150px] flex-1 rounded-2xl border px-3 py-3 text-left transition-all active:scale-[0.98] ${tone}`}
+  >
+    <div className="flex items-center gap-2.5">
+      <span className="w-9 h-9 rounded-xl bg-current/10 flex items-center justify-center shrink-0">
+        <Icon size={17} />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-xs font-black text-slate-800 truncate">{label}</span>
+        <span className="block text-[10px] font-bold text-slate-400 truncate mt-0.5">{detail}</span>
+      </span>
+    </div>
+  </button>
+);
+
 const SettingsView = ({
   isSuperAdmin, appUsers = [], handleApproveUser, handleRejectUser, handleUpdateUserAccount,
   institutionName, setInstitutionName, institutionLogo, handleInstitutionLogoUpload, setInstitutionLogo, updateMasterDataCloud, showToast, isUploadingLogo, logoUploadProgress = 0,
@@ -90,8 +108,17 @@ const SettingsView = ({
   const [dragOverHalaqohInfo, setDragOverHalaqohInfo] = useState(null);
   const [dragGuruId, setDragGuruId] = useState(null);
   const [dragOverGuruId, setDragOverGuruId] = useState(null);
+  const [resolvedPendingUserIds, setResolvedPendingUserIds] = useState([]);
 
-  const pendingUsers = appUsers.filter(u => u.status === 'pending');
+  React.useEffect(() => {
+    setVisibleCount(20);
+  }, [studentSearch, filterStatus, filterKelas]);
+
+  React.useEffect(() => {
+    setResolvedPendingUserIds(prev => prev.filter(id => appUsers.some(user => user.id === id && user.status === 'pending')));
+  }, [appUsers]);
+
+  const pendingUsers = appUsers.filter(u => u.status === 'pending' && !resolvedPendingUserIds.includes(u.id));
   const allHalaqohs = Array.from(new Set(Object.keys(guruHalaqohData).filter(k => k !== '_order_').flatMap(k => guruHalaqohData[k]).filter(Boolean)));
   const totalHalaqoh = allHalaqohs.length;
   const emptyStudentCount = students.filter(s => {
@@ -103,8 +130,49 @@ const SettingsView = ({
     setShowScrollTop(e.target.scrollTop > 300);
   };
 
+  const scrollToSection = (id) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   const scrollToTop = () => {
     scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const hidePendingUser = (id) => {
+    setResolvedPendingUserIds(prev => prev.includes(id) ? prev : [...prev, id]);
+  };
+
+  const restorePendingUser = (id) => {
+    setResolvedPendingUserIds(prev => prev.filter(item => item !== id));
+  };
+
+  const handleApprovePendingUser = async (user) => {
+    hidePendingUser(user.id);
+    try {
+      await handleApproveUser(user);
+    } catch (err) {
+      restorePendingUser(user.id);
+      showToast?.('Gagal menerima akun. Coba lagi.');
+    }
+  };
+
+  const handleRejectPendingUser = async (id) => {
+    hidePendingUser(id);
+    try {
+      await handleRejectUser(id);
+    } catch (err) {
+      restorePendingUser(id);
+      showToast?.('Gagal menolak akun. Coba lagi.');
+    }
+  };
+
+  const resetStudentFilters = () => {
+    setLocalStudentSearch('');
+    setStudentSearch('');
+    setFilterStatus(isSuperAdmin ? 'kosong' : 'all');
+    setFilterKelas('');
+    setSelectedStudentIds([]);
+    setIsBulkEditOpen(false);
   };
 
   const processBulkImport = () => {
@@ -421,6 +489,13 @@ const SettingsView = ({
   const displayedStudents = filteredStudentsMaster.slice(0, visibleCount);
 
   const filteredGuruList = guruList.filter(guru => guru.toLowerCase().includes(guruSearch.toLowerCase()));
+  const hasStudentFilters = Boolean(studentSearch || filterKelas || filterStatus !== (isSuperAdmin ? 'kosong' : 'all'));
+  const quickSections = [
+    ...(isSuperAdmin ? [{ id: 'settings-identity', icon: GraduationCap, label: 'Identitas', detail: 'Logo, kelas, target' }] : []),
+    { id: 'settings-halaqoh', icon: Users, label: 'Guru & Halaqoh', detail: `${guruList.length} guru, ${totalHalaqoh} halaqoh` },
+    { id: 'settings-students', icon: Database, label: 'Data Siswa', detail: `${filteredStudentsMaster.length} tampil` },
+    ...(isSuperAdmin ? [{ id: 'settings-maintenance', icon: Wrench, label: 'Perawatan', detail: 'Backup & semester' }] : [])
+  ];
 
   return (
     <div
@@ -456,6 +531,20 @@ const SettingsView = ({
           </div>
         </div>
 
+        <div className="mb-6 sm:mb-8 sticky top-0 z-30 -mx-3 sm:mx-0 px-3 sm:px-0 py-2 bg-slate-50/95 backdrop-blur-md border-y sm:border border-slate-200 sm:rounded-2xl sm:shadow-sm">
+          <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar">
+            {quickSections.map(section => (
+              <QuickNavButton
+                key={section.id}
+                icon={section.icon}
+                label={section.label}
+                detail={section.detail}
+                onClick={() => scrollToSection(section.id)}
+              />
+            ))}
+          </div>
+        </div>
+
         <div className="space-y-7 sm:space-y-9">
           {isSuperAdmin && pendingUsers.length > 0 && (
             <section className="animate-in fade-in slide-in-from-top-4 duration-500">
@@ -474,10 +563,10 @@ const SettingsView = ({
                         <p className="text-xs font-bold text-orange-600/80 uppercase truncate">@{pendingUser.username}</p>
                       </div>
                       <div className="grid grid-cols-2 gap-2 sm:w-auto w-full">
-                        <button onClick={() => handleApproveUser(pendingUser)} className="bg-orange-500 hover:bg-orange-600 text-white font-bold px-3 py-2.5 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5">
+                        <button onClick={() => handleApprovePendingUser(pendingUser)} className="bg-orange-500 hover:bg-orange-600 text-white font-bold px-3 py-2.5 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5">
                           <CheckCircle2 size={14} /> Terima
                         </button>
-                        <button onClick={() => handleRejectUser(pendingUser.id)} className="bg-white text-orange-600 border border-orange-200 font-bold px-3 py-2.5 rounded-xl text-xs hover:bg-orange-100 transition-all flex items-center justify-center gap-1.5">
+                        <button onClick={() => handleRejectPendingUser(pendingUser.id)} className="bg-white text-orange-600 border border-orange-200 font-bold px-3 py-2.5 rounded-xl text-xs hover:bg-orange-100 transition-all flex items-center justify-center gap-1.5">
                           <X size={14} /> Tolak
                         </button>
                       </div>
@@ -489,7 +578,7 @@ const SettingsView = ({
           )}
 
           {isSuperAdmin && (
-            <section>
+            <section id="settings-identity" className="scroll-mt-24">
               <SectionHeader
                 accent="bg-blue-500"
                 title="Identitas & Kurikulum"
@@ -634,7 +723,7 @@ const SettingsView = ({
             </section>
           )}
 
-          <section>
+          <section id="settings-halaqoh" className="scroll-mt-24">
             <SectionHeader
               accent="bg-indigo-500"
               title="Manajemen Guru & Halaqoh"
@@ -903,7 +992,7 @@ const SettingsView = ({
             </div>
           </section>
 
-          <section className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <section id="settings-students" className="scroll-mt-24 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <SectionHeader
               accent="bg-purple-500"
               title={isSuperAdmin ? 'Bank Data Siswa' : 'Data Siswa Saya'}
@@ -911,8 +1000,8 @@ const SettingsView = ({
               icon={Database}
             />
 
-            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-              <div className="p-4 sm:p-5 border-b border-slate-100 bg-white">
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-visible">
+              <div className="p-4 sm:p-5 border-b border-slate-100 bg-white/95 backdrop-blur-md sticky top-[76px] z-20 rounded-t-2xl">
                 <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-3 lg:items-center">
                   <div className="relative">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
@@ -927,7 +1016,7 @@ const SettingsView = ({
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 lg:flex gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex gap-2">
                     <SelectShell className="sm:col-span-1 lg:w-[210px]">
                       <select
                         value={filterStatus}
@@ -955,6 +1044,7 @@ const SettingsView = ({
                       title="Ekspor data siswa ke CSV"
                     >
                       <Download size={18} strokeWidth={3} />
+                      Ekspor
                     </button>
                     {isSuperAdmin && (
                       <button
@@ -965,7 +1055,24 @@ const SettingsView = ({
                         {isBulkImportOpen ? 'Tutup' : 'Impor'}
                       </button>
                     )}
+                    {hasStudentFilters && (
+                      <button
+                        onClick={resetStudentFilters}
+                        className="px-4 py-3.5 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2 bg-slate-100 text-slate-600 hover:bg-slate-200 font-black text-xs uppercase tracking-widest border border-slate-200"
+                      >
+                        <X size={16} strokeWidth={3} />
+                        Reset
+                      </button>
+                    )}
                   </div>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 border border-slate-200">
+                    {filteredStudentsMaster.length} hasil
+                  </span>
+                  {studentSearch && <span className="px-2.5 py-1 rounded-full bg-purple-50 text-purple-600 border border-purple-100">Cari: {studentSearch}</span>}
+                  {filterKelas && <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-600 border border-blue-100">Kelas {filterKelas}</span>}
+                  {filterStatus !== (isSuperAdmin ? 'kosong' : 'all') && <span className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-600 border border-amber-100">Filter status aktif</span>}
                 </div>
               </div>
 
@@ -1109,7 +1216,7 @@ const SettingsView = ({
 
           {
             isSuperAdmin && (
-              <section className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+              <section id="settings-maintenance" className="scroll-mt-24 animate-in fade-in slide-in-from-bottom-4 duration-700">
                 <SectionHeader
                   accent="bg-rose-500"
                   title="Pemeliharaan Data"

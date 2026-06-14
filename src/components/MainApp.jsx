@@ -2721,7 +2721,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
             </div>
           )}
           {currentView === 'ujian' && (
-            <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar pb-24 md:pb-0 print:h-auto print:overflow-visible print:block">
+            <div className="flex-1 w-full h-full overflow-y-auto overscroll-y-auto custom-scrollbar pb-24 md:pb-0 print:h-auto print:overflow-visible print:block">
               <UjianView
                 activeHalaqoh={activeHalaqoh}
                 filteredStudents={filteredStudents}
@@ -2729,6 +2729,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
                 setStudents={setStudents}
                 showToast={showToast}
                 currentUser={currentUser}
+                institutionLogo={institutionLogo}
               />
             </div>
           )}
@@ -2804,13 +2805,13 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       <nav className="md:hidden fixed bottom-0 w-full bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-slate-800 flex justify-around items-center h-[70px] z-40 print:hidden transition-colors duration-500">
         <button onClick={() => setCurrentView('home')} className={`flex flex-col items-center gap-1 transition-colors ${currentView === 'home' ? 'text-green-600 dark:text-emerald-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-400'}`}><Home size={20} /><span className="text-[9px] font-bold">Beranda</span></button>
         <button onClick={() => setCurrentView('siswa')} className={`flex flex-col items-center gap-1 transition-colors ${currentView === 'siswa' ? 'text-green-600 dark:text-emerald-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-400'}`}><Users size={20} /><span className="text-[9px] font-bold">Siswa</span></button>
+        <button onClick={() => setCurrentView('ujian')} className={`flex flex-col items-center gap-1 transition-colors ${currentView === 'ujian' ? 'text-green-600 dark:text-emerald-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-400'}`}><ClipboardCheck size={20} /><span className="text-[9px] font-bold">Ujian</span></button>
         {isSuperAdmin && (
           <button onClick={() => setCurrentView('mutasi')} className={`flex flex-col items-center gap-1 transition-colors ${currentView === 'mutasi' ? 'text-green-600 dark:text-emerald-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-400'}`}><ArrowUpDown size={20} /><span className="text-[9px] font-bold">Mutasi</span></button>
         )}
         <button onClick={() => setCurrentView('laporan')} className={`flex flex-col items-center gap-1 transition-colors ${currentView === 'laporan' ? 'text-green-600 dark:text-emerald-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-400'}`}><BarChart3 size={20} /><span className="text-[9px] font-bold">Laporan</span></button>
         <button onClick={() => setCurrentView('arsip')} className={`flex flex-col items-center gap-1 transition-colors ${currentView === 'arsip' ? 'text-green-600 dark:text-emerald-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-400'}`}><Archive size={20} /><span className="text-[9px] font-bold">Arsip</span></button>
         <button onClick={() => setCurrentView('statistik')} className={`flex flex-col items-center gap-1 transition-colors ${currentView === 'statistik' ? 'text-green-600 dark:text-emerald-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-400'}`}><PieChart size={20} /><span className="text-[9px] font-bold">Grafik</span></button>
-        <button onClick={() => setCurrentView('ujian')} className={`flex flex-col items-center gap-1 transition-colors ${currentView === 'ujian' ? 'text-green-600 dark:text-emerald-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-400'}`}><ClipboardCheck size={20} /><span className="text-[9px] font-bold">Ujian</span></button>
         {isSuperAdmin && (
           <button onClick={() => setCurrentView('log')} className={`flex flex-col items-center gap-1 transition-colors ${currentView === 'log' ? 'text-green-600 dark:text-emerald-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-400'}`}><Activity size={20} /><span className="text-[9px] font-bold">Log</span></button>
         )}

@@ -5,6 +5,38 @@ import SurahSelector from '../SurahSelector';
 import AyatSelector from '../AyatSelector';
 import { surahList, ghoribList, tajwidList } from '../../data/constants';
 
+const normalizeSurahText = (value) => String(value || '')
+    .toLowerCase()
+    .replace(/^\s*\d+\.\s*/, '')
+    .replace(/\bayat\b.*$/i, '')
+    .replace(/\b\d+\s*-\s*\d+\b/g, '')
+    .replace(/\b\d+\b/g, '')
+    .replace(/[''`]/g, '')
+    .replace(/[^a-z0-9]+/g, '');
+
+const getTahfidzSurahNo = (materialName) => {
+    const text = String(materialName || '');
+    const explicitNo = text.match(/^\s*(\d{1,3})\s*\./);
+    if (explicitNo) {
+        const no = parseInt(explicitNo[1], 10);
+        if (no >= 1 && no <= 114) return no;
+    }
+
+    const normalized = normalizeSurahText(text);
+    const match = surahList.find(surah => normalized.includes(normalizeSurahText(surah.name)));
+    return match?.no || null;
+};
+
+const sortTahfidzMaterials = (list = []) => [...list].sort((a, b) => {
+    const aNo = getTahfidzSurahNo(a?.name);
+    const bNo = getTahfidzSurahNo(b?.name);
+
+    if (aNo && bNo && aNo !== bNo) return bNo - aNo;
+    if (aNo && !bNo) return -1;
+    if (!aNo && bNo) return 1;
+    return String(a?.name || '').localeCompare(String(b?.name || ''), 'id', { numeric: true, sensitivity: 'base' });
+});
+
 const TahsinSelector = ({ value, onChange, onAdd, onEnter, placeholder, className }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -588,9 +620,9 @@ const StudentMobileCard = React.memo(({ student, index, materials, hasTajwidSub,
     );
 });
 
-const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, showToast, currentUser }) => {
+const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, showToast, currentUser, institutionLogo }) => {
     const [activeTab, setActiveTab] = useState('penilaian'); // 'penilaian' | 'jadwal' | 'materi'
-    const [materials, setMaterials] = useState({ tahsin: [], tahfidz: [], jadwal: [], reportSettings: {}, institutionName: '' });
+    const [materials, setMaterials] = useState({ tahsin: [], tahfidz: [], jadwal: [], reportSettings: {}, institutionName: '', institutionLogo: '' });
     const [isLoading, setIsLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [kkmScore, setKkmScore] = useState(75);
@@ -630,14 +662,14 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
     }, [materials.tahsin, activeHalaqoh]);
 
     const currentTahfidz = useMemo(() => {
-        if (!activeHalaqoh) return (materials.tahfidz || []).filter(m => !m.halaqoh || m.halaqoh === 'Semua').filter(m => !(m.students && m.students.includes('HIDDEN')));
+        if (!activeHalaqoh) return sortTahfidzMaterials((materials.tahfidz || []).filter(m => !m.halaqoh || m.halaqoh === 'Semua').filter(m => !(m.students && m.students.includes('HIDDEN'))));
         const localNames = (materials.tahfidz || []).filter(m => m.halaqoh === activeHalaqoh).map(m => m.name);
         const combined = (materials.tahfidz || []).filter(m => {
             if (m.halaqoh === activeHalaqoh) return true;
             if ((!m.halaqoh || m.halaqoh === 'Semua') && !localNames.includes(m.name)) return true;
             return false;
         });
-        return combined.filter(m => !(m.students && m.students.includes('HIDDEN')));
+        return sortTahfidzMaterials(combined.filter(m => !(m.students && m.students.includes('HIDDEN'))));
     }, [materials.tahfidz, activeHalaqoh]);
 
     const sortScheduledMateri = React.useCallback((materiList = []) => {
@@ -793,7 +825,8 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                             tahfidz: newTahfidz,
                             jadwal: data.ujian_materials.jadwal || [],
                             reportSettings: data.ujian_materials.reportSettings || {},
-                            institutionName: data.institutionname || data.institutionName || ''
+                            institutionName: data.institutionname || data.institutionName || '',
+                            institutionLogo: data.institutionlogo || data.institutionLogo || ''
                         });
 
                         if (isOldFormatTahsin || isOldFormatTahfidz) {
@@ -1374,18 +1407,29 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                 showToast={showToast}
                 kkmScore={kkmScore}
                 activeHalaqoh={activeHalaqoh}
+                institutionLogo={institutionLogo}
+                reportStudents={studentsInHalaqoh}
             />
         );
     }
 
     return (
-        <div className="p-4 sm:p-6 w-full max-w-7xl mx-auto animate-in fade-in duration-500">
+        <div className="p-4 sm:p-6 w-full max-w-7xl mx-auto min-h-full pb-28 md:pb-8 animate-in fade-in duration-500">
             {/* Style khusus untuk cetak halaman ujian */}
             <style dangerouslySetInnerHTML={{
                 __html: `
                 @media print {
                     @page { size: landscape; margin: 10mm; }
+                    html, body {
+                        width: 210mm !important;
+                        height: 297mm !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        overflow: hidden !important;
+                    }
+
                     body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; background: white !important; }
+                    *, *::before, *::after { box-sizing: border-box !important; }
                     
                     /* Paksa warna tinta tulisan jadi hitam pekat saat mencetak via Dark Mode */
                     body * { color: black !important; }
@@ -1881,7 +1925,7 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
 
                     {/* TABEL GABUNGAN (TAHSIN & TAHFIDZ) */}
                     <div id="ujian-report-container" className="flex flex-col md:bg-white md:dark:bg-slate-900 md:rounded-3xl md:shadow-[0_8px_30px_rgba(0,0,0,0.04)] md:border md:border-slate-200/80 md:dark:border-slate-800 transition-colors">
-                        <div className="hidden md:block max-w-full overflow-x-auto overscroll-x-contain custom-scrollbar rounded-3xl print:!block print:overflow-visible" style={{ WebkitOverflowScrolling: 'touch' }}>
+                        <div className="hidden md:block max-w-full max-h-[calc(100dvh-280px)] min-h-[360px] overflow-auto overflow-x-auto overscroll-y-auto overscroll-x-contain custom-scrollbar rounded-3xl print:!block print:max-h-none print:min-h-0 print:overflow-visible" style={{ WebkitOverflowScrolling: 'touch' }}>
                             <table className="w-full text-left border-collapse table-auto" style={{ minWidth: `${examTableMinWidth}px` }}>
                                 <thead className="bg-slate-50/95 dark:bg-slate-800/95 backdrop-blur-md text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest sticky top-0 z-20 shadow-sm">
                                     <tr>
@@ -2248,6 +2292,42 @@ const getArabicPredicate = (score) => {
     return '-';
 };
 
+const ARABIC_PREDICATE_EXCELLENT = '\u0645\u0645\u062a\u0627\u0632';
+const ARABIC_PREDICATE_VERY_GOOD = '\u062c\u064a\u062f\u062c\u062f\u0627';
+const ARABIC_PREDICATE_GOOD = '\u062c\u064a\u062f';
+
+const getArabicPredicateLabel = (score) => {
+    const num = parseFloat(score);
+    if (isNaN(num)) return '-';
+    if (num >= 92) return ARABIC_PREDICATE_EXCELLENT;
+    if (num >= 83) return ARABIC_PREDICATE_VERY_GOOD;
+    if (num >= 75) return ARABIC_PREDICATE_GOOD;
+    return '-';
+};
+
+const getExamNoteFeedback = (predicate) => {
+    if (predicate === ARABIC_PREDICATE_EXCELLENT) return "Pertahankan prestasimu dalam mempelajari Al Qur'an";
+    if (predicate === ARABIC_PREDICATE_VERY_GOOD) return "Tetap semangat dalam mempelajari Al Qur'an";
+    if (predicate === ARABIC_PREDICATE_GOOD) return "Lebih giat lagi dalam mempelajari Al Qur'an";
+    return "Tetap semangat dalam mempelajari Al Qur'an";
+};
+
+const REPORT_TAHSIN_SUBJECTS = [
+    { key: 'Tilawah', label: 'Tilawah' },
+    { key: 'Fashohah', label: 'Fashohah' },
+    { key: 'Ilmu Ghorib', label: 'Ilmu Ghorib', autoList: ghoribList },
+    { key: 'Ilmu Tajwid', label: 'Ilmu Tajwid', autoList: tajwidList }
+];
+
+const normalizeStudentGender = (value) => {
+    const text = String(value || '').trim().toUpperCase();
+    if (!text) return 'L';
+    if (text === 'P' || text.includes('PEREMPUAN') || text.includes('PUTRI') || text.includes('AKHWAT') || text.includes('WANITA')) return 'P';
+    return 'L';
+};
+
+const getGenderNoteTerm = (value) => normalizeStudentGender(value) === 'P' ? 'sholihah' : 'sholih';
+
 const getGradeDescription = (score, kkm = 75) => {
     const num = parseFloat(score);
     if (isNaN(num)) return '-';
@@ -2273,12 +2353,18 @@ const getInitialReportZoom = () => {
 
 // --- Full Quran Assessment Report Wizard Component ---
 
-const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, activeHalaqoh }) => {
+const QuranReportWizard = ({ student, reportStudents = [], onClose, materials, showToast, kkmScore, activeHalaqoh, institutionLogo }) => {
     const [nis, setNis] = useState('');
     const [kelas, setKelas] = useState(student.kelas || '');
     const [halaqoh, setHalaqoh] = useState(student.halaqoh || activeHalaqoh || '');
     
-    const [gender, setGender] = useState(student.gender || student.jenis_kelamin || 'P');
+    const [gender, setGender] = useState(() => normalizeStudentGender(student.gender || student.jenis_kelamin));
+    const [bulkCaptureStudent, setBulkCaptureStudent] = useState(null);
+    const activeReportStudent = bulkCaptureStudent || student;
+    const isBulkCapture = Boolean(bulkCaptureStudent);
+    const displayNis = isBulkCapture ? (activeReportStudent.nis || activeReportStudent.no_induk || activeReportStudent.nisn || '') : nis;
+    const displayKelas = isBulkCapture ? (activeReportStudent.kelas || '') : kelas;
+    const displayGender = isBulkCapture ? normalizeStudentGender(activeReportStudent.gender || activeReportStudent.jenis_kelamin) : gender;
 
     const rs = materials.reportSettings || {};
     const semester = rs.semester || (new Date().getMonth() >= 6 ? 'Ganjil' : 'Genap');
@@ -2288,8 +2374,10 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
     const kepalaSekolah = rs.kepalaSekolah || 'Mei Tri Listari, S.Pd.I, M. Pd';
     const tempatCetak = rs.tempatCetak || 'Bogor';
     const tanggalCetak = rs.tanggalCetak || getIndonesianDate();
+    const reportInstitutionLogo = institutionLogo || materials.institutionLogo;
+    const hasInstitutionLogo = reportInstitutionLogo && reportInstitutionLogo !== 'logo.png';
 
-    const halaqohForFilter = student.halaqoh || activeHalaqoh || '';
+    const halaqohForFilter = activeReportStudent.halaqoh || activeHalaqoh || '';
     
     const currentTahsin = useMemo(() => {
         if (!halaqohForFilter) return (materials.tahsin || []).filter(m => !m.halaqoh || m.halaqoh === 'Semua').filter(m => !(m.students && m.students.includes('HIDDEN')));
@@ -2303,42 +2391,46 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
     }, [materials.tahsin, halaqohForFilter]);
 
     const currentTahfidz = useMemo(() => {
-        if (!halaqohForFilter) return (materials.tahfidz || []).filter(m => !m.halaqoh || m.halaqoh === 'Semua').filter(m => !(m.students && m.students.includes('HIDDEN')));
+        if (!halaqohForFilter) return sortTahfidzMaterials((materials.tahfidz || []).filter(m => !m.halaqoh || m.halaqoh === 'Semua').filter(m => !(m.students && m.students.includes('HIDDEN'))));
         const localNames = (materials.tahfidz || []).filter(m => m.halaqoh === halaqohForFilter).map(m => m.name);
         const combined = (materials.tahfidz || []).filter(m => {
             if (m.halaqoh === halaqohForFilter) return true;
             if ((!m.halaqoh || m.halaqoh === 'Semua') && !localNames.includes(m.name)) return true;
             return false;
         });
-        return combined.filter(m => !(m.students && m.students.includes('HIDDEN')));
+        return sortTahfidzMaterials(combined.filter(m => !(m.students && m.students.includes('HIDDEN'))));
     }, [materials.tahfidz, halaqohForFilter]);
 
-    // Deteksi apakah ada sub-materi Tajwid atau Ghorib di dalam materi Tahsin yang diujikan untuk siswa ini
-    const hasTajwidSub = useMemo(() => currentTahsin.some(mat => tajwidList.includes(mat.name) && (!mat.students || mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id)))), [currentTahsin, student.id]);
-    const hasGhoribSub = useMemo(() => currentTahsin.some(mat => ghoribList.includes(mat.name) && (!mat.students || mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id)))), [currentTahsin, student.id]);
-    const hasTahfidzAssigned = useMemo(() => currentTahfidz.some(m => !m.students || m.students.includes('all') || m.students.some(id => String(id) === String(student.id))), [currentTahfidz, student.id]);
+    const getSavedSubjectValue = (sourceStudent, subjectKey) => {
+        const legacyKeys = subjectKey === 'Fashohah'
+            ? ['Fashohah', 'Fashahah']
+            : subjectKey === 'Ilmu Ghorib'
+                ? ['Ilmu Ghorib', 'Ghorib']
+                : subjectKey === 'Ilmu Tajwid'
+                    ? ['Ilmu Tajwid', 'Tajwid']
+                    : [subjectKey];
+        return legacyKeys
+            .map(key => sourceStudent.ujian_records?.[key])
+            .find(value => value !== undefined && value !== null && String(value).trim() !== '') || '';
+    };
 
     const getSubAverage = (list) => {
-        const scores = currentTahsin.filter(m => list.includes(m.name) && (!m.students || m.students.includes('all') || m.students.some(id => String(id) === String(student.id)))).map(m => parseFloat(student.ujian_records?.[m.name])).filter(n => !isNaN(n));
+        const scores = list.map(name => parseFloat(activeReportStudent.ujian_records?.[name])).filter(n => !isNaN(n));
         return scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : '';
     };
 
-    // Ringkas Bidang Studi: Gabungkan sub-materi menjadi "Tajwid" dan "Ghorib"
-    const summarizedTahsin = useMemo(() => {
-        const mainMats = currentTahsin.filter(m => !tajwidList.includes(m.name) && !ghoribList.includes(m.name) && (!m.students || m.students.includes('all') || m.students.some(id => String(id) === String(student.id)))).map(m => m.name);
-        const result = [...mainMats];
-        if (hasTajwidSub && !result.includes('Tajwid')) result.push('Tajwid');
-        if (hasGhoribSub && !result.includes('Ghorib')) result.push('Ghorib');
-        return result;
-    }, [materials.tahsin, hasTajwidSub, hasGhoribSub, student.id]);
+    const autoSubjectValues = useMemo(() => {
+        return REPORT_TAHSIN_SUBJECTS.reduce((acc, subject) => {
+            if (subject.autoList) acc[subject.key] = getSubAverage(subject.autoList);
+            return acc;
+        }, {});
+    }, [activeReportStudent.ujian_records]);
 
     // Core grades
     const [mainScoreValues, setMainScoreValues] = useState(() => {
         const initial = {};
-        summarizedTahsin.forEach(mat => {
-            if (mat === 'Tajwid' && hasTajwidSub && !currentTahsin.some(m => m.name === 'Tajwid')) initial[mat] = getSubAverage(tajwidList);
-            else if (mat === 'Ghorib' && hasGhoribSub && !currentTahsin.some(m => m.name === 'Ghorib')) initial[mat] = getSubAverage(ghoribList);
-            else initial[mat] = student.ujian_records?.[mat] || '';
+        REPORT_TAHSIN_SUBJECTS.forEach(subject => {
+            initial[subject.key] = getSavedSubjectValue(student, subject.key);
         });
         return initial;
     });
@@ -2346,6 +2438,7 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
 
     // Prepopulate recitations (tahfidz scores)
     const [hafalanKelas, setHafalanKelas] = useState([]);
+    const [hafalanTambahan, setHafalanTambahan] = useState([]);
 
     // Target yang tidak tercapai
     const [targets, setTargets] = useState(Array.from({ length: 8 }, () => ''));
@@ -2363,22 +2456,22 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
     const [isNoteEdited, setIsNoteEdited] = useState(false);
     const [zoom, setZoom] = useState(getInitialReportZoom);
     const [isDownloading, setIsDownloading] = useState(false);
+    const [isDownloadingAll, setIsDownloadingAll] = useState(false);
 
-    // Initialize lists
-    useEffect(() => {
+    const buildHafalanLists = (sourceStudent) => {
         const tahfidzScores = [];
         currentTahfidz.forEach(mat => {
-            if (!mat.students || mat.students.includes('all') || mat.students.some(id => String(id) === String(student.id))) {
-                const score = student.ujian_records?.[mat.name];
+            if (!mat.students || mat.students.includes('all') || mat.students.some(id => String(id) === String(sourceStudent.id))) {
+                const score = sourceStudent.ujian_records?.[mat.name];
                 // Selalu masukkan materi tahfidz yang ada di pengaturan ujian, meskipun nilainya kosong
                 tahfidzScores.push({ surah: mat.name, score: score !== undefined && score !== null ? score : '' });
             }
         });
 
         // Also scan student's other records that are surahs
-        Object.keys(student.ujian_records || {}).forEach(key => {
+        Object.keys(sourceStudent.ujian_records || {}).forEach(key => {
             if (!currentTahfidz.some(m => m.name === key) && surahList.some(s => s.name === key)) {
-                const score = student.ujian_records[key];
+                const score = sourceStudent.ujian_records[key];
                 if (score !== undefined && score !== null && score.toString().trim() !== '') {
                     // Prevent duplicate
                     if (!tahfidzScores.some(x => x.surah === key)) {
@@ -2388,36 +2481,73 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
             }
         });
 
-        const classList = Array.from({ length: 22 }, (_, i) => {
+        const classList = Array.from({ length: 11 }, (_, i) => {
             if (tahfidzScores[i]) {
                 return { surah: tahfidzScores[i].surah, score: tahfidzScores[i].score };
             }
             return { surah: '', score: '' };
         });
 
+        const additionalList = Array.from({ length: 11 }, (_, i) => {
+            const sourceIndex = i + 11;
+            if (tahfidzScores[sourceIndex]) {
+                return { surah: tahfidzScores[sourceIndex].surah, score: tahfidzScores[sourceIndex].score };
+            }
+            return { surah: '', score: '' };
+        });
+
+        return { classList, additionalList };
+    };
+
+    const bulkHafalanLists = useMemo(() => {
+        if (!isBulkCapture) return null;
+        return buildHafalanLists(activeReportStudent);
+    }, [isBulkCapture, activeReportStudent, currentTahfidz]);
+
+    const displayHafalanKelas = bulkHafalanLists?.classList || hafalanKelas;
+    const displayHafalanTambahan = bulkHafalanLists?.additionalList || hafalanTambahan;
+    const displayTargets = isBulkCapture ? Array.from({ length: 8 }, () => '') : targets;
+
+    // Initialize lists
+    useEffect(() => {
+        const { classList, additionalList } = buildHafalanLists(student);
         setHafalanKelas(classList);
+        setHafalanTambahan(additionalList);
     }, [student, currentTahfidz]);
 
     // Compute average tahfidz
     const computedTahfidzAvg = useMemo(() => {
         const allScores = [];
-        hafalanKelas.forEach(h => {
+        [...displayHafalanKelas, ...displayHafalanTambahan].forEach(h => {
             const num = parseFloat(h.score);
             if (!isNaN(num)) allScores.push(num);
         });
         if (allScores.length === 0) return '';
         return (allScores.reduce((a, b) => a + b, 0) / allScores.length).toFixed(0);
-    }, [hafalanKelas]);
+    }, [displayHafalanKelas, displayHafalanTambahan]);
 
     // Tahfidz final score to display (either computed or overridden)
-    const displayTahfidz = tahfidzOverride !== '' ? tahfidzOverride : computedTahfidzAvg;
+    const effectiveTahfidzOverride = isBulkCapture ? (activeReportStudent.ujian_records?.['Tahfidz'] || '') : tahfidzOverride;
+    const displayTahfidz = effectiveTahfidzOverride !== '' ? effectiveTahfidzOverride : computedTahfidzAvg;
+
+    const reportSubjectRows = useMemo(() => {
+        const getSubjectScore = (key) => autoSubjectValues[key] || (isBulkCapture ? getSavedSubjectValue(activeReportStudent, key) : mainScoreValues[key]) || '';
+        return [
+            { key: 'Tilawah', label: 'Tilawah', score: getSubjectScore('Tilawah') },
+            { key: 'Tahfidz', label: 'Tahfidz', score: displayTahfidz },
+            { key: 'Fashohah', label: 'Fashohah', score: getSubjectScore('Fashohah') },
+            { key: 'Ilmu Ghorib', label: 'Ilmu Ghorib', score: getSubjectScore('Ilmu Ghorib') },
+            { key: 'Ilmu Tajwid', label: 'Ilmu Tajwid', score: getSubjectScore('Ilmu Tajwid') }
+        ];
+    }, [autoSubjectValues, activeReportStudent, isBulkCapture, mainScoreValues, displayTahfidz]);
 
     // Compute final class average and total
     const { jumlahNilai, rataRata } = useMemo(() => {
         let total = 0;
         let count = 0;
 
-        Object.values(mainScoreValues).forEach(val => {
+        reportSubjectRows.forEach(row => {
+            const val = row.score;
             const num = parseFloat(val);
             if (!isNaN(num)) {
                 total += num;
@@ -2425,30 +2555,27 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
             }
         });
 
-        if (hasTahfidzAssigned) {
-            const num = parseFloat(displayTahfidz);
-            if (!isNaN(num)) {
-                total += num;
-                count++;
-            }
-        }
-
         const sum = count > 0 ? total : 0;
         const avg = count > 0 ? (total / count).toFixed(0) : '';
         return { jumlahNilai: sum || '-', rataRata: avg || '-' };
-    }, [mainScoreValues, displayTahfidz, hasTahfidzAssigned]);
+    }, [reportSubjectRows]);
+
+    const defaultCatatan = useMemo(() => {
+        const finalPredicateScore = rataRata !== '-' ? rataRata : displayTahfidz;
+        const notePredicate = getArabicPredicateLabel(finalPredicateScore);
+        const noteGenderTerm = getGenderNoteTerm(displayGender);
+        const predicateText = notePredicate === '-' ? 'yang perlu ditingkatkan' : `dengan predikat ${notePredicate}`;
+        return `Alhamdulillah ananda ${activeReportStudent.name} yang ${noteGenderTerm} telah menyelesaikan materi pembelajaran Al Qur'an ${predicateText}. ${getExamNoteFeedback(notePredicate)}.`;
+    }, [activeReportStudent.name, displayGender, rataRata, displayTahfidz]);
+
+    const displayedCatatan = isBulkCapture ? defaultCatatan : (isNoteEdited ? catatan : defaultCatatan);
 
     // Auto-update note if not edited
     useEffect(() => {
         if (!isNoteEdited) {
-            const tahfidzPredicateScore = displayTahfidz || rataRata;
-            const arabicPredicate = getArabicPredicate(tahfidzPredicateScore);
-            const normalizedGender = String(gender || '').trim().toUpperCase();
-            const genderTerm = normalizedGender === 'P' || normalizedGender.includes('PEREMPUAN') ? 'sholihah' : 'sholih';
-            const defaultNote = `Alhamdulillah ananda ${student.name} yang ${genderTerm} telah menyelesaikan materi pembelajaran Al Qur'an dengan predikat ${arabicPredicate === '-' ? 'ممتاز' : arabicPredicate}. Pertahankan prestasimu dalam mempelajari Al Qur'an`;
-            setCatatan(defaultNote.endsWith('.') ? defaultNote : `${defaultNote}.`);
+            setCatatan(defaultCatatan);
         }
-    }, [student.name, gender, rataRata, displayTahfidz, isNoteEdited]);
+    }, [defaultCatatan, isNoteEdited]);
 
     const handleHafalanChange = (idx, field, val) => {
         let newVal = val;
@@ -2458,28 +2585,45 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
         setHafalanKelas(updated);
     };
 
+    const handleHafalanTambahanChange = (idx, field, val) => {
+        let newVal = val;
+        if (field === 'score' && newVal !== '' && !isNaN(newVal) && parseFloat(newVal) > 100) newVal = '100';
+        const updated = [...hafalanTambahan];
+        updated[idx] = { ...updated[idx], [field]: newVal };
+        setHafalanTambahan(updated);
+    };
+
     const handleTargetChange = (idx, val) => {
         const updated = [...targets];
         updated[idx] = val;
         setTargets(updated);
     };
 
+    const ensurePdfLibraries = async () => {
+        await document.fonts.ready;
+        if (!window.htmlToImage) {
+            const script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js';
+            document.body.appendChild(script);
+            await new Promise((resolve, reject) => { script.onload = resolve; script.onerror = reject; });
+        }
+        if (!window.jspdf) {
+            const script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+            document.body.appendChild(script);
+            await new Promise((resolve, reject) => { script.onload = resolve; script.onerror = reject; });
+        }
+    };
+
+    const waitForReportPaint = async () => {
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        if (document.fonts?.ready) await document.fonts.ready;
+    };
+
     const handleDownloadPDF = async () => {
         setIsDownloading(true);
         try {
-            await document.fonts.ready;
-            if (!window.htmlToImage) {
-                const script = document.createElement('script');
-                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js';
-                document.body.appendChild(script);
-                await new Promise((resolve, reject) => { script.onload = resolve; script.onerror = reject; });
-            }
-            if (!window.jspdf) {
-                const script = document.createElement('script');
-                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-                document.body.appendChild(script);
-                await new Promise((resolve, reject) => { script.onload = resolve; script.onerror = reject; });
-            }
+            await ensurePdfLibraries();
 
             const { jsPDF } = window.jspdf;
             const element = document.getElementById('individual-raport-capture');
@@ -2501,7 +2645,7 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
                 const pdfHeight = pdf.internal.pageSize.getHeight();
 
                 pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-                pdf.save(`Raport_AlQuran_${student.name.replace(/\s+/g, '_')}.pdf`);
+                pdf.save(`Raport_AlQuran_${activeReportStudent.name.replace(/\s+/g, '_')}.pdf`);
                 showToast('Raport PDF berhasil diunduh!');
             }
         } catch (error) {
@@ -2509,6 +2653,55 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
             showToast("Maaf, terjadi kesalahan saat membuat PDF.");
         } finally {
             setIsDownloading(false);
+        }
+    };
+
+    const handleDownloadAllPDF = async () => {
+        const studentsToExport = (reportStudents.length > 0 ? reportStudents : [student]).filter(Boolean);
+        if (studentsToExport.length === 0) {
+            showToast('Tidak ada siswa untuk dibuatkan PDF.');
+            return;
+        }
+
+        setIsDownloadingAll(true);
+        try {
+            await ensurePdfLibraries();
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF({
+                orientation: 'portrait',
+                unit: 'mm',
+                format: 'a4'
+            });
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = pdf.internal.pageSize.getHeight();
+
+            for (let i = 0; i < studentsToExport.length; i += 1) {
+                setBulkCaptureStudent(studentsToExport[i]);
+                await waitForReportPaint();
+
+                const element = document.getElementById('individual-raport-capture');
+                if (!element) continue;
+
+                const imgData = await window.htmlToImage.toJpeg(element, {
+                    quality: 0.98,
+                    pixelRatio: 2.5,
+                    backgroundColor: '#ffffff'
+                });
+
+                if (i > 0) pdf.addPage('a4', 'portrait');
+                pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+            }
+
+            setBulkCaptureStudent(null);
+            const safeHalaqoh = String(activeHalaqoh || 'Semua').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+            pdf.save(`Raport_AlQuran_Semua_${safeHalaqoh}.pdf`);
+            showToast(`PDF massal ${studentsToExport.length} raport berhasil diunduh!`);
+        } catch (error) {
+            console.error("Gagal mengunduh PDF massal:", error);
+            showToast("Maaf, terjadi kesalahan saat membuat PDF massal.");
+        } finally {
+            setBulkCaptureStudent(null);
+            setIsDownloadingAll(false);
         }
     };
 
@@ -2534,10 +2727,11 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
                     #root > div > :not(main):not(style) { display: none !important; }
                     
                     /* Lepaskan semua pembatas scroll & flex agar bisa memanjang sesuai ukuran kertas */
-                    html, body, #root, #root > div, main, main > div {
-                        height: auto !important;
+                    #root, #root > div, main, main > div {
+                        width: 210mm !important;
+                        height: 297mm !important;
                         min-height: auto !important;
-                        overflow: visible !important;
+                        overflow: hidden !important;
                         position: static !important;
                         display: block !important;
                         background: white !important;
@@ -2546,22 +2740,35 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
                     /* Hapus efek zoom di print */
                     #zoom-wrapper {
                         transform: none !important;
-                        height: auto !important;
+                        width: 210mm !important;
+                        height: 297mm !important;
                         margin: 0 !important;
                         border: none !important;
                         box-shadow: none !important;
+                        overflow: hidden !important;
+                        page-break-inside: avoid !important;
+                        break-inside: avoid !important;
                     }
 
                     #individual-raport-capture {
                         position: relative !important;
                         width: 210mm !important;
                         height: 297mm !important;
+                        min-width: 210mm !important;
+                        min-height: 297mm !important;
                         margin: 0 auto !important;
-                        padding: 15mm !important;
+                        padding: 5mm 14mm 10mm !important;
                         box-shadow: none !important;
                         border: none !important;
                         background: white !important;
                         color: black !important;
+                        overflow: hidden !important;
+                        page-break-before: avoid !important;
+                        page-break-after: avoid !important;
+                        page-break-inside: avoid !important;
+                        break-before: avoid !important;
+                        break-after: avoid !important;
+                        break-inside: avoid !important;
                     }
                 }
                 
@@ -2588,11 +2795,11 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
                     </button>
                     <div className="min-w-0 flex-1">
                         <h2 className="text-base sm:text-lg font-black tracking-tight leading-tight truncate">Cetak Raport Al-Qur&apos;an</h2>
-                        <p className="text-[10px] sm:text-xs text-slate-400 font-bold mt-0.5 truncate">Siswa: {student.name}</p>
+                        <p className="text-[10px] sm:text-xs text-slate-400 font-bold mt-0.5 truncate">Siswa: {activeReportStudent.name}</p>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-2 sm:flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+                <div className="grid grid-cols-3 sm:flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
                     {/* Zoom Slider */}
                     <div className="hidden lg:flex items-center gap-2 bg-slate-700/50 px-4 py-2 rounded-xl border border-slate-700 mr-2">
                         <span className="text-xs font-bold text-slate-400">Zoom:</span>
@@ -2610,7 +2817,7 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
 
                     <button
                         onClick={handleDownloadPDF}
-                        disabled={isDownloading}
+                        disabled={isDownloading || isDownloadingAll}
                         className="min-w-0 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-5 py-2.5 rounded-xl font-bold text-[11px] sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition-all active:scale-95 disabled:opacity-50"
                     >
                         {isDownloading ? <Loader2 size={16} className="animate-spin sm:w-4 sm:h-4 w-3.5 h-3.5" /> : <FileText size={16} className="sm:w-4 sm:h-4 w-3.5 h-3.5" />}
@@ -2619,8 +2826,20 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
                     </button>
 
                     <button
+                        onClick={handleDownloadAllPDF}
+                        disabled={isDownloading || isDownloadingAll}
+                        className="min-w-0 sm:flex-none bg-violet-600 hover:bg-violet-700 text-white px-3 sm:px-5 py-2.5 rounded-xl font-bold text-[11px] sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition-all active:scale-95 disabled:opacity-50"
+                        title="Unduh seluruh raport siswa dalam satu file PDF"
+                    >
+                        {isDownloadingAll ? <Loader2 size={16} className="animate-spin sm:w-4 sm:h-4 w-3.5 h-3.5" /> : <Download size={16} className="sm:w-4 sm:h-4 w-3.5 h-3.5" />}
+                        <span className="hidden sm:inline">PDF Semua</span>
+                        <span className="sm:hidden">Semua</span>
+                    </button>
+
+                    <button
                         onClick={handlePrint}
-                        className="min-w-0 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white px-3 sm:px-5 py-2.5 rounded-xl font-bold text-[11px] sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition-all active:scale-95"
+                        disabled={isDownloading || isDownloadingAll}
+                        className="min-w-0 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white px-3 sm:px-5 py-2.5 rounded-xl font-bold text-[11px] sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition-all active:scale-95 disabled:opacity-50"
                     >
                         <Printer size={16} className="sm:w-4 sm:h-4 w-3.5 h-3.5" />
                         <span className="hidden sm:inline">Cetak (Browser)</span>
@@ -2693,46 +2912,49 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
                         </div>
 
                         <div className="grid grid-cols-2 gap-3">
-                            {summarizedTahsin.map((mat, idx) => (
-                                <div key={idx} className="flex flex-col gap-1">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider" title={mat}>{mat.length > 20 ? mat.substring(0, 18) + '...' : mat}</label>
+                            {REPORT_TAHSIN_SUBJECTS.map((subject) => {
+                                const autoValue = autoSubjectValues[subject.key] || '';
+                                return (
+                                <div key={subject.key} className="flex flex-col gap-1">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider" title={subject.label}>{subject.label}</label>
                                     <input
                                         type="text"
-                                        value={mainScoreValues[mat] || ''}
+                                        value={autoValue || mainScoreValues[subject.key] || ''}
+                                        disabled={Boolean(autoValue)}
                                         onChange={(e) => {
                                             let newVal = e.target.value;
                                             if (newVal !== '' && !isNaN(newVal) && parseFloat(newVal) > 100) newVal = '100';
-                                            setMainScoreValues(prev => ({ ...prev, [mat]: newVal }));
+                                            setMainScoreValues(prev => ({ ...prev, [subject.key]: newVal }));
                                         }}
-                                        placeholder="-"
-                                        className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 text-center font-bold outline-none focus:border-emerald-500"
+                                        placeholder={autoValue ? 'Otomatis dari rata-rata materi' : '-'}
+                                        title={autoValue ? 'Nilai otomatis dari rata-rata materi yang sudah dinilai di halaman ujian' : 'Isi manual jika belum ada nilai detail'}
+                                        className={`bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 text-center font-bold outline-none focus:border-emerald-500 ${autoValue ? 'opacity-75 cursor-not-allowed' : ''}`}
                                     />
                                 </div>
-                            ))}
-                            {hasTahfidzAssigned && (
-                                <div className="flex flex-col gap-1">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Tahfidz (Rata-rata)</label>
-                                    <input
-                                        type="text"
-                                        value={tahfidzOverride}
-                                        onChange={(e) => {
-                                            let newVal = e.target.value;
-                                            if (newVal !== '' && !isNaN(newVal) && parseFloat(newVal) > 100) newVal = '100';
-                                            setTahfidzOverride(newVal);
-                                        }}
-                                        placeholder={computedTahfidzAvg || '-'}
-                                        className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 text-center font-bold outline-none focus:border-emerald-500"
-                                        title="Kosongkan untuk menggunakan rata-rata hafalan otomatis"
-                                    />
-                                </div>
-                            )}
+                                );
+                            })}
+                            <div className="flex flex-col gap-1">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Tahfidz (Rata-rata)</label>
+                                <input
+                                    type="text"
+                                    value={tahfidzOverride}
+                                    onChange={(e) => {
+                                        let newVal = e.target.value;
+                                        if (newVal !== '' && !isNaN(newVal) && parseFloat(newVal) > 100) newVal = '100';
+                                        setTahfidzOverride(newVal);
+                                    }}
+                                    placeholder={computedTahfidzAvg || '-'}
+                                    className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 text-center font-bold outline-none focus:border-emerald-500"
+                                    title="Kosongkan untuk menggunakan rata-rata hafalan otomatis"
+                                />
+                            </div>
                         </div>
                     </div>
 
                     {/* 3. RINCIAN SETORAN HAFALAN */}
                     <div className="bg-slate-900 sm:bg-slate-800/50 p-4 sm:p-5 rounded-2xl border border-slate-800 sm:border-slate-700/60 flex flex-col gap-4">
                         <div className="flex items-center gap-2 pb-2 border-b border-slate-700/50">
-                            <span className="text-purple-400 font-bold text-sm uppercase tracking-wider">3. I. Hafalan Kelas (Max 22)</span>
+                            <span className="text-purple-400 font-bold text-sm uppercase tracking-wider">3. I. Hafalan Kelas (Max 11)</span>
                         </div>
 
                         <div className="flex flex-col gap-3 max-h-80 overflow-y-auto pr-1 custom-scrollbar">
@@ -2741,9 +2963,10 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
                                     <span className="text-xs font-black text-slate-500 w-5 text-center">{i + 1}</span>
                                     <input
                                         type="text"
+                                        list="surah-list-options"
                                         value={h.surah}
                                         onChange={(e) => handleHafalanChange(i, 'surah', e.target.value)}
-                                        placeholder="Surah / Halaman"
+                                        placeholder="Nama surat"
                                         className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 flex-1 text-xs outline-none focus:border-purple-500 text-slate-200 font-bold"
                                     />
                                     <input
@@ -2758,10 +2981,40 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
                         </div>
                     </div>
 
-                    {/* 4. TARGET YANG TIDAK TERCAPAI (Max 8) */}
+                    {/* 4. HAFALAN TAMBAHAN */}
                     <div className="bg-slate-900 sm:bg-slate-800/50 p-4 sm:p-5 rounded-2xl border border-slate-800 sm:border-slate-700/60 flex flex-col gap-4">
                         <div className="flex items-center gap-2 pb-2 border-b border-slate-700/50">
-                            <span className="text-orange-400 font-bold text-sm uppercase tracking-wider">4. II. Target Tidak Tercapai</span>
+                            <span className="text-fuchsia-400 font-bold text-sm uppercase tracking-wider">4. II. Hafalan Tambahan (Max 11)</span>
+                        </div>
+
+                        <div className="flex flex-col gap-3 max-h-80 overflow-y-auto pr-1 custom-scrollbar">
+                            {hafalanTambahan.map((h, i) => (
+                                <div key={i} className="flex gap-2 items-center bg-slate-950/60 p-2 rounded-xl border border-slate-800">
+                                    <span className="text-xs font-black text-slate-500 w-5 text-center">{i + 1}</span>
+                                    <input
+                                        type="text"
+                                        list="surah-list-options"
+                                        value={h.surah}
+                                        onChange={(e) => handleHafalanTambahanChange(i, 'surah', e.target.value)}
+                                        placeholder="Nama surat"
+                                        className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 flex-1 text-xs outline-none focus:border-fuchsia-500 text-slate-200 font-bold"
+                                    />
+                                    <input
+                                        type="text"
+                                        value={h.score}
+                                        onChange={(e) => handleHafalanTambahanChange(i, 'score', e.target.value)}
+                                        placeholder="Nilai"
+                                        className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 w-12 text-center text-xs outline-none focus:border-fuchsia-500 text-slate-200 font-black"
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* 5. TARGET YANG TIDAK TERCAPAI (Max 8) */}
+                    <div className="bg-slate-900 sm:bg-slate-800/50 p-4 sm:p-5 rounded-2xl border border-slate-800 sm:border-slate-700/60 flex flex-col gap-4">
+                        <div className="flex items-center gap-2 pb-2 border-b border-slate-700/50">
+                            <span className="text-orange-400 font-bold text-sm uppercase tracking-wider">5. III. Target Tidak Tercapai</span>
                         </div>
 
                         <div className="grid grid-cols-1 xl:grid-cols-2 gap-2 sm:gap-3">
@@ -2784,10 +3037,10 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
                         </datalist>
                     </div>
 
-                    {/* 5. ADAB DALAM HALAQOH */}
+                    {/* 6. ADAB DALAM HALAQOH */}
                     <div className="bg-slate-900 sm:bg-slate-800/50 p-4 sm:p-5 rounded-2xl border border-slate-800 sm:border-slate-700/60 flex flex-col gap-4">
                         <div className="flex items-center gap-2 pb-2 border-b border-slate-700/50">
-                            <span className="text-teal-400 font-bold text-sm uppercase tracking-wider">5. III. Adab Dalam Halaqoh</span>
+                            <span className="text-teal-400 font-bold text-sm uppercase tracking-wider">6. IV. Adab Dalam Halaqoh</span>
                         </div>
 
                         <div className="flex flex-col gap-3">
@@ -2814,10 +3067,10 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
                         </div>
                     </div>
 
-                    {/* 6. CATATAN */}
+                    {/* 7. CATATAN */}
                     <div className="bg-slate-900 sm:bg-slate-800/50 p-4 sm:p-5 rounded-2xl border border-slate-800 sm:border-slate-700/60 flex flex-col gap-4 mb-4 lg:mb-8">
                         <div className="flex items-center gap-2 pb-2 border-b border-slate-700/50">
-                            <span className="text-rose-400 font-bold text-sm uppercase tracking-wider">6. Catatan</span>
+                            <span className="text-rose-400 font-bold text-sm uppercase tracking-wider">7. Catatan</span>
                         </div>
 
                         <div className="flex flex-col gap-3">
@@ -2825,14 +3078,17 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
                                 <div className="flex justify-between items-center">
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Catatan Guru</label>
                                     <button
-                                        onClick={() => setIsNoteEdited(false)}
+                                        onClick={() => {
+                                            setCatatan(defaultCatatan);
+                                            setIsNoteEdited(false);
+                                        }}
                                         className="text-[9px] font-bold text-emerald-400 hover:underline"
                                     >
                                         Reset Default
                                     </button>
                                 </div>
                                 <textarea
-                                    value={catatan}
+                                    value={displayedCatatan}
                                     onChange={(e) => {
                                         setCatatan(e.target.value);
                                         setIsNoteEdited(true);
@@ -2863,7 +3119,7 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
                                 height: '297mm',
                                 minWidth: '210mm',
                                 minHeight: '297mm',
-                                padding: '15mm',
+                                padding: '5mm 14mm 10mm',
                                 boxSizing: 'border-box',
                                 overflow: 'hidden'
                             }}
@@ -2871,53 +3127,56 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
 
                             <div>
                                 {/* Header */}
-                                <div className="text-center font-extrabold leading-tight mb-5 tracking-wide uppercase text-black">
-                                    <div className="text-[13pt] mb-1">Laporan Penilaian Hasil Belajar</div>
-                                    <div className="text-[11pt]">Bidang Studi Al-Qur&apos;an</div>
+                                <div className="text-center font-extrabold leading-tight mb-2 tracking-wide uppercase text-black">
+                                    {hasInstitutionLogo && (
+                                        <img src={reportInstitutionLogo} alt="Logo Sekolah" className="w-[34mm] h-[34mm] object-contain mx-auto mb-1" />
+                                    )}
+                                    <div className="text-[12pt] mb-0.5">Laporan Penilaian Hasil Belajar</div>
+                                    <div className="text-[10.5pt]">Bidang Studi Al-Qur&apos;an</div>
                                 </div>
 
                                 {/* Identity Block */}
-                                <div className="flex justify-between text-[10px] leading-tight mb-4 font-bold text-black">
+                                <div className="flex justify-between text-[9.5px] leading-[1.15] mb-2 font-bold text-black">
                                     <table className="w-[60%] border-none">
                                         <tbody>
                                             <tr>
-                                                <td className="w-[90px] align-top pb-1.5">Nama Siswa</td>
-                                                <td className="w-[10px] align-top pb-1.5">:</td>
-                                                <td className="uppercase font-extrabold text-[11px] align-top pb-1.5">{student.name}</td>
+                                                <td className="w-[90px] align-top pb-1">Nama Siswa</td>
+                                                <td className="w-[10px] align-top pb-1">:</td>
+                                                <td className="uppercase font-extrabold text-[10.5px] align-top pb-1">{activeReportStudent.name}</td>
                                             </tr>
                                             <tr>
-                                                <td className="w-[90px] align-top pb-1.5">No. Induk</td>
-                                                <td className="w-[10px] align-top pb-1.5">:</td>
-                                                <td className="align-top pb-1.5">{nis || '-'}</td>
+                                                <td className="w-[90px] align-top pb-1">No. Induk</td>
+                                                <td className="w-[10px] align-top pb-1">:</td>
+                                                <td className="align-top pb-1">{displayNis || '-'}</td>
                                             </tr>
                                             <tr>
-                                                <td className="w-[90px] align-top pb-1.5">Jenis Kelamin</td>
-                                                <td className="w-[10px] align-top pb-1.5">:</td>
-                                                <td className="align-top pb-1.5">{gender}</td>
+                                                <td className="w-[90px] align-top pb-1">Jenis Kelamin</td>
+                                                <td className="w-[10px] align-top pb-1">:</td>
+                                                <td className="align-top pb-1">{displayGender}</td>
                                             </tr>
                                             <tr>
-                                                <td className="w-[90px] align-top pb-1.5">Nama Sekolah</td>
-                                                <td className="w-[10px] align-top pb-1.5">:</td>
-                                                <td className="uppercase align-top pb-1.5">{namaSekolah}</td>
+                                                <td className="w-[90px] align-top pb-1">Nama Sekolah</td>
+                                                <td className="w-[10px] align-top pb-1">:</td>
+                                                <td className="uppercase align-top pb-1">{namaSekolah}</td>
                                             </tr>
                                             <tr>
                                                 <td className="w-[90px] align-top">Alamat Sekolah</td>
                                                 <td className="w-[10px] align-top">:</td>
-                                                <td className="font-normal text-[9px] align-top leading-normal pr-4"><div className="line-clamp-2">{alamatSekolah}</div></td>
+                                                <td className="font-normal text-[8.5px] align-top leading-tight pr-4"><div className="line-clamp-2">{alamatSekolah}</div></td>
                                             </tr>
                                         </tbody>
                                     </table>
                                     <table className="w-[35%] border-none">
                                         <tbody>
                                             <tr>
-                                                <td className="w-[90px] align-top pb-1.5">Kelas / Halaqoh</td>
-                                                <td className="w-[10px] align-top pb-1.5">:</td>
-                                                <td className="font-extrabold text-[11px] align-top pb-1.5">{kelas} {halaqoh ? `/ ${halaqoh}` : ''}</td>
+                                                <td className="w-[90px] align-top pb-1">Kelas</td>
+                                                <td className="w-[10px] align-top pb-1">:</td>
+                                                <td className="font-extrabold text-[10.5px] align-top pb-1">{displayKelas || '-'}</td>
                                             </tr>
                                             <tr>
-                                                <td className="w-[90px] align-top pb-1.5">Semester</td>
-                                                <td className="w-[10px] align-top pb-1.5">:</td>
-                                                <td className="align-top pb-1.5">{semester}</td>
+                                                <td className="w-[90px] align-top pb-1">Semester</td>
+                                                <td className="w-[10px] align-top pb-1">:</td>
+                                                <td className="align-top pb-1">{semester}</td>
                                             </tr>
                                             <tr>
                                                 <td className="w-[90px] align-top">Tahun Pelajaran</td>
@@ -2929,89 +3188,72 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
                                 </div>
 
                                 {/* Table 1: Sub Bidang Studi */}
-                                <table className="w-full border-collapse border-1.5 border-black text-[10px] text-black mb-3">
+                                <table className="w-full border-collapse border-1.5 border-black text-[10px] text-black mb-2 table-fixed">
                                     <thead>
-                                        <tr className="bg-gray-100 font-bold h-[26px]">
-                                            <th className="border border-black text-center w-[6%] text-black p-1">No</th>
-                                            <th className="border border-black text-left w-[40%] text-black px-2.5 py-1">Sub Bidang Studi</th>
-                                            <th className="border border-black text-center w-[12%] text-black p-1">KKM</th>
-                                            <th className="border border-black text-center w-[15%] text-black p-1">Nilai</th>
-                                            <th className="border border-black text-center w-[27%] text-black p-1">Deskripsi</th>
+                                        <tr className="bg-gray-100 font-bold h-[24px]">
+                                            <th className="border border-black text-center w-[6%] text-black p-0.5 h-[24px] leading-none">No</th>
+                                            <th className="border border-black text-left w-[40%] text-black px-2.5 py-0.5 h-[24px] leading-none">Sub Bidang Studi</th>
+                                            <th className="border border-black text-center w-[12%] text-black p-0.5 h-[24px] leading-none">KKM</th>
+                                            <th className="border border-black text-center w-[15%] text-black p-0.5 h-[24px] leading-none">Nilai</th>
+                                            <th className="border border-black text-center w-[27%] text-black p-0.5 h-[24px] leading-none">Deskripsi</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {summarizedTahsin.length > 0 || hasTahfidzAssigned ? (
-                                            <>
-                                                {summarizedTahsin.map((mat, idx) => (
-                                                    <tr key={`tahsin-${idx}`} className="h-[21px] font-semibold">
-                                                        <td className="border border-black text-center p-0.5">{idx + 1}</td>
-                                                        <td className="border border-black text-left px-2.5 py-0.5">{mat}</td>
-                                                        <td className="border border-black text-center p-0.5 font-bold">{kkmScore}</td>
-                                                        <td className="border border-black text-center p-0.5 font-bold">{mainScoreValues[mat] || '-'}</td>
-                                                        <td className="border border-black text-center p-0.5 font-medium">{getGradeDescription(mainScoreValues[mat], kkmScore)}</td>
-                                                    </tr>
-                                                ))}
-                                                {hasTahfidzAssigned && (
-                                                    <tr className="h-[21px] font-semibold">
-                                                        <td className="border border-black text-center p-0.5">{summarizedTahsin.length + 1}</td>
-                                                        <td className="border border-black text-left px-2.5 py-0.5">Tahfidz</td>
-                                                        <td className="border border-black text-center p-0.5 font-bold">{kkmScore}</td>
-                                                        <td className="border border-black text-center p-0.5 font-bold">{displayTahfidz || '-'}</td>
-                                                        <td className="border border-black text-center p-0.5 font-medium">{getGradeDescription(displayTahfidz, kkmScore)}</td>
-                                                    </tr>
-                                                )}
-                                            </>
-                                        ) : (
-                                            <tr>
-                                                <td colSpan={5} className="border border-black text-center p-2 font-medium">Belum ada materi ujian yang diatur.</td>
+                                        {reportSubjectRows.map((row, idx) => (
+                                            <tr key={row.key} className="h-[20px] font-semibold">
+                                                <td className="border border-black text-center p-0.5 h-[20px] leading-none">{idx + 1}</td>
+                                                <td className="border border-black text-left px-2.5 py-0.5 h-[20px] leading-none truncate">{row.label}</td>
+                                                <td className="border border-black text-center p-0.5 h-[20px] leading-none font-bold">{kkmScore}</td>
+                                                <td className="border border-black text-center p-0.5 h-[20px] leading-none font-bold">{row.score || '-'}</td>
+                                                <td className="border border-black text-center p-0.5 h-[20px] leading-none font-medium truncate">{getGradeDescription(row.score, kkmScore)}</td>
                                             </tr>
-                                        )}
+                                        ))}
                                         {/* Footer totals */}
-                                        <tr className="h-[21px] font-bold">
-                                            <td colSpan={3} className="border border-black text-center p-0.5">Jumlah Nilai</td>
-                                            <td className="border border-black text-center p-0.5 font-extrabold">{jumlahNilai}</td>
-                                            <td className="border border-black text-center p-0.5 text-gray-500 font-normal">-</td>
+                                        <tr className="h-[20px] font-bold">
+                                            <td colSpan={3} className="border border-black text-center p-0.5 h-[20px] leading-none">Jumlah Nilai</td>
+                                            <td className="border border-black text-center p-0.5 h-[20px] leading-none font-extrabold">{jumlahNilai}</td>
+                                            <td className="border border-black text-center p-0.5 h-[20px] leading-none text-gray-500 font-normal">-</td>
                                         </tr>
-                                        <tr className="h-[21px] font-bold">
-                                            <td colSpan={3} className="border border-black text-center p-0.5">Nilai Rata-rata</td>
-                                            <td className="border border-black text-center p-0.5 font-extrabold">{rataRata}</td>
-                                            <td className="border border-black text-center p-0.5 text-gray-500 font-normal">-</td>
+                                        <tr className="h-[20px] font-bold">
+                                            <td colSpan={3} className="border border-black text-center p-0.5 h-[20px] leading-none">Nilai Rata-rata</td>
+                                            <td className="border border-black text-center p-0.5 h-[20px] leading-none font-extrabold">{rataRata}</td>
+                                            <td className="border border-black text-center p-0.5 h-[20px] leading-none text-gray-500 font-normal">-</td>
                                         </tr>
                                     </tbody>
                                 </table>
 
                                 {/* Table 2 section: Setoran Hafalan */}
-                                <div className="text-center font-extrabold text-[10pt] uppercase mb-2 text-black tracking-wide">
+                                <div className="text-center font-extrabold text-[10pt] uppercase mb-1.5 text-black tracking-wide">
                                     Daftar Rincian Nilai Setoran Hafalan Al Qur&apos;an
                                 </div>
 
-                                <div className="font-extrabold mb-1 tracking-tight text-[9.5px] text-black">
-                                    I. HAFALAN KELAS
-                                </div>
-                                <div className="grid grid-cols-2 gap-4 text-black text-[9px] mb-3">
-                                    {/* Left Table: Hafalan 1-11 */}
+                                <div className="grid grid-cols-2 gap-4 text-black text-[9px] mb-2">
+                                    {/* Left Table: Hafalan Kelas */}
                                     <div>
-                                        <table className="w-full border-collapse border border-black">
+                                        <div className="font-extrabold mb-0.5 tracking-tight text-[9.5px] text-black">
+                                            I. HAFALAN KELAS
+                                        </div>
+                                        <table className="w-full border-collapse border border-black table-fixed">
                                             <thead>
-                                                <tr className="bg-gray-100 font-bold h-[22px] text-center">
-                                                    <td className="border border-black p-0.5 w-[8%] font-bold">No</td>
-                                                    <td className="border border-black p-0.5 w-[54%] font-bold">Nama Surat</td>
-                                                    <td className="border border-black p-0.5 w-[18%] font-bold">Nilai</td>
-                                                    <td className="border border-black p-0.5 w-[20%] font-bold">Predikat</td>
+                                                <tr className="bg-gray-100 font-bold h-[20px] text-center">
+                                                    <td className="border border-black p-0.5 w-[8%] h-[20px] leading-none font-bold">No</td>
+                                                    <td className="border border-black p-0.5 w-[54%] h-[20px] leading-none font-bold">Nama Surat</td>
+                                                    <td className="border border-black p-0.5 w-[18%] h-[20px] leading-none font-bold">Nilai</td>
+                                                    <td className="border border-black p-0.5 w-[20%] h-[20px] leading-none font-bold">Predikat</td>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {Array.from({ length: 11 }).map((_, i) => {
-                                                    const item = hafalanKelas[i] || { surah: '', score: '' };
+                                                    const item = displayHafalanKelas[i] || { surah: '', score: '' };
                                                     return (
-                                                        <tr key={i} className="h-[19px]">
-                                                            <td className="border border-black text-center p-0.5 font-semibold">{i + 1}</td>
-                                                            <td className="border border-black text-center p-0.5 font-arabic text-sm font-bold text-black" style={{ direction: 'rtl' }}>
+                                                        <tr key={i} className="h-[18px]">
+                                                            <td className="border border-black text-center p-0.5 h-[18px] leading-none font-semibold">{i + 1}</td>
+                                                            <td className="border border-black text-center p-0.5 h-[18px] leading-none overflow-hidden whitespace-nowrap font-arabic text-[12px] font-bold text-black" style={{ direction: 'rtl' }}>
                                                                 {translateToArabicSurah(item.surah)}
                                                             </td>
-                                                            <td className="border border-black text-center p-0.5 font-extrabold">{item.score || ''}</td>
-                                                            <td className="border border-black text-center p-0.5 font-arabic text-xs font-bold text-black" style={{ direction: 'rtl' }}>
-                                                                {getArabicPredicate(item.score)}
+                                                            <td className="border border-black text-center p-0.5 h-[18px] leading-none font-extrabold">{item.score || ''}</td>
+                                                            <td className="border border-black text-center p-0.5 h-[18px] leading-none overflow-hidden whitespace-nowrap font-arabic text-[11px] font-bold text-black" style={{ direction: 'rtl' }}>
+                                                                {getArabicPredicateLabel(item.score)}
                                                             </td>
                                                         </tr>
                                                     );
@@ -3020,30 +3262,32 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
                                         </table>
                                     </div>
 
-                                    {/* Right Table: Hafalan 12-22 */}
+                                    {/* Right Table: Hafalan Tambahan */}
                                     <div>
-                                        <table className="w-full border-collapse border border-black">
+                                        <div className="font-extrabold mb-0.5 tracking-tight text-[9.5px] text-black">
+                                            II. HAFALAN TAMBAHAN
+                                        </div>
+                                        <table className="w-full border-collapse border border-black table-fixed">
                                             <thead>
-                                                <tr className="bg-gray-100 font-bold h-[22px] text-center">
-                                                    <td className="border border-black p-0.5 w-[8%] font-bold">No</td>
-                                                    <td className="border border-black p-0.5 w-[54%] font-bold">Nama Surat</td>
-                                                    <td className="border border-black p-0.5 w-[18%] font-bold">Nilai</td>
-                                                    <td className="border border-black p-0.5 w-[20%] font-bold">Predikat</td>
+                                                <tr className="bg-gray-100 font-bold h-[20px] text-center">
+                                                    <td className="border border-black p-0.5 w-[8%] h-[20px] leading-none font-bold">No</td>
+                                                    <td className="border border-black p-0.5 w-[54%] h-[20px] leading-none font-bold">Nama Surat</td>
+                                                    <td className="border border-black p-0.5 w-[18%] h-[20px] leading-none font-bold">Nilai</td>
+                                                    <td className="border border-black p-0.5 w-[20%] h-[20px] leading-none font-bold">Predikat</td>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {Array.from({ length: 11 }).map((_, i) => {
-                                                    const idx = i + 11;
-                                                    const item = hafalanKelas[idx] || { surah: '', score: '' };
+                                                    const item = displayHafalanTambahan[i] || { surah: '', score: '' };
                                                     return (
-                                                        <tr key={idx} className="h-[19px]">
-                                                            <td className="border border-black text-center p-0.5 font-semibold">{idx + 1}</td>
-                                                            <td className="border border-black text-center p-0.5 font-arabic text-sm font-bold text-black" style={{ direction: 'rtl' }}>
+                                                        <tr key={i} className="h-[18px]">
+                                                            <td className="border border-black text-center p-0.5 h-[18px] leading-none font-semibold">{i + 1}</td>
+                                                            <td className="border border-black text-center p-0.5 h-[18px] leading-none overflow-hidden whitespace-nowrap font-arabic text-[12px] font-bold text-black" style={{ direction: 'rtl' }}>
                                                                 {translateToArabicSurah(item.surah)}
                                                             </td>
-                                                            <td className="border border-black text-center p-0.5 font-extrabold">{item.score || ''}</td>
-                                                            <td className="border border-black text-center p-0.5 font-arabic text-xs font-bold text-black" style={{ direction: 'rtl' }}>
-                                                                {getArabicPredicate(item.score)}
+                                                            <td className="border border-black text-center p-0.5 h-[18px] leading-none font-extrabold">{item.score || ''}</td>
+                                                            <td className="border border-black text-center p-0.5 h-[18px] leading-none overflow-hidden whitespace-nowrap font-arabic text-[11px] font-bold text-black" style={{ direction: 'rtl' }}>
+                                                                {getArabicPredicateLabel(item.score)}
                                                             </td>
                                                         </tr>
                                                     );
@@ -3054,19 +3298,31 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
                                 </div>
 
                                 {/* Section III: Target tidak tercapai */}
-                                <div className="font-extrabold mb-1.5 tracking-tight text-[9.5px] text-black">
-                                    II. TARGET YANG TIDAK TERCAPAI
+                                <div className="font-extrabold mb-0.5 tracking-tight text-[9.5px] text-black">
+                                    III. TARGET YANG TIDAK TERCAPAI
                                 </div>
-                                <div className="grid grid-cols-2 gap-4 text-black text-[9px] mb-3">
+                                <div className="grid grid-cols-2 gap-4 text-black text-[9px] mb-2">
                                     {/* Left Table: Target 1-4 */}
                                     <div>
-                                        <table className="w-full border-collapse border border-black text-center">
+                                        <table className="w-full border-collapse border border-black text-center table-fixed">
+                                            <thead>
+                                                <tr className="h-[18px] font-extrabold">
+                                                    <td className="border border-black p-0.5 w-[12%] h-[18px] leading-none">No</td>
+                                                    <td className="border border-black p-0.5 w-[38%] h-[18px] leading-none">Nama Surat</td>
+                                                    <td className="border border-black p-0.5 w-[12%] h-[18px] leading-none">No</td>
+                                                    <td className="border border-black p-0.5 w-[38%] h-[18px] leading-none">Nama Surat</td>
+                                                </tr>
+                                            </thead>
                                             <tbody>
-                                                {[0, 1, 2, 3].map(i => (
-                                                    <tr key={i} className="h-[19px]">
-                                                        <td className="border border-black p-0.5 w-[15%] font-semibold bg-gray-50">{i + 1}</td>
-                                                        <td className="border border-black p-0.5 w-[85%] font-arabic text-sm font-bold text-black" style={{ direction: 'rtl' }}>
-                                                            {translateToArabicSurah(targets[i])}
+                                                {[[0, 2], [1, 3]].map(([leftIdx, rightIdx]) => (
+                                                    <tr key={`${leftIdx}-${rightIdx}`} className="h-[18px]">
+                                                        <td className="border border-black p-0.5 h-[18px] leading-none font-semibold bg-gray-50">{leftIdx + 1}</td>
+                                                        <td className="border border-black p-0.5 h-[18px] leading-none overflow-hidden whitespace-nowrap font-arabic text-[12px] font-bold text-black" style={{ direction: 'rtl' }}>
+                                                            {translateToArabicSurah(displayTargets[leftIdx])}
+                                                        </td>
+                                                        <td className="border border-black p-0.5 h-[18px] leading-none font-semibold bg-gray-50">{rightIdx + 1}</td>
+                                                        <td className="border border-black p-0.5 h-[18px] leading-none overflow-hidden whitespace-nowrap font-arabic text-[12px] font-bold text-black" style={{ direction: 'rtl' }}>
+                                                            {translateToArabicSurah(displayTargets[rightIdx])}
                                                         </td>
                                                     </tr>
                                                 ))}
@@ -3075,13 +3331,25 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
                                     </div>
                                     {/* Right Table: Target 5-8 */}
                                     <div>
-                                        <table className="w-full border-collapse border border-black text-center">
+                                        <table className="w-full border-collapse border border-black text-center table-fixed">
+                                            <thead>
+                                                <tr className="h-[18px] font-extrabold">
+                                                    <td className="border border-black p-0.5 w-[12%] h-[18px] leading-none">No</td>
+                                                    <td className="border border-black p-0.5 w-[38%] h-[18px] leading-none">Nama Surat</td>
+                                                    <td className="border border-black p-0.5 w-[12%] h-[18px] leading-none">No</td>
+                                                    <td className="border border-black p-0.5 w-[38%] h-[18px] leading-none">Nama Surat</td>
+                                                </tr>
+                                            </thead>
                                             <tbody>
-                                                {[4, 5, 6, 7].map(i => (
-                                                    <tr key={i} className="h-[19px]">
-                                                        <td className="border border-black p-0.5 w-[15%] font-semibold bg-gray-50">{i + 1}</td>
-                                                        <td className="border border-black p-0.5 w-[85%] font-arabic text-sm font-bold text-black" style={{ direction: 'rtl' }}>
-                                                            {translateToArabicSurah(targets[i])}
+                                                {[[4, 6], [5, 7]].map(([leftIdx, rightIdx]) => (
+                                                    <tr key={`${leftIdx}-${rightIdx}`} className="h-[18px]">
+                                                        <td className="border border-black p-0.5 h-[18px] leading-none font-semibold bg-gray-50">{leftIdx + 1}</td>
+                                                        <td className="border border-black p-0.5 h-[18px] leading-none overflow-hidden whitespace-nowrap font-arabic text-[12px] font-bold text-black" style={{ direction: 'rtl' }}>
+                                                            {translateToArabicSurah(displayTargets[leftIdx])}
+                                                        </td>
+                                                        <td className="border border-black p-0.5 h-[18px] leading-none font-semibold bg-gray-50">{rightIdx + 1}</td>
+                                                        <td className="border border-black p-0.5 h-[18px] leading-none overflow-hidden whitespace-nowrap font-arabic text-[12px] font-bold text-black" style={{ direction: 'rtl' }}>
+                                                            {translateToArabicSurah(displayTargets[rightIdx])}
                                                         </td>
                                                     </tr>
                                                 ))}
@@ -3091,10 +3359,10 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
                                 </div>
 
                                 {/* Section IV: Adab */}
-                                <div className="font-extrabold mb-1.5 tracking-tight text-[9.5px] text-black">
-                                    III. ADAB DALAM HALAQOH
+                                <div className="font-extrabold mb-0.5 tracking-tight text-[9.5px] text-black">
+                                    IV. ADAB DALAM HALAQOH
                                 </div>
-                                <table className="w-full border-collapse border border-black text-[9px] text-black mb-3">
+                                <table className="w-full border-collapse border border-black text-[9px] text-black mb-2 table-fixed">
                                     <thead>
                                         <tr className="bg-gray-100 font-bold h-[20px] text-center">
                                             <td className="border border-black p-0.5 w-[8%] font-bold">No</td>
@@ -3121,34 +3389,42 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
                                 {/* Catatan Block */}
                                 <div className="text-[9.5px] font-extrabold mb-1 text-black">Catatan :</div>
                                 <div className="border border-black rounded-sm p-2 w-full text-[9px] font-semibold text-black leading-relaxed min-h-[48px] max-h-[60px] bg-white overflow-hidden">
-                                    {catatan}
+                                    {displayedCatatan}
                                 </div>
                             </div>
 
                             {/* Footer (Rentan Nilai & Signatures) */}
-                            <div className="flex justify-between items-end text-[9px] text-black font-bold mt-2">
-                                {/* Rentan Nilai */}
-                                <div className="flex flex-col gap-0.5 text-[8.5px] leading-tight">
-                                    <div className="font-extrabold border-b border-black pb-0.5 mb-0.5">Rentan Nilai</div>
-                                    <div className="flex justify-between w-[95px]"><span>{kkmScore} - 82</span><span>:</span><span className="font-arabic font-bold text-[11px] text-black">جيد</span></div>
-                                    <div className="flex justify-between w-[95px]"><span>83 - 91</span><span>:</span><span className="font-arabic font-bold text-[11px] text-black">جيد جدا</span></div>
-                                    <div className="flex justify-between w-[95px]"><span>92 - 100</span><span>:</span><span className="font-arabic font-bold text-[11px] text-black">ممتاز</span></div>
+                            <div className="text-[9px] text-black font-bold mt-2 leading-tight">
+                                <div className="flex justify-between items-start">
+                                    {/* Rentan Nilai */}
+                                    <div className="flex items-center gap-2 text-[8.5px] whitespace-nowrap">
+                                        <span className="font-extrabold border-b border-black pb-0.5">Rentan Nilai</span>
+                                        <span>75 - 82 : <span className="font-arabic font-bold text-[11px] text-black">جيد</span></span>
+                                        <span>83 - 91 : <span className="font-arabic font-bold text-[11px] text-black">جيد جدا</span></span>
+                                        <span>92 - 100 : <span className="font-arabic font-bold text-[11px] text-black">ممتاز</span></span>
+                                    </div>
+
+                                    <div className="w-[170px] text-[8.5px]">
+                                        <div className="grid grid-cols-[58px_7px_1fr] gap-y-0.5 text-left">
+                                            <div>Diberikan di</div>
+                                            <div>:</div>
+                                            <div>{tempatCetak}</div>
+                                            <div>Tanggal</div>
+                                            <div>:</div>
+                                            <div>{tanggalCetak}</div>
+                                        </div>
+                                    </div>
                                 </div>
 
-                                {/* Signatures block */}
-                                <div className="w-[300px] flex flex-col text-right leading-tight">
-                                    <div>Diberikan di <span className="ml-[20px]">: {tempatCetak}</span></div>
-                                    <div className="mt-0.5">Tanggal <span className="ml-[34px]">: {tanggalCetak}</span></div>
+                                <div className="flex justify-between items-start mt-2">
+                                    <div className="w-[120px] h-[74px] flex flex-col justify-between text-center">
+                                        <div>Orang Tua / Wali Siswa</div>
+                                        <div className="border-b border-black w-full mb-1"></div>
+                                    </div>
 
-                                    <div className="flex justify-between mt-3 text-center text-[9px]">
-                                        <div className="w-[120px] flex flex-col justify-between h-[60px]">
-                                            <div>Orang Tua / Wali Siswa</div>
-                                            <div className="border-b border-black w-full mt-auto mb-1"></div>
-                                        </div>
-                                        <div className="w-[140px] flex flex-col justify-between h-[60px]">
-                                            <div>Kepala Sekolah</div>
-                                            <div className="font-extrabold underline mt-auto uppercase text-black leading-none">{kepalaSekolah}</div>
-                                        </div>
+                                    <div className="w-[150px] h-[74px] flex flex-col justify-between text-center text-[9px]">
+                                        <div>Kepala Sekolah</div>
+                                        <div className="font-extrabold underline uppercase text-black leading-none">{kepalaSekolah}</div>
                                     </div>
                                 </div>
                             </div>
@@ -3159,15 +3435,37 @@ const QuranReportWizard = ({ student, onClose, materials, showToast, kkmScore, a
 
             </div>
 
-            {/* Tombol Tutup Melayang (Bawah) */}
-            <button
-                onClick={onClose}
-                className="fixed left-4 right-4 bottom-4 lg:left-auto lg:right-8 lg:bottom-8 z-[100] flex items-center justify-center gap-2 px-5 py-3.5 bg-red-600 hover:bg-red-700 text-white rounded-2xl lg:rounded-full shadow-[0_10px_25px_rgba(220,38,38,0.4)] active:scale-95 transition-all print:hidden font-black border border-red-500"
-                title="Tutup Pratinjau"
-            >
-                <X size={20} strokeWidth={3} />
-                <span>Tutup</span>
-            </button>
+            {/* Tombol Aksi Melayang (Bawah) */}
+            <div className="fixed left-4 right-4 bottom-4 lg:left-auto lg:right-8 lg:bottom-8 z-[100] grid grid-cols-3 lg:flex items-center justify-center lg:justify-end gap-2 print:hidden">
+                <button
+                    onClick={handleDownloadPDF}
+                    disabled={isDownloading || isDownloadingAll}
+                    className="flex items-center justify-center gap-2 px-3 sm:px-5 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl lg:rounded-full shadow-[0_10px_25px_rgba(37,99,235,0.35)] active:scale-95 transition-all font-black border border-blue-500 disabled:opacity-50"
+                    title="Download PDF"
+                >
+                    {isDownloading ? <Loader2 size={18} className="animate-spin" /> : <FileText size={18} strokeWidth={3} />}
+                    <span>PDF</span>
+                </button>
+
+                <button
+                    onClick={handlePrint}
+                    disabled={isDownloading || isDownloadingAll}
+                    className="flex items-center justify-center gap-2 px-3 sm:px-5 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl lg:rounded-full shadow-[0_10px_25px_rgba(5,150,105,0.35)] active:scale-95 transition-all font-black border border-emerald-500 disabled:opacity-50"
+                    title="Print Raport"
+                >
+                    <Printer size={18} strokeWidth={3} />
+                    <span>Print</span>
+                </button>
+
+                <button
+                    onClick={onClose}
+                    className="flex items-center justify-center gap-2 px-3 sm:px-5 py-3.5 bg-red-600 hover:bg-red-700 text-white rounded-2xl lg:rounded-full shadow-[0_10px_25px_rgba(220,38,38,0.4)] active:scale-95 transition-all font-black border border-red-500"
+                    title="Tutup Pratinjau"
+                >
+                    <X size={18} strokeWidth={3} />
+                    <span>Tutup</span>
+                </button>
+            </div>
         </div>
     );
 };

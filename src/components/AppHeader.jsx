@@ -24,7 +24,7 @@ const AppHeader = ({
         </div>
 
         <nav className="hidden md:flex flex-wrap items-center justify-center gap-x-2 lg:gap-x-3 xl:gap-x-4 gap-y-1 font-bold text-[clamp(10px,0.85vw,14px)] text-gray-500 dark:text-slate-400 min-w-0 flex-1">
-          {['home', 'siswa', ...(isSuperAdmin ? ['mutasi'] : []), 'laporan', 'arsip', 'statistik', 'ujian'].map(view => (
+          {['home', 'siswa', 'ujian', ...(isSuperAdmin ? ['mutasi'] : []), 'laporan', 'arsip', 'statistik'].map(view => (
             <button key={view} onClick={() => setCurrentView(view)} className={`relative pb-1 px-0.5 group transition-colors leading-tight whitespace-normal text-center max-w-[78px] lg:max-w-[92px] ${currentView === view ? 'text-green-600' : 'hover:text-green-600'}`}>
               {view === 'home' ? 'Beranda' : view === 'siswa' ? 'Data Siswa' : view === 'mutasi' ? 'Mutasi' : view.charAt(0).toUpperCase() + view.slice(1)}
               <span className={`absolute bottom-0 left-0 h-0.5 transition-all duration-300 ${currentView === view ? 'w-full' : 'w-0 group-hover:w-full'} bg-green-600`}></span>

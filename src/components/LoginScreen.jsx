@@ -105,10 +105,25 @@ const renderCatatanDetail = (valC, valCT, valCF) => {
   );
 }
 
+const normalizeTeacherText = (value) => value.trim().replace(/\s+/g, ' ');
+
+const cleanTeacherNickname = (name) => normalizeTeacherText(name)
+  .replace(/^(ustadzah|ustadz|usth\.?|ust\.?)\s+/i, '')
+  .replace(/\s*,\s*$/, '');
+
+const getTeacherSalutation = (gender) => (gender === 'P' ? 'Ustadzah' : 'Ustadz');
+
+const formatTeacherName = (nickname, gender) => {
+  const cleanNickname = cleanTeacherNickname(nickname);
+  return `${getTeacherSalutation(gender)} ${cleanNickname}`.trim();
+};
+
 const LoginScreen = ({ onLogin, theme, setTheme }) => {
   const [isRegistering, setIsRegistering] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [fullName, setFullName] = useState('');
+  const [teacherGender, setTeacherGender] = useState('L');
+  const [nickname, setNickname] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -383,7 +398,11 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
 
     try {
       if (isRegistering) {
-        if (!normalizedUsername || !password || !fullName || !confirmPassword) {
+        const officialName = normalizeTeacherText(fullName);
+        const cleanNickname = cleanTeacherNickname(nickname);
+        const cleanName = formatTeacherName(cleanNickname, teacherGender);
+
+        if (!normalizedUsername || !password || !officialName || !cleanNickname || !confirmPassword) {
           setError('Lengkapi semua data!'); setIsLoading(false); return;
         }
         if (normalizedUsername === 'jumanjayyidin' || normalizedUsername === 'admin') {
@@ -395,8 +414,6 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
         if (password.length < 8) {
           setError('Password minimal harus terdiri dari 8 karakter!'); setIsLoading(false); return;
         }
-
-        const cleanName = fullName.trim();
 
         let { data: userSnap } = await supabase.rpc('get_user_login_data', { lookup_username: normalizedUsername }).maybeSingle();
         if (!userSnap && rawUsername !== normalizedUsername) {
@@ -414,7 +431,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
             email: dummyEmail,
             password: password,
             options: {
-              data: { name: cleanName, username: normalizedUsername, role: 'guru' }
+              data: { name: cleanName, fullName: officialName, gender: teacherGender, username: normalizedUsername, role: 'guru' }
             }
           });
 
@@ -445,10 +462,17 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
             setUsername('');
             setPassword('');
             setFullName('');
+            setTeacherGender('L');
+            setNickname('');
             setConfirmPassword('');
           }
         }
       } else {
+        if (!normalizedUsername || !password) {
+          setError('Masukkan username dan password terlebih dahulu.');
+          setIsLoading(false);
+          return;
+        }
 
         // Cek User Profil di Supabase
         let { data: userData } = await supabase.rpc('get_user_login_data', { lookup_username: normalizedUsername }).maybeSingle();
@@ -544,6 +568,12 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
     setSuccessMsg('');
     const normalizedUsername = username.toLowerCase().trim();
     const rawUsername = username.trim();
+
+    if (!normalizedUsername) {
+      setError('Masukkan username terlebih dahulu.');
+      setIsLoading(false);
+      return;
+    }
 
     try {
       let { data: userSnap } = await supabase.rpc('get_user_login_data', { lookup_username: normalizedUsername }).maybeSingle();
@@ -1166,43 +1196,46 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
     return (
       <div className="min-h-[100svh] w-full bg-slate-50 dark:bg-slate-950 flex flex-col items-center relative overflow-x-hidden [touch-action:pan-y] pb-[calc(env(safe-area-inset-bottom)+1rem)] transition-colors duration-300">
         {/* HEADER PORTAL - AKSES LOGIN & DAFTAR */}
-        <header className="w-full bg-white/80 dark:bg-slate-900/80 border-slate-100 dark:border-slate-800 backdrop-blur-md border-b px-4 sm:px-8 py-4 flex justify-between items-center z-50 sticky top-0 shadow-sm transition-all duration-500">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 sm:w-10 sm:h-10">
-              {institutionLogo ? <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain" /> : <BookOpen size={24} className="text-emerald-500" />}
-            </div>
-            <div className="flex flex-col">
-              <span className="font-arabic font-bold text-slate-800 dark:text-slate-100 tracking-tighter text-lg sm:text-2xl transition-all leading-tight">MyQuranPlan</span>
-              {institutionName && (
-                <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 leading-none truncate max-w-[170px] sm:max-w-[240px]">
-                  {institutionName}
-                </span>
-              )}
-              <div className="h-0.5 w-full bg-gradient-to-r from-transparent via-amber-500 to-transparent opacity-70 -mt-1"></div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 sm:gap-3">
-            <button
-              onClick={() => { setIsParentPortal(false); setIsRegistering(false); setIsForgotPassword(false); }}
-              className="text-[10px] sm:text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 px-3 py-2 rounded-xl transition-colors"
-            >
-              Masuk
-            </button>
-            <button
-              onClick={() => { setIsParentPortal(false); setIsRegistering(true); setIsForgotPassword(false); }}
-              className="text-[10px] sm:text-xs font-black bg-emerald-500 text-white px-4 py-2 rounded-xl hover:bg-emerald-600 transition-all shadow-md shadow-emerald-100"
-            >
-              Daftar Guru
-            </button>
-            <button
-              onClick={() => setTheme && setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="p-2 sm:p-2.5 bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 hover:text-amber-500 rounded-xl transition-all active:scale-90 ml-1 sm:ml-2 shadow-sm border border-slate-100 dark:border-slate-700"
-              title="Mode Gelap/Terang"
-            >
-              <div className={`transform transition-transform duration-500 ${theme === 'dark' ? 'rotate-180' : 'rotate-0'}`}>
-                {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+        <header className="w-full bg-white/90 dark:bg-slate-900/90 border-slate-100 dark:border-slate-800 backdrop-blur-md border-b px-3 sm:px-6 py-3 z-50 sticky top-0 shadow-sm transition-all duration-500">
+          <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 shrink-0 flex items-center justify-center">
+                {institutionLogo ? <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain" /> : <BookOpen size={24} className="text-emerald-500" />}
               </div>
-            </button>
+              <div className="flex min-w-0 flex-col">
+                <span className="font-arabic font-bold text-slate-800 dark:text-slate-100 tracking-tighter text-lg sm:text-2xl transition-all leading-none truncate">MyQuranPlan</span>
+                {institutionName && (
+                  <span className="mt-1 text-[7px] sm:text-[9px] font-black uppercase tracking-[0.16em] text-emerald-600 dark:text-emerald-400 leading-none truncate max-w-[132px] min-[390px]:max-w-[180px] sm:max-w-[260px]">
+                    {institutionName}
+                  </span>
+                )}
+                <div className="mt-1 h-0.5 w-20 sm:w-28 bg-gradient-to-r from-transparent via-amber-500 to-transparent opacity-70"></div>
+              </div>
+            </div>
+
+            <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+              <button
+                onClick={() => { setIsParentPortal(false); setIsRegistering(false); setIsForgotPassword(false); }}
+                className="h-10 px-3 sm:px-4 rounded-xl text-[11px] sm:text-xs font-black text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/70 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400 border border-slate-100 dark:border-slate-700 transition-colors whitespace-nowrap"
+              >
+                Masuk
+              </button>
+              <button
+                onClick={() => { setIsParentPortal(false); setIsRegistering(true); setIsForgotPassword(false); }}
+                className="h-10 px-3.5 sm:px-4 rounded-xl text-[11px] sm:text-xs font-black bg-emerald-500 text-white hover:bg-emerald-600 transition-all shadow-md shadow-emerald-100 dark:shadow-none whitespace-nowrap"
+              >
+                Daftar Guru
+              </button>
+              <button
+                onClick={() => setTheme && setTheme(theme === 'dark' ? 'light' : 'dark')}
+                className="h-10 w-10 bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500 hover:text-amber-500 rounded-xl transition-all active:scale-90 shadow-sm border border-slate-100 dark:border-slate-700 flex items-center justify-center"
+                title="Mode Gelap/Terang"
+              >
+                <div className={`transform transition-transform duration-500 ${theme === 'dark' ? 'rotate-180' : 'rotate-0'}`}>
+                  {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+                </div>
+              </button>
+            </div>
           </div>
         </header>
 
@@ -1354,27 +1387,27 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
   }
 
   return (
-    <div className="min-h-[100dvh] w-full bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 flex flex-col justify-start sm:justify-center items-center px-4 py-6 sm:p-6 relative overflow-y-auto overflow-x-hidden overscroll-y-contain custom-scrollbar z-0 transition-all duration-500" style={{ WebkitOverflowScrolling: 'touch' }}>
+    <div className="min-h-[100svh] md:min-h-[100dvh] w-full bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 flex flex-col justify-start sm:justify-center items-center px-3 pt-16 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] sm:p-6 relative overflow-x-hidden [touch-action:pan-y] z-0 transition-all duration-500">
 
-      <button onClick={() => setTheme && setTheme(theme === 'dark' ? 'light' : 'dark')} className="absolute top-4 right-4 sm:top-6 sm:right-6 z-50 p-3 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm text-slate-500 dark:text-slate-400 hover:text-amber-500 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 transition-all active:scale-90" title="Mode Gelap/Terang">
+      <button onClick={() => setTheme && setTheme(theme === 'dark' ? 'light' : 'dark')} className="fixed top-[calc(env(safe-area-inset-top)+0.75rem)] right-3 sm:top-6 sm:right-6 z-50 p-2.5 sm:p-3 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm text-slate-500 dark:text-slate-400 hover:text-amber-500 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 transition-all active:scale-90" title="Mode Gelap/Terang">
         <div className={`transform transition-transform duration-500 ${theme === 'dark' ? 'rotate-180' : 'rotate-0'}`}>
-          {theme === 'dark' ? <Sun size={20} className="text-amber-500" /> : <Moon size={20} />}
+          {theme === 'dark' ? <Sun size={18} className="text-amber-500 sm:w-5 sm:h-5" /> : <Moon size={18} className="sm:w-5 sm:h-5" />}
         </div>
       </button>
 
-      <div className="w-full max-w-[420px] relative z-10 flex flex-col my-auto sm:my-0">
+      <div className="w-full max-w-[420px] relative z-10 flex flex-col sm:my-0">
         {/* Card Login / Register */}
-        <div className="bg-white/80 dark:bg-slate-900/80 border-white dark:border-slate-800 shadow-[0_8px_30px_rgba(0,0,0,0.04)] backdrop-blur-2xl p-8 sm:p-10 rounded-[2.5rem] border flex flex-col relative overflow-hidden transition-all duration-500">
+        <div className="bg-white/85 dark:bg-slate-900/85 border-white dark:border-slate-800 shadow-[0_8px_30px_rgba(0,0,0,0.04)] backdrop-blur-2xl p-5 sm:p-10 rounded-[1.75rem] sm:rounded-[2.5rem] border flex flex-col relative overflow-hidden transition-all duration-500">
           {/* Garis atas dekoratif */}
           <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-emerald-400 to-[#00e676]"></div>
 
-          <div className="flex flex-col items-center mb-10 mt-2">
-            <div className="w-28 h-28 flex items-center justify-center mb-2 transition-all">
+          <div className="flex flex-col items-center mb-6 sm:mb-10 mt-1 sm:mt-2">
+            <div className={`${isRegistering ? 'w-16 h-16 sm:w-28 sm:h-28' : 'w-20 h-20 sm:w-28 sm:h-28'} flex items-center justify-center mb-2 transition-all`}>
               {institutionLogo && institutionLogo !== 'logo.png' ? (
                 <img src={institutionLogo} alt="Logo" className="w-full h-full object-contain animate-in fade-in zoom-in-95 duration-1000" />
               ) : (
                 <div className="text-emerald-500/80 animate-in fade-in duration-500">
-                  {isRegistering ? <UserPlus size={64} /> : isForgotPassword ? <HelpCircle size={64} /> : <BookOpen size={64} />}
+                  {isRegistering ? <UserPlus size={48} className="sm:w-16 sm:h-16" /> : isForgotPassword ? <HelpCircle size={52} className="sm:w-16 sm:h-16" /> : <BookOpen size={52} className="sm:w-16 sm:h-16" />}
                 </div>
               )}
             </div>
@@ -1387,15 +1420,15 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
                 </div>
               )}
             </div>
-            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mt-2 text-center">
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium mt-2 text-center">
               {isRegistering ? 'Daftar Akun Pengajar' : isForgotPassword ? 'Permintaan Reset Password' : 'Ahlan wa sahlan! Silakan masuk.'}
             </p>
           </div>
 
-          <form onSubmit={isForgotPassword ? handleResetRequest : handleAuth} className="flex flex-col gap-4 w-full">
+          <form onSubmit={isForgotPassword ? handleResetRequest : handleAuth} noValidate className="flex flex-col gap-3 sm:gap-4 w-full">
             {isRegistering && (
               <div className="group animate-in fade-in slide-in-from-top-2 duration-300">
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 pl-1 transition-colors group-focus-within:text-emerald-500">Nama Lengkap & Gelar</label>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 sm:mb-2 pl-1 transition-colors group-focus-within:text-emerald-500">Nama Lengkap dan Gelar</label>
                 <div className="relative flex items-center">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                     <GraduationCap size={18} className="text-slate-400 group-focus-within:text-emerald-500 transition-colors" />
@@ -1404,16 +1437,50 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
                     type="text"
                     value={fullName}
                     onChange={(e) => { setFullName(e.target.value); setError(''); setSuccessMsg(''); }}
-                    className="w-full border-2 border-slate-100 dark:border-slate-800 rounded-2xl pl-11 pr-4 py-3.5 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 bg-slate-50/50 dark:bg-slate-950/50 focus:bg-white dark:focus:bg-slate-900 text-sm font-bold text-slate-700 dark:text-slate-200 transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600"
-                    placeholder="Ust. / Usth. Ahmad..."
+                    className="w-full border-2 border-slate-100 dark:border-slate-800 rounded-xl sm:rounded-2xl pl-11 pr-4 py-3 sm:py-3.5 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 bg-slate-50/50 dark:bg-slate-950/50 focus:bg-white dark:focus:bg-slate-900 text-sm font-bold text-slate-700 dark:text-slate-200 transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600"
+                    placeholder="Juman Jayyidin, S.T"
                     required={isRegistering}
                   />
+                </div>
+
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 sm:mb-2 mt-3 pl-1 transition-colors group-focus-within:text-emerald-500">Nama Panggilan</label>
+                <div className="relative flex items-center">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <User size={18} className="text-slate-400 group-focus-within:text-emerald-500 transition-colors" />
+                  </div>
+                  <input
+                    type="text"
+                    value={nickname}
+                    onChange={(e) => { setNickname(e.target.value); setError(''); setSuccessMsg(''); }}
+                    className="w-full border-2 border-slate-100 dark:border-slate-800 rounded-xl sm:rounded-2xl pl-11 pr-4 py-3 sm:py-3.5 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 bg-slate-50/50 dark:bg-slate-950/50 focus:bg-white dark:focus:bg-slate-900 text-sm font-bold text-slate-700 dark:text-slate-200 transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600"
+                    placeholder="Juman"
+                    required={isRegistering}
+                  />
+                </div>
+
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 sm:mb-2 mt-3 pl-1 transition-colors group-focus-within:text-emerald-500">Jenis Kelamin</label>
+                <div className="relative flex items-center">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <User size={18} className="text-slate-400 group-focus-within:text-emerald-500 transition-colors" />
+                  </div>
+                  <select
+                    value={teacherGender}
+                    onChange={(e) => { setTeacherGender(e.target.value); setError(''); setSuccessMsg(''); }}
+                    className="w-full border-2 border-slate-100 dark:border-slate-800 rounded-xl sm:rounded-2xl pl-11 pr-4 py-3 sm:py-3.5 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 bg-slate-50/50 dark:bg-slate-950/50 focus:bg-white dark:focus:bg-slate-900 text-sm font-bold text-slate-700 dark:text-slate-200 transition-all cursor-pointer"
+                    required={isRegistering}
+                  >
+                    <option value="L">L</option>
+                    <option value="P">P</option>
+                  </select>
+                </div>
+                <div className="mt-2 text-[10px] font-bold text-slate-400 dark:text-slate-500">
+                  Akan tampil sebagai <span className="text-emerald-600 dark:text-emerald-400">{formatTeacherName(nickname || 'Juman', teacherGender)}</span>
                 </div>
               </div>
             )}
 
             <div className="group">
-              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 pl-1 transition-colors group-focus-within:text-emerald-500">Username</label>
+              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 sm:mb-2 pl-1 transition-colors group-focus-within:text-emerald-500">Username</label>
               <div className="relative flex items-center">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <User size={18} className="text-slate-400 group-focus-within:text-emerald-500 transition-colors" />
@@ -1422,7 +1489,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
                   type="text"
                   value={username}
                   onChange={(e) => { setUsername(e.target.value); setError(''); setSuccessMsg(''); }}
-                  className="w-full border-2 border-slate-100 dark:border-slate-800 rounded-2xl pl-11 pr-4 py-3.5 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 bg-slate-50/50 dark:bg-slate-950/50 focus:bg-white dark:focus:bg-slate-900 text-sm font-bold text-slate-700 dark:text-slate-200 transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600"
+                  className="w-full border-2 border-slate-100 dark:border-slate-800 rounded-xl sm:rounded-2xl pl-11 pr-4 py-3 sm:py-3.5 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 bg-slate-50/50 dark:bg-slate-950/50 focus:bg-white dark:focus:bg-slate-900 text-sm font-bold text-slate-700 dark:text-slate-200 transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600"
                   placeholder="Masukkan username..."
                   required
                 />
@@ -1444,16 +1511,16 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
             <div className="group">
               {!isForgotPassword && (
                 <>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 pl-1 transition-colors group-focus-within:text-emerald-500">Password</label>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 sm:mb-2 pl-1 transition-colors group-focus-within:text-emerald-500">Password</label>
                   <div className="relative flex items-center">
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                       <Lock size={18} className="text-slate-400 group-focus-within:text-emerald-500 transition-colors" />
                     </div>
                     <input
                       type={showPassword ? "text" : "password"}
-                      value={password}
-                      onChange={(e) => { setPassword(e.target.value); setError(''); setSuccessMsg(''); }}
-                      className="w-full border-2 border-slate-100 dark:border-slate-800 rounded-2xl pl-11 pr-12 py-3.5 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 bg-slate-50/50 dark:bg-slate-950/50 focus:bg-white dark:focus:bg-slate-900 text-sm font-bold text-slate-700 dark:text-slate-200 transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600"
+                    value={password}
+                    onChange={(e) => { setPassword(e.target.value); setError(''); setSuccessMsg(''); }}
+                    className="w-full border-2 border-slate-100 dark:border-slate-800 rounded-xl sm:rounded-2xl pl-11 pr-12 py-3 sm:py-3.5 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 bg-slate-50/50 dark:bg-slate-950/50 focus:bg-white dark:focus:bg-slate-900 text-sm font-bold text-slate-700 dark:text-slate-200 transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600"
                       placeholder="••••••••"
                       required
                       minLength={isRegistering ? 8 : undefined}
@@ -1467,13 +1534,19 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
                       {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
+                  {isRegistering && (
+                    <div className={`mt-2 flex items-center gap-1.5 text-[10px] font-bold ${password.length >= 8 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'}`}>
+                      <CheckCircle2 size={12} />
+                      <span>Minimal 8 karakter agar akun lebih aman.</span>
+                    </div>
+                  )}
                 </>
               )}
             </div>
 
             {isRegistering && (
               <div className="group animate-in fade-in slide-in-from-top-2 duration-300">
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 pl-1 transition-colors group-focus-within:text-emerald-500">Konfirmasi Password</label>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 sm:mb-2 pl-1 transition-colors group-focus-within:text-emerald-500">Konfirmasi Password</label>
                 <div className="relative flex items-center">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                     <Lock size={18} className="text-slate-400 group-focus-within:text-emerald-500 transition-colors" />
@@ -1482,7 +1555,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
                     type={showConfirmPassword ? "text" : "password"}
                     value={confirmPassword}
                     onChange={(e) => { setConfirmPassword(e.target.value); setError(''); setSuccessMsg(''); }}
-                    className="w-full border-2 border-slate-100 dark:border-slate-800 rounded-2xl pl-11 pr-12 py-3.5 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 bg-slate-50/50 dark:bg-slate-950/50 focus:bg-white dark:focus:bg-slate-900 text-sm font-bold text-slate-700 dark:text-slate-200 transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600"
+                    className="w-full border-2 border-slate-100 dark:border-slate-800 rounded-xl sm:rounded-2xl pl-11 pr-12 py-3 sm:py-3.5 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 bg-slate-50/50 dark:bg-slate-950/50 focus:bg-white dark:focus:bg-slate-900 text-sm font-bold text-slate-700 dark:text-slate-200 transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600"
                     placeholder="Ulangi password..."
                     required={isRegistering}
                     minLength={isRegistering ? 8 : undefined}
@@ -1502,17 +1575,17 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
             <button
               type="submit"
               disabled={isLoading}
-              className="mt-2 w-full bg-gradient-to-r from-[#00e676] to-emerald-500 hover:from-emerald-500 hover:to-[#00e676] text-white font-black py-4 rounded-2xl shadow-lg shadow-emerald-200 transition-all hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.98] flex items-center justify-center gap-2 text-sm disabled:opacity-70 disabled:cursor-not-allowed"
+              className="mt-1 sm:mt-2 w-full bg-gradient-to-r from-[#00e676] to-emerald-500 hover:from-emerald-500 hover:to-[#00e676] text-white font-black py-3.5 sm:py-4 rounded-xl sm:rounded-2xl shadow-lg shadow-emerald-200 transition-all hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.98] flex items-center justify-center gap-2 text-sm disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {isLoading ? <Loader2 size={18} className="animate-spin" /> : isRegistering ? 'Ajukan Pendaftaran' : isForgotPassword ? 'Kirim Permintaan Reset' : 'Masuk ke Aplikasi'}
             </button>
           </form>
 
-          <div className="mt-6 flex flex-col gap-3 text-center border-t border-slate-100 dark:border-slate-800 pt-5">
+          <div className="mt-4 sm:mt-6 flex flex-col gap-3 text-center border-t border-slate-100 dark:border-slate-800 pt-4 sm:pt-5">
             {!isRegistering && !isForgotPassword && (
               <button
                 onClick={() => setIsParentPortal(true)}
-                className="w-full bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 font-black py-4 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-2 text-sm"
+                className="w-full bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 font-black py-3.5 sm:py-4 rounded-xl sm:rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-2 text-sm"
               >
                 <Search size={18} /> Kembali ke MyQuranPlan
               </button>

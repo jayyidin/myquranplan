@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { ArrowUpDown, BookOpen, Check, GripVertical, Layers, Mic, Search, ShieldCheck, SlidersHorizontal, Unlink2, Users, X } from 'lucide-react';
 
 const UNASSIGNED = '__unassigned__';
@@ -194,28 +194,30 @@ const ProgressLine = ({ icon, tone, text }) => {
   );
 };
 
-const StudentCard = ({ student, progress, selected, dragging, disabled, onToggle, onDragStart, onDragEnd, onTouchStart }) => {
+const StudentCard = ({ student, progress, selected, dragging, disabled, onToggle, onDragStart, onDragEnd, onTouchStart, onTouchMove, onTouchEnd }) => {
   const showPreviousShadow = !hasValue(student.halaqoh) && hasValue(student.previous_halaqoh);
   const previousText = [student.previous_halaqoh, student.previous_teacher].filter(hasValue).join(' - ');
 
   return (
     <div
-      draggable={!disabled}
       data-transfer-student-id={student.id}
-      onDragStart={(e) => !disabled && onDragStart(e, student.id)}
-      onDragEnd={onDragEnd}
       className={`rounded-lg border bg-white dark:bg-slate-800 p-2 shadow-sm transition-all ${
-        disabled ? 'cursor-default opacity-90' : 'cursor-grab active:cursor-grabbing'
+        disabled ? 'opacity-90' : ''
       } ${
         selected ? 'border-emerald-400 ring-2 ring-emerald-100 dark:ring-emerald-500/20' : 'border-slate-200 dark:border-slate-700'
-      } ${dragging ? 'opacity-50 scale-[0.98]' : 'opacity-100'}`}
+      } ${dragging ? 'opacity-50 scale-[0.98]' : 'opacity-100'} [touch-action:pan-y]`}
     >
       <div className="flex items-start gap-2 min-w-0">
         <button
           type="button"
           disabled={disabled}
-          onTouchStart={() => !disabled && onTouchStart(student.id)}
-          className="touch-none shrink-0 w-6 h-6 rounded-md bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-400 flex items-center justify-center disabled:opacity-30"
+          draggable={!disabled}
+          onDragStart={(e) => !disabled && onDragStart(e, student.id)}
+          onDragEnd={onDragEnd}
+          onTouchStart={(e) => !disabled && onTouchStart(e, student.id)}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+          className="shrink-0 w-6 h-6 rounded-md bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-400 flex items-center justify-center disabled:opacity-30 cursor-grab active:cursor-grabbing [touch-action:pan-y]"
           title={disabled ? 'Alumni tidak bisa dipindahkan' : 'Pindahkan'}
         >
           <GripVertical size={13} />
@@ -271,7 +273,7 @@ const StudentCard = ({ student, progress, selected, dragging, disabled, onToggle
   );
 };
 
-const HalaqohColumn = ({ group, students, progressMap, selectedIds, draggingIds, dragOver, onToggle, onDragStart, onDragEnd, onDragOver, onDrop, onTouchStart }) => (
+const HalaqohColumn = ({ group, students, progressMap, selectedIds, draggingIds, dragOver, onToggle, onDragStart, onDragEnd, onDragOver, onDrop, onTouchStart, onTouchMove, onTouchEnd }) => (
   <section
     data-transfer-halaqoh={group.value}
     onDragOver={(e) => onDragOver(e, group.value)}
@@ -305,6 +307,8 @@ const HalaqohColumn = ({ group, students, progressMap, selectedIds, draggingIds,
           onDragStart={onDragStart}
           onDragEnd={onDragEnd}
           onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
         />
       ))}
       {students.length === 0 && (
@@ -329,6 +333,8 @@ const HalaqohTransferView = ({ isSuperAdmin, students = [], guruHalaqohData = {}
   const [selectedIds, setSelectedIds] = useState([]);
   const [draggingIds, setDraggingIds] = useState([]);
   const [dragOverHalaqoh, setDragOverHalaqoh] = useState('');
+  const touchDragTimerRef = useRef(null);
+  const touchDragCandidateRef = useRef(null);
 
   const activeCount = useMemo(() => students.filter(student => !isGraduatedStudent(student)).length, [students]);
   const alumniCount = useMemo(() => students.filter(isGraduatedStudent).length, [students]);
@@ -510,14 +516,40 @@ const HalaqohTransferView = ({ isSuperAdmin, students = [], guruHalaqohData = {}
     await finishMove(value, ids);
   };
 
-  const handleTouchStart = (studentId) => {
+  const clearTouchDragTimer = () => {
+    if (touchDragTimerRef.current) {
+      clearTimeout(touchDragTimerRef.current);
+      touchDragTimerRef.current = null;
+    }
+  };
+
+  const handleTouchStart = (e, studentId) => {
     const student = students.find(s => s.id === studentId);
     if (isGraduatedStudent(student)) return;
-    setDraggingIds(getMoveIds(studentId));
+    const touch = e.touches?.[0];
+    const ids = getMoveIds(studentId);
+    touchDragCandidateRef.current = touch ? { ids, startX: touch.clientX, startY: touch.clientY } : { ids, startX: 0, startY: 0 };
+    clearTouchDragTimer();
+    touchDragTimerRef.current = setTimeout(() => {
+      setDraggingIds(ids);
+      touchDragTimerRef.current = null;
+    }, 320);
   };
 
   const handleTouchMove = (e) => {
-    if (draggingIds.length === 0) return;
+    if (draggingIds.length === 0) {
+      const candidate = touchDragCandidateRef.current;
+      const touch = e.touches?.[0];
+      if (candidate && touch) {
+        const verticalMove = Math.abs(touch.clientY - candidate.startY);
+        const horizontalMove = Math.abs(touch.clientX - candidate.startX);
+        if (verticalMove > 10 && verticalMove > horizontalMove) {
+          clearTouchDragTimer();
+          touchDragCandidateRef.current = null;
+        }
+      }
+      return;
+    }
     const touch = e.touches[0];
     const dropZone = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('[data-transfer-halaqoh]');
     const value = dropZone?.getAttribute('data-transfer-halaqoh') || '';
@@ -525,6 +557,8 @@ const HalaqohTransferView = ({ isSuperAdmin, students = [], guruHalaqohData = {}
   };
 
   const handleTouchEnd = async () => {
+    clearTouchDragTimer();
+    touchDragCandidateRef.current = null;
     if (dragOverHalaqoh) {
       await finishMove(dragOverHalaqoh, draggingIds);
       return;
@@ -544,8 +578,8 @@ const HalaqohTransferView = ({ isSuperAdmin, students = [], guruHalaqohData = {}
   }
 
   return (
-    <div className="flex-1 h-full overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 p-3 sm:p-5 md:p-8 transition-colors" onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
-      <div className="max-w-7xl mx-auto pb-24 md:pb-8">
+    <div className="flex-1 h-full min-h-0 overflow-y-auto overscroll-y-contain custom-scrollbar bg-slate-50 dark:bg-slate-950 p-3 sm:p-5 md:p-8 pb-[calc(env(safe-area-inset-bottom)+6rem)] md:pb-8 [touch-action:pan-y] transition-colors" style={{ WebkitOverflowScrolling: 'touch' }}>
+      <div className="max-w-7xl mx-auto pb-6 md:pb-0">
         <div className="mb-4 sm:mb-6 flex flex-col gap-4 border-b border-slate-200 dark:border-slate-800 pb-4 sm:pb-5">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3 min-w-0">
@@ -873,7 +907,7 @@ const HalaqohTransferView = ({ isSuperAdmin, students = [], guruHalaqohData = {}
           )}
         </div>
 
-        <div className="overflow-x-auto custom-scrollbar -mx-3 px-3 sm:mx-0 sm:px-0">
+        <div className="overflow-visible md:overflow-x-auto custom-scrollbar -mx-3 px-3 sm:mx-0 sm:px-0">
           <div className="grid grid-cols-1 md:flex md:items-start gap-3 sm:gap-4 md:min-w-max">
             {visibleGroups.map(group => (
               <div key={group.value} className="md:w-[260px] md:shrink-0">
@@ -890,6 +924,8 @@ const HalaqohTransferView = ({ isSuperAdmin, students = [], guruHalaqohData = {}
                   onDragOver={handleDragOver}
                   onDrop={handleDrop}
                   onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
                 />
               </div>
             ))}

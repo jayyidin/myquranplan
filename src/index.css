@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap');
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 /* --- CSS KUSTOM MYQURANPLAN --- */
 
@@ -10,8 +11,14 @@ body,
   min-height: 100%;
 }
 
+html {
+  color-scheme: light;
+}
+
 body {
   overflow-x: hidden;
+  overflow-y: auto;
+  touch-action: pan-y;
 }
 
 .custom-scrollbar {
