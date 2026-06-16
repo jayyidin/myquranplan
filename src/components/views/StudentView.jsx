@@ -25,6 +25,8 @@ const getStudentNameClass = (name) => {
   return 'text-sm sm:text-base md:text-lg';
 };
 
+const HALAQOH_SESSION_OPTIONS = ['1', '2', '3'];
+
 // --- STATS BAR ---
 const StatsBar = ({ students }) => {
   const stats = useMemo(() => {
@@ -56,7 +58,7 @@ const StatsBar = ({ students }) => {
 
 // --- HALAQOH MANAGEMENT SECTION (for teachers) ---
 const HalaqohSection = ({
-  newHalaqohName, setNewHalaqohName, handleAddHalaqoh,
+  newHalaqohName, setNewHalaqohName, newHalaqohSesi, setNewHalaqohSesi, handleAddHalaqoh,
   guruHalaqohData, currentUser, editingHalaqoh, setEditingHalaqoh,
   handleSaveEditHalaqoh, requestDeleteHalaqoh, handleReorderHalaqoh
 }) => {
@@ -88,6 +90,13 @@ const HalaqohSection = ({
           <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Tambah Halaqoh Baru</label>
           <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_112px] gap-2">
             <input type="text" placeholder="Nama kelompok..." value={newHalaqohName} onChange={e => setNewHalaqohName(e.target.value)} className="min-w-0 w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all" />
+            <div className="relative min-w-0">
+              <select value={newHalaqohSesi || ''} onChange={e => setNewHalaqohSesi(e.target.value)} className="min-w-0 w-full bg-white border border-slate-200 rounded-xl pl-4 pr-10 py-3 text-sm font-bold outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all appearance-none cursor-pointer">
+                <option value="">Sesi</option>
+                {HALAQOH_SESSION_OPTIONS.map(sesi => <option key={sesi} value={sesi}>Sesi {sesi}</option>)}
+              </select>
+              <ChevronDown size={17} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            </div>
             <button onClick={handleAddHalaqoh} disabled={!newHalaqohName.trim()} className="bg-emerald-600 hover:bg-emerald-700 text-white py-3 px-4 rounded-xl font-black text-xs uppercase tracking-widest disabled:bg-slate-200 w-full transition-colors flex justify-center items-center gap-2 active:scale-95"><Save size={16} /> Simpan</button>
           </div>
         </div>
@@ -98,7 +107,14 @@ const HalaqohSection = ({
             <React.Fragment key={halaqoh}>
               {editingHalaqoh?.oldName === halaqoh && editingHalaqoh?.guruName === (guruDataKey || guruName) ? (
                 <div className="bg-indigo-50 border border-indigo-200 p-1.5 rounded-xl flex items-center gap-1.5 shadow-sm w-full sm:w-auto">
-                  <input type="text" autoFocus value={editingHalaqoh.newName} onChange={e => setEditingHalaqoh({ ...editingHalaqoh, newName: e.target.value })} className="flex-1 sm:w-40 bg-white border border-indigo-100 rounded-lg px-3 py-2 text-xs font-bold outline-none" />
+                  <input type="text" autoFocus value={editingHalaqoh.newName} onChange={e => setEditingHalaqoh({ ...editingHalaqoh, newName: e.target.value })} className="flex-1 sm:w-32 bg-white border border-indigo-100 rounded-lg px-3 py-2 text-xs font-bold outline-none" />
+                  <div className="relative w-24 shrink-0">
+                    <select value={editingHalaqoh.newSesi || ''} onChange={e => setEditingHalaqoh({ ...editingHalaqoh, newSesi: e.target.value })} className="w-full bg-white border border-indigo-100 rounded-lg pl-2.5 pr-7 py-2 text-xs font-bold outline-none appearance-none cursor-pointer">
+                      <option value="">Sesi</option>
+                      {HALAQOH_SESSION_OPTIONS.map(sesi => <option key={sesi} value={sesi}>Sesi {sesi}</option>)}
+                    </select>
+                    <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  </div>
                   <button onClick={handleSaveEditHalaqoh} className="p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"><Save size={14} /></button>
                   <button onClick={() => setEditingHalaqoh(null)} className="p-2 text-slate-400 hover:bg-slate-200 bg-white rounded-lg border border-slate-200"><X size={14} /></button>
                 </div>
@@ -108,7 +124,7 @@ const HalaqohSection = ({
                   <div className="text-slate-300 group-hover/badge:text-slate-400 cursor-grab touch-none flex items-center shrink-0" onTouchStart={(e) => handleTouchStart(e, halaqoh)}><GripVertical size={14} /></div>
                   <span className="truncate py-0.5 select-none min-w-0">{halaqoh}</span>
                   <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover/badge:opacity-100 transition-opacity bg-white/80 rounded-lg p-0.5 shrink-0 ml-1.5">
-                    <button onClick={() => setEditingHalaqoh({ guruName: guruDataKey || guruName, oldName: halaqoh, newName: halaqoh })} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-100 rounded-md"><Edit3 size={14} /></button>
+                    <button onClick={() => { const m = halaqoh.match(/^(.+)\s\(Sesi\s+(.+)\)$/); setEditingHalaqoh({ guruName: guruDataKey || guruName, oldName: halaqoh, newName: m ? m[1].trim() : halaqoh, newSesi: m ? m[2].trim() : '' }); }} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-100 rounded-md"><Edit3 size={14} /></button>
                     <button onClick={() => requestDeleteHalaqoh(guruDataKey || guruName, halaqoh)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-100 rounded-md"><X size={14} /></button>
                   </div>
                 </div>
@@ -564,9 +580,9 @@ const PrintStudentList = ({ students, activeHalaqoh, onClose }) => {
 const StudentView = ({
   activeHalaqoh, filteredStudents, allStudents, setCurrentView,
   openAddStudentModal, openEditStudentModal, requestDeleteStudent, isSuperAdmin,
-  openCropModal, uploadingPhotoId, uploadProgress, onReorderStudents, searchQuery, setSearchQuery,
+  requestDeleteStudentPhoto, openCropModal, uploadingPhotoId, uploadProgress, onReorderStudents, searchQuery, setSearchQuery,
   // Teacher halaqoh & student management props
-  currentUser, newHalaqohName, setNewHalaqohName, handleAddHalaqoh,
+  currentUser, newHalaqohName, setNewHalaqohName, newHalaqohSesi, setNewHalaqohSesi, handleAddHalaqoh,
   guruHalaqohData, editingHalaqoh, setEditingHalaqoh, handleSaveEditHalaqoh,
   requestDeleteHalaqoh, handleReorderHalaqoh,
   students, requestBulkDeleteStudents, requestBulkEditStudents, handleBulkSaveStudents,
@@ -636,7 +652,7 @@ const StudentView = ({
     <div className="student-mobile-page p-3 sm:p-6 md:p-8 pb-24 sm:pb-8" ref={containerRef}>
       {/* Teacher Halaqoh Management */}
       {!isSuperAdmin && currentUser && newHalaqohName !== undefined && (
-        <HalaqohSection newHalaqohName={newHalaqohName} setNewHalaqohName={setNewHalaqohName} handleAddHalaqoh={handleAddHalaqoh} guruHalaqohData={guruHalaqohData} currentUser={currentUser} editingHalaqoh={editingHalaqoh} setEditingHalaqoh={setEditingHalaqoh} handleSaveEditHalaqoh={handleSaveEditHalaqoh} requestDeleteHalaqoh={requestDeleteHalaqoh} handleReorderHalaqoh={handleReorderHalaqoh} />
+        <HalaqohSection newHalaqohName={newHalaqohName} setNewHalaqohName={setNewHalaqohName} newHalaqohSesi={newHalaqohSesi} setNewHalaqohSesi={setNewHalaqohSesi} handleAddHalaqoh={handleAddHalaqoh} guruHalaqohData={guruHalaqohData} currentUser={currentUser} editingHalaqoh={editingHalaqoh} setEditingHalaqoh={setEditingHalaqoh} handleSaveEditHalaqoh={handleSaveEditHalaqoh} requestDeleteHalaqoh={requestDeleteHalaqoh} handleReorderHalaqoh={handleReorderHalaqoh} />
       )}
 
       {/* Header */}
@@ -789,18 +805,19 @@ const StudentView = ({
           {displayStudents.map((student, index) => {
             const g = normalizeGender(student.gender || student.jenis_kelamin);
             const dupes = allStudents ? findDuplicates(student, allStudents) : [];
+            const hasClass = student.kelas && student.kelas !== '-';
             return (
             <div key={student.id} data-student-id={student.id} draggable
               onDragStart={(e) => handleDragStart(e, student.id)} onDragOver={(e) => handleDragOver(e, student.id)}
               onDrop={(e) => handleDrop(e, student.id)} onDragEnd={handleDragEnd}
-              className={`student-card-modern bg-white p-3.5 sm:p-4 md:p-6 min-h-[110px] md:min-h-[130px] rounded-2xl md:rounded-3xl shadow-sm border ${dragOverId === student.id ? 'border-green-500 scale-[1.02] shadow-lg' : 'border-gray-100'} flex flex-col sm:flex-row items-stretch sm:items-start md:items-center justify-between hover:shadow-md transition-all group gap-3 cursor-grab active:cursor-grabbing animate-student-card ${dragId === student.id ? 'opacity-50 grayscale' : ''} print:break-inside-avoid`}
+              className={`student-card-modern bg-white p-3 sm:p-4 md:p-6 min-h-[96px] md:min-h-[130px] rounded-2xl md:rounded-3xl shadow-sm border ${dragOverId === student.id ? 'border-green-500 scale-[1.02] shadow-lg' : 'border-gray-100'} flex flex-col sm:flex-row items-stretch sm:items-start md:items-center justify-between hover:shadow-md transition-all group gap-3 cursor-grab active:cursor-grabbing animate-student-card ${dragId === student.id ? 'opacity-50 grayscale' : ''} print:break-inside-avoid`}
               style={{ animationDelay: `${Math.min(index, 14) * 32}ms` }}
             >
-              <div className="flex w-full min-w-0 items-center gap-2.5 sm:gap-3 md:gap-4">
-                <div className="flex flex-col items-center justify-center shrink-0 text-gray-300 group-hover:text-gray-400 cursor-grab touch-none p-1 -ml-1 print:hidden" onTouchStart={(e) => handleTouchStart(e, student.id)}>
+              <div className="flex w-full min-w-0 items-center gap-2 sm:gap-3 md:gap-4">
+                <div className="flex flex-col items-center justify-center shrink-0 text-gray-300 group-hover:text-gray-400 cursor-grab touch-none p-0.5 -ml-1 print:hidden" onTouchStart={(e) => handleTouchStart(e, student.id)}>
                   <GripVertical size={18} />
                 </div>
-                <div className={`w-[48px] h-[48px] md:w-[60px] md:h-[60px] rounded-full flex items-center justify-center font-black text-lg md:text-xl overflow-hidden relative shrink-0 border border-gray-100 group/avatar ${student.color || 'bg-blue-100 text-blue-600'}`}>
+                <div className={`w-[50px] h-[50px] md:w-[60px] md:h-[60px] rounded-full flex items-center justify-center font-black text-lg md:text-xl overflow-hidden relative shrink-0 border border-gray-100 group/avatar ${student.color || 'bg-blue-100 text-blue-600'}`}>
                   {student.photo ? (<img src={student.photo} alt="" className="w-full h-full object-cover" />) : (student.initial || getInitials(student.name))}
                   {uploadingPhotoId === student.id ? (
                     <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm flex flex-col items-center justify-center text-white cursor-wait p-2">
@@ -813,22 +830,40 @@ const StudentView = ({
                       <input type="file" accept="image/*" className="hidden" onChange={(e) => onPhotoChange(e, student.id)} />
                     </label>
                   )}
-                  {uploadingPhotoId !== student.id && (
+                  {student.photo && uploadingPhotoId !== student.id && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); requestDeleteStudentPhoto?.(student); }}
+                      className="absolute right-1 bottom-1 z-10 w-6 h-6 rounded-full bg-red-500 text-white border border-white shadow-md flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover/avatar:opacity-100 transition-opacity print:hidden"
+                      title="Hapus foto"
+                    >
+                      <Trash2 size={12} strokeWidth={3} />
+                    </button>
+                  )}
+                  {!student.photo && uploadingPhotoId !== student.id && (
                     <span className="sm:hidden absolute -right-1 -bottom-1 w-5 h-5 rounded-full bg-white text-slate-500 border border-gray-100 shadow-sm flex items-center justify-center pointer-events-none print:hidden">
                       <Camera size={11} strokeWidth={3} />
                     </span>
                   )}
                 </div>
-                <div className="min-w-0 flex flex-col justify-center flex-1">
-                  <div className="flex items-start gap-1.5 mb-1.5 min-w-0">
+                <div className="min-w-0 flex flex-col justify-center flex-1 gap-1.5">
+                  <div className="flex items-start gap-1.5 min-w-0">
                     <h3 className={`min-w-0 flex-1 font-extrabold text-gray-800 leading-tight line-clamp-2 whitespace-normal break-words [overflow-wrap:anywhere] ${getStudentNameClass(student.name)}`} title={student.name}>{student.name}</h3>
                     {/* #14: Duplicate warning badge */}
                     {dupes.length > 0 && <span className="inline-flex items-center gap-0.5 text-[8px] font-black text-orange-600 bg-orange-50 border border-orange-200 px-1.5 py-0.5 rounded-md shrink-0" title={`Nama sama dengan: ${dupes.map(d => `${d.name} (${d.halaqoh || '-'})`).join(', ')}`}><AlertTriangle size={10} /> Duplikat</span>}
                   </div>
-                  <div className="flex flex-wrap gap-1.5 md:gap-2 min-w-0">
-                    <span className="inline-flex max-w-full min-w-0 bg-blue-50 text-blue-600 text-[8.5px] md:text-[10px] font-black uppercase px-2 py-1 rounded-md tracking-[0.08em] border border-blue-100 shadow-sm leading-snug truncate">{student.kelas || '-'}</span>
-                    <span className="inline-flex max-w-full min-w-0 bg-gray-50 text-gray-600 text-[8.5px] md:text-[10px] font-black uppercase px-2 py-1 rounded-md tracking-[0.08em] border border-gray-200 shadow-sm leading-snug truncate">{student.halaqoh || '-'}</span>
-                    <span className={`inline-flex text-[8.5px] md:text-[10px] font-black uppercase px-2 py-1 rounded-md tracking-[0.08em] border shadow-sm leading-snug ${g === 'P' ? 'bg-pink-50 text-pink-600 border-pink-100' : 'bg-sky-50 text-sky-600 border-sky-100'}`}>{g === 'P' ? 'P' : 'L'}</span>
+                  <div className="flex flex-wrap items-center gap-1.5 md:gap-2 min-w-0">
+                    {hasClass && (
+                      <span className="inline-flex h-7 max-w-full min-w-0 items-center bg-blue-50 text-blue-600 text-[9px] md:text-[10px] font-black px-2.5 rounded-lg tracking-[0.04em] border border-blue-100 shadow-sm leading-none truncate">
+                        Kelas {student.kelas}
+                      </span>
+                    )}
+                    <span className="inline-flex h-7 max-w-[180px] sm:max-w-[210px] md:max-w-full min-w-0 items-center bg-slate-50 text-slate-600 text-[9px] md:text-[10px] font-black px-2.5 rounded-lg tracking-[0.04em] border border-slate-200 shadow-sm leading-none truncate" title={student.halaqoh || '-'}>
+                      {student.halaqoh || '-'}
+                    </span>
+                    <span className={`inline-flex h-7 min-w-7 items-center justify-center text-[9px] md:text-[10px] font-black rounded-lg tracking-[0.04em] border shadow-sm leading-none ${g === 'P' ? 'bg-pink-50 text-pink-600 border-pink-100' : 'bg-sky-50 text-sky-600 border-sky-100'}`}>
+                      {g === 'P' ? 'P' : 'L'}
+                    </span>
                   </div>
                   {/* #13: Transfer history */}
                   {student.previous_halaqoh && (
@@ -851,11 +886,6 @@ const StudentView = ({
             );
           })}
         </div>
-      )}
-
-      {/* Teacher Student Data Management Section */}
-      {!isSuperAdmin && students && requestBulkDeleteStudents && (
-        <StudentDataSection students={students} openEditStudentModal={openEditStudentModal} requestDeleteStudent={requestDeleteStudent} requestBulkDeleteStudents={requestBulkDeleteStudents} requestBulkEditStudents={requestBulkEditStudents} handleBulkSaveStudents={handleBulkSaveStudents} kelasList={kelasList} guruHalaqohData={guruHalaqohData} currentUser={currentUser} showToast={showToast} />
       )}
 
       {/* Print trigger */}

@@ -11,7 +11,8 @@ CREATE TABLE settings (
   targetreguler text DEFAULT '2 Juz',
   targetalquran text DEFAULT '',
   ujian_materials jsonb DEFAULT '{"tahsin": [], "tahfidz": []}'::jsonb,
-  kkm_score integer DEFAULT 75
+  kkm_score integer DEFAULT 75,
+  teacherphotos jsonb DEFAULT '{}'::jsonb
 );
 
 -- 2. TABEL APP_USERS
@@ -22,9 +23,16 @@ CREATE TABLE app_users (
   password text NOT NULL,
   role text DEFAULT 'guru',
   status text DEFAULT 'pending',
+  panggilan text,
+  ttl text,
+  certificate_no text,
   resetRequested boolean DEFAULT false,
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now())
 );
+
+ALTER TABLE app_users ADD COLUMN IF NOT EXISTS panggilan text;
+ALTER TABLE app_users ADD COLUMN IF NOT EXISTS ttl text;
+ALTER TABLE app_users ADD COLUMN IF NOT EXISTS certificate_no text;
 
 -- 3. TABEL STUDENTS
 CREATE TABLE students (
@@ -88,10 +96,11 @@ CREATE INDEX idx_activity_logs_created_at ON activity_logs (created_at DESC);
 -- KEBIJAKAN KEAMANAN (Row Level Security)
 
 -- 0. Buat fungsi Bypass RLS khusus untuk verifikasi login
+DROP FUNCTION IF EXISTS get_user_login_data(text);
 CREATE OR REPLACE FUNCTION get_user_login_data(lookup_username text)
-RETURNS TABLE (id uuid, username text, name text, password text, role text, status text)
+RETURNS TABLE (id uuid, username text, name text, password text, role text, status text, panggilan text, ttl text, certificate_no text)
 SECURITY DEFINER LANGUAGE sql AS $$
-  SELECT id, username, name, password, role, status 
+  SELECT id, username, name, password, role, status, panggilan, ttl, certificate_no
   FROM public.app_users 
   WHERE username = lookup_username;
 $$;
@@ -159,7 +168,7 @@ BEGIN
     -- Mencari detail kolom yang berubah dengan membandingkan OLD dan NEW menggunakan JSONB
     SELECT string_agg(
              CASE 
-               WHEN key IN ('records', 'guruhalaqohdata', 'kelaslist') THEN key || ': [Data JSON Diperbarui]'
+               WHEN key IN ('records', 'guruhalaqohdata', 'kelaslist', 'teacherphotos') THEN key || ': [Data JSON Diperbarui]'
                ELSE key || ': ' || COALESCE(o.value, 'null') || ' -> ' || COALESCE(n.value, 'null')
              END,
              E'\n'

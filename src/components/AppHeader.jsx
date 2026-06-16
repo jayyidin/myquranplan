@@ -3,8 +3,9 @@ import { BookOpen, User, Menu, LogOut, Moon, Sun } from 'lucide-react';
 
 const AppHeader = ({
   institutionLogo, institutionName, currentView, setCurrentView,
-  isSuperAdmin, currentUser, onLogout, theme, setTheme, mobileMenuOpen, setMobileMenuOpen
+  isSuperAdmin, currentUser, onLogout, theme, setTheme, mobileMenuOpen, setMobileMenuOpen, teacherPhotos
 }) => {
+  const teacherPhoto = currentUser?.username ? teacherPhotos?.[currentUser.username] : null;
   return (
     <header className="bg-white dark:bg-slate-900/95 dark:backdrop-blur-md border-b border-gray-100 dark:border-slate-800 shrink-0 z-[60] w-full shadow-sm print:hidden sticky top-0 transition-all duration-500">
       <div className="max-w-7xl mx-auto px-3 md:px-4 xl:px-6 min-h-14 md:min-h-[76px] xl:min-h-[88px] py-2 md:py-2.5 flex items-center justify-between gap-2 lg:gap-4">
@@ -33,9 +34,7 @@ const AppHeader = ({
           {isSuperAdmin && (
             <button onClick={() => setCurrentView('log')} className={`relative pb-1 px-0.5 group transition-colors leading-tight whitespace-normal text-center max-w-[92px] ${currentView === 'log' ? 'text-green-600' : 'hover:text-green-600'}`}>Log Aktifitas<span className={`absolute bottom-0 left-0 h-0.5 bg-green-600 transition-all duration-300 ${currentView === 'log' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span></button>
           )}
-          {isSuperAdmin && (
-            <button onClick={() => setCurrentView('pengaturan')} className={`relative pb-1 px-0.5 group transition-colors leading-tight whitespace-normal text-center max-w-[92px] ${currentView === 'pengaturan' ? 'text-green-600' : 'hover:text-green-600'}`}>Pengaturan<span className={`absolute bottom-0 left-0 h-0.5 bg-green-600 transition-all duration-300 ${currentView === 'pengaturan' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span></button>
-          )}
+          <button onClick={() => setCurrentView('pengaturan')} className={`relative pb-1 px-0.5 group transition-colors leading-tight whitespace-normal text-center max-w-[92px] ${currentView === 'pengaturan' ? 'text-green-600' : 'hover:text-green-600'}`}>Pengaturan<span className={`absolute bottom-0 left-0 h-0.5 bg-green-600 transition-all duration-300 ${currentView === 'pengaturan' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span></button>
         </nav>
 
         <div className="flex items-center gap-1.5 lg:gap-2 shrink-0">
@@ -43,7 +42,11 @@ const AppHeader = ({
             {theme === 'dark' ? <Sun size={18} className="text-amber-400" /> : <Moon size={18} />}
           </button>
           <div className="hidden md:flex items-center gap-2 px-2.5 lg:px-3 py-1.5 bg-gray-50 dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 max-w-[150px] lg:max-w-[180px]">
-            <User size={14} className="text-gray-400 dark:text-slate-400" />
+            {teacherPhoto ? (
+              <img src={teacherPhoto} alt={currentUser.name} className="w-6 h-6 rounded-full object-cover border border-gray-200 dark:border-slate-600 shrink-0" />
+            ) : (
+              <User size={14} className="text-gray-400 dark:text-slate-400" />
+            )}
             <span className="text-[11px] lg:text-xs font-bold text-gray-600 dark:text-slate-300 truncate">{currentUser.name}</span>
           </div>
           <button onClick={onLogout} className="p-2 text-gray-400 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 bg-gray-50 dark:bg-slate-800 rounded-xl hidden md:block"><LogOut size={18} /></button>

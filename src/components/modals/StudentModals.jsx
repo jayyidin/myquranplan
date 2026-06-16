@@ -1,6 +1,6 @@
 // File: src/components/modals/StudentModals.jsx
 import React, { useState, useEffect } from 'react';
-import { X, Search, User, Plus, Camera, ShieldAlert, Edit3, Loader2 } from 'lucide-react';
+import { X, Search, User, Plus, Camera, ShieldAlert, Edit3, Loader2, Trash2 } from 'lucide-react';
 
 export const AddStudentModal = ({
   isOpen, onClose, isSuperAdmin, addStudentMode, setAddStudentMode,
@@ -104,10 +104,17 @@ export const AddStudentModal = ({
         ) : (
           <form onSubmit={handleSaveNewStudent} className="p-4 flex flex-col gap-4">
             <div className="flex flex-col items-center gap-2">
-              <label className="w-20 h-20 rounded-full bg-gray-100 dark:bg-slate-800 border-2 border-dashed border-gray-300 dark:border-slate-600 flex items-center justify-center overflow-hidden cursor-pointer hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors">
-                {newStudent.photo ? <img src={newStudent.photo} alt="Preview" className="w-full h-full object-cover" /> : <Camera size={24} className="text-gray-400 dark:text-slate-500" />}
-                <input type="file" accept="image/*" onChange={(e) => handlePhotoUpload(e, false)} className="hidden" />
-              </label>
+              <div className="relative">
+                <label className="w-20 h-20 rounded-full bg-gray-100 dark:bg-slate-800 border-2 border-dashed border-gray-300 dark:border-slate-600 flex items-center justify-center overflow-hidden cursor-pointer hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors">
+                  {newStudent.photo ? <img src={newStudent.photo} alt="Preview" className="w-full h-full object-cover" /> : <Camera size={24} className="text-gray-400 dark:text-slate-500" />}
+                  <input type="file" accept="image/*" onChange={(e) => handlePhotoUpload(e, false)} className="hidden" />
+                </label>
+                {newStudent.photo && (
+                  <button type="button" onClick={() => setNewStudent({ ...newStudent, photo: null })} className="absolute -right-1 -bottom-1 w-8 h-8 rounded-full bg-red-500 text-white border-2 border-white dark:border-slate-900 shadow-lg flex items-center justify-center" title="Hapus foto">
+                    <Trash2 size={14} strokeWidth={3} />
+                  </button>
+                )}
+              </div>
               <span className="text-[10px] font-bold text-gray-400 dark:text-slate-500">Ketuk foto</span>
             </div>
             <div>
@@ -164,7 +171,7 @@ export const AddStudentModal = ({
 
 export const EditStudentModal = ({
   isOpen, onClose, editStudentData, setEditStudentData,
-  handlePhotoUpload, kelasList, handleUpdateStudent,
+  handlePhotoUpload, kelasList, handleUpdateStudent, requestDeleteStudentPhoto,
   guruHalaqohData, isSuperAdmin
 }) => {
   const [isRendered, setIsRendered] = useState(false);
@@ -195,10 +202,17 @@ export const EditStudentModal = ({
         </div>
         <form onSubmit={handleUpdateStudent} className="p-5 flex flex-col gap-4">
           <div className="flex flex-col items-center gap-2">
-            <label className="w-20 h-20 rounded-full bg-gray-100 dark:bg-slate-800 border-2 border-dashed border-gray-300 dark:border-slate-600 flex items-center justify-center overflow-hidden cursor-pointer hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors">
-              {editStudentData.photo ? <img src={editStudentData.photo} alt="Preview" className="w-full h-full object-cover" /> : <Camera size={24} className="text-gray-400 dark:text-slate-500" />}
-              <input type="file" accept="image/*" onChange={(e) => handlePhotoUpload(e, true)} className="hidden" />
-            </label>
+            <div className="relative">
+              <label className="w-20 h-20 rounded-full bg-gray-100 dark:bg-slate-800 border-2 border-dashed border-gray-300 dark:border-slate-600 flex items-center justify-center overflow-hidden cursor-pointer hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors">
+                {editStudentData.photo ? <img src={editStudentData.photo} alt="Preview" className="w-full h-full object-cover" /> : <Camera size={24} className="text-gray-400 dark:text-slate-500" />}
+                <input type="file" accept="image/*" onChange={(e) => handlePhotoUpload(e, true)} className="hidden" />
+              </label>
+              {editStudentData.photo && (
+                <button type="button" onClick={() => requestDeleteStudentPhoto?.()} className="absolute -right-1 -bottom-1 w-8 h-8 rounded-full bg-red-500 text-white border-2 border-white dark:border-slate-900 shadow-lg flex items-center justify-center" title="Hapus foto">
+                  <Trash2 size={14} strokeWidth={3} />
+                </button>
+              )}
+            </div>
             <span className="text-[10px] font-bold text-gray-400 dark:text-slate-500">Ketuk ubah</span>
           </div>
           <div>

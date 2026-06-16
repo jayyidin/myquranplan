@@ -9,6 +9,7 @@ export const useSupabaseSync = ({
   setInstitutionLogo,
   setTargetReguler,
   setTargetAlQuran,
+  setTeacherPhotos,
   setStudents,
   setAppUsers,
   setIsDbReady
@@ -25,6 +26,7 @@ export const useSupabaseSync = ({
         setInstitutionLogo(settingsData.institutionlogo || settingsData.institutionLogo || 'logo.png');
         setTargetReguler(settingsData.targetreguler || settingsData.targetReguler || '2 Juz');
         setTargetAlQuran(settingsData.targetalquran || settingsData.targetAlQuran || '');
+        if (setTeacherPhotos) setTeacherPhotos(settingsData.teacherphotos || settingsData.teacherPhotos || {});
       }
 
       // 2. Ambil data siswa dengan Pagination Loop
@@ -105,6 +107,7 @@ export const useSupabaseSync = ({
         if (payload.new) {
           setGuruHalaqohData(payload.new.guruhalaqohdata || payload.new.guruHalaqohData || {});
           setKelasList(payload.new.kelaslist || payload.new.kelasList || []);
+          if (setTeacherPhotos) setTeacherPhotos(payload.new.teacherphotos || payload.new.teacherPhotos || {});
         }
       }).subscribe();
 

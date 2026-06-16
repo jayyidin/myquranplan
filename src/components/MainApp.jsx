@@ -238,10 +238,18 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
   const [kelasList, setKelasList] = useState([]);
   const [institutionName, setInstitutionName] = useState('Nama Sekolah Anda');
   const [institutionLogo, setInstitutionLogo] = useState('logo.png');
+  const [teacherPhotos, setTeacherPhotos] = useState({});
   const [targetReguler, setTargetReguler] = useState('2 Juz');
   const [targetAlQuran, setTargetAlQuran] = useState('');
   const [kkmScore, setKkmScore] = useState(75);
   const [appUsers, setAppUsers] = useState([]);
+  const currentUserProfile = useMemo(() => {
+    const matchedUser = appUsers.find(user => (
+      (currentUser?.id && user.id === currentUser.id) ||
+      (currentUser?.username && user.username === currentUser.username)
+    ));
+    return matchedUser ? { ...currentUser, ...matchedUser } : currentUser;
+  }, [appUsers, currentUser]);
 
   const [activeGuru, setActiveGuru] = useState(() => localStorage.getItem('myquranplan_active_guru') || '');
   const [activeHalaqoh, setActiveHalaqoh] = useState(() => localStorage.getItem('myquranplan_active_halaqoh') || '');
@@ -263,6 +271,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
   // -- STATE PENGATURAN --
   const [newGuruName, setNewGuruName] = useState('');
   const [newHalaqohName, setNewHalaqohName] = useState('');
+  const [newHalaqohSesi, setNewHalaqohSesi] = useState('');
   const [newKelasName, setNewKelasName] = useState('');
   const [selectedGuruForHalaqoh, setSelectedGuruForHalaqoh] = useState('');
   const [editingGuru, setEditingGuru] = useState(null);
@@ -302,6 +311,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
     setInstitutionLogo,
     setTargetReguler,
     setTargetAlQuran,
+    setTeacherPhotos,
     setKkmScore,
     setStudents,
     setAppUsers,
@@ -338,7 +348,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
     if (!isDbReady) return; // Mencegah reset saat data dari database belum selesai dimuat
 
     if (!isSuperAdmin) {
-      const teacherName = currentUser?.name || "";
+      const teacherName = currentUserProfile?.name || "";
       if (activeGuru !== teacherName) setActiveGuru(teacherName);
       if (selectedGuruForHalaqoh !== teacherName) setSelectedGuruForHalaqoh(teacherName);
 
@@ -373,7 +383,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
         setActiveHalaqoh('');
       }
     }
-  }, [guruList, guruHalaqohData, isSuperAdmin, currentUser?.name, activeGuru, activeHalaqoh, selectedGuruForHalaqoh, isDbReady]);
+  }, [guruList, guruHalaqohData, isSuperAdmin, currentUserProfile?.name, activeGuru, activeHalaqoh, selectedGuruForHalaqoh, isDbReady]);
 
   useEffect(() => { setNewStudent(prev => ({ ...prev, halaqoh: activeHalaqoh, kelas: prev.kelas || (kelasList.length > 0 ? kelasList[0] : '') })); }, [activeHalaqoh, kelasList]);
 
@@ -397,6 +407,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
     if (updates.targetReguler !== undefined) mappedUpdates.targetreguler = updates.targetReguler;
     if (updates.targetAlQuran !== undefined) mappedUpdates.targetalquran = updates.targetAlQuran;
     if (updates.kkmScore !== undefined) mappedUpdates.kkm_score = updates.kkmScore;
+    if (updates.teacherPhotos !== undefined) mappedUpdates.teacherphotos = updates.teacherPhotos;
 
     const { error } = await supabase
       .from('settings')
@@ -487,7 +498,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       }
 
       if (!isSuperAdmin) {
-        const searchName = currentUser?.name?.trim().toLowerCase() || "";
+        const searchName = currentUserProfile?.name?.trim().toLowerCase() || "";
         const guruKey = Object.keys(guruHalaqohData).find(k => k !== '_order_' && k.trim().toLowerCase() === searchName);
         const myHalaqohs = guruKey ? (guruHalaqohData[guruKey] || []) : [];
 
@@ -498,7 +509,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
     });
     // unfilledKeys hanya relevan saat showUnfilledOnly && currentView === 'home'
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeStudents, searchQuery, activeHalaqoh, showUnfilledOnly, currentView, ...(showUnfilledOnly && currentView === 'home' ? [unfilledKeys, activeDate] : []), isSuperAdmin, currentUser?.name, guruHalaqohData]);
+  }, [activeStudents, searchQuery, activeHalaqoh, showUnfilledOnly, currentView, ...(showUnfilledOnly && currentView === 'home' ? [unfilledKeys, activeDate] : []), isSuperAdmin, currentUserProfile?.name, guruHalaqohData]);
 
   // Hitung jumlah siswa di halaqoh aktif (sebelum difilter oleh pencarian) untuk placeholder
   const studentsInHalaqoh = useMemo(() => {
@@ -507,7 +518,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       const isInActiveHalaqoh = !activeHalaqoh || (s?.halaqoh && String(s.halaqoh).trim() === String(activeHalaqoh).trim());
 
       if (!isSuperAdmin) {
-        const searchName = currentUser?.name?.trim().toLowerCase() || "";
+        const searchName = currentUserProfile?.name?.trim().toLowerCase() || "";
         const guruKey = Object.keys(guruHalaqohData).find(k => k !== '_order_' && k.trim().toLowerCase() === searchName);
         const myHalaqohs = guruKey ? (guruHalaqohData[guruKey] || []) : [];
 
@@ -516,7 +527,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       }
       return isInActiveHalaqoh;
     });
-  }, [activeStudents, activeHalaqoh, isSuperAdmin, currentUser?.name, guruHalaqohData]);
+  }, [activeStudents, activeHalaqoh, isSuperAdmin, currentUserProfile?.name, guruHalaqohData]);
 
   // -- FUNGSI PENGATURAN (SETTINGS) --
   const handleApproveUser = async (user) => {
@@ -529,6 +540,19 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       showToast('Gagal menyetujui akun.');
     } else {
       showToast(`Akun ${user.name} berhasil disetujui!`);
+
+      // --- AUTO-ADD KE GURU HALAQOH DATA ---
+      const teacherName = user.name?.trim();
+      if (teacherName) {
+        const alreadyExists = Object.keys(guruHalaqohData).some(k => k !== '_order_' && k.trim().toLowerCase() === teacherName.toLowerCase());
+        if (!alreadyExists) {
+          const updated = { ...guruHalaqohData, [teacherName]: [] };
+          updated._order_ = [...guruList, teacherName];
+          setGuruHalaqohData(updated);
+          await updateMasterDataCloud({ guruHalaqohData: updated });
+        }
+      }
+      // ----------------------------------------
 
       // --- LOG AKTIVITAS ---
       try {
@@ -590,6 +614,74 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       showToast('Akun berhasil diperbarui!');
     } catch (error) {
       showToast('Gagal update akun.');
+    }
+  };
+
+  const handleUpdateTeacherProfile = async (profileData) => {
+    const userId = currentUserProfile?.id || currentUser?.id;
+    const username = currentUserProfile?.username || currentUser?.username;
+    const oldName = (currentUserProfile?.name || currentUser?.name || '').trim();
+    const nextName = (profileData.name || '').trim();
+
+    if (!userId && !username) {
+      showToast('Akun guru tidak ditemukan.');
+      return;
+    }
+    if (!nextName) {
+      showToast('Nama guru tidak boleh kosong.');
+      return;
+    }
+
+    const updatedData = {
+      name: nextName,
+      panggilan: (profileData.panggilan || '').trim() || null,
+      ttl: (profileData.ttl || '').trim() || null,
+      certificate_no: (profileData.certificate_no || '').trim() || null
+    };
+
+    try {
+      const query = supabase.from('app_users').update(updatedData);
+      const { error } = userId ? await query.eq('id', userId) : await query.eq('username', username);
+      if (error) throw error;
+
+      let updatedGuruHalaqohData = null;
+      if (oldName && nextName !== oldName) {
+        const guruKey = Object.keys(guruHalaqohData).find(key => key !== '_order_' && key.trim().toLowerCase() === oldName.toLowerCase());
+        if (guruKey) {
+          updatedGuruHalaqohData = { ...guruHalaqohData, [nextName]: guruHalaqohData[guruKey] };
+          delete updatedGuruHalaqohData[guruKey];
+          if (Array.isArray(updatedGuruHalaqohData._order_)) {
+            updatedGuruHalaqohData._order_ = updatedGuruHalaqohData._order_.map(name => name === guruKey ? nextName : name);
+          }
+          setGuruHalaqohData(updatedGuruHalaqohData);
+          await updateMasterDataCloud({ guruHalaqohData: updatedGuruHalaqohData });
+          if (activeGuru === guruKey) setActiveGuru(nextName);
+          if (selectedGuruForHalaqoh === guruKey) setSelectedGuruForHalaqoh(nextName);
+        }
+      }
+
+      setAppUsers(prev => prev.map(user => (
+        (userId && user.id === userId) || (!userId && user.username === username)
+          ? { ...user, ...updatedData }
+          : user
+      )));
+
+      try {
+        await supabase.auth.updateUser({
+          data: {
+            ...currentUser,
+            ...updatedData,
+            fullName: nextName
+          }
+        });
+      } catch (metadataError) {
+        console.warn('Gagal memperbarui metadata auth:', metadataError);
+      }
+
+      showToast('Profil guru berhasil disimpan!');
+    } catch (error) {
+      console.error(error);
+      showToast('Gagal menyimpan profil guru.');
     }
   };
 
@@ -794,6 +886,51 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
     }
   };
 
+  const handleTeacherPhotoUpload = async (file) => {
+    if (!file || !currentUser?.username) return;
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const img = new Image();
+      img.onload = async () => {
+        const canvas = document.createElement('canvas');
+        const MAX_SIZE = 150;
+        let width = img.width;
+        let height = img.height;
+        if (width > height) {
+          if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; }
+        } else {
+          if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+        const updated = { ...teacherPhotos, [currentUser.username]: compressedBase64 };
+        setTeacherPhotos(updated);
+        await updateMasterDataCloud({ teacherPhotos: updated });
+        showToast('Foto profil berhasil diperbarui!');
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const requestDeleteTeacherPhoto = () => {
+    if (!currentUser?.username || !teacherPhotos[currentUser.username]) return;
+    setConfirmDialog({
+      isOpen: true,
+      message: 'Hapus foto profil guru ini?',
+      onConfirm: async () => {
+        const updated = { ...teacherPhotos };
+        delete updated[currentUser.username];
+        setTeacherPhotos(updated);
+        await updateMasterDataCloud({ teacherPhotos: updated });
+        showToast('Foto profil berhasil dihapus!');
+      }
+    });
+  };
+
   const handleAddKelas = async () => {
     if (!newKelasName.trim() || kelasList.includes(newKelasName.trim())) return;
     const updated = [...kelasList, newKelasName.trim()];
@@ -838,12 +975,14 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
 
   const handleAddHalaqoh = async () => {
     if (!newHalaqohName.trim() || !selectedGuruForHalaqoh) return;
+    const finalName = newHalaqohSesi.trim() ? `${newHalaqohName.trim()} (Sesi ${newHalaqohSesi.trim()})` : newHalaqohName.trim();
     const currentHalaqohs = guruHalaqohData[selectedGuruForHalaqoh] || [];
-    if (currentHalaqohs.includes(newHalaqohName.trim())) return;
-    const updated = { ...guruHalaqohData, [selectedGuruForHalaqoh]: [...currentHalaqohs, newHalaqohName.trim()] };
+    if (currentHalaqohs.includes(finalName)) return;
+    const updated = { ...guruHalaqohData, [selectedGuruForHalaqoh]: [...currentHalaqohs, finalName] };
     setGuruHalaqohData(updated);
     await updateMasterDataCloud({ guruHalaqohData: updated });
     setNewHalaqohName('');
+    setNewHalaqohSesi('');
     showToast('Halaqoh ditambahkan!');
   };
 
@@ -902,17 +1041,18 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
   };
 
   const handleSaveEditHalaqoh = async () => {
-    if (!editingHalaqoh.newName.trim() || editingHalaqoh.newName === editingHalaqoh.oldName) { setEditingHalaqoh(null); return; }
+    const finalName = editingHalaqoh.newSesi?.trim() ? `${editingHalaqoh.newName.trim()} (Sesi ${editingHalaqoh.newSesi.trim()})` : editingHalaqoh.newName.trim();
+    if (!finalName || finalName === editingHalaqoh.oldName) { setEditingHalaqoh(null); return; }
     const updated = { ...guruHalaqohData };
     const halaqohs = updated[editingHalaqoh.guruName];
-    updated[editingHalaqoh.guruName] = halaqohs.map(h => h === editingHalaqoh.oldName ? editingHalaqoh.newName.trim() : h);
+    updated[editingHalaqoh.guruName] = halaqohs.map(h => h === editingHalaqoh.oldName ? finalName : h);
     setGuruHalaqohData(updated);
     await updateMasterDataCloud({ guruHalaqohData: updated });
 
     // Sinkronisasi: Perbarui nama halaqoh pada seluruh siswa terkait di database
-    await supabase.from('students').update({ halaqoh: editingHalaqoh.newName.trim() }).eq('halaqoh', editingHalaqoh.oldName);
+    await supabase.from('students').update({ halaqoh: finalName }).eq('halaqoh', editingHalaqoh.oldName);
     // Perbarui state lokal agar siswa tidak hilang dari layar
-    setStudents(prev => prev.map(s => s.halaqoh === editingHalaqoh.oldName ? { ...s, halaqoh: editingHalaqoh.newName.trim() } : s));
+    setStudents(prev => prev.map(s => s.halaqoh === editingHalaqoh.oldName ? { ...s, halaqoh: finalName } : s));
 
     setEditingHalaqoh(null);
     showToast('Nama halaqoh diubah!');
@@ -1826,6 +1966,33 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       return null;
     }
   };
+
+  const getStudentPhotoStoragePath = (photoUrl) => {
+    const match = String(photoUrl || '').match(/student_photos\/(.+?)(\?|$)/);
+    return match ? match[1] : null;
+  };
+
+  const requestDeleteStudentPhoto = (student) => {
+    if (!student?.id || !student.photo) return;
+    setConfirmDialog({
+      isOpen: true,
+      message: `Hapus foto profil ${student.name}?`,
+      onConfirm: async () => {
+        const { error } = await supabase.from('students').update({ photo: null }).eq('id', student.id);
+        if (error) {
+          showToast('Gagal menghapus foto profil.');
+          return;
+        }
+
+        const storagePath = getStudentPhotoStoragePath(student.photo);
+        if (storagePath) supabase.storage.from('student_photos').remove([storagePath]).catch(console.error);
+
+        setStudents(prev => prev.map(s => s.id === student.id ? { ...s, photo: null } : s));
+        setEditStudentData(prev => prev?.id === student.id ? { ...prev, photo: null } : prev);
+        showToast('Foto profil siswa berhasil dihapus!');
+      }
+    });
+  };
   // Fungsi untuk memfilter daftar halaqoh berdasarkan role user
   function getFilteredHalaqohDataForEdit() {
     const cleanData = { ...guruHalaqohData };
@@ -1833,10 +2000,10 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
 
     if (isSuperAdmin) return cleanData;
 
-    const searchName = currentUser?.name?.trim().toLowerCase() || "";
+    const searchName = currentUserProfile?.name?.trim().toLowerCase() || "";
     const guruKey = Object.keys(cleanData).find(k => k.trim().toLowerCase() === searchName);
 
-    return guruKey ? { [guruKey]: cleanData[guruKey] } : { [currentUser?.name || 'Guru']: [] };
+    return guruKey ? { [guruKey]: cleanData[guruKey] } : { [currentUserProfile?.name || 'Guru']: [] };
   }
 
   // -- FUNGSI JURNAL MODAL --
@@ -2669,13 +2836,13 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       `}} />
 
       {/* Header */}
-      <AppHeader institutionLogo={institutionLogo} institutionName={institutionName} currentView={currentView} setCurrentView={setCurrentView} isSuperAdmin={isSuperAdmin} currentUser={currentUser} onLogout={onLogout} theme={theme} setTheme={setTheme} mobileMenuOpen={mobileMenuOpen} setMobileMenuOpen={setMobileMenuOpen} />
+      <AppHeader institutionLogo={institutionLogo} institutionName={institutionName} currentView={currentView} setCurrentView={setCurrentView} isSuperAdmin={isSuperAdmin} currentUser={currentUserProfile} onLogout={onLogout} theme={theme} setTheme={setTheme} mobileMenuOpen={mobileMenuOpen} setMobileMenuOpen={setMobileMenuOpen} teacherPhotos={teacherPhotos} />
 
       {/* MOBILE MENU OVERLAY (Drawer untuk HP) */}
-      <MobileMenu mobileMenuOpen={mobileMenuOpen} setMobileMenuOpen={setMobileMenuOpen} currentUser={currentUser} theme={theme} setTheme={setTheme} currentView={currentView} setCurrentView={setCurrentView} isSuperAdmin={isSuperAdmin} onLogout={onLogout} />
+      <MobileMenu mobileMenuOpen={mobileMenuOpen} setMobileMenuOpen={setMobileMenuOpen} currentUser={currentUserProfile} theme={theme} setTheme={setTheme} currentView={currentView} setCurrentView={setCurrentView} isSuperAdmin={isSuperAdmin} onLogout={onLogout} teacherPhotos={teacherPhotos} handleTeacherPhotoUpload={handleTeacherPhotoUpload} requestDeleteTeacherPhoto={requestDeleteTeacherPhoto} />
 
       {/* Area Filter Halaqoh & Guru */}
-      <FilterBar currentView={currentView} isSuperAdmin={isSuperAdmin} activeGuru={activeGuru} setActiveGuru={handleGuruChange} setActiveHalaqoh={setActiveHalaqoh} guruList={guruList} currentUser={currentUser} showUnfilledOnly={showUnfilledOnly} setShowUnfilledOnly={setShowUnfilledOnly} handleCopyPortalLink={handleCopyPortalLink} activeHalaqoh={activeHalaqoh} guruHalaqohData={guruHalaqohData} students={students} />
+      <FilterBar currentView={currentView} isSuperAdmin={isSuperAdmin} activeGuru={activeGuru} setActiveGuru={handleGuruChange} setActiveHalaqoh={setActiveHalaqoh} guruList={guruList} currentUser={currentUserProfile} showUnfilledOnly={showUnfilledOnly} setShowUnfilledOnly={setShowUnfilledOnly} handleCopyPortalLink={handleCopyPortalLink} activeHalaqoh={activeHalaqoh} guruHalaqohData={guruHalaqohData} students={students} teacherPhotos={teacherPhotos} />
 
       {/* Main Content Area */}
       <main className="flex-1 w-full max-w-7xl mx-auto overflow-hidden relative flex flex-col min-h-0 transition-colors duration-500 print:h-auto print:overflow-visible print:block">
@@ -2722,15 +2889,18 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
                 }}
                 openEditStudentModal={(s) => { setEditStudentData({ id: s.id, name: s.name, kelas: s.kelas, halaqoh: s.halaqoh, gender: s.gender || s.jenis_kelamin || 'L', photo: s.photo || null }); setIsEditStudentModalOpen(true); }}
                 requestDeleteStudent={requestDeleteStudent} isSuperAdmin={isSuperAdmin}
+                requestDeleteStudentPhoto={requestDeleteStudentPhoto}
                 openCropModal={openCropModal}
                 uploadingPhotoId={uploadingPhotoId}
                 uploadProgress={uploadProgress}
                 onReorderStudents={handleReorderStudents}
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
-                currentUser={currentUser}
+                currentUser={currentUserProfile}
                 newHalaqohName={newHalaqohName}
                 setNewHalaqohName={setNewHalaqohName}
+                newHalaqohSesi={newHalaqohSesi}
+                setNewHalaqohSesi={setNewHalaqohSesi}
                 handleAddHalaqoh={handleAddHalaqoh}
                 guruHalaqohData={guruHalaqohData}
                 editingHalaqoh={editingHalaqoh}
@@ -2768,6 +2938,8 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
               setSelectedGuruForHalaqoh={setSelectedGuruForHalaqoh}
               newHalaqohName={newHalaqohName}
               setNewHalaqohName={setNewHalaqohName}
+              newHalaqohSesi={newHalaqohSesi}
+              setNewHalaqohSesi={setNewHalaqohSesi}
               handleAddHalaqoh={handleAddHalaqoh}
               editingGuru={editingGuru}
               setEditingGuru={setEditingGuru}
@@ -2781,7 +2953,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
               handleReorderGuru={handleReorderGuru}
               handleLinkAccount={handleLinkAccount}
               showToast={showToast}
-              currentUser={currentUser}
+              currentUser={currentUserProfile}
             />
           )}
           {currentView === 'laporan' && (
@@ -2802,12 +2974,12 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
           {currentView === 'arsip' && (
             <ArchiveView
               isSuperAdmin={isSuperAdmin}
-              currentUser={currentUser}
+              currentUser={currentUserProfile}
               institutionLogo={institutionLogo}
               guruHalaqohData={guruHalaqohData}
             />
           )}
-          {currentView === 'pengaturan' && isSuperAdmin && (
+          {currentView === 'pengaturan' && (
             <SettingsView
               isSuperAdmin={isSuperAdmin} appUsers={appUsers}
               handleApproveUser={handleApproveUser} handleRejectUser={handleRejectUser}
@@ -2815,9 +2987,11 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
               targetReguler={targetReguler} setTargetReguler={setTargetReguler} targetAlQuran={targetAlQuran} setTargetAlQuran={setTargetAlQuran}
               kkmScore={kkmScore} setKkmScore={setKkmScore}
               kelasList={kelasList} newKelasName={newKelasName} setNewKelasName={setNewKelasName} handleAddKelas={handleAddKelas} handleDeleteKelas={handleDeleteKelas} handleReorderKelas={handleReorderKelas}
-              guruList={isSuperAdmin ? guruList : [currentUser.name]}
-              newHalaqohName={newHalaqohName} setNewHalaqohName={setNewHalaqohName} handleAddHalaqoh={handleAddHalaqoh}
-              currentUser={currentUser} guruHalaqohData={guruHalaqohData}
+              guruList={isSuperAdmin ? guruList : [currentUserProfile.name]}
+              newHalaqohName={newHalaqohName} setNewHalaqohName={setNewHalaqohName} newHalaqohSesi={newHalaqohSesi} setNewHalaqohSesi={setNewHalaqohSesi} handleAddHalaqoh={handleAddHalaqoh}
+              currentUser={currentUserProfile} guruHalaqohData={guruHalaqohData}
+              teacherPhotos={teacherPhotos} handleTeacherPhotoUpload={handleTeacherPhotoUpload} requestDeleteTeacherPhoto={requestDeleteTeacherPhoto}
+              handleUpdateTeacherProfile={handleUpdateTeacherProfile}
               editingHalaqoh={editingHalaqoh} setEditingHalaqoh={setEditingHalaqoh} handleSaveEditHalaqoh={handleSaveEditHalaqoh} requestDeleteHalaqoh={requestDeleteHalaqoh} handleReorderHalaqoh={handleReorderHalaqoh}
               students={students} openEditStudentModal={(s) => { setEditStudentData({ id: s.id, name: s.name, kelas: s.kelas, halaqoh: s.halaqoh, gender: s.gender || s.jenis_kelamin || 'L', photo: s.photo || null }); setIsEditStudentModalOpen(true); }}
               requestDeleteStudent={requestDeleteStudent} requestBulkDeleteStudents={requestBulkDeleteStudents} requestBulkEditStudents={requestBulkEditStudents} handleBulkSaveStudents={handleBulkSaveStudents} onLogout={onLogout}
@@ -2846,7 +3020,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
                 students={activeStudents}
                 setStudents={setStudents}
                 showToast={showToast}
-                currentUser={currentUser}
+                currentUser={currentUserProfile}
                 institutionLogo={institutionLogo}
               />
             </div>
@@ -2873,9 +3047,10 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
         handlePhotoUpload={handlePhotoUpload}
         kelasList={kelasList}
         handleUpdateStudent={handleUpdateStudent}
+        requestDeleteStudentPhoto={() => requestDeleteStudentPhoto(editStudentData)}
         guruHalaqohData={getFilteredHalaqohDataForEdit()}
         isSuperAdmin={isSuperAdmin}
-        currentUser={currentUser}
+        currentUser={currentUserProfile}
       />
 
       {/* MODAL JURNAL */}
@@ -2933,9 +3108,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
         {isSuperAdmin && (
           <button onClick={() => setCurrentView('log')} className={`flex flex-col items-center gap-1 transition-colors ${currentView === 'log' ? 'text-green-600 dark:text-emerald-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-400'}`}><Activity size={20} /><span className="text-[9px] font-bold">Log</span></button>
         )}
-        {isSuperAdmin && (
-          <button onClick={() => setCurrentView('pengaturan')} className={`flex flex-col items-center gap-1 transition-colors ${currentView === 'pengaturan' ? 'text-green-600 dark:text-emerald-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-400'}`}><Settings size={20} /><span className="text-[9px] font-bold">Setelan</span></button>
-        )}
+        <button onClick={() => setCurrentView('pengaturan')} className={`flex flex-col items-center gap-1 transition-colors ${currentView === 'pengaturan' ? 'text-green-600 dark:text-emerald-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-400'}`}><Settings size={20} /><span className="text-[9px] font-bold">Setelan</span></button>
       </nav>
     </div>
   );

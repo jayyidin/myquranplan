@@ -1,8 +1,9 @@
 import React from 'react';
 import { User, Filter, Link, ChevronDown } from 'lucide-react';
 
-const FilterBar = ({ currentView, isSuperAdmin, activeGuru, setActiveGuru, setActiveHalaqoh, guruList, currentUser, showUnfilledOnly, setShowUnfilledOnly, handleCopyPortalLink, activeHalaqoh, guruHalaqohData, students }) => {
+const FilterBar = ({ currentView, isSuperAdmin, activeGuru, setActiveGuru, setActiveHalaqoh, guruList, currentUser, showUnfilledOnly, setShowUnfilledOnly, handleCopyPortalLink, activeHalaqoh, guruHalaqohData, students, teacherPhotos }) => {
   if (['pengaturan', 'log', 'statistik', 'arsip', 'mutasi'].includes(currentView)) return null;
+  const teacherPhoto = currentUser?.username ? teacherPhotos?.[currentUser.username] : null;
 
   const halaqohOptions = activeGuru
     ? (guruHalaqohData[activeGuru] || [])
@@ -26,8 +27,12 @@ const FilterBar = ({ currentView, isSuperAdmin, activeGuru, setActiveGuru, setAc
           </label>
         ) : (
           <div className="flex items-center gap-2 px-3 py-2.5 sm:py-2 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 rounded-2xl sm:rounded-xl border border-blue-100 dark:border-blue-500/20 shadow-sm overflow-hidden text-xs sm:text-sm font-black transition-colors">
-            <span className="w-7 h-7 sm:w-auto sm:h-auto rounded-xl sm:rounded-none bg-white/70 sm:bg-transparent border border-blue-100 sm:border-0 flex items-center justify-center shrink-0">
-              <User size={14} />
+            <span className="w-7 h-7 sm:w-auto sm:h-auto rounded-xl sm:rounded-none bg-white/70 sm:bg-transparent border border-blue-100 sm:border-0 flex items-center justify-center shrink-0 overflow-hidden">
+              {teacherPhoto ? (
+                <img src={teacherPhoto} alt={currentUser.name} className="w-7 h-7 rounded-full object-cover" />
+              ) : (
+                <User size={14} />
+              )}
             </span>
             <span className="min-w-0 truncate" title={currentUser.name}>{currentUser.name}</span>
           </div>

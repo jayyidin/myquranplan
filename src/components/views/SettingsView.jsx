@@ -85,11 +85,33 @@ const SettingsView = ({
   targetReguler, setTargetReguler, targetAlQuran, setTargetAlQuran,
   kelasList = [], newKelasName, setNewKelasName, handleAddKelas, handleDeleteKelas, handleReorderKelas,
   guruList = [],
-  newHalaqohName, setNewHalaqohName, handleAddHalaqoh,
+  newHalaqohName, setNewHalaqohName, newHalaqohSesi, setNewHalaqohSesi, handleAddHalaqoh,
   currentUser, guruHalaqohData = {}, editingHalaqoh, setEditingHalaqoh, handleSaveEditHalaqoh, requestDeleteHalaqoh, handleReorderHalaqoh,
+  teacherPhotos = {}, handleTeacherPhotoUpload, requestDeleteTeacherPhoto, handleUpdateTeacherProfile,
   students = [], openEditStudentModal, requestDeleteStudent, requestBulkDeleteStudents, requestBulkEditStudents, handleBulkSaveStudents, onLogout, handleCleanLessonPlanValues, handleCloseSemester, handleBackupData, handleResetTeacherPassword
 }) => {
   const [studentSearch, setStudentSearch] = useState('');
+  const currentTeacherPhoto = currentUser?.username ? teacherPhotos[currentUser.username] : null;
+  const [teacherProfileForm, setTeacherProfileForm] = useState({
+    name: currentUser?.name || '',
+    panggilan: currentUser?.panggilan || '',
+    ttl: currentUser?.ttl || '',
+    certificate_no: currentUser?.certificate_no || ''
+  });
+
+  React.useEffect(() => {
+    setTeacherProfileForm({
+      name: currentUser?.name || '',
+      panggilan: currentUser?.panggilan || '',
+      ttl: currentUser?.ttl || '',
+      certificate_no: currentUser?.certificate_no || ''
+    });
+  }, [currentUser?.name, currentUser?.panggilan, currentUser?.ttl, currentUser?.certificate_no]);
+
+  const handleTeacherProfileSubmit = (event) => {
+    event.preventDefault();
+    handleUpdateTeacherProfile?.(teacherProfileForm);
+  };
 
   // --- DEBOUNCE PENCARIAN (MENGURANGI LAG DI HP) ---
   const [localStudentSearch, setLocalStudentSearch] = useState('');
@@ -335,6 +357,7 @@ const SettingsView = ({
 
   const hasStudentFilters = Boolean(studentSearch || filterKelas || filterStatus !== (isSuperAdmin ? 'kosong' : 'all'));
   const quickSections = [
+    { id: 'settings-profile', icon: User, label: 'Profil', detail: currentUser?.panggilan || currentUser?.name || 'Guru' },
     ...(isSuperAdmin ? [{ id: 'settings-identity', icon: GraduationCap, label: 'Identitas', detail: 'Logo, kelas, target' }] : []),
     ...(isSuperAdmin ? [{ id: 'settings-students', icon: Database, label: 'Data Siswa', detail: `${filteredStudentsMaster.length} tampil` }] : []),
     ...(isSuperAdmin ? [{ id: 'settings-maintenance', icon: Wrench, label: 'Perawatan', detail: 'Backup & semester' }] : [])
@@ -356,12 +379,12 @@ const SettingsView = ({
                 {isSuperAdmin ? 'Panel Super Admin' : 'Panel Guru'}
               </div>
               <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-slate-900 tracking-tight leading-tight">
-                {isSuperAdmin ? 'Pengaturan Sistem' : 'Manajemen Halaqoh'}
+                {isSuperAdmin ? 'Pengaturan Sistem' : 'Pengaturan Guru'}
               </h1>
               <p className="text-sm sm:text-base text-slate-500 font-medium leading-relaxed mt-2 max-w-2xl">
                 {isSuperAdmin
                   ? 'Kelola identitas lembaga, akses pengguna, struktur halaqoh, dan data siswa dari satu tempat.'
-                  : 'Atur kelompok halaqoh dan data siswa yang berada di bawah bimbingan Anda.'}
+                  : 'Lengkapi profil guru dan atur data yang berkaitan dengan akun Anda.'}
               </p>
             </div>
 
@@ -389,6 +412,91 @@ const SettingsView = ({
         </div>
 
         <div className="space-y-7 sm:space-y-9">
+          {/* Profil Foto */}
+          <section id="settings-profile" className="animate-in fade-in slide-in-from-top-4 duration-500 scroll-mt-24">
+            <SectionHeader
+              accent="bg-sky-500"
+              title="Profil Guru"
+              description="Data ini opsional, kecuali nama. Foto akan tampil di header dan menu aplikasi."
+              icon={Camera}
+            />
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6">
+              <form onSubmit={handleTeacherProfileSubmit} className="flex flex-col lg:flex-row gap-5">
+              <div className="flex items-start gap-4 lg:w-[360px] shrink-0">
+                <div className="relative w-20 h-20 rounded-2xl bg-slate-100 border-2 border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
+                  {currentTeacherPhoto ? (
+                    <img src={currentTeacherPhoto} alt={currentUser.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <User size={32} className="text-slate-400" />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-black text-slate-800">{currentUser?.name}</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">{currentUser?.role} &bull; {currentUser?.username}</p>
+                  <div className="flex flex-wrap gap-2">
+                    <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-sky-50 hover:bg-sky-100 text-sky-700 rounded-xl text-xs font-black uppercase tracking-widest cursor-pointer transition-colors border border-sky-200">
+                      <Camera size={14} /> Ubah Foto
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleTeacherPhotoUpload?.(file); e.target.value = ''; }} />
+                    </label>
+                    {currentTeacherPhoto && (
+                      <button type="button" onClick={() => requestDeleteTeacherPhoto?.()} className="inline-flex items-center gap-2 px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl text-xs font-black uppercase tracking-widest transition-colors border border-red-200">
+                        <Trash2 size={14} /> Hapus Foto
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1">
+                <div className="sm:col-span-2">
+                  <FieldLabel>Nama</FieldLabel>
+                  <input
+                    type="text"
+                    value={teacherProfileForm.name}
+                    onChange={event => setTeacherProfileForm(prev => ({ ...prev, name: event.target.value }))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
+                    placeholder="Nama lengkap guru"
+                  />
+                </div>
+                <div>
+                  <FieldLabel>Panggilan</FieldLabel>
+                  <input
+                    type="text"
+                    value={teacherProfileForm.panggilan}
+                    onChange={event => setTeacherProfileForm(prev => ({ ...prev, panggilan: event.target.value }))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
+                    placeholder="Contoh: Ustadz Juman"
+                  />
+                </div>
+                <div>
+                  <FieldLabel>TTL</FieldLabel>
+                  <input
+                    type="text"
+                    value={teacherProfileForm.ttl}
+                    onChange={event => setTeacherProfileForm(prev => ({ ...prev, ttl: event.target.value }))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
+                    placeholder="Tempat, tanggal lahir"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <FieldLabel>No. Sertifikat</FieldLabel>
+                  <input
+                    type="text"
+                    value={teacherProfileForm.certificate_no}
+                    onChange={event => setTeacherProfileForm(prev => ({ ...prev, certificate_no: event.target.value }))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
+                    placeholder="Nomor sertifikat"
+                  />
+                </div>
+                <div className="sm:col-span-2 flex justify-end">
+                  <button type="submit" className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-colors shadow-sm">
+                    <Save size={15} /> Simpan Profil
+                  </button>
+                </div>
+              </div>
+              </form>
+            </div>
+          </section>
+
           {isSuperAdmin && pendingUsers.length > 0 && (
             <section className="animate-in fade-in slide-in-from-top-4 duration-500">
               <SectionHeader

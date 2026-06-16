@@ -2,6 +2,7 @@ import React, { useMemo, useRef, useState } from 'react';
 import { ArrowUpDown, BookOpen, Check, ChevronDown, GripVertical, Layers, Mic, Search, ShieldCheck, SlidersHorizontal, Unlink2, Users, X, Shield, ShieldAlert, UserPlus, FolderPlus, Edit3, Trash2, Save, Plus, User, CheckCircle2, UserCheck } from 'lucide-react';
 
 const UNASSIGNED = '__unassigned__';
+const HALAQOH_SESSION_OPTIONS = ['1', '2', '3'];
 
 const FieldLabel = ({ children }) => (
   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{children}</label>
@@ -331,7 +332,7 @@ const HalaqohColumn = ({ group, students, progressMap, selectedIds, draggingIds,
   </section>
 );
 
-const KelolaView = ({ isSuperAdmin, students = [], guruHalaqohData = {}, guruList = [], kelasList = [], onMoveStudents, onStartNewSchoolYear, appUsers = [], handleApproveUser, handleRejectUser, handleUpdateUserAccount, handleCreateSuperAdmin, newGuruName, setNewGuruName, handleAddGuru, selectedGuruForHalaqoh, setSelectedGuruForHalaqoh, newHalaqohName, setNewHalaqohName, handleAddHalaqoh, editingGuru, setEditingGuru, handleSaveEditGuru, requestDeleteGuru, editingHalaqoh, setEditingHalaqoh, handleSaveEditHalaqoh, requestDeleteHalaqoh, handleReorderHalaqoh, handleReorderGuru, handleLinkAccount, showToast, currentUser }) => {
+const KelolaView = ({ isSuperAdmin, students = [], guruHalaqohData = {}, guruList = [], kelasList = [], onMoveStudents, onStartNewSchoolYear, appUsers = [], handleApproveUser, handleRejectUser, handleUpdateUserAccount, handleCreateSuperAdmin, newGuruName, setNewGuruName, handleAddGuru, selectedGuruForHalaqoh, setSelectedGuruForHalaqoh, newHalaqohName, setNewHalaqohName, newHalaqohSesi, setNewHalaqohSesi, handleAddHalaqoh, editingGuru, setEditingGuru, handleSaveEditGuru, requestDeleteGuru, editingHalaqoh, setEditingHalaqoh, handleSaveEditHalaqoh, requestDeleteHalaqoh, handleReorderHalaqoh, handleReorderGuru, handleLinkAccount, showToast, currentUser }) => {
   const [search, setSearch] = useState('');
   const [masterSearch, setMasterSearch] = useState('');
   const [masterKelasFilter, setMasterKelasFilter] = useState('');
@@ -1140,8 +1141,14 @@ const KelolaView = ({ isSuperAdmin, students = [], guruHalaqohData = {}, guruLis
                               {guruList.map(g => <option key={g} value={g}>{g}</option>)}
                             </select>
                           </SelectShell>
-                          <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_120px] gap-2">
+                          <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_80px_100px] gap-2">
                             <input type="text" placeholder="Nama halaqoh..." value={newHalaqohName} onChange={e => setNewHalaqohName(e.target.value)} className="min-w-0 w-full bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all text-slate-900 dark:text-slate-100" />
+                            <SelectShell className="min-w-0">
+                              <select value={newHalaqohSesi || ''} onChange={e => setNewHalaqohSesi(e.target.value)} className="min-w-0 w-full h-full bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl pl-4 pr-10 py-3 text-sm font-bold outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all text-slate-900 dark:text-slate-100 appearance-none cursor-pointer">
+                                <option value="">Sesi</option>
+                                {HALAQOH_SESSION_OPTIONS.map(sesi => <option key={sesi} value={sesi}>Sesi {sesi}</option>)}
+                              </select>
+                            </SelectShell>
                             <button onClick={handleAddHalaqoh} disabled={!selectedGuruForHalaqoh} className="bg-indigo-600 hover:bg-indigo-700 text-white py-3 px-4 rounded-xl disabled:bg-slate-200 dark:disabled:bg-slate-600 transition-colors w-full flex justify-center items-center font-bold text-xs uppercase tracking-widest active:scale-95"><Plus size={16} /> Tambah</button>
                           </div>
                         </div>
@@ -1159,7 +1166,7 @@ const KelolaView = ({ isSuperAdmin, students = [], guruHalaqohData = {}, guruLis
                     {filteredGuruList.map(guru => {
                       const guruDataKey = Object.keys(guruHalaqohData).find(k => k.trim().toLowerCase() === guru.trim().toLowerCase());
                       const halaqohsForGuru = guruDataKey ? guruHalaqohData[guruDataKey] : [];
-                      const linkedUser = appUsers.find(u => u.name?.trim() === guru.trim());
+                      const linkedUser = appUsers.find(u => u.name?.trim().toLowerCase() === guru.trim().toLowerCase());
                       return (
                         <div key={guru} data-guru-card-id={guru} draggable={!guruSearch && !editingGuru} onDragStart={(e) => handleDragStartGuru(e, guru)} onDragOver={(e) => handleDragOverGuru(e, guru)} onDrop={(e) => handleDropGuru(e, guru)} onDragEnd={handleDragEndGuru} className={`bg-white dark:bg-slate-800 border ${dragOverGuruId === guru ? 'border-indigo-500 bg-indigo-50/30 dark:bg-indigo-500/10 shadow-md scale-[1.02] z-10' : 'border-slate-200 dark:border-slate-700'} rounded-2xl p-4 shadow-sm transition-all hover:shadow-md group/card flex flex-col ${dragGuruId === guru ? 'opacity-50 grayscale' : 'opacity-100'}`}>
                           <div className="flex items-start justify-between gap-3 mb-4 pb-4 border-b border-slate-100 dark:border-slate-700">
@@ -1205,7 +1212,13 @@ const KelolaView = ({ isSuperAdmin, students = [], guruHalaqohData = {}, guruLis
                                 <React.Fragment key={halaqoh}>
                                   {editingHalaqoh?.oldName === halaqoh && editingHalaqoh?.guruName === guru ? (
                                     <div className="bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 p-1.5 rounded-xl flex items-center gap-1.5 shadow-sm w-full sm:w-auto">
-                                      <input type="text" autoFocus value={editingHalaqoh.newName} onChange={e => setEditingHalaqoh({ ...editingHalaqoh, newName: e.target.value })} className="flex-1 sm:w-40 bg-white dark:bg-slate-700 border border-indigo-100 dark:border-indigo-500/20 rounded-lg px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500/20 text-slate-900 dark:text-slate-100" />
+                                      <input type="text" autoFocus value={editingHalaqoh.newName} onChange={e => setEditingHalaqoh({ ...editingHalaqoh, newName: e.target.value })} className="flex-1 sm:w-32 bg-white dark:bg-slate-700 border border-indigo-100 dark:border-indigo-500/20 rounded-lg px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500/20 text-slate-900 dark:text-slate-100" />
+                                      <SelectShell className="w-24 shrink-0">
+                                        <select value={editingHalaqoh.newSesi || ''} onChange={e => setEditingHalaqoh({ ...editingHalaqoh, newSesi: e.target.value })} className="w-full bg-white dark:bg-slate-700 border border-indigo-100 dark:border-indigo-500/20 rounded-lg pl-2.5 pr-7 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500/20 text-slate-900 dark:text-slate-100 appearance-none cursor-pointer">
+                                          <option value="">Sesi</option>
+                                          {HALAQOH_SESSION_OPTIONS.map(sesi => <option key={sesi} value={sesi}>Sesi {sesi}</option>)}
+                                        </select>
+                                      </SelectShell>
                                       <button onClick={handleSaveEditHalaqoh} className="p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"><Save size={14} /></button>
                                       <button onClick={() => setEditingHalaqoh(null)} className="p-2 text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600 bg-white dark:bg-slate-700 rounded-lg transition-colors border border-slate-200 dark:border-slate-600"><X size={14} /></button>
                                     </div>
@@ -1214,7 +1227,7 @@ const KelolaView = ({ isSuperAdmin, students = [], guruHalaqohData = {}, guruLis
                                       <div className="text-slate-300 group-hover/badge:text-slate-400 cursor-grab touch-none flex items-center shrink-0" onTouchStart={(e) => handleTouchStartHalaqoh(e, guruDataKey || guru, halaqoh)}><GripVertical size={14} /></div>
                                       <span className="truncate py-0.5 select-none min-w-0">{halaqoh}</span>
                                       <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover/badge:opacity-100 transition-opacity bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-lg p-0.5 shrink-0 ml-1.5">
-                                        <button onClick={() => setEditingHalaqoh({ guruName: guru, oldName: halaqoh, newName: halaqoh })} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-100 dark:hover:bg-indigo-500/10 rounded-md transition-colors" title="Edit halaqoh"><Edit3 size={14} /></button>
+                                        <button onClick={() => { const m = halaqoh.match(/^(.+)\s\(Sesi\s+(.+)\)$/); setEditingHalaqoh({ guruName: guru, oldName: halaqoh, newName: m ? m[1].trim() : halaqoh, newSesi: m ? m[2].trim() : '' }); }} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-100 dark:hover:bg-indigo-500/10 rounded-md transition-colors" title="Edit halaqoh"><Edit3 size={14} /></button>
                                         <button onClick={() => requestDeleteHalaqoh(guru, halaqoh)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-100 dark:hover:bg-red-500/10 rounded-md transition-colors" title="Hapus halaqoh"><X size={14} /></button>
                                       </div>
                                     </div>

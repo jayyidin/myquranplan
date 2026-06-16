@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { PieChart, TrendingUp, Users, BookOpen, Mic, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { PieChart, Users, BookOpen, Mic, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatPeriode } from '../../utils/helpers';
 
 const MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
@@ -190,27 +190,98 @@ const getJuzFromSurah = (surahString) => {
   return 'Lainnya';
 };
 
-const StudentNameList = ({ students, color = 'blue' }) => (
-  <div className="mt-3 pt-3 border-t border-slate-200/60 dark:border-slate-700/60 animate-in fade-in slide-in-from-top-2 duration-200">
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-      {students.map((s, idx) => (
-        <div key={`${s.name}-${idx}`} className="flex items-center gap-2 bg-white/80 dark:bg-slate-800/60 rounded-lg px-2.5 py-1.5 border border-white dark:border-slate-700/50">
-          <div className={`w-6 h-6 rounded-md shrink-0 flex items-center justify-center text-[9px] font-black ${
-            color === 'blue' ? 'bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400'
-            : color === 'purple' ? 'bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400'
-            : 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
-          }`}>
-            {s.name.split(' ').filter(Boolean).map(p => p[0]).slice(0, 2).join('').toUpperCase()}
-          </div>
-          <div className="min-w-0">
-            <p className="text-[11px] sm:text-xs font-black text-slate-800 dark:text-slate-100 truncate" title={s.name}>{s.name}</p>
-            <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 dark:text-slate-500 truncate">{s.kelas !== '-' ? `Kelas ${s.kelas}` : ''}{s.kelas !== '-' && s.halaqoh !== '-' ? ' \u2022 ' : ''}{s.halaqoh !== '-' ? s.halaqoh : ''}</p>
-          </div>
+const StudentNameList = ({ students, color = 'blue' }) => {
+  const [filterKelas, setFilterKelas] = useState('');
+  const [sortAZ, setSortAZ] = useState(true);
+
+  const kelasList = React.useMemo(() => {
+    const set = new Set(students.map(s => s.kelas).filter(k => k && k !== '-'));
+    return [...set].sort((a, b) => {
+      const aNum = String(a).match(/\d+/), bNum = String(b).match(/\d+/);
+      if (aNum && bNum && Number(aNum[0]) !== Number(bNum[0])) return Number(aNum[0]) - Number(bNum[0]);
+      return String(a).localeCompare(String(b), 'id', { numeric: true });
+    });
+  }, [students]);
+
+  const filtered = React.useMemo(() => {
+    let list = [...students];
+    if (filterKelas) list = list.filter(s => s.kelas === filterKelas);
+    list.sort((a, b) => {
+      const cmp = String(a.name || '').localeCompare(String(b.name || ''), 'id', { sensitivity: 'base' });
+      return sortAZ ? cmp : -cmp;
+    });
+    return list;
+  }, [students, filterKelas, sortAZ]);
+
+  const avatarColor = color === 'blue' ? 'bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400'
+    : color === 'purple' ? 'bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400'
+    : 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400';
+
+  return (
+    <div
+      className="mt-3 pt-3 border-t border-slate-200/60 dark:border-slate-700/60 animate-in fade-in slide-in-from-top-2 duration-200"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* Filter Bar */}
+      <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
+        <button
+          type="button"
+          onClick={() => setFilterKelas('')}
+          className={`px-2.5 py-1 rounded-lg text-[9px] sm:text-[10px] font-black uppercase tracking-wider transition-all ${
+            !filterKelas
+              ? 'bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900'
+              : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'
+          }`}
+        >Semua</button>
+        {kelasList.map(k => (
+          <button
+            key={k}
+            type="button"
+            onClick={() => setFilterKelas(filterKelas === k ? '' : k)}
+            className={`px-2.5 py-1 rounded-lg text-[9px] sm:text-[10px] font-black uppercase tracking-wider transition-all ${
+              filterKelas === k
+                ? 'bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900'
+                : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'
+            }`}
+          >{k}</button>
+        ))}
+        <button
+          type="button"
+          onClick={() => setSortAZ(!sortAZ)}
+          className="ml-auto px-2.5 py-1 rounded-lg text-[9px] sm:text-[10px] font-black uppercase tracking-wider bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all flex items-center gap-1"
+        >
+          {sortAZ ? 'A\u2192Z' : 'Z\u2192A'}
+        </button>
+      </div>
+
+      {/* Student Count */}
+      <div className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">
+        {filtered.length} siswa{filterKelas ? ` \u2022 Kelas ${filterKelas}` : ''}
+      </div>
+
+      {/* Student Grid */}
+      {filtered.length > 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+          {filtered.map((s, idx) => (
+            <div key={`${s.name}-${idx}`} className="flex items-center gap-2 bg-white/80 dark:bg-slate-800/60 rounded-lg px-2.5 py-1.5 border border-white dark:border-slate-700/50">
+              <div className={`w-6 h-6 rounded-md shrink-0 flex items-center justify-center text-[9px] font-black ${avatarColor}`}>
+                {s.name.split(' ').filter(Boolean).map(p => p[0]).slice(0, 2).join('').toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <p className="text-[11px] sm:text-xs font-black text-slate-800 dark:text-slate-100 truncate" title={s.name}>{s.name}</p>
+                <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 dark:text-slate-500 truncate">{s.kelas !== '-' ? `Kelas ${s.kelas}` : ''}{s.kelas !== '-' && s.halaqoh !== '-' ? ' \u2022 ' : ''}{s.halaqoh !== '-' ? s.halaqoh : ''}</p>
+              </div>
+            </div>
+          ))}
         </div>
-      ))}
+      ) : (
+        <div className="text-center py-4 text-[10px] sm:text-xs font-bold text-slate-400 dark:text-slate-500">
+          Tidak ada siswa{filterKelas ? ` di Kelas ${filterKelas}` : ''}.
+        </div>
+      )}
     </div>
-  </div>
-);
+  );
+};
 
 const ProgressChartView = ({ students, activeHalaqoh, allStudents, weekDates, changeWeek }) => {
   const [periodType, setPeriodType] = useState('all'); // 'all', 'weekly', 'monthly'
@@ -341,9 +412,26 @@ const ProgressChartView = ({ students, activeHalaqoh, allStudents, weekDates, ch
     return map;
   }, [allStudents, students, periodRange, dataSourceType]);
 
+  // Statistik per Kelas (raw: 1A, 1B, 2A, dst)
+  const kelasStats = useMemo(() => {
+    const dataSource = dataSourceType === 'all' && allStudents ? allStudents : students;
+    const counts = {};
+    dataSource.forEach(s => {
+      const raw = (s.kelas || '').trim();
+      const label = raw || 'Tanpa Kelas';
+      counts[label] = (counts[label] || 0) + 1;
+    });
+    return Object.entries(counts)
+      .map(([label, count]) => ({ label, count }))
+      .sort((a, b) => {
+        const aNum = String(a.label).match(/\d+/), bNum = String(b.label).match(/\d+/);
+        if (aNum && bNum && Number(aNum[0]) !== Number(bNum[0])) return Number(aNum[0]) - Number(bNum[0]);
+        return String(a.label).localeCompare(String(b.label), 'id', { numeric: true });
+      });
+  }, [allStudents, students, dataSourceType]);
+
   const tahsinLabels = Object.keys(globalStats.tahsinCounts).filter(k => k !== 'Belum Ada' || globalStats.tahsinCounts[k] > 0);
   const maxTahsinCount = Math.max(...tahsinLabels.map(k => globalStats.tahsinCounts[k]), 1);
-  const dominantLevel = tahsinLabels.length > 0 ? tahsinLabels.reduce((a, b) => globalStats.tahsinCounts[a] > globalStats.tahsinCounts[b] ? a : b, tahsinLabels[0]) : '-';
 
   const tahfidzData = useMemo(() => {
     let labels = Object.keys(globalStats.tahfidzCounts)
@@ -770,13 +858,49 @@ const ProgressChartView = ({ students, activeHalaqoh, allStudents, weekDates, ch
             )}
           </div>
           
-          {/* Widget Informasi */}
-          <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mt-1 sm:mt-2">
+          {/* Total Siswa */}
+          <div className="lg:col-span-3 mt-1 sm:mt-2">
             <div className="bg-white dark:bg-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200 dark:border-slate-700 shadow-sm flex items-center gap-3 sm:gap-5 transition-colors">
               <div className="w-12 h-12 sm:w-16 sm:h-16 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center shrink-0"><Users size={26} className="sm:w-8 sm:h-8" /></div>
               <div className="min-w-0"><p className="text-[10px] sm:text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Total Siswa {dataSourceType === 'all' ? 'Aktif' : 'Terfilter'}</p><p className="text-3xl sm:text-4xl font-black text-slate-800 dark:text-slate-100 leading-none mt-1">{globalStats.totalStudents}</p><p className="text-[11px] sm:text-xs font-bold text-slate-500 dark:text-slate-400 mt-2 flex items-center gap-1 min-w-0">Halaqoh: <span className="truncate bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded-md border border-emerald-100 dark:border-emerald-500/20">{dataSourceType === 'all' ? 'Semua Halaqoh' : (activeHalaqoh || 'Semua')}</span></p></div>
             </div>
-            <div className="bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-950 dark:to-slate-900 rounded-2xl sm:rounded-3xl p-4 sm:p-8 border border-slate-800 dark:border-slate-800/80 shadow-xl text-white relative overflow-hidden"><div className="absolute -right-12 -top-12 text-white/5"><TrendingUp size={150} className="sm:w-[180px] sm:h-[180px]" /></div><div className="relative z-10"><h3 className="text-base sm:text-xl font-black text-emerald-400 mb-2 sm:mb-3 flex items-center gap-2"><TrendingUp size={18} className="sm:w-5 sm:h-5" /> Insight Otomatis</h3><p className="text-xs sm:text-base font-medium text-slate-300 leading-relaxed">Berdasarkan data <strong className="text-white">{dataSourceType === 'all' ? 'Semua Siswa' : 'Siswa Terfilter'}</strong> {periodRange ? `periode ${periodRange.label.toLowerCase()}` : 'sepanjang waktu'}, mayoritas berada di level <strong className="text-blue-300 bg-blue-500/20 px-1.5 sm:px-2 py-0.5 rounded-md">{dominantLevel}</strong> untuk Tahsin, serta capaian terbanyak Tahfidz pada <strong className="text-purple-300 bg-purple-500/20 px-1.5 sm:px-2 py-0.5 rounded-md">{topTahfidzSurah}</strong>. Terus pantau perkembangan untuk melihat transisi yang lebih detail secara berkelanjutan.</p></div></div>
+          </div>
+
+          {/* Statistik Per Kelas */}
+          <div className="lg:col-span-3 bg-white dark:bg-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200 dark:border-slate-700 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500 transition-colors" style={{ animationDelay: '400ms' }}>
+            <div className="flex items-center gap-2 mb-4 sm:mb-6">
+              <Users className="text-amber-500 dark:text-amber-400 shrink-0" size={19} />
+              <h2 className="text-base sm:text-lg font-black text-slate-800 dark:text-slate-100 truncate">Statistik Siswa Per Kelas</h2>
+            </div>
+            {kelasStats.length > 0 ? (
+              <div className="space-y-2.5 sm:space-y-3">
+                {(() => {
+                  const maxKelas = Math.max(...kelasStats.map(k => k.count), 1);
+                  return kelasStats.map(k => {
+                    const pct = globalStats.totalStudents > 0 ? Math.round((k.count / globalStats.totalStudents) * 100) : 0;
+                    const barW = `${(k.count / maxKelas) * 100}%`;
+                    return (
+                      <div key={k.label} className="grid grid-cols-[72px_minmax(0,1fr)_64px] sm:grid-cols-[110px_minmax(0,1fr)_80px] items-center gap-2 sm:gap-3">
+                        <div className="text-[11px] sm:text-sm font-black text-slate-700 dark:text-slate-200 truncate" title={k.label}>{k.label}</div>
+                        <div className="h-4 sm:h-5 rounded-full bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500 dark:from-amber-500 dark:to-orange-600 transition-all duration-1000"
+                            style={{ width: barW }}
+                          />
+                        </div>
+                        <div className="text-right text-[10px] sm:text-xs font-black text-slate-500 dark:text-slate-400 tabular-nums">
+                          {k.count} <span className="text-slate-400 dark:text-slate-500">({pct}%)</span>
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 p-6 sm:p-8 text-center text-xs sm:text-sm font-bold text-slate-400 dark:text-slate-500">
+                Belum ada data kelas untuk ditampilkan.
+              </div>
+            )}
           </div>
         </div>
       </div>
