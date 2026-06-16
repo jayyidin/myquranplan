@@ -231,12 +231,8 @@ const HomeView = ({
     return combined.filter(j => !j.isHidden).sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
   }, [allJadwal, activeHalaqoh]);
 
-  // Otomatis pindah ke tab jurnal jika jadwal kosong tapi user sedang berada di tab jadwal (misal dari sisa cache)
-  useEffect(() => {
-    if (isJadwalLoaded && jadwalUjian.length === 0 && homeTab === 'jadwal') {
-      setHomeTab('jurnal');
-    }
-  }, [isJadwalLoaded, jadwalUjian, homeTab, setHomeTab]);
+  // Otomatis pindah ke tab jurnal jika tidak ada ujian mendatang tapi user sedang berada di tab jadwal
+  // (dipindahkan ke bawah setelah upcomingJadwal didefinisikan)
 
   const formatDateForJadwal = (dateStr) => {
     if (!dateStr) return '-';
@@ -294,6 +290,13 @@ const HomeView = ({
     return { upcomingJadwal: upcoming, pastJadwal: past, nextExam: next };
   }, [jadwalUjian]);
 
+  // Otomatis pindah ke tab jurnal jika tidak ada ujian mendatang tapi user sedang berada di tab jadwal
+  useEffect(() => {
+    if (isJadwalLoaded && upcomingJadwal.length === 0 && homeTab === 'jadwal') {
+      setHomeTab('jurnal');
+    }
+  }, [isJadwalLoaded, upcomingJadwal, homeTab, setHomeTab]);
+
   // Auto-scroll Date Nav agar tanggal yang aktif selalu di tengah layar
   useEffect(() => {
     if (dateNavRef.current) {
@@ -302,6 +305,7 @@ const HomeView = ({
         setTimeout(() => {
           // Gulir khusus kontainer tanggal secara horizontal, tanpa mereset posisi scroll vertikal layar
           const container = dateNavRef.current;
+          if (!container || !activeBtn) return;
           const scrollLeft = activeBtn.offsetLeft - (container.offsetWidth / 2) + (activeBtn.offsetWidth / 2);
           container.scrollTo({ left: scrollLeft, behavior: 'smooth' });
         }, 100);
@@ -794,13 +798,76 @@ const HomeView = ({
     ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan', cT: 'catatanTahsin', cF: 'catatanTahfidz' }
     : jurnalKeys;
 
-  // MEMOISASI: Hitung data bayangan satu kali saja tiap kali tanggal/halaqoh berubah,
-  // jangan dihitung ulang pada setiap re-render (seperti saat scroll atau mengetik)
-  const ghostDataMap = useMemo(() => {
-    const ghostData = {};
+  const lessonPlanKeys = { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan', cT: 'catatanTahsin', cF: 'catatanTahfidz' };
+
+  // OPTIMASI: Hitung ghost data untuk KEDUA tab sekaligus (lesson_plan + jurnal).
+  // Saat user pindah tab, cukup pilih hasil yang sudah di-cache — tanpa recomputasi.
+  const { ghostDataMapLP, ghostDataMapJurnal } = useMemo(() => {
+    const computeGhostForKeys = (student, keySet, isLessonPlan, activeDateObj, currentWeekStart) => {
+      const recordedDates = Object.keys(student.records || {})
+        .map(d => new Date(d))
+        .filter(d => d < activeDateObj)
+        .sort((a, b) => b - a);
+
+      const ghostRecord = {
+        [keySet.t]: '-', [keySet.h]: '-', [keySet.tNilai]: '-', [keySet.tsNilai]: '-',
+        [keySet.f]: '-', [keySet.af]: '-', [keySet.fNilai]: '-', [keySet.m]: '-',
+        [keySet.c]: '-', [keySet.cT]: '-', [keySet.cF]: '-', __dates: {}
+      };
+
+      const hasG = {
+        tahsin: () => hasMeaningfulValue(ghostRecord[keySet.t]) || hasMeaningfulValue(ghostRecord[keySet.h]),
+        tahfidz: () => hasMeaningfulValue(ghostRecord[keySet.f]) || hasMeaningfulValue(ghostRecord[keySet.af]),
+        murojaah: () => hasMeaningfulValue(ghostRecord[keySet.m]),
+        catatan: () => hasMeaningfulValue(ghostRecord[keySet.cT]) || hasMeaningfulValue(ghostRecord[keySet.cF])
+      };
+
+      for (const d of recordedDates) {
+        const dStr = getDateString(d);
+        const rec = student.records[dStr];
+        const isPrevWeek = d < currentWeekStart;
+        const searchKeys = (isLessonPlan && isPrevWeek) ? jurnalKeys : keySet;
+
+        if (rec) {
+          const catatan = String(rec[searchKeys.c] || '').toLowerCase();
+          if (catatan.includes('libur') || catatan.includes('sakit') || catatan.includes('izin') || catatan.includes('alpa') || catatan.includes('tidak hadir')) continue;
+
+          if (!hasG.tahsin() && (hasMeaningfulValue(rec[searchKeys.t]) || hasMeaningfulValue(rec[searchKeys.h]))) {
+            ghostRecord[keySet.t] = rec[searchKeys.t] || '-';
+            ghostRecord[keySet.h] = rec[searchKeys.h] || '-';
+            ghostRecord[keySet.tNilai] = isLessonPlan ? '-' : rec[searchKeys.tNilai] || '-';
+            ghostRecord[keySet.tsNilai] = isLessonPlan ? '-' : rec[searchKeys.tsNilai] || '-';
+            ghostRecord.__dates.tahsin = dStr;
+          }
+          if (!hasG.tahfidz() && (hasMeaningfulValue(rec[searchKeys.f]) || hasMeaningfulValue(rec[searchKeys.af]))) {
+            ghostRecord[keySet.f] = rec[searchKeys.f] || '-';
+            ghostRecord[keySet.af] = rec[searchKeys.af] || '-';
+            ghostRecord[keySet.fNilai] = isLessonPlan ? '-' : rec[searchKeys.fNilai] || '-';
+            ghostRecord.__dates.tahfidz = dStr;
+          }
+          if (!hasG.murojaah() && hasMeaningfulValue(rec[searchKeys.m])) {
+            ghostRecord[keySet.m] = rec[searchKeys.m] || '-';
+            ghostRecord.__dates.murojaah = dStr;
+          }
+          if (!hasG.catatan() && (hasMeaningfulValue(rec[searchKeys.cT]) || hasMeaningfulValue(rec[searchKeys.cF]))) {
+            ghostRecord[keySet.cT] = rec[searchKeys.cT] || '-';
+            ghostRecord[keySet.cF] = rec[searchKeys.cF] || '-';
+            ghostRecord.__dates.catatan = dStr;
+          }
+          if (hasG.tahsin() && hasG.tahfidz() && hasG.murojaah() && hasG.catatan()) break;
+        }
+      }
+
+      if (hasG.tahsin() || hasG.tahfidz() || hasG.murojaah() || hasG.catatan()) {
+        return { ...ghostRecord, date: ghostRecord.__dates.tahsin || ghostRecord.__dates.tahfidz || ghostRecord.__dates.murojaah || ghostRecord.__dates.catatan };
+      }
+      return null;
+    };
+
+    const lpMap = {};
+    const jMap = {};
     const activeDateObj = new Date(activeDate);
     const activeDateDay = Number.isNaN(activeDateObj.getTime()) ? null : activeDateObj.getDay();
-
     const currentWeekStart = new Date(activeDateObj);
     if (activeDateDay !== null) {
       const diffToMonday = currentWeekStart.getDate() - activeDateDay + (activeDateDay === 0 ? -6 : 1);
@@ -809,83 +876,17 @@ const HomeView = ({
     }
 
     filteredStudents.forEach(s => {
-      const recordedDates = Object.keys(s.records || {})
-        .map(d => new Date(d))
-        .filter(d => d < activeDateObj)
-        .sort((a, b) => b - a); // Urutkan descending
-
-      const ghostRecord = {
-        [k.t]: '-',
-        [k.h]: '-',
-        [k.tNilai]: '-',
-        [k.tsNilai]: '-',
-        [k.f]: '-',
-        [k.af]: '-',
-        [k.fNilai]: '-',
-        [k.m]: '-',
-        [k.c]: '-',
-        [k.cT]: '-',
-        [k.cF]: '-',
-        __dates: {}
-      };
-
-      const hasTahsinGhost = () => hasMeaningfulValue(ghostRecord[k.t]) || hasMeaningfulValue(ghostRecord[k.h]);
-      const hasTahfidzGhost = () => hasMeaningfulValue(ghostRecord[k.f]) || hasMeaningfulValue(ghostRecord[k.af]);
-      const hasMurojaahGhost = () => hasMeaningfulValue(ghostRecord[k.m]);
-      const hasCatatanGhost = () => hasMeaningfulValue(ghostRecord[k.cT]) || hasMeaningfulValue(ghostRecord[k.cF]);
-
-      for (const d of recordedDates) {
-        const dStr = getDateString(d);
-        const rec = s.records[dStr];
-
-        const isFromPreviousWeek = d < currentWeekStart;
-        const searchKeys = (homeTab === 'lesson_plan' && isFromPreviousWeek) ? jurnalKeys : k;
-
-        if (rec) {
-          const catatan = String(rec[searchKeys.c] || '').toLowerCase();
-          if (catatan.includes('libur') || catatan.includes('sakit') || catatan.includes('izin') || catatan.includes('alpa') || catatan.includes('tidak hadir')) continue;
-
-          if (!hasTahsinGhost() && (hasMeaningfulValue(rec[searchKeys.t]) || hasMeaningfulValue(rec[searchKeys.h]))) {
-            ghostRecord[k.t] = rec[searchKeys.t] || '-';
-            ghostRecord[k.h] = rec[searchKeys.h] || '-';
-            ghostRecord[k.tNilai] = homeTab === 'lesson_plan' ? '-' : rec[searchKeys.tNilai] || '-';
-            ghostRecord[k.tsNilai] = homeTab === 'lesson_plan' ? '-' : rec[searchKeys.tsNilai] || '-';
-            ghostRecord.__dates.tahsin = dStr;
-          }
-
-          if (!hasTahfidzGhost() && (hasMeaningfulValue(rec[searchKeys.f]) || hasMeaningfulValue(rec[searchKeys.af]))) {
-            ghostRecord[k.f] = rec[searchKeys.f] || '-';
-            ghostRecord[k.af] = rec[searchKeys.af] || '-';
-            ghostRecord[k.fNilai] = homeTab === 'lesson_plan' ? '-' : rec[searchKeys.fNilai] || '-';
-            ghostRecord.__dates.tahfidz = dStr;
-          }
-
-          if (!hasMurojaahGhost() && hasMeaningfulValue(rec[searchKeys.m])) {
-            ghostRecord[k.m] = rec[searchKeys.m] || '-';
-            ghostRecord.__dates.murojaah = dStr;
-          }
-
-          if (!hasCatatanGhost() && (hasMeaningfulValue(rec[searchKeys.cT]) || hasMeaningfulValue(rec[searchKeys.cF]))) {
-            ghostRecord[k.cT] = rec[searchKeys.cT] || '-';
-            ghostRecord[k.cF] = rec[searchKeys.cF] || '-';
-            ghostRecord.__dates.catatan = dStr;
-          }
-
-          if (hasTahsinGhost() && hasTahfidzGhost() && hasMurojaahGhost() && hasCatatanGhost()) break;
-        }
-      }
-
-      if (hasTahsinGhost() || hasTahfidzGhost() || hasMurojaahGhost() || hasCatatanGhost()) {
-        ghostData[s.id] = {
-          ...ghostRecord,
-          date: ghostRecord.__dates.tahsin || ghostRecord.__dates.tahfidz || ghostRecord.__dates.murojaah || ghostRecord.__dates.catatan
-        };
-      }
+      const lp = computeGhostForKeys(s, lessonPlanKeys, true, activeDateObj, currentWeekStart);
+      if (lp) lpMap[s.id] = lp;
+      const j = computeGhostForKeys(s, jurnalKeys, false, activeDateObj, currentWeekStart);
+      if (j) jMap[s.id] = j;
     });
-    return ghostData;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredStudents, activeDate, homeTab]);
-  // Catatan: K object sengaja diabaikan di deps untuk mencegah render loop.
+
+    return { ghostDataMapLP: lpMap, ghostDataMapJurnal: jMap };
+  }, [filteredStudents, activeDate]);
+
+  // Pilih ghost data yang sudah di-cache berdasarkan tab aktif (instan, tanpa recomputasi!)
+  const ghostDataMap = homeTab === 'lesson_plan' ? ghostDataMapLP : ghostDataMapJurnal;
 
   // Sinkronisasikan ke window untuk kebutuhan MainApp.jsx
   useEffect(() => {
@@ -1517,7 +1518,7 @@ const HomeView = ({
                 <span className="sm:hidden truncate">Mutabaah</span>
                 <span className="hidden sm:inline">Mutabaah</span>
               </button>
-              {jadwalUjian.length > 0 && (
+              {upcomingJadwal.length > 0 && (
                 <button onClick={() => setHomeTab('jadwal')} className={`min-w-0 flex-1 flex items-center justify-center gap-1 px-1.5 sm:px-4 py-1.5 sm:py-2 font-black text-[10px] sm:text-sm rounded-lg sm:rounded-xl transition-all duration-300 ${homeTab === 'jadwal' ? 'bg-indigo-500 text-white shadow-md border border-indigo-600' : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'}`}>
                   {homeTab === 'jadwal' && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse shrink-0"></span>}
                   <Calendar size={16} className="hidden sm:block" />

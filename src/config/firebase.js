@@ -8,7 +8,7 @@ import { getStorage } from 'firebase/storage';
 const firebaseConfig = {
   apiKey: "REMOVED_FOR_SECURITY",
   authDomain: "REMOVED_FOR_SECURITY",
-  projectId: "REMOVED_FOR_SECURITY",
+  projectId: "myquranplan", // Ini adalah Project ID Firebase Anda
   storageBucket: "REMOVED_FOR_SECURITY",
   messagingSenderId: "REMOVED_FOR_SECURITY",
   appId: "REMOVED_FOR_SECURITY"

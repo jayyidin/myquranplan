@@ -33,7 +33,9 @@ const AppHeader = ({
           {isSuperAdmin && (
             <button onClick={() => setCurrentView('log')} className={`relative pb-1 px-0.5 group transition-colors leading-tight whitespace-normal text-center max-w-[92px] ${currentView === 'log' ? 'text-green-600' : 'hover:text-green-600'}`}>Log Aktifitas<span className={`absolute bottom-0 left-0 h-0.5 bg-green-600 transition-all duration-300 ${currentView === 'log' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span></button>
           )}
-          <button onClick={() => setCurrentView('pengaturan')} className={`relative pb-1 px-0.5 group transition-colors leading-tight whitespace-normal text-center max-w-[92px] ${currentView === 'pengaturan' ? 'text-green-600' : 'hover:text-green-600'}`}>Pengaturan<span className={`absolute bottom-0 left-0 h-0.5 bg-green-600 transition-all duration-300 ${currentView === 'pengaturan' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span></button>
+          {isSuperAdmin && (
+            <button onClick={() => setCurrentView('pengaturan')} className={`relative pb-1 px-0.5 group transition-colors leading-tight whitespace-normal text-center max-w-[92px] ${currentView === 'pengaturan' ? 'text-green-600' : 'hover:text-green-600'}`}>Pengaturan<span className={`absolute bottom-0 left-0 h-0.5 bg-green-600 transition-all duration-300 ${currentView === 'pengaturan' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span></button>
+          )}
         </nav>
 
         <div className="flex items-center gap-1.5 lg:gap-2 shrink-0">

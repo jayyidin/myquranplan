@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../supabase';
-import { Award, Plus, Trash2, Settings, ClipboardList, Loader2, BookOpen, Mic, Printer, Search, ChevronDown, AlertTriangle, X, Download, FileText, ArrowLeft, Check, CalendarDays, Calendar, Users, Edit3, GripVertical } from 'lucide-react';
+import { Award, Plus, Trash2, Settings, ClipboardList, Loader2, BookOpen, Mic, Printer, Search, ChevronDown, AlertTriangle, X, Download, FileText, ArrowLeft, Check, CalendarDays, Calendar, Users, Edit3, GripVertical, History } from 'lucide-react';
 import SurahSelector from '../SurahSelector';
 import AyatSelector from '../AyatSelector';
 import { surahList, ghoribList, tajwidList } from '../../data/constants';
@@ -706,6 +706,28 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
         return currentJadwal.find(j => j.id.toString() === selectedJadwalId.toString()) || null;
     }, [selectedJadwalId, currentJadwal]);
 
+    // Pisahkan jadwal menjadi mendatang dan riwayat (selesai)
+    const { upcomingJadwalList, pastJadwalList } = useMemo(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const upcoming = [];
+        const past = [];
+        (currentJadwal || []).forEach(j => {
+            const examDate = new Date(j.tanggal);
+            if (j.tanggal && j.tanggal.includes('-')) {
+                const parts = j.tanggal.split('-');
+                examDate.setFullYear(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+            }
+            examDate.setHours(0, 0, 0, 0);
+            const diffDays = Math.ceil((examDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+            if (diffDays >= 0) upcoming.push({ ...j, daysLeft: diffDays });
+            else past.push({ ...j, daysLeft: diffDays });
+        });
+        upcoming.sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
+        past.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
+        return { upcomingJadwalList: upcoming, pastJadwalList: past };
+    }, [currentJadwal]);
+
     const scheduledMaterialNames = useMemo(() => {
         const source = activeJadwal ? [activeJadwal] : currentJadwal;
         return new Set(source.flatMap(j => Array.isArray(j.materi) ? j.materi : []).filter(Boolean));
@@ -1409,6 +1431,7 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                 activeHalaqoh={activeHalaqoh}
                 institutionLogo={institutionLogo}
                 reportStudents={studentsInHalaqoh}
+                setStudents={setStudents}
             />
         );
     }
@@ -1864,47 +1887,83 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                                         className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-sm font-bold outline-none focus:border-indigo-500 transition-all text-slate-700 dark:text-slate-100"
                                     />
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                                {(currentJadwal || []).filter(j => !jadwalFilter || j.materi.some(m => m.toLowerCase().includes(jadwalFilter.toLowerCase()))).map((jadwal, idx) => (
-                                    <div key={jadwal.id || idx} className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 relative group shadow-sm hover:shadow-md transition-all overflow-hidden">
-                                        {(() => {
-                                            const examDate = new Date(jadwal.tanggal);
-                                            if (jadwal.tanggal && jadwal.tanggal.includes('-')) {
-                                                const parts = jadwal.tanggal.split('-');
-                                                examDate.setFullYear(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-                                            }
-                                            examDate.setHours(0,0,0,0);
-                                            const today = new Date();
-                                            today.setHours(0,0,0,0);
-                                            const diffDays = Math.ceil((examDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-                                            if (diffDays < 0) return <div className="absolute top-0 right-0 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 text-[9px] font-black px-2.5 py-1 rounded-bl-xl border-b border-l border-slate-200 dark:border-slate-700">SELESAI</div>;
-                                            if (diffDays === 0) return <div className="absolute top-0 right-0 bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400 text-[9px] font-black px-2.5 py-1 rounded-bl-xl border-b border-l border-red-200 dark:border-red-500/30">HARI INI</div>;
-                                            if (diffDays === 1) return <div className="absolute top-0 right-0 bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 text-[9px] font-black px-2.5 py-1 rounded-bl-xl border-b border-l border-amber-200 dark:border-amber-500/30">BESOK</div>;
-                                            return <div className="absolute top-0 right-0 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[9px] font-black px-2.5 py-1 rounded-bl-xl border-b border-l border-slate-200 dark:border-slate-700">{diffDays} HARI LAGI</div>;
-                                        })()}
-                                        <div className="absolute top-3 right-3 flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all">
-                                            {(!jadwal.halaqoh || jadwal.halaqoh === 'Semua') && activeHalaqoh && (
-                                                <span className="text-[9px] bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-2 py-1 rounded-md font-bold">Jadwal Global</span>
-                                            )}
-                                            <button onClick={() => { setNewJadwal({ ...jadwal, materi: sortScheduledMateri(jadwal.materi) }); setIsAddingJadwal(true); }} className="text-slate-300 hover:text-blue-500 bg-slate-50 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-500/10 p-2 rounded-xl transition-colors" title="Edit Jadwal"><Edit3 size={16} /></button>
-                                            <button onClick={() => handleDeleteJadwal(jadwal)} className="text-slate-300 hover:text-red-500 bg-slate-50 dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-500/10 p-2 rounded-xl transition-colors" title="Hapus Jadwal"><Trash2 size={16} /></button>
-                                        </div>
-                                        <div className="flex items-center gap-2 mb-3 pr-16">
-                                            <div className="bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 p-2 rounded-lg"><Calendar size={16} /></div>
-                                            <div className="text-indigo-600 dark:text-indigo-400 font-black text-xs uppercase tracking-widest">{formatDateForJadwal(jadwal.tanggal)}</div>
-                                        </div>
-                                        <div className="font-bold text-slate-800 dark:text-slate-100 text-base leading-tight mb-4">
-                                            Ujian Al-Qur'an
-                                            {(!jadwal.halaqoh || jadwal.halaqoh === 'Semua') && <span className="ml-2 text-[9px] bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-full align-middle font-bold">Global</span>}
-                                        </div>
-                                        <div className="flex flex-wrap gap-1.5">
-                                            {sortScheduledMateri(jadwal.materi).map((m, i) => (
-                                                <span key={i} className="bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-300 px-2.5 py-1 rounded-lg text-[10px] font-bold">{m}</span>
-                                            ))}
+
+                                {/* JADWAL MENDATANG */}
+                                {upcomingJadwalList.length > 0 && (
+                                    <div>
+                                        <h3 className="text-base font-black text-indigo-600 dark:text-indigo-400 mb-4 flex items-center gap-2 px-1"><Calendar size={18} /> Jadwal Mendatang ({upcomingJadwalList.length})</h3>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                                        {upcomingJadwalList.filter(j => !jadwalFilter || j.materi.some(m => m.toLowerCase().includes(jadwalFilter.toLowerCase()))).map((jadwal, idx) => (
+                                            <div key={jadwal.id || idx} className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 relative group shadow-sm hover:shadow-md transition-all overflow-hidden">
+                                                <div className={`absolute top-0 right-0 text-[9px] font-black px-2.5 py-1 rounded-bl-xl border-b border-l ${jadwal.daysLeft === 0 ? 'bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-500/30' : jadwal.daysLeft === 1 ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/30' : 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-500/30'}`}>
+                                                    {jadwal.daysLeft === 0 ? 'HARI INI' : jadwal.daysLeft === 1 ? 'BESOK' : `${jadwal.daysLeft} HARI LAGI`}
+                                                </div>
+                                                <div className="absolute top-3 right-3 flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all">
+                                                    {(!jadwal.halaqoh || jadwal.halaqoh === 'Semua') && activeHalaqoh && (
+                                                        <span className="text-[9px] bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-2 py-1 rounded-md font-bold">Jadwal Global</span>
+                                                    )}
+                                                    <button onClick={() => { setNewJadwal({ ...jadwal, materi: sortScheduledMateri(jadwal.materi) }); setIsAddingJadwal(true); }} className="text-slate-300 hover:text-blue-500 bg-slate-50 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-500/10 p-2 rounded-xl transition-colors" title="Edit Jadwal"><Edit3 size={16} /></button>
+                                                    <button onClick={() => handleDeleteJadwal(jadwal)} className="text-slate-300 hover:text-red-500 bg-slate-50 dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-500/10 p-2 rounded-xl transition-colors" title="Hapus Jadwal"><Trash2 size={16} /></button>
+                                                </div>
+                                                <div className="flex items-center gap-2 mb-3 pr-16">
+                                                    <div className="bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 p-2 rounded-lg"><Calendar size={16} /></div>
+                                                    <div className="text-indigo-600 dark:text-indigo-400 font-black text-xs uppercase tracking-widest">{formatDateForJadwal(jadwal.tanggal)}</div>
+                                                </div>
+                                                <div className="font-bold text-slate-800 dark:text-slate-100 text-base leading-tight mb-4">
+                                                    Ujian Al-Qur'an
+                                                    {(!jadwal.halaqoh || jadwal.halaqoh === 'Semua') && <span className="ml-2 text-[9px] bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-full align-middle font-bold">Global</span>}
+                                                </div>
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {sortScheduledMateri(jadwal.materi).map((m, i) => (
+                                                        <span key={i} className="bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-300 px-2.5 py-1 rounded-lg text-[10px] font-bold">{m}</span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))}
                                         </div>
                                     </div>
-                                ))}
-                                </div>
+                                )}
+
+                                {/* RIWAYAT UJIAN (SELESAI) */}
+                                {pastJadwalList.length > 0 && (
+                                    <div className="mt-6">
+                                        <h3 className="text-base font-black text-slate-400 dark:text-slate-500 mb-4 flex items-center gap-2 px-1"><History size={18} /> Riwayat Ujian Selesai ({pastJadwalList.length})</h3>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 opacity-80 hover:opacity-100 transition-opacity">
+                                        {pastJadwalList.filter(j => !jadwalFilter || j.materi.some(m => m.toLowerCase().includes(jadwalFilter.toLowerCase()))).map((jadwal, idx) => (
+                                            <div key={jadwal.id || idx} className="bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 relative group shadow-sm overflow-hidden">
+                                                <div className="absolute top-0 right-0 bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 text-[9px] font-black px-2.5 py-1 rounded-bl-xl border-b border-l border-slate-200 dark:border-slate-600">SELESAI</div>
+                                                <div className="absolute top-3 right-3 flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all">
+                                                    {(!jadwal.halaqoh || jadwal.halaqoh === 'Semua') && activeHalaqoh && (
+                                                        <span className="text-[9px] bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-2 py-1 rounded-md font-bold">Global</span>
+                                                    )}
+                                                    <button onClick={() => { setNewJadwal({ ...jadwal, materi: sortScheduledMateri(jadwal.materi) }); setIsAddingJadwal(true); }} className="text-slate-300 hover:text-blue-500 bg-slate-50 dark:bg-slate-700 hover:bg-blue-50 dark:hover:bg-blue-500/10 p-2 rounded-xl transition-colors" title="Edit Jadwal"><Edit3 size={16} /></button>
+                                                    <button onClick={() => handleDeleteJadwal(jadwal)} className="text-slate-300 hover:text-red-500 bg-slate-50 dark:bg-slate-700 hover:bg-red-50 dark:hover:bg-red-500/10 p-2 rounded-xl transition-colors" title="Hapus Jadwal"><Trash2 size={16} /></button>
+                                                </div>
+                                                <div className="flex items-center gap-2 mb-3 pr-16">
+                                                    <div className="bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 p-2 rounded-lg"><Check size={16} /></div>
+                                                    <div className="text-slate-400 dark:text-slate-500 font-black text-xs uppercase tracking-widest">{formatDateForJadwal(jadwal.tanggal)}</div>
+                                                </div>
+                                                <div className="font-bold text-slate-500 dark:text-slate-400 text-base leading-tight mb-4">
+                                                    Ujian Al-Qur'an
+                                                    {(!jadwal.halaqoh || jadwal.halaqoh === 'Semua') && <span className="ml-2 text-[9px] bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 px-2 py-0.5 rounded-full align-middle font-bold">Global</span>}
+                                                </div>
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {sortScheduledMateri(jadwal.materi).map((m, i) => (
+                                                        <span key={i} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 px-2.5 py-1 rounded-lg text-[10px] font-bold">{m}</span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {upcomingJadwalList.length === 0 && pastJadwalList.length === 0 && (
+                                    <div className="text-center py-16 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
+                                        <CalendarDays size={48} className="mx-auto text-slate-300 dark:text-slate-600 mb-4" />
+                                        <p className="text-sm font-bold text-slate-500 dark:text-slate-400">Tidak ada jadwal yang cocok dengan pencarian.</p>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -2283,6 +2342,137 @@ const translateToArabicSurah = (text) => {
     return SURAH_ARABIC_MAP[cleanText] || toArabicDigits(cleanText);
 };
 
+const toArabicDigitsSafe = (str) => {
+    const id = ['\u0660', '\u0661', '\u0662', '\u0663', '\u0664', '\u0665', '\u0666', '\u0667', '\u0668', '\u0669'];
+    return String(str).replace(/[0-9]/g, (w) => id[+w]);
+};
+
+const decodeArabicMojibake = (value) => {
+    const text = String(value || '');
+    if (!/[ØÙ]/.test(text) || typeof TextDecoder === 'undefined') return text;
+    try {
+        const bytes = Uint8Array.from([...text].map(ch => ch.charCodeAt(0) & 0xff));
+        return new TextDecoder('utf-8').decode(bytes);
+    } catch {
+        return text;
+    }
+};
+
+const getArabicSurahNameSafe = (latinName) => {
+    const direct = SURAH_ARABIC_MAP[latinName];
+    if (direct) return decodeArabicMojibake(direct);
+
+    const normalized = normalizeSurahText(latinName);
+    const match = surahList.find(surah => normalizeSurahText(surah.name) === normalized);
+    return match ? decodeArabicMojibake(SURAH_ARABIC_MAP[match.name] || match.name) : latinName;
+};
+
+const parseSurahMaterial = (text) => {
+    const rawText = String(text || '').trim();
+    const surahNo = getTahfidzSurahNo(rawText);
+    const surahData = surahNo ? surahList.find(surah => surah.no === surahNo) : null;
+    const baseName = surahData?.name || rawText.replace(/^\s*\d+\.\s*/, '').replace(/\s+(?:ayat\s*)?\d+\s*[-–]\s*\d+\s*$/i, '').trim();
+    const verseRanges = [...rawText.matchAll(/(?:ayat\s*)?(\d{1,3})\s*[-–]\s*(\d{1,3})/gi)]
+        .map(match => {
+            const start = Number(match[1]);
+            const end = Number(match[2]);
+            return Number.isFinite(start) && Number.isFinite(end)
+                ? { start: Math.min(start, end), end: Math.max(start, end) }
+                : null;
+        })
+        .filter(Boolean);
+
+    return {
+        key: surahNo ? `surah-${surahNo}` : normalizeSurahText(baseName),
+        surahNo,
+        baseName,
+        verseRanges
+    };
+};
+
+const formatVerseRanges = (ranges = []) => {
+    if (!ranges.length) return '';
+    return ranges
+        .sort((a, b) => a.start - b.start || a.end - b.end)
+        .map(range => range.start === range.end ? String(range.start) : `${range.start}-${range.end}`)
+        .join(', ');
+};
+
+const formatArabicVerseRanges = (ranges = []) => {
+    const text = formatVerseRanges(ranges);
+    return text ? toArabicDigitsSafe(text) : '';
+};
+
+const aggregateHafalanRows = (rows = []) => {
+    const grouped = new Map();
+    const passthrough = [];
+
+    rows.forEach((row, index) => {
+        const surah = String(row?.surah || '').trim();
+        const scoreText = row?.score !== undefined && row?.score !== null ? String(row.score).trim() : '';
+        if (!surah && !scoreText) return;
+
+        const parsed = parseSurahMaterial(surah);
+        const canGroup = parsed.key && parsed.baseName;
+        if (!canGroup) {
+            passthrough.push({ ...row, _order: index });
+            return;
+        }
+
+        if (!grouped.has(parsed.key)) {
+            grouped.set(parsed.key, {
+                _order: index,
+                surahNo: parsed.surahNo,
+                baseName: parsed.baseName,
+                verseRanges: [],
+                scores: []
+            });
+        }
+
+        const group = grouped.get(parsed.key);
+        group.verseRanges.push(...parsed.verseRanges);
+        const score = parseFloat(scoreText);
+        if (!Number.isNaN(score)) group.scores.push(score);
+    });
+
+    return [...grouped.values(), ...passthrough]
+        .sort((a, b) => a._order - b._order)
+        .map(item => {
+            if (item.surah !== undefined) return { surah: item.surah || '', score: item.score || '' };
+
+            const uniqueRanges = Array.from(
+                new Map(item.verseRanges.map(range => [`${range.start}-${range.end}`, range])).values()
+            );
+            const rangeText = formatVerseRanges(uniqueRanges);
+            const surahPrefix = item.surahNo ? `${item.surahNo}. ` : '';
+            const score = item.scores.length
+                ? (item.scores.reduce((sum, value) => sum + value, 0) / item.scores.length).toFixed(0)
+                : '';
+
+            return {
+                surah: `${surahPrefix}${item.baseName}${rangeText ? ` ${rangeText}` : ''}`,
+                score
+            };
+        });
+};
+
+const padHafalanRows = (rows = [], length = 11) => Array.from({ length }, (_, index) => rows[index] || { surah: '', score: '' });
+
+const translateToArabicSurahSafe = (text) => {
+    if (!text) return '';
+    const cleanText = String(text).trim();
+    if (cleanText === '__legacy__') return translateToArabicSurah(cleanText);
+    const parsed = parseSurahMaterial(cleanText);
+    const arabicName = getArabicSurahNameSafe(parsed.baseName);
+    const verseText = formatArabicVerseRanges(parsed.verseRanges);
+
+    if (parsed.surahNo || SURAH_ARABIC_MAP[parsed.baseName]) {
+        return verseText ? `${arabicName} ${verseText}` : arabicName;
+    }
+
+    return toArabicDigitsSafe(getArabicSurahNameSafe(cleanText));
+};
+
 const getArabicPredicate = (score) => {
     const num = parseFloat(score);
     if (isNaN(num)) return '-';
@@ -2297,6 +2487,7 @@ const ARABIC_PREDICATE_VERY_GOOD = '\u062c\u064a\u062f\u062c\u062f\u0627';
 const ARABIC_PREDICATE_GOOD = '\u062c\u064a\u062f';
 
 const getArabicPredicateLabel = (score) => {
+    if (score === '__legacy__') return getArabicPredicate(score);
     const num = parseFloat(score);
     if (isNaN(num)) return '-';
     if (num >= 92) return ARABIC_PREDICATE_EXCELLENT;
@@ -2353,13 +2544,31 @@ const getInitialReportZoom = () => {
 
 // --- Full Quran Assessment Report Wizard Component ---
 
-const QuranReportWizard = ({ student, reportStudents = [], onClose, materials, showToast, kkmScore, activeHalaqoh, institutionLogo }) => {
-    const [nis, setNis] = useState('');
+const QuranReportWizard = ({ student, reportStudents = [], onClose, materials, showToast, kkmScore, activeHalaqoh, institutionLogo, setStudents }) => {
+    const [nis, setNis] = useState(student.nis || '');
     const [kelas, setKelas] = useState(student.kelas || '');
     const [halaqoh, setHalaqoh] = useState(student.halaqoh || activeHalaqoh || '');
     
     const [gender, setGender] = useState(() => normalizeStudentGender(student.gender || student.jenis_kelamin));
     const [bulkCaptureStudent, setBulkCaptureStudent] = useState(null);
+
+    // Reset NIS/Kelas/Gender ketika ganti siswa
+    useEffect(() => {
+        setNis(student.nis || '');
+        setKelas(student.kelas || '');
+        setHalaqoh(student.halaqoh || activeHalaqoh || '');
+        setGender(normalizeStudentGender(student.gender || student.jenis_kelamin));
+    }, [student.id]);
+
+    // Simpan NIS/Kelas/Gender ke data siswa di database saat input kehilangan fokus
+    const syncStudentField = async (field, value) => {
+        const studentId = activeReportStudent?.id || student?.id;
+        if (!studentId) return;
+        const { error } = await supabase.from('students').update({ [field]: value }).eq('id', studentId);
+        if (!error && setStudents) {
+            setStudents(prev => prev.map(s => s.id === studentId ? { ...s, [field]: value } : s));
+        }
+    };
     const activeReportStudent = bulkCaptureStudent || student;
     const isBulkCapture = Boolean(bulkCaptureStudent);
     const displayNis = isBulkCapture ? (activeReportStudent.nis || activeReportStudent.no_induk || activeReportStudent.nisn || '') : nis;
@@ -2481,17 +2690,19 @@ const QuranReportWizard = ({ student, reportStudents = [], onClose, materials, s
             }
         });
 
+        const groupedTahfidzScores = aggregateHafalanRows(tahfidzScores);
+
         const classList = Array.from({ length: 11 }, (_, i) => {
-            if (tahfidzScores[i]) {
-                return { surah: tahfidzScores[i].surah, score: tahfidzScores[i].score };
+            if (groupedTahfidzScores[i]) {
+                return { surah: groupedTahfidzScores[i].surah, score: groupedTahfidzScores[i].score };
             }
             return { surah: '', score: '' };
         });
 
         const additionalList = Array.from({ length: 11 }, (_, i) => {
             const sourceIndex = i + 11;
-            if (tahfidzScores[sourceIndex]) {
-                return { surah: tahfidzScores[sourceIndex].surah, score: tahfidzScores[sourceIndex].score };
+            if (groupedTahfidzScores[sourceIndex]) {
+                return { surah: groupedTahfidzScores[sourceIndex].surah, score: groupedTahfidzScores[sourceIndex].score };
             }
             return { surah: '', score: '' };
         });
@@ -2506,6 +2717,18 @@ const QuranReportWizard = ({ student, reportStudents = [], onClose, materials, s
 
     const displayHafalanKelas = bulkHafalanLists?.classList || hafalanKelas;
     const displayHafalanTambahan = bulkHafalanLists?.additionalList || hafalanTambahan;
+    const groupedDisplayHafalan = useMemo(
+        () => aggregateHafalanRows([...displayHafalanKelas, ...displayHafalanTambahan]),
+        [displayHafalanKelas, displayHafalanTambahan]
+    );
+    const groupedDisplayHafalanKelas = useMemo(
+        () => padHafalanRows(aggregateHafalanRows(displayHafalanKelas), 11),
+        [displayHafalanKelas]
+    );
+    const groupedDisplayHafalanTambahan = useMemo(
+        () => padHafalanRows(aggregateHafalanRows(displayHafalanTambahan), 11),
+        [displayHafalanTambahan]
+    );
     const displayTargets = isBulkCapture ? Array.from({ length: 8 }, () => '') : targets;
 
     // Initialize lists
@@ -2518,13 +2741,13 @@ const QuranReportWizard = ({ student, reportStudents = [], onClose, materials, s
     // Compute average tahfidz
     const computedTahfidzAvg = useMemo(() => {
         const allScores = [];
-        [...displayHafalanKelas, ...displayHafalanTambahan].forEach(h => {
+        groupedDisplayHafalan.forEach(h => {
             const num = parseFloat(h.score);
             if (!isNaN(num)) allScores.push(num);
         });
         if (allScores.length === 0) return '';
         return (allScores.reduce((a, b) => a + b, 0) / allScores.length).toFixed(0);
-    }, [displayHafalanKelas, displayHafalanTambahan]);
+    }, [groupedDisplayHafalan]);
 
     // Tahfidz final score to display (either computed or overridden)
     const effectiveTahfidzOverride = isBulkCapture ? (activeReportStudent.ujian_records?.['Tahfidz'] || '') : tahfidzOverride;
@@ -2867,6 +3090,7 @@ const QuranReportWizard = ({ student, reportStudents = [], onClose, materials, s
                                     type="text"
                                     value={nis}
                                     onChange={(e) => setNis(e.target.value)}
+                                    onBlur={() => syncStudentField('nis', nis)}
                                     placeholder="2122.1.008"
                                     className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 outline-none focus:border-emerald-500"
                                 />
@@ -2877,6 +3101,7 @@ const QuranReportWizard = ({ student, reportStudents = [], onClose, materials, s
                                     type="text"
                                     value={kelas}
                                     onChange={(e) => setKelas(e.target.value)}
+                                    onBlur={() => syncStudentField('kelas', kelas)}
                                     placeholder="5D"
                                     className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 outline-none focus:border-emerald-500"
                                 />
@@ -2895,7 +3120,7 @@ const QuranReportWizard = ({ student, reportStudents = [], onClose, materials, s
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Jenis Kelamin</label>
                                 <select
                                     value={gender}
-                                    onChange={(e) => setGender(e.target.value)}
+                                    onChange={(e) => { setGender(e.target.value); syncStudentField('gender', e.target.value); }}
                                     className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 outline-none focus:border-emerald-500"
                                 >
                                 <option value="L">L</option>
@@ -3152,7 +3377,7 @@ const QuranReportWizard = ({ student, reportStudents = [], onClose, materials, s
                                             <tr>
                                                 <td className="w-[90px] align-top pb-1">Jenis Kelamin</td>
                                                 <td className="w-[10px] align-top pb-1">:</td>
-                                                <td className="align-top pb-1">{displayGender}</td>
+                                                <td className="align-top pb-1">{displayGender === 'P' ? 'Perempuan' : 'Laki-laki'}</td>
                                             </tr>
                                             <tr>
                                                 <td className="w-[90px] align-top pb-1">Nama Sekolah</td>
@@ -3244,12 +3469,12 @@ const QuranReportWizard = ({ student, reportStudents = [], onClose, materials, s
                                             </thead>
                                             <tbody>
                                                 {Array.from({ length: 11 }).map((_, i) => {
-                                                    const item = displayHafalanKelas[i] || { surah: '', score: '' };
+                                                    const item = groupedDisplayHafalanKelas[i] || { surah: '', score: '' };
                                                     return (
                                                         <tr key={i} className="h-[18px]">
                                                             <td className="border border-black text-center p-0.5 h-[18px] leading-none font-semibold">{i + 1}</td>
                                                             <td className="border border-black text-center p-0.5 h-[18px] leading-none overflow-hidden whitespace-nowrap font-arabic text-[12px] font-bold text-black" style={{ direction: 'rtl' }}>
-                                                                {translateToArabicSurah(item.surah)}
+                                                                {translateToArabicSurahSafe(item.surah)}
                                                             </td>
                                                             <td className="border border-black text-center p-0.5 h-[18px] leading-none font-extrabold">{item.score || ''}</td>
                                                             <td className="border border-black text-center p-0.5 h-[18px] leading-none overflow-hidden whitespace-nowrap font-arabic text-[11px] font-bold text-black" style={{ direction: 'rtl' }}>
@@ -3278,12 +3503,12 @@ const QuranReportWizard = ({ student, reportStudents = [], onClose, materials, s
                                             </thead>
                                             <tbody>
                                                 {Array.from({ length: 11 }).map((_, i) => {
-                                                    const item = displayHafalanTambahan[i] || { surah: '', score: '' };
+                                                    const item = groupedDisplayHafalanTambahan[i] || { surah: '', score: '' };
                                                     return (
                                                         <tr key={i} className="h-[18px]">
                                                             <td className="border border-black text-center p-0.5 h-[18px] leading-none font-semibold">{i + 1}</td>
                                                             <td className="border border-black text-center p-0.5 h-[18px] leading-none overflow-hidden whitespace-nowrap font-arabic text-[12px] font-bold text-black" style={{ direction: 'rtl' }}>
-                                                                {translateToArabicSurah(item.surah)}
+                                                                {translateToArabicSurahSafe(item.surah)}
                                                             </td>
                                                             <td className="border border-black text-center p-0.5 h-[18px] leading-none font-extrabold">{item.score || ''}</td>
                                                             <td className="border border-black text-center p-0.5 h-[18px] leading-none overflow-hidden whitespace-nowrap font-arabic text-[11px] font-bold text-black" style={{ direction: 'rtl' }}>
@@ -3318,11 +3543,11 @@ const QuranReportWizard = ({ student, reportStudents = [], onClose, materials, s
                                                     <tr key={`${leftIdx}-${rightIdx}`} className="h-[18px]">
                                                         <td className="border border-black p-0.5 h-[18px] leading-none font-semibold bg-gray-50">{leftIdx + 1}</td>
                                                         <td className="border border-black p-0.5 h-[18px] leading-none overflow-hidden whitespace-nowrap font-arabic text-[12px] font-bold text-black" style={{ direction: 'rtl' }}>
-                                                            {translateToArabicSurah(displayTargets[leftIdx])}
+                                                            {translateToArabicSurahSafe(displayTargets[leftIdx])}
                                                         </td>
                                                         <td className="border border-black p-0.5 h-[18px] leading-none font-semibold bg-gray-50">{rightIdx + 1}</td>
                                                         <td className="border border-black p-0.5 h-[18px] leading-none overflow-hidden whitespace-nowrap font-arabic text-[12px] font-bold text-black" style={{ direction: 'rtl' }}>
-                                                            {translateToArabicSurah(displayTargets[rightIdx])}
+                                                            {translateToArabicSurahSafe(displayTargets[rightIdx])}
                                                         </td>
                                                     </tr>
                                                 ))}
@@ -3345,11 +3570,11 @@ const QuranReportWizard = ({ student, reportStudents = [], onClose, materials, s
                                                     <tr key={`${leftIdx}-${rightIdx}`} className="h-[18px]">
                                                         <td className="border border-black p-0.5 h-[18px] leading-none font-semibold bg-gray-50">{leftIdx + 1}</td>
                                                         <td className="border border-black p-0.5 h-[18px] leading-none overflow-hidden whitespace-nowrap font-arabic text-[12px] font-bold text-black" style={{ direction: 'rtl' }}>
-                                                            {translateToArabicSurah(displayTargets[leftIdx])}
+                                                            {translateToArabicSurahSafe(displayTargets[leftIdx])}
                                                         </td>
                                                         <td className="border border-black p-0.5 h-[18px] leading-none font-semibold bg-gray-50">{rightIdx + 1}</td>
                                                         <td className="border border-black p-0.5 h-[18px] leading-none overflow-hidden whitespace-nowrap font-arabic text-[12px] font-bold text-black" style={{ direction: 'rtl' }}>
-                                                            {translateToArabicSurah(displayTargets[rightIdx])}
+                                                            {translateToArabicSurahSafe(displayTargets[rightIdx])}
                                                         </td>
                                                     </tr>
                                                 ))}

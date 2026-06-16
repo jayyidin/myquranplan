@@ -34,6 +34,8 @@ CREATE TABLE students (
   halaqoh text,
     initial text,
     photo text,
+    nis text,
+    gender text DEFAULT 'L',
     student_status text DEFAULT 'active',
     graduated_at timestamp with time zone,
     graduation_year text,
@@ -49,6 +51,8 @@ CREATE TABLE students (
 
   -- Kolom tambahan untuk fitur Alumni, Tahun Ajaran Baru, dan bayangan mutasi.
   -- Jalankan bagian ALTER ini pada database lama yang sudah pernah dibuat.
+  ALTER TABLE students ADD COLUMN IF NOT EXISTS gender text DEFAULT 'L';
+  ALTER TABLE students ADD COLUMN IF NOT EXISTS nis text;
   ALTER TABLE students ADD COLUMN IF NOT EXISTS student_status text DEFAULT 'active';
   ALTER TABLE students ADD COLUMN IF NOT EXISTS graduated_at timestamp with time zone;
   ALTER TABLE students ADD COLUMN IF NOT EXISTS graduation_year text;

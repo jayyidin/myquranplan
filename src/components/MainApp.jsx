@@ -273,8 +273,8 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
   const [isEditStudentModalOpen, setIsEditStudentModalOpen] = useState(false);
   const [addStudentMode, setAddStudentMode] = useState('master');
   const [masterSearchQuery, setMasterSearchQuery] = useState('');
-  const [newStudent, setNewStudent] = useState({ name: '', kelas: '', halaqoh: '', photo: null });
-  const [editStudentData, setEditStudentData] = useState({ id: null, name: '', kelas: '', halaqoh: '', photo: null });
+  const [newStudent, setNewStudent] = useState({ name: '', kelas: '', halaqoh: '', gender: 'L', nis: '', photo: null });
+  const [editStudentData, setEditStudentData] = useState({ id: null, name: '', kelas: '', halaqoh: '', gender: 'L', nis: '', photo: null });
 
   // -- STATE MODAL JURNAL --
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -309,11 +309,12 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
   });
 
   // Efek Loading (dipercepat & dihilangkan untuk filter halaqoh agar perubahannya instan!)
+  // Catatan: homeTab TIDAK dimasukkan agar tidak ada loading saat pindah tab (Lesson Plan <-> Mutabaah)
   useEffect(() => {
     setIsLoading(true);
     const timer = setTimeout(() => setIsLoading(false), 150);
     return () => clearTimeout(timer);
-  }, [activeDate, homeTab, showUnfilledOnly]);
+  }, [activeDate, showUnfilledOnly]);
 
   useEffect(() => {
     localStorage.setItem('myquranplan_current_view', currentView);
@@ -456,6 +457,11 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
     };
   }, [getTeacherForHalaqoh]);
 
+  // OPTIMASI: Kunci filter unfilled terpisah agar filteredStudents tidak recompute saat pindah tab (kecuali showUnfilledOnly aktif)
+  const unfilledKeys = homeTab === 'lesson_plan'
+    ? { t: 'tahsin', f: 'tahfidz', m: 'murojaah', c: 'catatan', cT: 'catatanTahsin', cF: 'catatanTahfidz' }
+    : { t: 'jurnalTahsin', f: 'jurnalTahfidz', m: 'jurnalMurojaah', c: 'jurnalCatatan', cT: 'jurnalCatatanTahsin', cF: 'jurnalCatatanTahfidz' };
+
   // Filter siswa yang sangat ketat: Jika bukan SuperAdmin, hanya tampilkan siswa yang ada di halaqoh guru tersebut
   const filteredStudents = useMemo(() => {
     return activeStudents.filter(s => {
@@ -468,17 +474,14 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
 
       let isUnfilledMatch = true;
       if (showUnfilledOnly && currentView === 'home') {
-        const keys = homeTab === 'lesson_plan'
-          ? { t: 'tahsin', f: 'tahfidz', m: 'murojaah', c: 'catatan', cT: 'catatanTahsin', cF: 'catatanTahfidz' }
-          : { t: 'jurnalTahsin', f: 'jurnalTahfidz', m: 'jurnalMurojaah', c: 'jurnalCatatan', cT: 'jurnalCatatanTahsin', cF: 'jurnalCatatanTahfidz' };
         const r = s.records?.[activeDate];
         const hasData = r && (
-          (r[keys.t] && r[keys.t] !== '-') ||
-          (r[keys.f] && r[keys.f] !== '-') ||
-          (r[keys.m] && r[keys.m] !== '-') ||
-          (r[keys.c] && r[keys.c] !== '-') ||
-          (r[keys.cT] && r[keys.cT] !== '-') ||
-          (r[keys.cF] && r[keys.cF] !== '-')
+          (r[unfilledKeys.t] && r[unfilledKeys.t] !== '-') ||
+          (r[unfilledKeys.f] && r[unfilledKeys.f] !== '-') ||
+          (r[unfilledKeys.m] && r[unfilledKeys.m] !== '-') ||
+          (r[unfilledKeys.c] && r[unfilledKeys.c] !== '-') ||
+          (r[unfilledKeys.cT] && r[unfilledKeys.cT] !== '-') ||
+          (r[unfilledKeys.cF] && r[unfilledKeys.cF] !== '-')
         );
         isUnfilledMatch = !hasData;
       }
@@ -493,7 +496,9 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       }
       return isInActiveHalaqoh && isSearchMatch && isUnfilledMatch;
     });
-  }, [activeStudents, searchQuery, activeHalaqoh, showUnfilledOnly, currentView, homeTab, activeDate, isSuperAdmin, currentUser?.name, guruHalaqohData]);
+    // unfilledKeys hanya relevan saat showUnfilledOnly && currentView === 'home'
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeStudents, searchQuery, activeHalaqoh, showUnfilledOnly, currentView, ...(showUnfilledOnly && currentView === 'home' ? [unfilledKeys, activeDate] : []), isSuperAdmin, currentUser?.name, guruHalaqohData]);
 
   // Hitung jumlah siswa di halaqoh aktif (sebelum difilter oleh pencarian) untuk placeholder
   const studentsInHalaqoh = useMemo(() => {
@@ -660,6 +665,8 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
             name: s.name,
             kelas: s.kelas || '',
             halaqoh: s.halaqoh || '',
+            nis: s.nis || '',
+            gender: s.gender || 'L',
             initial: getInitials(s.name),
             records: {},
             sort_order: currentMaxSort
@@ -1364,7 +1371,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
         setStudents(prev => [...prev, insertedStudent]);
       }
       setIsAddStudentModalOpen(false);
-      setNewStudent({ name: '', kelas: kelasList.length > 0 ? kelasList[0] : '', halaqoh: activeHalaqoh, photo: null });
+      setNewStudent({ name: '', kelas: kelasList.length > 0 ? kelasList[0] : '', halaqoh: activeHalaqoh, gender: 'L', photo: null });
       showToast('Siswa ditambahkan!');
     } catch (e) { console.error("Gagal menyimpan siswa baru:", e); showToast('Gagal menyimpan.'); }
   };
@@ -2635,14 +2642,16 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
             />
           )}
           {currentView === 'siswa' && (
-            <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar pb-24 md:pb-0">
+            <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar pb-44 md:pb-0">
               <StudentView
                 activeHalaqoh={activeHalaqoh} filteredStudents={filteredStudents}
+                allStudents={activeStudents}
+                setCurrentView={setCurrentView}
                 openAddStudentModal={() => {
-                  setNewStudent({ name: '', kelas: kelasList.length > 0 ? kelasList[0] : '', halaqoh: activeHalaqoh, photo: null });
+                  setNewStudent({ name: '', kelas: kelasList.length > 0 ? kelasList[0] : '', halaqoh: activeHalaqoh, gender: 'L', photo: null });
                   setIsAddStudentModalOpen(true);
                 }}
-                openEditStudentModal={(s) => { setEditStudentData({ id: s.id, name: s.name, kelas: s.kelas, halaqoh: s.halaqoh, photo: s.photo || null }); setIsEditStudentModalOpen(true); }}
+                openEditStudentModal={(s) => { setEditStudentData({ id: s.id, name: s.name, kelas: s.kelas, halaqoh: s.halaqoh, gender: s.gender || s.jenis_kelamin || 'L', photo: s.photo || null }); setIsEditStudentModalOpen(true); }}
                 requestDeleteStudent={requestDeleteStudent} isSuperAdmin={isSuperAdmin}
                 openCropModal={openCropModal}
                 uploadingPhotoId={uploadingPhotoId}
@@ -2650,6 +2659,22 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
                 onReorderStudents={handleReorderStudents}
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
+                currentUser={currentUser}
+                newHalaqohName={newHalaqohName}
+                setNewHalaqohName={setNewHalaqohName}
+                handleAddHalaqoh={handleAddHalaqoh}
+                guruHalaqohData={guruHalaqohData}
+                editingHalaqoh={editingHalaqoh}
+                setEditingHalaqoh={setEditingHalaqoh}
+                handleSaveEditHalaqoh={handleSaveEditHalaqoh}
+                requestDeleteHalaqoh={requestDeleteHalaqoh}
+                handleReorderHalaqoh={handleReorderHalaqoh}
+                students={students}
+                requestBulkDeleteStudents={requestBulkDeleteStudents}
+                requestBulkEditStudents={requestBulkEditStudents}
+                handleBulkSaveStudents={handleBulkSaveStudents}
+                kelasList={kelasList}
+                showToast={showToast}
               />
             </div>
           )}
@@ -2687,7 +2712,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
               guruHalaqohData={guruHalaqohData}
             />
           )}
-          {currentView === 'pengaturan' && (
+          {currentView === 'pengaturan' && isSuperAdmin && (
             <SettingsView
               isSuperAdmin={isSuperAdmin} appUsers={appUsers}
               handleApproveUser={handleApproveUser} handleRejectUser={handleRejectUser} handleUpdateUserAccount={handleUpdateUserAccount}
@@ -2700,7 +2725,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
               currentUser={currentUser} guruHalaqohData={guruHalaqohData} editingGuru={editingGuru} setEditingGuru={setEditingGuru} handleSaveEditGuru={handleSaveEditGuru} requestDeleteGuru={requestDeleteGuru}
               editingHalaqoh={editingHalaqoh} setEditingHalaqoh={setEditingHalaqoh} handleSaveEditHalaqoh={handleSaveEditHalaqoh} requestDeleteHalaqoh={requestDeleteHalaqoh} handleReorderHalaqoh={handleReorderHalaqoh}
               handleReorderGuru={handleReorderGuru}
-              students={students} openEditStudentModal={(s) => { setEditStudentData({ id: s.id, name: s.name, kelas: s.kelas, halaqoh: s.halaqoh, photo: s.photo || null }); setIsEditStudentModalOpen(true); }}
+              students={students} openEditStudentModal={(s) => { setEditStudentData({ id: s.id, name: s.name, kelas: s.kelas, halaqoh: s.halaqoh, gender: s.gender || s.jenis_kelamin || 'L', photo: s.photo || null }); setIsEditStudentModalOpen(true); }}
               requestDeleteStudent={requestDeleteStudent} requestBulkDeleteStudents={requestBulkDeleteStudents} requestBulkEditStudents={requestBulkEditStudents} handleBulkSaveStudents={handleBulkSaveStudents} onLogout={onLogout}
               handleCleanLessonPlanValues={handleCleanLessonPlanValues}
               handleResetTeacherPassword={handleResetTeacherPassword}
@@ -2798,7 +2823,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
 
       {toastMessage && (<div className="fixed top-4 md:top-20 left-1/2 -translate-x-1/2 bg-gray-900 dark:bg-slate-100 text-white dark:text-slate-900 px-4 py-2 rounded-xl shadow-2xl z-[100010] font-bold text-xs md:text-sm animate-bounce">{toastMessage}</div>)}
 
-      <div className="fixed bottom-[70px] md:bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 border-t border-slate-100 dark:border-slate-800 px-3 py-1.5 text-center text-[9px] md:text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 print:hidden backdrop-blur-md pointer-events-none">
+      <div className="fixed bottom-[70px] md:bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-slate-900/95 border-t border-slate-100 dark:border-slate-800 px-3 py-1.5 text-center text-[8px] md:text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 print:hidden backdrop-blur-md pointer-events-none">
         &copy; {new Date().getFullYear()} Juman Jayyidin. All rights reserved.
       </div>
 
@@ -2815,7 +2840,9 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
         {isSuperAdmin && (
           <button onClick={() => setCurrentView('log')} className={`flex flex-col items-center gap-1 transition-colors ${currentView === 'log' ? 'text-green-600 dark:text-emerald-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-400'}`}><Activity size={20} /><span className="text-[9px] font-bold">Log</span></button>
         )}
-        <button onClick={() => setCurrentView('pengaturan')} className={`flex flex-col items-center gap-1 transition-colors ${currentView === 'pengaturan' ? 'text-green-600 dark:text-emerald-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-400'}`}><Settings size={20} /><span className="text-[9px] font-bold">Setelan</span></button>
+        {isSuperAdmin && (
+          <button onClick={() => setCurrentView('pengaturan')} className={`flex flex-col items-center gap-1 transition-colors ${currentView === 'pengaturan' ? 'text-green-600 dark:text-emerald-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-400'}`}><Settings size={20} /><span className="text-[9px] font-bold">Setelan</span></button>
+        )}
       </nav>
     </div>
   );

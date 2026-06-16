@@ -34,7 +34,9 @@ const MobileMenu = ({ mobileMenuOpen, setMobileMenuOpen, currentUser, theme, set
           {isSuperAdmin && (
             <button onClick={() => { setCurrentView('log'); setMobileMenuOpen(false); }} className={`flex items-center gap-3 p-4 rounded-2xl font-bold transition-all ${currentView === 'log' ? 'bg-green-50 dark:bg-emerald-500/10 text-green-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'}`}><Activity size={20} /> Log Aktifitas</button>
           )}
-          <button onClick={() => { setCurrentView('pengaturan'); setMobileMenuOpen(false); }} className={`flex items-center gap-3 p-4 rounded-2xl font-bold transition-all ${currentView === 'pengaturan' ? 'bg-green-50 dark:bg-emerald-500/10 text-green-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'}`}><Settings size={20} /> Pengaturan</button>
+          {isSuperAdmin && (
+            <button onClick={() => { setCurrentView('pengaturan'); setMobileMenuOpen(false); }} className={`flex items-center gap-3 p-4 rounded-2xl font-bold transition-all ${currentView === 'pengaturan' ? 'bg-green-50 dark:bg-emerald-500/10 text-green-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'}`}><Settings size={20} /> Pengaturan</button>
+          )}
         </div>
         <button onClick={() => { onLogout(); setMobileMenuOpen(false); }} className="mt-auto flex items-center gap-3 p-4 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 rounded-2xl font-black transition-all shadow-sm border border-red-100 dark:border-red-500/20">
           <LogOut size={20} /> Keluar Aplikasi

@@ -492,8 +492,8 @@ const SettingsView = ({
   const hasStudentFilters = Boolean(studentSearch || filterKelas || filterStatus !== (isSuperAdmin ? 'kosong' : 'all'));
   const quickSections = [
     ...(isSuperAdmin ? [{ id: 'settings-identity', icon: GraduationCap, label: 'Identitas', detail: 'Logo, kelas, target' }] : []),
-    { id: 'settings-halaqoh', icon: Users, label: 'Guru & Halaqoh', detail: `${guruList.length} guru, ${totalHalaqoh} halaqoh` },
-    { id: 'settings-students', icon: Database, label: 'Data Siswa', detail: `${filteredStudentsMaster.length} tampil` },
+    ...(isSuperAdmin ? [{ id: 'settings-halaqoh', icon: Users, label: 'Guru & Halaqoh', detail: `${guruList.length} guru, ${totalHalaqoh} halaqoh` }] : []),
+    ...(isSuperAdmin ? [{ id: 'settings-students', icon: Database, label: 'Data Siswa', detail: `${filteredStudentsMaster.length} tampil` }] : []),
     ...(isSuperAdmin ? [{ id: 'settings-maintenance', icon: Wrench, label: 'Perawatan', detail: 'Backup & semester' }] : [])
   ];
 
@@ -723,6 +723,7 @@ const SettingsView = ({
             </section>
           )}
 
+          {isSuperAdmin && (
           <section id="settings-halaqoh" className="scroll-mt-24">
             <SectionHeader
               accent="bg-indigo-500"
@@ -991,7 +992,9 @@ const SettingsView = ({
               </div>
             </div>
           </section>
+          )}
 
+          {isSuperAdmin && (
           <section id="settings-students" className="scroll-mt-24 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <SectionHeader
               accent="bg-purple-500"
@@ -1213,6 +1216,7 @@ const SettingsView = ({
               </div>
             </div>
           </section>
+          )}
 
           {
             isSuperAdmin && (

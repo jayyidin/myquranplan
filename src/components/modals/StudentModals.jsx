@@ -114,6 +114,10 @@ export const AddStudentModal = ({
               <label className="block text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase mb-1">Nama Lengkap</label>
               <input type="text" required value={newStudent.name} onChange={e => setNewStudent({ ...newStudent, name: e.target.value })} className="w-full bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-green-500 dark:focus:border-emerald-500 focus:ring-1 focus:ring-green-500 dark:text-slate-200" placeholder="Masukkan nama..." />
             </div>
+            <div>
+              <label className="block text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase mb-1">NIS (No. Induk Siswa)</label>
+              <input type="text" value={newStudent.nis || ''} onChange={e => setNewStudent({ ...newStudent, nis: e.target.value })} className="w-full bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-green-500 dark:focus:border-emerald-500 focus:ring-1 focus:ring-green-500 dark:text-slate-200" placeholder="Contoh: 2122.1.008" />
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase mb-1">Kelas</label>
@@ -122,26 +126,33 @@ export const AddStudentModal = ({
                 </select>
               </div>
               <div>
-                <label className="block text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase mb-1">Halaqoh</label>
-                <select
-                  value={newStudent.halaqoh}
-                  onChange={e => setNewStudent({ ...newStudent, halaqoh: e.target.value })}
-                  className="w-full bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-3 text-xs font-bold outline-none focus:ring-1 focus:ring-green-500 dark:text-slate-200"
-                >
-                  <option value="">Pilih Halaqoh...</option>
-                  {Object.entries(guruHalaqohData || {}).map(([guru, halaqohs]) => (
-                    <optgroup key={guru} label={guru}>
-                      {Array.isArray(halaqohs) && halaqohs.length > 0 ? (
-                        halaqohs.map(h => (
-                          <option key={h} value={h}>{h}</option>
-                        ))
-                      ) : (
-                        <option disabled>Belum ada halaqoh terdaftar</option>
-                      )}
-                    </optgroup>
-                  ))}
+                <label className="block text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase mb-1">Jenis Kelamin</label>
+                <select value={newStudent.gender || 'L'} onChange={e => setNewStudent({ ...newStudent, gender: e.target.value })} className="w-full bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-3 text-xs font-bold outline-none focus:ring-1 focus:ring-green-500 dark:text-slate-200">
+                  <option value="L">Laki-laki</option>
+                  <option value="P">Perempuan</option>
                 </select>
               </div>
+            </div>
+            <div>
+              <label className="block text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase mb-1">Halaqoh</label>
+              <select
+                value={newStudent.halaqoh}
+                onChange={e => setNewStudent({ ...newStudent, halaqoh: e.target.value })}
+                className="w-full bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-3 text-xs font-bold outline-none focus:ring-1 focus:ring-green-500 dark:text-slate-200"
+              >
+                <option value="">Pilih Halaqoh...</option>
+                {Object.entries(guruHalaqohData || {}).map(([guru, halaqohs]) => (
+                  <optgroup key={guru} label={guru}>
+                    {Array.isArray(halaqohs) && halaqohs.length > 0 ? (
+                      halaqohs.map(h => (
+                        <option key={h} value={h}>{h}</option>
+                      ))
+                    ) : (
+                      <option disabled>Belum ada halaqoh terdaftar</option>
+                    )}
+                  </optgroup>
+                ))}
+              </select>
             </div>
             <button type="submit" className="w-full bg-[#00e676] hover:bg-green-500 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white py-3.5 rounded-2xl font-black mt-2 active:scale-95 transition-all text-sm shadow-md shadow-green-200 dark:shadow-none">Simpan Data Siswa</button>
           </form>
@@ -194,6 +205,10 @@ export const EditStudentModal = ({
             <label className="block text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase mb-1">Nama Lengkap</label>
             <input type="text" required value={editStudentData.name} onChange={e => setEditStudentData({ ...editStudentData, name: e.target.value })} className="w-full bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:ring-1 focus:ring-blue-500 dark:text-slate-200" />
           </div>
+          <div>
+            <label className="block text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase mb-1">NIS (No. Induk Siswa)</label>
+            <input type="text" value={editStudentData.nis || ''} onChange={e => setEditStudentData({ ...editStudentData, nis: e.target.value })} className="w-full bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:ring-1 focus:ring-blue-500 dark:text-slate-200" placeholder="Contoh: 2122.1.008" />
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase mb-1">Kelas</label>
@@ -202,26 +217,33 @@ export const EditStudentModal = ({
               </select>
             </div>
             <div>
-              <label className="block text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase mb-1">Halaqoh</label>
-              <select
-                value={editStudentData.halaqoh}
-                onChange={e => setEditStudentData({ ...editStudentData, halaqoh: e.target.value })}
-                className="w-full bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-3 text-xs font-bold outline-none focus:ring-1 focus:ring-blue-500 dark:text-slate-200"
-              >
-                <option value="">Pilih Halaqoh...</option>
-                {Object.entries(guruHalaqohData || {}).map(([guru, halaqohs]) => (
-                  <optgroup key={guru} label={guru}>
-                    {Array.isArray(halaqohs) && halaqohs.length > 0 ? (
-                      halaqohs.map(h => (
-                        <option key={h} value={h}>{h}</option>
-                      ))
-                    ) : (
-                      <option disabled>Belum ada halaqoh terdaftar</option>
-                    )}
-                  </optgroup>
-                ))}
+              <label className="block text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase mb-1">Jenis Kelamin</label>
+              <select value={editStudentData.gender || 'L'} onChange={e => setEditStudentData({ ...editStudentData, gender: e.target.value })} className="w-full bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-3 text-xs font-bold outline-none focus:ring-1 focus:ring-blue-500 dark:text-slate-200">
+                <option value="L">Laki-laki</option>
+                <option value="P">Perempuan</option>
               </select>
             </div>
+          </div>
+          <div>
+            <label className="block text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase mb-1">Halaqoh</label>
+            <select
+              value={editStudentData.halaqoh}
+              onChange={e => setEditStudentData({ ...editStudentData, halaqoh: e.target.value })}
+              className="w-full bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-3 text-xs font-bold outline-none focus:ring-1 focus:ring-blue-500 dark:text-slate-200"
+            >
+              <option value="">Pilih Halaqoh...</option>
+              {Object.entries(guruHalaqohData || {}).map(([guru, halaqohs]) => (
+                <optgroup key={guru} label={guru}>
+                  {Array.isArray(halaqohs) && halaqohs.length > 0 ? (
+                    halaqohs.map(h => (
+                      <option key={h} value={h}>{h}</option>
+                    ))
+                  ) : (
+                    <option disabled>Belum ada halaqoh terdaftar</option>
+                  )}
+                </optgroup>
+              ))}
+            </select>
           </div>
           <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-2xl font-black mt-2 active:scale-95 transition-transform text-sm">Simpan Perubahan</button>
         </form>
