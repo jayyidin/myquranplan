@@ -190,10 +190,41 @@ const getJuzFromSurah = (surahString) => {
   return 'Lainnya';
 };
 
+const StudentNameList = ({ students, color = 'blue' }) => (
+  <div className="mt-3 pt-3 border-t border-slate-200/60 dark:border-slate-700/60 animate-in fade-in slide-in-from-top-2 duration-200">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+      {students.map((s, idx) => (
+        <div key={`${s.name}-${idx}`} className="flex items-center gap-2 bg-white/80 dark:bg-slate-800/60 rounded-lg px-2.5 py-1.5 border border-white dark:border-slate-700/50">
+          <div className={`w-6 h-6 rounded-md shrink-0 flex items-center justify-center text-[9px] font-black ${
+            color === 'blue' ? 'bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400'
+            : color === 'purple' ? 'bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400'
+            : 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+          }`}>
+            {s.name.split(' ').filter(Boolean).map(p => p[0]).slice(0, 2).join('').toUpperCase()}
+          </div>
+          <div className="min-w-0">
+            <p className="text-[11px] sm:text-xs font-black text-slate-800 dark:text-slate-100 truncate" title={s.name}>{s.name}</p>
+            <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 dark:text-slate-500 truncate">{s.kelas !== '-' ? `Kelas ${s.kelas}` : ''}{s.kelas !== '-' && s.halaqoh !== '-' ? ' \u2022 ' : ''}{s.halaqoh !== '-' ? s.halaqoh : ''}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
 const ProgressChartView = ({ students, activeHalaqoh, allStudents, weekDates, changeWeek }) => {
   const [periodType, setPeriodType] = useState('all'); // 'all', 'weekly', 'monthly'
   const [monthDate, setMonthDate] = useState(new Date());
   const [dataSourceType, setDataSourceType] = useState('all'); // 'all', 'filtered'
+  const [selectedDetail, setSelectedDetail] = useState(null); // { type, key, students: [...] }
+
+  const handleSelectDetail = (type, key, studentList) => {
+    if (selectedDetail?.type === type && selectedDetail?.key === key) {
+      setSelectedDetail(null); // toggle off
+    } else {
+      setSelectedDetail({ type, key, students: studentList });
+    }
+  };
 
   const changeMonth = (offset) => {
     const nextDate = new Date(monthDate);
@@ -276,6 +307,38 @@ const ProgressChartView = ({ students, activeHalaqoh, allStudents, weekDates, ch
     });
 
     return { tahsinCounts, tahfidzCounts, tahfidzJuzCounts, classTahsinCounts, classTahfidzGroupedCounts, totalStudents };
+  }, [allStudents, students, periodRange, dataSourceType]);
+
+  // Build student name lookup map: { tahsin: { level: [names] }, tahfidz: { surah: [names] }, tahfidzJuz: { juz: [names] } }
+  const studentNameMap = useMemo(() => {
+    const dataSource = dataSourceType === 'all' && allStudents ? allStudents : students;
+    const map = { tahsin: {}, tahfidz: {}, tahfidzJuz: {} };
+    dataSource.forEach(student => {
+      const name = student.name || 'Tanpa Nama';
+      const kelas = student.kelas || '-';
+      const halaqoh = student.halaqoh || '-';
+      const info = { name, kelas, halaqoh };
+      const { tahsin: latestTahsin, tahfidz: latestTahfidz } = getLatestProgress(student, periodRange);
+      // Tahsin
+      const tahsinLevel = getTahsinLevel(latestTahsin);
+      if (!map.tahsin[tahsinLevel]) map.tahsin[tahsinLevel] = [];
+      map.tahsin[tahsinLevel].push(info);
+      // Tahfidz
+      if (latestTahfidz?.tahfidz) {
+        const surah = String(latestTahfidz.tahfidz).split(',')[0].trim();
+        if (!map.tahfidz[surah]) map.tahfidz[surah] = [];
+        map.tahfidz[surah].push(info);
+        const juz = getJuzFromSurah(surah);
+        if (!map.tahfidzJuz[juz]) map.tahfidzJuz[juz] = [];
+        map.tahfidzJuz[juz].push(info);
+      } else {
+        if (!map.tahfidz['Belum Ada']) map.tahfidz['Belum Ada'] = [];
+        map.tahfidz['Belum Ada'].push(info);
+        if (!map.tahfidzJuz['Belum Ada']) map.tahfidzJuz['Belum Ada'] = [];
+        map.tahfidzJuz['Belum Ada'].push(info);
+      }
+    });
+    return map;
   }, [allStudents, students, periodRange, dataSourceType]);
 
   const tahsinLabels = Object.keys(globalStats.tahsinCounts).filter(k => k !== 'Belum Ada' || globalStats.tahsinCounts[k] > 0);
@@ -383,7 +446,7 @@ const ProgressChartView = ({ students, activeHalaqoh, allStudents, weekDates, ch
 
   return (
     <div className="flex-1 w-full h-full overflow-y-auto bg-slate-50 dark:bg-slate-900/50 p-3 sm:p-5 md:p-8 custom-scrollbar transition-colors duration-500">
-      <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6 pb-20">
+      <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6 pb-24 md:pb-8">
         <div className="flex items-start gap-3 sm:gap-4 mb-4 sm:mb-6 border-b border-slate-200 dark:border-slate-800 pb-4 sm:pb-5">
           <div className="w-11 h-11 sm:w-14 sm:h-14 bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center shrink-0">
             <PieChart size={24} className="sm:w-7 sm:h-7" />
@@ -497,8 +560,17 @@ const ProgressChartView = ({ students, activeHalaqoh, allStudents, weekDates, ch
                 const count = globalStats.tahsinCounts[label];
                 const percentage = globalStats.totalStudents > 0 ? Math.round((count / globalStats.totalStudents) * 100) : 0;
                 const barWidth = `${(count / maxTahsinCount) * 100}%`;
+                const isSelected = selectedDetail?.type === 'tahsin' && selectedDetail?.key === label;
                 return (
-                  <div key={`summary-${label}`} className="rounded-xl border border-slate-100 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-900/40 p-3">
+                  <div
+                    key={`summary-${label}`}
+                    className={`rounded-xl border p-3 text-left transition-all cursor-pointer ${
+                      isSelected
+                        ? 'border-blue-400 dark:border-blue-500 bg-blue-50 dark:bg-blue-500/10 ring-2 ring-blue-200 dark:ring-blue-500/30'
+                        : 'border-slate-100 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-900/40 hover:border-blue-200 dark:hover:border-blue-500/30 hover:bg-blue-50/30 dark:hover:bg-blue-500/5'
+                    }`}
+                    onClick={() => handleSelectDetail('tahsin', label, studentNameMap.tahsin[label] || [])}
+                  >
                     <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 text-[11px] sm:text-xs font-black">
                       <span className="text-slate-700 dark:text-slate-200 truncate" title={label}>{label}</span>
                       <span className="text-slate-500 dark:text-slate-400 whitespace-nowrap">{count} ({percentage}%)</span>
@@ -506,6 +578,7 @@ const ProgressChartView = ({ students, activeHalaqoh, allStudents, weekDates, ch
                     <div className="mt-2 h-2.5 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 overflow-hidden">
                       <div className={`h-full rounded-full ${label === 'Belum Ada' ? 'bg-slate-300 dark:bg-slate-600' : 'bg-gradient-to-r from-blue-400 to-cyan-500 dark:from-blue-500 dark:to-cyan-600'}`} style={{ width: barWidth }} />
                     </div>
+                    {isSelected && <StudentNameList students={studentNameMap.tahsin[label] || []} color="blue" />}
                   </div>
                 );
               })}
@@ -513,35 +586,47 @@ const ProgressChartView = ({ students, activeHalaqoh, allStudents, weekDates, ch
 
             {levelClassRows.length > 0 ? (
               <div className="space-y-2.5 sm:space-y-3">
-                {levelClassRows.map(row => (
-                  <div key={row.level} className="rounded-2xl border border-slate-100 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-900/40 p-3 sm:p-4">
-                    <div className="flex flex-col gap-3 sm:gap-4">
-                      <div className="flex items-center gap-2">
+                {levelClassRows.map(row => {
+                  const isSelected = selectedDetail?.type === 'tahsin' && selectedDetail?.key === row.level;
+                  return (
+                    <div
+                      key={row.level}
+                      onClick={() => handleSelectDetail('tahsin', row.level, studentNameMap.tahsin[row.level] || [])}
+                      className={`w-full text-left rounded-2xl border p-3 sm:p-4 transition-all cursor-pointer ${
+                        isSelected
+                          ? 'border-blue-300 dark:border-blue-500/40 bg-blue-50/60 dark:bg-blue-500/10'
+                          : 'border-slate-100 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-900/40 hover:border-blue-200 dark:hover:border-blue-500/30'
+                      }`}
+                    >
+                      <div className="flex flex-col gap-3 sm:gap-4">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm sm:text-base font-black text-slate-800 dark:text-slate-100">{row.level}</span>
-                          <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-full">{row.total} siswa</span>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2.5 sm:space-y-3">
-                        {row.classes.map(item => (
-                          <div key={`${row.level}-${item.className}`} className="grid grid-cols-[68px_minmax(0,1fr)_56px] sm:grid-cols-[120px_minmax(0,1fr)_92px] items-center gap-2 sm:gap-3">
-                            <div className="text-[11px] sm:text-sm font-black text-slate-700 dark:text-slate-200 truncate" title={item.className}>{item.className}</div>
-                            <div className="h-3.5 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 overflow-hidden">
-                              <div
-                                className={`h-full rounded-full transition-all duration-1000 ${row.level === 'Belum Ada' ? 'bg-slate-300 dark:bg-slate-600' : 'bg-gradient-to-r from-cyan-400 to-blue-500 dark:from-cyan-500 dark:to-blue-600'}`}
-                                style={{ width: `${Math.max((item.count / row.total) * 100, 4)}%` }}
-                              />
-                            </div>
-                            <div className="text-right text-[10px] sm:text-xs font-black text-slate-500 dark:text-slate-400 tabular-nums">
-                              {item.count}<span className="hidden sm:inline"> siswa</span>
-                            </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm sm:text-base font-black text-slate-800 dark:text-slate-100">{row.level}</span>
+                            <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-full">{row.total} siswa</span>
                           </div>
-                        ))}
+                        </div>
+
+                        <div className="space-y-2.5 sm:space-y-3">
+                          {row.classes.map(item => (
+                            <div key={`${row.level}-${item.className}`} className="grid grid-cols-[68px_minmax(0,1fr)_56px] sm:grid-cols-[120px_minmax(0,1fr)_92px] items-center gap-2 sm:gap-3">
+                              <div className="text-[11px] sm:text-sm font-black text-slate-700 dark:text-slate-200 truncate" title={item.className}>{item.className}</div>
+                              <div className="h-3.5 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full transition-all duration-1000 ${row.level === 'Belum Ada' ? 'bg-slate-300 dark:bg-slate-600' : 'bg-gradient-to-r from-cyan-400 to-blue-500 dark:from-cyan-500 dark:to-blue-600'}`}
+                                  style={{ width: `${Math.max((item.count / row.total) * 100, 4)}%` }}
+                                />
+                              </div>
+                              <div className="text-right text-[10px] sm:text-xs font-black text-slate-500 dark:text-slate-400 tabular-nums">
+                                {item.count}<span className="hidden sm:inline"> siswa</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        {isSelected && <StudentNameList students={studentNameMap.tahsin[row.level] || []} color="blue" />}
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 p-6 sm:p-8 text-center text-xs sm:text-sm font-bold text-slate-400 dark:text-slate-500">
@@ -567,10 +652,21 @@ const ProgressChartView = ({ students, activeHalaqoh, allStudents, weekDates, ch
                   {tahfidzData.labels.map(label => {
                     const count = tahfidzData.counts[label];
                     const percentage = globalStats.totalStudents > 0 ? Math.round((count / globalStats.totalStudents) * 100) : 0;
+                    const isSelected = selectedDetail?.type === 'tahfidz' && selectedDetail?.key === label;
                     return (
-                      <div key={`surah-summary-${label}`} className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 text-[11px] sm:text-xs font-black">
-                        <span className="text-slate-700 dark:text-slate-200 truncate" title={label}>{label}</span>
-                        <span className="text-slate-500 dark:text-slate-400 whitespace-nowrap">{count} ({percentage}%)</span>
+                      <div key={`surah-summary-${label}`} className="-mx-1.5 px-1.5">
+                        <div
+                          onClick={() => handleSelectDetail('tahfidz', label, studentNameMap.tahfidz[label] || [])}
+                          className={`w-full grid grid-cols-[minmax(0,1fr)_auto] gap-2 text-[11px] sm:text-xs font-black text-left p-1.5 rounded-lg transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-purple-100 dark:bg-purple-500/15 text-purple-700 dark:text-purple-300'
+                              : 'hover:bg-purple-50 dark:hover:bg-purple-500/10'
+                          }`}
+                        >
+                          <span className="text-slate-700 dark:text-slate-200 truncate" title={label}>{label}</span>
+                          <span className="text-slate-500 dark:text-slate-400 whitespace-nowrap">{count} ({percentage}%)</span>
+                        </div>
+                        {isSelected && <StudentNameList students={studentNameMap.tahfidz[label] || []} color="purple" />}
                       </div>
                     );
                   })}
@@ -582,10 +678,21 @@ const ProgressChartView = ({ students, activeHalaqoh, allStudents, weekDates, ch
                   {tahfidzJuzData.labels.map(label => {
                     const count = tahfidzJuzData.counts[label];
                     const percentage = globalStats.totalStudents > 0 ? Math.round((count / globalStats.totalStudents) * 100) : 0;
+                    const isSelected = selectedDetail?.type === 'tahfidzJuz' && selectedDetail?.key === label;
                     return (
-                      <div key={`juz-summary-${label}`} className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 text-[11px] sm:text-xs font-black">
-                        <span className="text-slate-700 dark:text-slate-200 truncate" title={label}>{label}</span>
-                        <span className="text-slate-500 dark:text-slate-400 whitespace-nowrap">{count} ({percentage}%)</span>
+                      <div key={`juz-summary-${label}`} className="-mx-1.5 px-1.5">
+                        <div
+                          onClick={() => handleSelectDetail('tahfidzJuz', label, studentNameMap.tahfidzJuz[label] || [])}
+                          className={`w-full grid grid-cols-[minmax(0,1fr)_auto] gap-2 text-[11px] sm:text-xs font-black text-left p-1.5 rounded-lg transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                              : 'hover:bg-emerald-50 dark:hover:bg-emerald-500/10'
+                          }`}
+                        >
+                          <span className="text-slate-700 dark:text-slate-200 truncate" title={label}>{label}</span>
+                          <span className="text-slate-500 dark:text-slate-400 whitespace-nowrap">{count} ({percentage}%)</span>
+                        </div>
+                        {isSelected && <StudentNameList students={studentNameMap.tahfidzJuz[label] || []} color="emerald" />}
                       </div>
                     );
                   })}
@@ -595,42 +702,66 @@ const ProgressChartView = ({ students, activeHalaqoh, allStudents, weekDates, ch
 
             {tahfidzGroupedRows.length > 0 ? (
               <div className="space-y-3 sm:space-y-4">
-                {tahfidzGroupedRows.map(juzRow => (
-                  <div key={juzRow.juz} className="rounded-2xl border border-purple-100 dark:border-purple-500/20 bg-purple-50/40 dark:bg-purple-500/5 p-3 sm:p-4">
-                    <div className="flex items-center gap-2 mb-3 sm:mb-4">
-                      <span className="text-sm sm:text-base font-black text-slate-800 dark:text-slate-100">{juzRow.juz}</span>
-                      <span className="text-[10px] font-black text-purple-700 dark:text-purple-300 bg-white dark:bg-slate-800 border border-purple-100 dark:border-purple-500/20 px-2 py-0.5 rounded-full">{juzRow.total} siswa</span>
-                    </div>
-
-                    <div className="space-y-2.5 sm:space-y-3">
-                      {juzRow.surahs.map(surahRow => (
-                        <div key={`${juzRow.juz}-${surahRow.surah}`} className="rounded-xl border border-slate-100 dark:border-slate-700 bg-white/80 dark:bg-slate-900/50 p-3 sm:p-4">
-                          <div className="flex items-center gap-2 min-w-0 mb-3">
-                            <span className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-100 truncate" title={surahRow.surah}>{surahRow.surah}</span>
-                            <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-full shrink-0">{surahRow.total} siswa</span>
-                          </div>
-
-                          <div className="space-y-2.5 sm:space-y-3">
-                            {surahRow.classes.map(item => (
-                              <div key={`${juzRow.juz}-${surahRow.surah}-${item.className}`} className="grid grid-cols-[68px_minmax(0,1fr)_56px] sm:grid-cols-[120px_minmax(0,1fr)_92px] items-center gap-2 sm:gap-3">
-                                <div className="text-[11px] sm:text-sm font-black text-slate-700 dark:text-slate-200 truncate" title={item.className}>{item.className}</div>
-                                <div className="h-3.5 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 overflow-hidden">
-                                  <div
-                                    className={`h-full rounded-full transition-all duration-1000 ${surahRow.surah === 'Belum Ada' ? 'bg-slate-300 dark:bg-slate-600' : 'bg-gradient-to-r from-purple-400 to-fuchsia-500 dark:from-purple-500 dark:to-fuchsia-600'}`}
-                                    style={{ width: `${Math.max((item.count / surahRow.total) * 100, 4)}%` }}
-                                  />
-                                </div>
-                                <div className="text-right text-[10px] sm:text-xs font-black text-slate-500 dark:text-slate-400 tabular-nums">
-                                  {item.count}<span className="hidden sm:inline"> siswa</span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
+                {tahfidzGroupedRows.map(juzRow => {
+                  const isJuzSelected = selectedDetail?.type === 'tahfidzJuz' && selectedDetail?.key === juzRow.juz;
+                  return (
+                    <div key={juzRow.juz} className={`rounded-2xl border p-3 sm:p-4 transition-all ${
+                      isJuzSelected
+                        ? 'border-emerald-300 dark:border-emerald-500/40 bg-emerald-50/60 dark:bg-emerald-500/10'
+                        : 'border-purple-100 dark:border-purple-500/20 bg-purple-50/40 dark:bg-purple-500/5'
+                    }`}>
+                      <div className="flex items-center gap-2 mb-3 sm:mb-4">
+                        <div
+                          onClick={() => handleSelectDetail('tahfidzJuz', juzRow.juz, studentNameMap.tahfidzJuz[juzRow.juz] || [])}
+                          className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+                        >
+                          <span className="text-sm sm:text-base font-black text-slate-800 dark:text-slate-100">{juzRow.juz}</span>
+                          <span className="text-[10px] font-black text-purple-700 dark:text-purple-300 bg-white dark:bg-slate-800 border border-purple-100 dark:border-purple-500/20 px-2 py-0.5 rounded-full">{juzRow.total} siswa</span>
                         </div>
-                      ))}
                       </div>
-                  </div>
-                ))}
+                      {isJuzSelected && <StudentNameList students={studentNameMap.tahfidzJuz[juzRow.juz] || []} color="emerald" />}
+
+                      <div className="space-y-2.5 sm:space-y-3">
+                        {juzRow.surahs.map(surahRow => {
+                          const isSurahSelected = selectedDetail?.type === 'tahfidz' && selectedDetail?.key === surahRow.surah;
+                          return (
+                            <div key={`${juzRow.juz}-${surahRow.surah}`} className={`rounded-xl border p-3 sm:p-4 transition-all ${
+                              isSurahSelected
+                                ? 'border-purple-300 dark:border-purple-500/40 bg-purple-50 dark:bg-purple-500/10'
+                                : 'border-slate-100 dark:border-slate-700 bg-white/80 dark:bg-slate-900/50'
+                            }`}>
+                              <div
+                                onClick={() => handleSelectDetail('tahfidz', surahRow.surah, studentNameMap.tahfidz[surahRow.surah] || [])}
+                                className="flex items-center gap-2 min-w-0 mb-3 w-full cursor-pointer hover:opacity-80 transition-opacity"
+                              >
+                                <span className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-100 truncate" title={surahRow.surah}>{surahRow.surah}</span>
+                                <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-full shrink-0">{surahRow.total} siswa</span>
+                              </div>
+
+                              <div className="space-y-2.5 sm:space-y-3">
+                                {surahRow.classes.map(item => (
+                                  <div key={`${juzRow.juz}-${surahRow.surah}-${item.className}`} className="grid grid-cols-[68px_minmax(0,1fr)_56px] sm:grid-cols-[120px_minmax(0,1fr)_92px] items-center gap-2 sm:gap-3">
+                                    <div className="text-[11px] sm:text-sm font-black text-slate-700 dark:text-slate-200 truncate" title={item.className}>{item.className}</div>
+                                    <div className="h-3.5 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 overflow-hidden">
+                                      <div
+                                        className={`h-full rounded-full transition-all duration-1000 ${surahRow.surah === 'Belum Ada' ? 'bg-slate-300 dark:bg-slate-600' : 'bg-gradient-to-r from-purple-400 to-fuchsia-500 dark:from-purple-500 dark:to-fuchsia-600'}`}
+                                        style={{ width: `${Math.max((item.count / surahRow.total) * 100, 4)}%` }}
+                                      />
+                                    </div>
+                                    <div className="text-right text-[10px] sm:text-xs font-black text-slate-500 dark:text-slate-400 tabular-nums">
+                                      {item.count}<span className="hidden sm:inline"> siswa</span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                              {isSurahSelected && <StudentNameList students={studentNameMap.tahfidz[surahRow.surah] || []} color="purple" />}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 p-6 sm:p-8 text-center text-xs sm:text-sm font-bold text-slate-400 dark:text-slate-500">
@@ -638,7 +769,7 @@ const ProgressChartView = ({ students, activeHalaqoh, allStudents, weekDates, ch
               </div>
             )}
           </div>
-
+          
           {/* Widget Informasi */}
           <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mt-1 sm:mt-2">
             <div className="bg-white dark:bg-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200 dark:border-slate-700 shadow-sm flex items-center gap-3 sm:gap-5 transition-colors">

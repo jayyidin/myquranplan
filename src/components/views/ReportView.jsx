@@ -273,7 +273,7 @@ const ReportView = ({
         .report-card { break-inside: avoid; }
       ` }} />
 
-      <div className="max-w-7xl mx-auto px-3 sm:px-5 md:px-8 py-4 sm:py-6 pb-32 md:pb-12">
+      <div className="max-w-7xl mx-auto px-3 sm:px-5 md:px-8 py-4 sm:py-6 pb-24 md:pb-8">
         <div className="print:hidden flex flex-col xl:flex-row xl:items-end justify-between gap-3 sm:gap-4 mb-4 sm:mb-5">
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-emerald-600 mb-1.5 sm:mb-2">

@@ -129,6 +129,7 @@ const HalaqohSection = ({
 const StudentDataSection = ({ students, openEditStudentModal, requestDeleteStudent, requestBulkDeleteStudents, requestBulkEditStudents, handleBulkSaveStudents, kelasList, guruHalaqohData, currentUser, showToast }) => {
   const [studentSearch, setStudentSearch] = useState('');
   const [localStudentSearch, setLocalStudentSearch] = useState('');
+  const [filterStatus, setFilterStatus] = useState('unassigned');
   const [filterKelas, setFilterKelas] = useState('');
   const [visibleCount, setVisibleCount] = useState(20);
   const [selectedStudentIds, setSelectedStudentIds] = useState([]);
@@ -143,7 +144,7 @@ const StudentDataSection = ({ students, openEditStudentModal, requestDeleteStude
   useEffect(() => {
     const timer = setTimeout(() => setVisibleCount(20), 0);
     return () => clearTimeout(timer);
-  }, [studentSearch, filterKelas]);
+  }, [studentSearch, filterStatus, filterKelas]);
 
   const guruName = currentUser?.name?.trim().toLowerCase() || '';
   const guruKey = Object.keys(guruHalaqohData).find(k => k !== '_order_' && k.trim().toLowerCase() === guruName);
@@ -153,11 +154,15 @@ const StudentDataSection = ({ students, openEditStudentModal, requestDeleteStude
   const filteredStudents = students.filter(s => {
     const halaqoh = (s?.halaqoh || '').trim();
     const isKosong = halaqoh === '' || halaqoh.toLowerCase() === 'unassigned';
-    if (!isKosong && !myHalaqohs.some(h => h.trim().toLowerCase() === halaqoh.toLowerCase())) return false;
+    const isMyHalaqoh = myHalaqohs.some(h => h.trim().toLowerCase() === halaqoh.toLowerCase());
+    if (!isKosong && !isMyHalaqoh) return false;
+    if (filterStatus === 'unassigned' && !isKosong) return false;
+    if (filterStatus === 'assigned' && isKosong) return false;
     if (filterKelas && s.kelas !== filterKelas) return false;
     const query = (studentSearch || '').toLowerCase();
-    return (s?.name || '').toLowerCase().includes(query) || halaqoh.toLowerCase().includes(query);
+    return (s?.name || '').toLowerCase().includes(query) || halaqoh.toLowerCase().includes(query) || (s?.kelas || '').toLowerCase().includes(query) || (s?.nis || '').toLowerCase().includes(query);
   });
+  const activeFilterCount = [studentSearch, filterStatus !== 'all' ? filterStatus : '', filterKelas].filter(Boolean).length;
   const displayedStudents = filteredStudents.slice(0, visibleCount);
   const toggleSelectStudent = (id) => setSelectedStudentIds(prev => prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]);
   const toggleSelectAll = () => { if (selectedStudentIds.length === displayedStudents.length && displayedStudents.length > 0) setSelectedStudentIds([]); else setSelectedStudentIds(displayedStudents.map(s => s.id)); };
@@ -222,41 +227,70 @@ const StudentDataSection = ({ students, openEditStudentModal, requestDeleteStude
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden mt-6 animate-student-rise">
-      <div className={`p-3.5 sm:p-5 bg-white/95 backdrop-blur-md sm:sticky sm:top-[60px] md:top-[76px] z-20 ${isDataSectionOpen ? 'border-b border-slate-100' : ''}`}>
+    <div className="bg-white border border-slate-200 rounded-[24px] sm:rounded-2xl shadow-sm overflow-hidden mt-6 animate-student-rise">
+      <div className={`p-4 sm:p-5 bg-white/95 backdrop-blur-md sm:sticky sm:top-[60px] md:top-[76px] z-20 ${isDataSectionOpen ? 'border-b border-slate-100' : ''}`}>
         <button type="button" onClick={() => setIsDataSectionOpen(prev => !prev)} className="w-full flex items-center justify-between gap-3 text-left active:scale-[0.99] transition-transform">
           <div className="flex items-center gap-2.5 min-w-0">
             <span className="w-1.5 h-9 rounded-full bg-gradient-to-b from-purple-500 to-emerald-400 shrink-0" />
             <div className="min-w-0">
-              <h2 className="text-xs sm:text-sm font-black text-slate-600 uppercase tracking-[0.16em] truncate">Data Siswa Saya</h2>
-              <div className="mt-1 flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider text-slate-400">
-                <span>{displayedStudents.length} tampil</span>
+              <h2 className="text-[13px] sm:text-sm font-black text-slate-600 uppercase tracking-[0.16em] truncate">Bank Data Siswa</h2>
+              <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-slate-400">
+                <span>Cari, filter, impor</span>
                 <span className="w-1 h-1 rounded-full bg-slate-300" />
                 <span>{selectedStudentIds.length} dipilih</span>
               </div>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <span className="px-2.5 py-1 rounded-full bg-purple-50 text-purple-700 border border-purple-100 text-[10px] font-black uppercase tracking-wider">{filteredStudents.length} hasil</span>
-            <span className="w-9 h-9 rounded-2xl bg-slate-50 border border-slate-200 text-slate-500 flex items-center justify-center shadow-sm">
+            <span className="hidden min-[380px]:inline-flex px-2.5 py-1 rounded-full bg-purple-50 text-purple-700 border border-purple-100 text-[10px] font-black uppercase tracking-wider">{filteredStudents.length} hasil</span>
+            <span className="w-10 h-10 rounded-2xl bg-purple-50 border border-purple-100 text-purple-600 flex items-center justify-center shadow-sm">
               {isDataSectionOpen ? <ChevronUp size={17} /> : <ChevronDown size={17} />}
             </span>
           </div>
         </button>
         {isDataSectionOpen && (
           <>
-            <div className="mt-4 animate-student-rise space-y-2.5">
+            <div className="mt-4 animate-student-rise bg-slate-50/80 border border-slate-200 rounded-[22px] p-3.5 sm:p-4 space-y-2.5">
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { value: 'unassigned', label: 'Belum' },
+                  { value: 'assigned', label: 'Sudah' },
+                  { value: 'all', label: 'Semua' }
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setFilterStatus(opt.value)}
+                    className={`min-h-[42px] rounded-2xl border text-[10px] sm:text-xs font-black uppercase tracking-[0.08em] transition-all active:scale-95 ${filterStatus === opt.value ? 'bg-slate-900 text-white border-slate-900 shadow-sm' : 'bg-white text-slate-500 border-slate-200 hover:border-purple-200'}`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                <input type="text" placeholder="Cari nama atau halaqoh..." value={localStudentSearch} onChange={(e) => setLocalStudentSearch(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3.5 pl-11 pr-4 text-sm font-bold text-slate-800 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 outline-none" />
+                <input type="text" placeholder="Cari nama, NIS, kelas..." value={localStudentSearch} onChange={(e) => setLocalStudentSearch(e.target.value)} className="w-full bg-white border border-slate-200 rounded-2xl py-3.5 pl-11 pr-4 text-[13px] sm:text-sm font-bold text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 outline-none" />
               </div>
-              <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-2">
-                <div className="relative min-w-0"><select value={filterKelas} onChange={(e) => setFilterKelas(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3.5 pl-4 pr-10 text-sm font-bold text-slate-700 outline-none appearance-none cursor-pointer"><option value="">Semua Kelas</option>{kelasList.map(k => <option key={k} value={k}>Kelas {k}</option>)}</select><ChevronDown size={17} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" /></div>
-                <button onClick={handleExportCSV} className="w-12 h-12 rounded-2xl flex items-center justify-center bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200 active:scale-95 transition-all" title="Ekspor"><Download size={19} strokeWidth={3} /></button>
-                <button onClick={() => setIsBulkImportOpen(!isBulkImportOpen)} className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isBulkImportOpen ? 'bg-red-500' : 'bg-purple-600 hover:bg-purple-700'} text-white active:scale-95 transition-all shadow-sm`} title={isBulkImportOpen ? 'Tutup impor' : 'Impor'}>{isBulkImportOpen ? <X size={19} strokeWidth={3} /> : <Plus size={19} strokeWidth={3} />}</button>
+              <div className="relative min-w-0">
+                <select value={filterKelas} onChange={(e) => setFilterKelas(e.target.value)} className="w-full bg-white border border-slate-200 rounded-2xl py-3.5 pl-4 pr-10 text-[13px] sm:text-sm font-bold text-slate-700 outline-none appearance-none cursor-pointer">
+                  <option value="">Semua Kelas</option>
+                  {kelasList.map(k => <option key={k} value={k}>Kelas {k}</option>)}
+                </select>
+                <ChevronDown size={17} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
               </div>
-              {(studentSearch || filterKelas) && (
-                <div className="flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+              <div className="grid grid-cols-2 gap-2">
+                <button onClick={handleExportCSV} className="min-h-[50px] rounded-2xl flex items-center justify-center gap-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 active:scale-95 transition-all text-xs sm:text-sm font-black uppercase tracking-[0.08em]" title="Ekspor">
+                  <Download size={18} strokeWidth={3} /> Ekspor
+                </button>
+                <button onClick={() => setIsBulkImportOpen(!isBulkImportOpen)} className={`min-h-[50px] rounded-2xl flex items-center justify-center gap-2 ${isBulkImportOpen ? 'bg-red-500' : 'bg-purple-600 hover:bg-purple-700'} text-white active:scale-95 transition-all shadow-sm text-xs sm:text-sm font-black uppercase tracking-[0.08em]`} title={isBulkImportOpen ? 'Tutup impor' : 'Impor'}>
+                  {isBulkImportOpen ? <X size={18} strokeWidth={3} /> : <Plus size={18} strokeWidth={3} />}
+                  {isBulkImportOpen ? 'Tutup' : 'Impor'}
+                </button>
+              </div>
+              {(activeFilterCount > 0 || filteredStudents.length > 0) && (
+                <div className="flex flex-wrap items-center gap-2 text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  <span className="px-2.5 py-1 rounded-full bg-white text-slate-600 border border-slate-200">{filteredStudents.length} hasil</span>
+                  {filterStatus !== 'all' && <span className="px-2.5 py-1 rounded-full bg-slate-900 text-white border border-slate-900">{filterStatus === 'unassigned' ? 'Belum halaqoh' : 'Sudah halaqoh'}</span>}
                   {studentSearch && <span className="px-2.5 py-1 rounded-full bg-purple-50 text-purple-600 border border-purple-100">Cari: {studentSearch}</span>}
                   {filterKelas && <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-600 border border-blue-100">Kelas {filterKelas}</span>}
                 </div>
@@ -268,28 +302,83 @@ const StudentDataSection = ({ students, openEditStudentModal, requestDeleteStude
       {isDataSectionOpen && (
       <div className="p-3.5 sm:p-5 bg-slate-50">
         {isBulkImportOpen && (
-          <div className="mb-4 bg-white border border-purple-100 rounded-2xl overflow-hidden">
+          <div className="mb-4 bg-white border border-purple-100 rounded-[22px] sm:rounded-2xl overflow-hidden shadow-sm shadow-purple-100/40">
             {/* Header */}
             <div className="p-4 sm:p-5 pb-3 border-b border-slate-100">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                <div>
-                  <h3 className="text-sm font-black text-slate-800 flex items-center gap-2"><Database size={16} className="text-purple-500" /> Impor Data Siswa</h3>
-                  <p className="text-[10px] font-bold text-slate-400 mt-0.5">Isi manual atau tempel dari Excel (Ctrl+V). Format kolom: Nama, NIS, Kelas, Halaqoh, Jenis Kelamin</p>
+                <div className="min-w-0">
+                  <h3 className="text-sm font-black text-slate-800 flex items-center gap-2"><Database size={16} className="text-purple-500 shrink-0" /> Impor Data Siswa</h3>
+                  <p className="text-[10px] sm:text-xs font-bold text-slate-400 mt-0.5 leading-relaxed">Isi manual atau tempel dari Excel. Urutan: Nama, NIS, Kelas, Halaqoh, L/P.</p>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <button onClick={() => { setBulkRows([{ name: '', nis: '', kelas: '', halaqoh: '', gender: 'L' }]); setIsBulkImportOpen(false); }} className="px-3 py-2 bg-slate-100 rounded-xl text-xs font-black uppercase text-slate-500 hover:bg-slate-200 active:scale-95">Batal</button>
-                  <button onClick={processBulkImport} className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-black uppercase tracking-widest active:scale-95 flex items-center gap-1.5"><Save size={13} /> Impor {bulkRows.filter(r => r.name).length} Siswa</button>
+                <div className="grid grid-cols-2 sm:flex items-center gap-2 shrink-0 w-full sm:w-auto">
+                  <button onClick={() => { setBulkRows([{ name: '', nis: '', kelas: '', halaqoh: '', gender: 'L' }]); setIsBulkImportOpen(false); }} className="px-3 py-3 sm:py-2 bg-slate-100 rounded-xl text-xs font-black uppercase text-slate-500 hover:bg-slate-200 active:scale-95">Batal</button>
+                  <button onClick={processBulkImport} className="px-3 py-3 sm:py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-black uppercase tracking-widest active:scale-95 flex items-center justify-center gap-1.5"><Save size={13} /> Impor {bulkRows.filter(r => r.name).length}</button>
                 </div>
               </div>
             </div>
 
             {/* Paste Zone + Table */}
             <div className="p-3 sm:p-4">
+              <div tabIndex={0} onPaste={handleBulkPaste} className="sm:hidden space-y-3 outline-none">
+                <div className="rounded-2xl border border-dashed border-purple-200 bg-purple-50/60 px-3 py-2.5 text-[10px] font-bold leading-relaxed text-purple-700">
+                  Tempel data dari Excel di area ini, atau isi kartu siswa satu per satu.
+                </div>
+                {bulkRows.map((row, idx) => (
+                  <div key={idx} className="rounded-[20px] border border-slate-200 bg-slate-50 p-3.5 space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Siswa {idx + 1}</span>
+                      <button onClick={() => removeBulkRow(idx)} className="w-9 h-9 rounded-xl bg-white border border-red-100 text-red-500 flex items-center justify-center active:scale-95">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      value={row.name}
+                      onChange={e => updateBulkRow(idx, 'name', e.target.value)}
+                      placeholder="Nama siswa *"
+                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-800 outline-none placeholder:text-slate-400 focus:border-purple-400 focus:ring-2 focus:ring-purple-100"
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        value={row.nis}
+                        onChange={e => updateBulkRow(idx, 'nis', e.target.value)}
+                        placeholder="NIS"
+                        className="min-w-0 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-xs font-bold text-slate-700 outline-none placeholder:text-slate-400 focus:border-purple-400 focus:ring-2 focus:ring-purple-100"
+                      />
+                      <input
+                        type="text"
+                        value={row.kelas}
+                        onChange={e => updateBulkRow(idx, 'kelas', e.target.value)}
+                        placeholder="Kelas"
+                        className="min-w-0 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-xs font-bold text-slate-700 outline-none placeholder:text-slate-400 focus:border-purple-400 focus:ring-2 focus:ring-purple-100"
+                      />
+                    </div>
+                    <div className="grid grid-cols-[minmax(0,1fr)_86px] gap-2">
+                      <input
+                        type="text"
+                        value={row.halaqoh}
+                        onChange={e => updateBulkRow(idx, 'halaqoh', e.target.value)}
+                        placeholder="Halaqoh"
+                        className="min-w-0 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-xs font-bold text-slate-700 outline-none placeholder:text-slate-400 focus:border-purple-400 focus:ring-2 focus:ring-purple-100"
+                      />
+                      <select
+                        value={row.gender}
+                        onChange={e => updateBulkRow(idx, 'gender', e.target.value)}
+                        className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-xs font-black text-slate-700 outline-none appearance-none cursor-pointer focus:border-purple-400 focus:ring-2 focus:ring-purple-100"
+                      >
+                        <option value="L">L</option>
+                        <option value="P">P</option>
+                      </select>
+                    </div>
+                  </div>
+                ))}
+              </div>
               <div
                 ref={bulkTableRef}
                 tabIndex={0}
                 onPaste={handleBulkPaste}
-                className="border border-slate-200 rounded-xl overflow-hidden focus:border-purple-400 focus:ring-2 focus:ring-purple-100 outline-none"
+                className="hidden sm:block border border-slate-200 rounded-xl overflow-hidden focus:border-purple-400 focus:ring-2 focus:ring-purple-100 outline-none"
               >
                 {/* Table Header */}
                 <div className="grid grid-cols-[40px_1fr_120px_80px_120px_90px_40px] sm:grid-cols-[40px_1fr_140px_100px_140px_100px_44px] bg-slate-100 border-b border-slate-200 text-[10px] font-black text-slate-500 uppercase tracking-widest">
@@ -365,13 +454,13 @@ const StudentDataSection = ({ students, openEditStudentModal, requestDeleteStude
         )}
         {displayedStudents.length > 0 && (
           <div className="flex flex-col gap-2 mb-4">
-            <div className="flex flex-row items-center justify-between bg-white border border-slate-200 p-3 sm:p-4 rounded-2xl gap-3">
-              <label className="flex items-center gap-3 cursor-pointer group min-w-0"><input type="checkbox" checked={selectedStudentIds.length === displayedStudents.length && displayedStudents.length > 0} onChange={toggleSelectAll} className="w-5 h-5 rounded border-slate-300 bg-white text-purple-600 cursor-pointer shrink-0" /><span className="text-[13px] sm:text-sm font-bold text-slate-600 truncate">Pilih semua</span></label>
-              <div className="text-xs font-bold text-slate-400 lg:ml-auto shrink-0">{displayedStudents.length} / {filteredStudents.length}</div>
+            <div className="flex flex-wrap items-center justify-between bg-white border border-slate-200 p-3 sm:p-4 rounded-[20px] sm:rounded-2xl gap-2.5">
+              <label className="flex items-center gap-3 cursor-pointer group min-w-0 py-1"><input type="checkbox" checked={selectedStudentIds.length === displayedStudents.length && displayedStudents.length > 0} onChange={toggleSelectAll} className="w-5 h-5 rounded border-slate-300 bg-white text-purple-600 cursor-pointer shrink-0" /><span className="text-[13px] sm:text-sm font-black text-slate-700 truncate">Pilih semua</span></label>
+              <div className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-slate-400 lg:ml-auto shrink-0 bg-slate-50 border border-slate-100 rounded-full px-2.5 py-1">{displayedStudents.length} / {filteredStudents.length}</div>
               {selectedStudentIds.length > 0 && (
-                <div className="flex items-center gap-2 shrink-0">
-                  <button onClick={() => setIsBulkEditOpen(!isBulkEditOpen)} className="flex justify-center items-center gap-1.5 px-3 py-2.5 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider"><Edit3 size={15} /> {selectedStudentIds.length}</button>
-                  <button onClick={handleBulkDelete} className="flex justify-center items-center gap-1.5 px-3 py-2.5 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider"><Trash2 size={15} /> {selectedStudentIds.length}</button>
+                <div className="grid grid-cols-2 sm:flex items-center gap-2 shrink-0 w-full sm:w-auto">
+                  <button onClick={() => setIsBulkEditOpen(!isBulkEditOpen)} className="flex justify-center items-center gap-1.5 px-3 py-3 sm:py-2.5 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider"><Edit3 size={15} /> Edit {selectedStudentIds.length}</button>
+                  <button onClick={handleBulkDelete} className="flex justify-center items-center gap-1.5 px-3 py-3 sm:py-2.5 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider"><Trash2 size={15} /> Hapus</button>
                 </div>
               )}
             </div>
@@ -391,7 +480,7 @@ const StudentDataSection = ({ students, openEditStudentModal, requestDeleteStude
             )}
           </div>
         )}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 pb-20 sm:pb-0">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 pb-4 sm:pb-0">
           {displayedStudents.map((s, index) => {
             const g = normalizeGender(s.gender || s.jenis_kelamin);
             const initials = (s?.name || '?')
@@ -402,30 +491,30 @@ const StudentDataSection = ({ students, openEditStudentModal, requestDeleteStude
               .join('')
               .toUpperCase();
             return (
-              <div key={s.id} className={`bg-white border ${selectedStudentIds.includes(s.id) ? 'border-purple-300 ring-2 ring-purple-100' : 'border-slate-200'} rounded-2xl p-3.5 sm:p-4 flex flex-col gap-3 hover:border-purple-200 hover:shadow-sm group animate-student-card`} style={{ animationDelay: `${Math.min(index, 12) * 28}ms` }}>
+              <div key={s.id} className={`bg-white border ${selectedStudentIds.includes(s.id) ? 'border-purple-300 ring-2 ring-purple-100 shadow-sm shadow-purple-100' : 'border-slate-200'} rounded-[22px] sm:rounded-2xl p-3.5 sm:p-4 flex flex-col gap-3 hover:border-purple-200 hover:shadow-sm group animate-student-card`} style={{ animationDelay: `${Math.min(index, 12) * 28}ms` }}>
                 <div className="min-w-0 flex-1 w-full flex items-start gap-3">
-                  <input type="checkbox" aria-label={`Pilih ${s.name || 'siswa'}`} checked={selectedStudentIds.includes(s.id)} onChange={() => toggleSelectStudent(s.id)} className="w-5 h-5 mt-1 rounded border-slate-300 bg-white text-purple-600 cursor-pointer shrink-0" />
-                  <div className={`w-11 h-11 rounded-2xl shrink-0 flex items-center justify-center font-black text-sm shadow-sm border ${g === 'P' ? 'bg-pink-50 text-pink-600 border-pink-100' : 'bg-sky-50 text-sky-600 border-sky-100'}`}>
+                  <input type="checkbox" aria-label={`Pilih ${s.name || 'siswa'}`} checked={selectedStudentIds.includes(s.id)} onChange={() => toggleSelectStudent(s.id)} className="w-5 h-5 mt-1.5 rounded border-slate-300 bg-white text-purple-600 cursor-pointer shrink-0" />
+                  <div className={`w-12 h-12 rounded-2xl shrink-0 flex items-center justify-center font-black text-sm shadow-sm border ${g === 'P' ? 'bg-pink-50 text-pink-600 border-pink-100' : 'bg-sky-50 text-sky-600 border-sky-100'}`}>
                     {initials}
                   </div>
                   <div className="min-w-0 flex-1 pt-0.5">
                     <p className={`font-black text-slate-900 leading-tight line-clamp-2 whitespace-normal break-words [overflow-wrap:anywhere] ${getStudentNameClass(s.name)}`}>{s.name || 'Tanpa nama'}</p>
                     <div className="mt-2 flex flex-wrap gap-1.5">
-                      <span className="inline-flex max-w-full bg-purple-50 text-purple-700 border border-purple-100 text-[9px] font-black uppercase tracking-[0.08em] px-2 py-1 rounded-lg leading-none">
+                      <span className="inline-flex max-w-full bg-purple-50 text-purple-700 border border-purple-100 text-[9px] font-black uppercase tracking-[0.08em] px-2 py-1.5 rounded-lg leading-none">
                         {s.halaqoh || 'Belum halaqoh'}
                       </span>
-                      <span className="inline-flex bg-slate-100 text-slate-600 border border-slate-200 text-[9px] font-black uppercase tracking-[0.08em] px-2 py-1 rounded-lg leading-none">
+                      <span className="inline-flex bg-slate-100 text-slate-600 border border-slate-200 text-[9px] font-black uppercase tracking-[0.08em] px-2 py-1.5 rounded-lg leading-none">
                         Kelas {s.kelas || '-'}
                       </span>
-                      <span className={`inline-flex text-[9px] font-black uppercase tracking-[0.08em] px-2 py-1 rounded-lg border leading-none ${g === 'P' ? 'bg-pink-50 text-pink-600 border-pink-100' : 'bg-sky-50 text-sky-600 border-sky-100'}`}>
+                      <span className={`inline-flex text-[9px] font-black uppercase tracking-[0.08em] px-2 py-1.5 rounded-lg border leading-none ${g === 'P' ? 'bg-pink-50 text-pink-600 border-pink-100' : 'bg-sky-50 text-sky-600 border-sky-100'}`}>
                         {g === 'P' ? 'Perempuan' : 'Laki-laki'}
                       </span>
                     </div>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  <button onClick={() => openEditStudentModal(s)} className="flex justify-center items-center gap-2 p-3 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl font-bold text-xs active:scale-95 transition-all"><Edit3 size={16} /> Edit</button>
-                  <button onClick={() => requestDeleteStudent(s)} className="flex justify-center items-center gap-2 p-3 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white rounded-xl font-bold text-xs active:scale-95 transition-all"><Trash2 size={16} /> Hapus</button>
+                  <button onClick={() => openEditStudentModal(s)} className="flex justify-center items-center gap-2 p-3 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl font-black text-xs active:scale-95 transition-all"><Edit3 size={16} /> Edit</button>
+                  <button onClick={() => requestDeleteStudent(s)} className="flex justify-center items-center gap-2 p-3 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white rounded-xl font-black text-xs active:scale-95 transition-all"><Trash2 size={16} /> Hapus</button>
                 </div>
               </div>
             );
@@ -544,7 +633,7 @@ const StudentView = ({
   const onPhotoChange = (e, studentId) => { const file = e.target.files[0]; if (file && openCropModal) openCropModal(file, studentId); };
 
   return (
-    <div className="student-mobile-page p-3 sm:p-6 md:p-8 pb-48 sm:pb-8" ref={containerRef}>
+    <div className="student-mobile-page p-3 sm:p-6 md:p-8 pb-24 sm:pb-8" ref={containerRef}>
       {/* Teacher Halaqoh Management */}
       {!isSuperAdmin && currentUser && newHalaqohName !== undefined && (
         <HalaqohSection newHalaqohName={newHalaqohName} setNewHalaqohName={setNewHalaqohName} handleAddHalaqoh={handleAddHalaqoh} guruHalaqohData={guruHalaqohData} currentUser={currentUser} editingHalaqoh={editingHalaqoh} setEditingHalaqoh={setEditingHalaqoh} handleSaveEditHalaqoh={handleSaveEditHalaqoh} requestDeleteHalaqoh={requestDeleteHalaqoh} handleReorderHalaqoh={handleReorderHalaqoh} />

@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "site": "quran-sditabsb", // Ini adalah Hosting Site ID, bukan Project ID
+    "site": "quran-sditabsb",
     "public": "dist",
     "ignore": [
       "firebase.json",

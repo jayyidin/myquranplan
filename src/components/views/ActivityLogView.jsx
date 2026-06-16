@@ -75,7 +75,7 @@ const ActivityLogView = () => {
   };
 
   return (
-    <div className="flex-1 w-full h-full overflow-y-auto bg-slate-50 custom-scrollbar min-h-0 p-3 sm:p-5 md:p-8 pb-32" style={{ WebkitOverflowScrolling: 'touch' }}>
+    <div className="flex-1 w-full h-full overflow-y-auto bg-slate-50 custom-scrollbar min-h-0 p-3 sm:p-5 md:p-8 pb-24 md:pb-8" style={{ WebkitOverflowScrolling: 'touch' }}>
       <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div className="min-w-0">

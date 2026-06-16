@@ -1504,7 +1504,7 @@ const HomeView = ({
 
         {/* BLOK 2: KONTEN UTAMA - AREA SCROLL */}
         <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto overscroll-y-contain w-full relative custom-scrollbar bg-slate-50 p-3 sm:p-4 md:p-6 transition-colors duration-500" style={{ WebkitOverflowScrolling: 'touch' }}>
-          <div className="flex flex-col gap-3 sm:gap-4 w-full mx-auto pb-32 md:pb-8">
+          <div className="flex flex-col gap-3 sm:gap-4 w-full mx-auto pb-24 md:pb-8">
 
             {/* TOMBOL TAB & NAVIGASI */}
             <div className="flex flex-row rounded-xl sm:rounded-2xl p-1 gap-1 shadow-inner transition-colors bg-slate-100/80 overflow-hidden">

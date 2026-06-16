@@ -1437,7 +1437,7 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
     }
 
     return (
-        <div className="p-4 sm:p-6 w-full max-w-7xl mx-auto min-h-full pb-28 md:pb-8 animate-in fade-in duration-500">
+        <div className="p-4 sm:p-6 w-full max-w-7xl mx-auto min-h-full pb-24 md:pb-8 animate-in fade-in duration-500">
             {/* Style khusus untuk cetak halaman ujian */}
             <style dangerouslySetInnerHTML={{
                 __html: `
@@ -3327,7 +3327,7 @@ const QuranReportWizard = ({ student, reportStudents = [], onClose, materials, s
                 </div>
 
                 {/* Right Panel: A4 Live Preview (with transforms) */}
-                <div className="flex-1 min-h-0 bg-slate-950 flex justify-center overflow-auto p-2 sm:p-8 pb-28 lg:pb-8 relative items-start select-none custom-scrollbar print:p-0 print:overflow-visible print:bg-white print:block" style={{ WebkitOverflowScrolling: 'touch' }}>
+                <div className="flex-1 min-h-0 bg-slate-950 flex justify-center overflow-auto p-2 sm:p-8 pb-24 lg:pb-8 relative items-start select-none custom-scrollbar print:p-0 print:overflow-visible print:bg-white print:block" style={{ WebkitOverflowScrolling: 'touch' }}>
 
                     <div
                         id="zoom-wrapper"

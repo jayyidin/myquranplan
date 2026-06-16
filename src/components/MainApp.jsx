@@ -15,7 +15,7 @@ const ActivityLogView = lazy(() => import('./views/ActivityLogView'));
 const ProgressChartView = lazy(() => import('./views/ProgressChartView'));
 const UjianView = lazy(() => import('./views/UjianView'));
 const ArchiveView = lazy(() => import('./views/ArchiveView'));
-const HalaqohTransferView = lazy(() => import('./views/HalaqohTransferView'));
+const KelolaView = lazy(() => import('./views/KelolaView'));
 
 const ViewLoading = () => (
   <div className="flex-1 w-full h-full flex items-center justify-center text-slate-500 dark:text-slate-400">
@@ -212,7 +212,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [currentView, setCurrentView] = useState(() => {
     const saved = localStorage.getItem('myquranplan_current_view');
-    if ((saved === 'log' || saved === 'mutasi') && !isSuperAdmin) return 'home';
+    if ((saved === 'log' || saved === 'kelola') && !isSuperAdmin) return 'home';
     return saved || 'home';
   });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -631,6 +631,75 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       showToast(`Berhasil! Password baru untuk ${user.name}: ${newPassword}`);
     } catch (error) {
       showToast('Gagal mereset password.');
+    }
+    setIsLoading(false);
+  };
+
+  const handleCreateSuperAdmin = async (formData, onSuccess) => {
+    const normalizedUsername = formData.username.toLowerCase().trim().replace(/\s+/g, '');
+    const generateSafeEmail = (uname) => `${uname.toLowerCase().replace(/\s+/g, '_')}@myquranplan.local`;
+
+    setIsLoading(true);
+    try {
+      // Cek duplikasi username
+      const { data: existingUser } = await supabase.rpc('get_user_login_data', { lookup_username: normalizedUsername }).maybeSingle();
+      if (existingUser) {
+        showToast('Username sudah terdaftar! Gunakan yang lain.');
+        setIsLoading(false);
+        return;
+      }
+
+      // 1. Daftarkan di Supabase Auth
+      const dummyEmail = generateSafeEmail(normalizedUsername);
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: dummyEmail,
+        password: formData.password,
+        options: {
+          data: { name: formData.name, username: normalizedUsername, role: 'superadmin' }
+        }
+      });
+
+      if (authError) throw new Error('Gagal mendaftar di Auth: ' + authError.message);
+
+      // 2. Simpan ke app_users dengan role superadmin dan status active
+      const { error: insertError } = await supabase.from('app_users').insert([{
+        id: authData.user?.id,
+        username: normalizedUsername,
+        password: '[SECURED_BY_SUPABASE]',
+        name: formData.name,
+        role: 'superadmin',
+        status: 'active'
+      }]);
+
+      if (insertError) throw new Error('Gagal menyimpan profil: ' + insertError.message);
+
+      // 3. Log aktivitas
+      try {
+        await supabase.from('activity_logs').insert([{
+          guru_name: currentUser?.name || 'System / Unknown',
+          action: 'Membuat Akun Super Admin',
+          details: `Akun baru: ${formData.name} (@${normalizedUsername})`
+        }]);
+      } catch (logErr) {
+        console.error('Gagal mencatat log aktivitas:', logErr);
+      }
+
+      // 4. Force signOut agar akun baru tidak mengambil sesi saat ini
+      await supabase.auth.signOut();
+      // Re-login sebagai user saat ini
+      if (currentUser?.username) {
+        // Biarkan user login ulang manual setelah alert
+      }
+
+      showToast(`Akun Super Admin berhasil dibuat! Username: ${normalizedUsername}. Silakan login kembali.`);
+      if (onSuccess) onSuccess();
+
+      // Refresh appUsers list
+      const { data: refreshedUsers } = await supabase.from('app_users').select('*').order('created_at', { ascending: true });
+      if (refreshedUsers) setAppUsers(refreshedUsers);
+
+    } catch (error) {
+      showToast(error.message || 'Gagal membuat akun Super Admin.');
     }
     setIsLoading(false);
   };
@@ -2642,7 +2711,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
             />
           )}
           {currentView === 'siswa' && (
-            <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar pb-44 md:pb-0">
+            <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar">
               <StudentView
                 activeHalaqoh={activeHalaqoh} filteredStudents={filteredStudents}
                 allStudents={activeStudents}
@@ -2678,8 +2747,8 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
               />
             </div>
           )}
-          {currentView === 'mutasi' && isSuperAdmin && (
-            <HalaqohTransferView
+          {currentView === 'kelola' && isSuperAdmin && (
+            <KelolaView
               isSuperAdmin={isSuperAdmin}
               students={students}
               guruHalaqohData={guruHalaqohData}
@@ -2687,10 +2756,36 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
               kelasList={kelasList}
               onMoveStudents={handleMoveStudentsToHalaqoh}
               onStartNewSchoolYear={requestStartNewSchoolYear}
+              appUsers={appUsers}
+              handleApproveUser={handleApproveUser}
+              handleRejectUser={handleRejectUser}
+              handleUpdateUserAccount={handleUpdateUserAccount}
+              handleCreateSuperAdmin={handleCreateSuperAdmin}
+              newGuruName={newGuruName}
+              setNewGuruName={setNewGuruName}
+              handleAddGuru={handleAddGuru}
+              selectedGuruForHalaqoh={selectedGuruForHalaqoh}
+              setSelectedGuruForHalaqoh={setSelectedGuruForHalaqoh}
+              newHalaqohName={newHalaqohName}
+              setNewHalaqohName={setNewHalaqohName}
+              handleAddHalaqoh={handleAddHalaqoh}
+              editingGuru={editingGuru}
+              setEditingGuru={setEditingGuru}
+              handleSaveEditGuru={handleSaveEditGuru}
+              requestDeleteGuru={requestDeleteGuru}
+              editingHalaqoh={editingHalaqoh}
+              setEditingHalaqoh={setEditingHalaqoh}
+              handleSaveEditHalaqoh={handleSaveEditHalaqoh}
+              requestDeleteHalaqoh={requestDeleteHalaqoh}
+              handleReorderHalaqoh={handleReorderHalaqoh}
+              handleReorderGuru={handleReorderGuru}
+              handleLinkAccount={handleLinkAccount}
+              showToast={showToast}
+              currentUser={currentUser}
             />
           )}
           {currentView === 'laporan' && (
-            <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar pb-24 md:pb-0">
+            <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar">
               <ReportView
                 activeHalaqoh={activeHalaqoh}
                 activeGuru={activeGuru}
@@ -2715,27 +2810,25 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
           {currentView === 'pengaturan' && isSuperAdmin && (
             <SettingsView
               isSuperAdmin={isSuperAdmin} appUsers={appUsers}
-              handleApproveUser={handleApproveUser} handleRejectUser={handleRejectUser} handleUpdateUserAccount={handleUpdateUserAccount}
+              handleApproveUser={handleApproveUser} handleRejectUser={handleRejectUser}
               institutionName={institutionName} setInstitutionName={setInstitutionName} institutionLogo={institutionLogo} handleInstitutionLogoUpload={handleInstitutionLogoUpload} setInstitutionLogo={setInstitutionLogo} updateMasterDataCloud={updateMasterDataCloud} showToast={showToast}
               targetReguler={targetReguler} setTargetReguler={setTargetReguler} targetAlQuran={targetAlQuran} setTargetAlQuran={setTargetAlQuran}
               kkmScore={kkmScore} setKkmScore={setKkmScore}
               kelasList={kelasList} newKelasName={newKelasName} setNewKelasName={setNewKelasName} handleAddKelas={handleAddKelas} handleDeleteKelas={handleDeleteKelas} handleReorderKelas={handleReorderKelas}
-              newGuruName={newGuruName} setNewGuruName={setNewGuruName} handleAddGuru={handleAddGuru} guruList={isSuperAdmin ? guruList : [currentUser.name]}
-              selectedGuruForHalaqoh={selectedGuruForHalaqoh} setSelectedGuruForHalaqoh={setSelectedGuruForHalaqoh} newHalaqohName={newHalaqohName} setNewHalaqohName={setNewHalaqohName} handleAddHalaqoh={handleAddHalaqoh}
-              currentUser={currentUser} guruHalaqohData={guruHalaqohData} editingGuru={editingGuru} setEditingGuru={setEditingGuru} handleSaveEditGuru={handleSaveEditGuru} requestDeleteGuru={requestDeleteGuru}
+              guruList={isSuperAdmin ? guruList : [currentUser.name]}
+              newHalaqohName={newHalaqohName} setNewHalaqohName={setNewHalaqohName} handleAddHalaqoh={handleAddHalaqoh}
+              currentUser={currentUser} guruHalaqohData={guruHalaqohData}
               editingHalaqoh={editingHalaqoh} setEditingHalaqoh={setEditingHalaqoh} handleSaveEditHalaqoh={handleSaveEditHalaqoh} requestDeleteHalaqoh={requestDeleteHalaqoh} handleReorderHalaqoh={handleReorderHalaqoh}
-              handleReorderGuru={handleReorderGuru}
               students={students} openEditStudentModal={(s) => { setEditStudentData({ id: s.id, name: s.name, kelas: s.kelas, halaqoh: s.halaqoh, gender: s.gender || s.jenis_kelamin || 'L', photo: s.photo || null }); setIsEditStudentModalOpen(true); }}
               requestDeleteStudent={requestDeleteStudent} requestBulkDeleteStudents={requestBulkDeleteStudents} requestBulkEditStudents={requestBulkEditStudents} handleBulkSaveStudents={handleBulkSaveStudents} onLogout={onLogout}
               handleCleanLessonPlanValues={handleCleanLessonPlanValues}
               handleResetTeacherPassword={handleResetTeacherPassword}
               handleCloseSemester={handleCloseSemester}
               handleBackupData={handleBackupData}
-              handleLinkAccount={handleLinkAccount}
             />
           )}
           {currentView === 'statistik' && (
-            <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar pb-24 md:pb-0">
+            <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar">
               <ProgressChartView
                 students={filteredStudents}
                 activeHalaqoh={activeHalaqoh}
@@ -2746,7 +2839,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
             </div>
           )}
           {currentView === 'ujian' && (
-            <div className="flex-1 w-full h-full overflow-y-auto overscroll-y-auto custom-scrollbar pb-24 md:pb-0 print:h-auto print:overflow-visible print:block">
+            <div className="flex-1 w-full h-full overflow-y-auto overscroll-y-auto custom-scrollbar print:h-auto print:overflow-visible print:block">
               <UjianView
                 activeHalaqoh={activeHalaqoh}
                 filteredStudents={filteredStudents}
@@ -2759,7 +2852,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
             </div>
           )}
           {currentView === 'log' && isSuperAdmin && (
-            <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar pb-24 md:pb-0">
+            <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar">
               <ActivityLogView />
             </div>
           )}
@@ -2832,7 +2925,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
         <button onClick={() => setCurrentView('siswa')} className={`flex flex-col items-center gap-1 transition-colors ${currentView === 'siswa' ? 'text-green-600 dark:text-emerald-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-400'}`}><Users size={20} /><span className="text-[9px] font-bold">Siswa</span></button>
         <button onClick={() => setCurrentView('ujian')} className={`flex flex-col items-center gap-1 transition-colors ${currentView === 'ujian' ? 'text-green-600 dark:text-emerald-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-400'}`}><ClipboardCheck size={20} /><span className="text-[9px] font-bold">Ujian</span></button>
         {isSuperAdmin && (
-          <button onClick={() => setCurrentView('mutasi')} className={`flex flex-col items-center gap-1 transition-colors ${currentView === 'mutasi' ? 'text-green-600 dark:text-emerald-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-400'}`}><ArrowUpDown size={20} /><span className="text-[9px] font-bold">Mutasi</span></button>
+          <button onClick={() => setCurrentView('kelola')} className={`flex flex-col items-center gap-1 transition-colors ${currentView === 'kelola' ? 'text-green-600 dark:text-emerald-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-400'}`}><ArrowUpDown size={20} /><span className="text-[9px] font-bold">Kelola</span></button>
         )}
         <button onClick={() => setCurrentView('laporan')} className={`flex flex-col items-center gap-1 transition-colors ${currentView === 'laporan' ? 'text-green-600 dark:text-emerald-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-400'}`}><BarChart3 size={20} /><span className="text-[9px] font-bold">Laporan</span></button>
         <button onClick={() => setCurrentView('arsip')} className={`flex flex-col items-center gap-1 transition-colors ${currentView === 'arsip' ? 'text-green-600 dark:text-emerald-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-400'}`}><Archive size={20} /><span className="text-[9px] font-bold">Arsip</span></button>

@@ -146,7 +146,7 @@ const ArchiveView = ({ isSuperAdmin, currentUser, institutionLogo, guruHalaqohDa
   }
 
   return (
-    <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar bg-slate-50 p-4 sm:p-6 md:p-8 pb-32">
+    <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar bg-slate-50 p-4 sm:p-6 md:p-8 pb-24 md:pb-8">
       <div className="max-w-5xl mx-auto space-y-6">
         <div className="flex items-center gap-4 mb-6">
           <div className="w-14 h-14 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center shrink-0"><Archive size={28} /></div>

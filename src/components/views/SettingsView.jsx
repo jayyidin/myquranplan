@@ -1,9 +1,25 @@
-// File: src/components/views/SettingsView.jsx
+﻿// File: src/components/views/SettingsView.jsx
 import React, { useState, useRef } from 'react';
 import {
   UserCheck, CheckCircle2, X, ImageIcon, Camera,
-  GraduationCap, Plus, User, Edit3, Trash2, Save, Users, Search, ShieldCheck, Database, LayoutGrid, LogOut, ArrowUp, ChevronDown, Wrench, UserPlus, FolderPlus, GripVertical, AlertTriangle, Download
+  GraduationCap, Plus, User, Edit3, Trash2, Save, Users, Search, ShieldCheck, Database, LayoutGrid, LogOut, ArrowUp, ChevronDown, Wrench, FolderPlus, GripVertical, AlertTriangle, Download
 } from 'lucide-react';
+
+// Helper: normalize gender
+const normalizeGender = (value) => {
+  const text = String(value || '').trim().toUpperCase();
+  if (!text) return 'L';
+  if (text === 'P' || text.includes('PEREMPUAN') || text.includes('PUTRI') || text.includes('AKHWAT') || text.includes('WANITA')) return 'P';
+  return 'L';
+};
+
+const getStudentNameClass = (name) => {
+  const length = String(name || '').trim().length;
+  if (length > 38) return 'text-[11px] sm:text-sm md:text-base';
+  if (length > 28) return 'text-xs sm:text-sm md:text-base';
+  if (length > 20) return 'text-[13px] sm:text-base md:text-lg';
+  return 'text-sm sm:text-base md:text-lg';
+};
 
 const SectionHeader = ({ accent = 'bg-slate-500', title, description, icon: Icon }) => (
   <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-4">
@@ -64,18 +80,16 @@ const QuickNavButton = ({ icon: Icon, label, detail, onClick, tone = 'text-slate
 );
 
 const SettingsView = ({
-  isSuperAdmin, appUsers = [], handleApproveUser, handleRejectUser, handleUpdateUserAccount,
+  isSuperAdmin, appUsers = [], handleApproveUser, handleRejectUser,
   institutionName, setInstitutionName, institutionLogo, handleInstitutionLogoUpload, setInstitutionLogo, updateMasterDataCloud, showToast, isUploadingLogo, logoUploadProgress = 0,
   targetReguler, setTargetReguler, targetAlQuran, setTargetAlQuran,
   kelasList = [], newKelasName, setNewKelasName, handleAddKelas, handleDeleteKelas, handleReorderKelas,
-  newGuruName, setNewGuruName, handleAddGuru, guruList = [],
-  selectedGuruForHalaqoh, setSelectedGuruForHalaqoh, newHalaqohName, setNewHalaqohName, handleAddHalaqoh,
-  currentUser, guruHalaqohData = {}, editingGuru, setEditingGuru, handleSaveEditGuru, requestDeleteGuru,
-  editingHalaqoh, setEditingHalaqoh, handleSaveEditHalaqoh, requestDeleteHalaqoh, handleReorderHalaqoh, handleReorderGuru,
-  students = [], openEditStudentModal, requestDeleteStudent, requestBulkDeleteStudents, requestBulkEditStudents, handleBulkSaveStudents, onLogout, handleCleanLessonPlanValues, handleCloseSemester, handleBackupData, handleLinkAccount, handleResetTeacherPassword
+  guruList = [],
+  newHalaqohName, setNewHalaqohName, handleAddHalaqoh,
+  currentUser, guruHalaqohData = {}, editingHalaqoh, setEditingHalaqoh, handleSaveEditHalaqoh, requestDeleteHalaqoh, handleReorderHalaqoh,
+  students = [], openEditStudentModal, requestDeleteStudent, requestBulkDeleteStudents, requestBulkEditStudents, handleBulkSaveStudents, onLogout, handleCleanLessonPlanValues, handleCloseSemester, handleBackupData, handleResetTeacherPassword
 }) => {
   const [studentSearch, setStudentSearch] = useState('');
-  const [editingAccount, setEditingAccount] = useState(null);
 
   // --- DEBOUNCE PENCARIAN (MENGURANGI LAG DI HP) ---
   const [localStudentSearch, setLocalStudentSearch] = useState('');
@@ -83,14 +97,6 @@ const SettingsView = ({
     const timer = setTimeout(() => setStudentSearch(localStudentSearch), 300);
     return () => clearTimeout(timer);
   }, [localStudentSearch]);
-
-  // --- DEBOUNCE PENCARIAN GURU ---
-  const [guruSearch, setGuruSearch] = useState('');
-  const [localGuruSearch, setLocalGuruSearch] = useState('');
-  React.useEffect(() => {
-    const timer = setTimeout(() => setGuruSearch(localGuruSearch), 300);
-    return () => clearTimeout(timer);
-  }, [localGuruSearch]);
 
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(20);
@@ -101,13 +107,10 @@ const SettingsView = ({
   const [filterStatus, setFilterStatus] = useState(isSuperAdmin ? 'kosong' : 'all');
   const [filterKelas, setFilterKelas] = useState('');
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [isBankSiswaOpen, setIsBankSiswaOpen] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 768 : true);
   const scrollContainerRef = useRef(null);
   const [dragKelasId, setDragKelasId] = useState(null);
   const [dragOverKelasId, setDragOverKelasId] = useState(null);
-  const [dragHalaqohInfo, setDragHalaqohInfo] = useState(null);
-  const [dragOverHalaqohInfo, setDragOverHalaqohInfo] = useState(null);
-  const [dragGuruId, setDragGuruId] = useState(null);
-  const [dragOverGuruId, setDragOverGuruId] = useState(null);
   const [resolvedPendingUserIds, setResolvedPendingUserIds] = useState([]);
 
   React.useEffect(() => {
@@ -193,30 +196,6 @@ const SettingsView = ({
     });
   };
 
-  const handleStartEditAccount = (user) => {
-    setEditingAccount({ id: user.id, name: user.name, username: user.username, password: '', role: user.role });
-  };
-
-  const handleSaveAccount = async () => {
-    const originalUser = appUsers.find(u => u.id === editingAccount.id);
-    const isUsernameChanged = editingAccount.username !== originalUser?.username;
-
-    if (isUsernameChanged && !editingAccount.password && originalUser?.password === '[SECURED_BY_SUPABASE]') {
-      showToast("PENTING: Jika mengubah username, Anda WAJIB mengisi Password Baru agar akun bisa sinkronisasi ulang!");
-      return;
-    }
-
-    const updates = {
-      name: editingAccount.name,
-      username: editingAccount.username.toLowerCase().replace(/\s+/g, ''),
-      role: editingAccount.role,
-      resetrequested: false
-    };
-    if (editingAccount.password) updates.password = editingAccount.password;
-
-    await handleUpdateUserAccount(editingAccount.id, updates);
-    setEditingAccount(null);
-  };
 
   const toggleSelectStudent = (id) => {
     setSelectedStudentIds(prev => prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]);
@@ -296,142 +275,6 @@ const SettingsView = ({
     setDragKelasId(null); setDragOverKelasId(null);
   };
 
-  const handleDragStartHalaqoh = (e, guru, halaqoh) => {
-    e.stopPropagation();
-    setDragHalaqohInfo({ guru, halaqoh });
-    e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/plain", `${guru}|${halaqoh}`);
-  };
-
-  const handleDragOverHalaqoh = (e, guru, halaqoh) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (dragHalaqohInfo?.guru === guru && dragOverHalaqohInfo?.halaqoh !== halaqoh) {
-      setDragOverHalaqohInfo({ guru, halaqoh });
-    }
-  };
-
-  const handleDropHalaqoh = (e, targetGuru, targetHalaqoh) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!dragHalaqohInfo || dragHalaqohInfo.guru !== targetGuru || dragHalaqohInfo.halaqoh === targetHalaqoh) {
-      setDragHalaqohInfo(null); setDragOverHalaqohInfo(null);
-      return;
-    }
-    const guru = dragHalaqohInfo.guru;
-    const halaqohs = guruHalaqohData[guru] || [];
-    const draggedIdx = halaqohs.indexOf(dragHalaqohInfo.halaqoh);
-    const targetIdx = halaqohs.indexOf(targetHalaqoh);
-
-    if (draggedIdx !== -1 && targetIdx !== -1) {
-      const newList = [...halaqohs];
-      const [draggedItem] = newList.splice(draggedIdx, 1);
-      newList.splice(targetIdx, 0, draggedItem);
-      if (handleReorderHalaqoh) handleReorderHalaqoh(guru, newList);
-    }
-    setDragHalaqohInfo(null); setDragOverHalaqohInfo(null);
-  };
-
-  const handleDragEndHalaqoh = () => { setDragHalaqohInfo(null); setDragOverHalaqohInfo(null); };
-
-  const handleTouchStartHalaqoh = (e, guru, halaqoh) => {
-    setDragHalaqohInfo({ guru, halaqoh });
-  };
-
-  const handleTouchMoveHalaqoh = (e, targetGuru) => {
-    if (!dragHalaqohInfo || dragHalaqohInfo.guru !== targetGuru) return;
-    const touch = e.touches[0];
-    const target = document.elementFromPoint(touch.clientX, touch.clientY);
-    const card = target?.closest('[data-halaqoh-id]');
-    if (card) {
-      const hoverId = card.getAttribute('data-halaqoh-id');
-      const hoverGuru = card.getAttribute('data-guru-id');
-      if (hoverGuru === targetGuru && hoverId !== dragOverHalaqohInfo?.halaqoh) {
-        setDragOverHalaqohInfo({ guru: hoverGuru, halaqoh: hoverId });
-      }
-    }
-  };
-
-  const handleTouchEndHalaqoh = () => {
-    if (dragHalaqohInfo && dragOverHalaqohInfo && dragHalaqohInfo.guru === dragOverHalaqohInfo.guru && dragHalaqohInfo.halaqoh !== dragOverHalaqohInfo.halaqoh) {
-      const guru = dragHalaqohInfo.guru;
-      const halaqohs = guruHalaqohData[guru] || [];
-      const draggedIdx = halaqohs.indexOf(dragHalaqohInfo.halaqoh);
-      const targetIdx = halaqohs.indexOf(dragOverHalaqohInfo.halaqoh);
-
-      if (draggedIdx !== -1 && targetIdx !== -1) {
-        const newList = [...halaqohs];
-        const [draggedItem] = newList.splice(draggedIdx, 1);
-        newList.splice(targetIdx, 0, draggedItem);
-        if (handleReorderHalaqoh) handleReorderHalaqoh(guru, newList);
-      }
-    }
-    setDragHalaqohInfo(null); setDragOverHalaqohInfo(null);
-  };
-
-  const handleDragStartGuru = (e, guru) => {
-    if (guruSearch || !isSuperAdmin) return;
-    setDragGuruId(guru);
-    e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/plain", guru);
-  };
-
-  const handleDragOverGuru = (e, guru) => {
-    e.preventDefault();
-    if (guruSearch || !isSuperAdmin) return;
-    if (dragOverGuruId !== guru) setDragOverGuruId(guru);
-  };
-
-  const handleDropGuru = (e, targetGuru) => {
-    e.preventDefault();
-    if (guruSearch || !isSuperAdmin) return;
-    if (!dragGuruId || dragGuruId === targetGuru) {
-      setDragGuruId(null); setDragOverGuruId(null);
-      return;
-    }
-    const draggedIdx = guruList.indexOf(dragGuruId);
-    const targetIdx = guruList.indexOf(targetGuru);
-    if (draggedIdx !== -1 && targetIdx !== -1) {
-      const newList = [...guruList];
-      const [draggedItem] = newList.splice(draggedIdx, 1);
-      newList.splice(targetIdx, 0, draggedItem);
-      if (handleReorderGuru) handleReorderGuru(newList);
-    }
-    setDragGuruId(null); setDragOverGuruId(null);
-  };
-
-  const handleDragEndGuru = () => { setDragGuruId(null); setDragOverGuruId(null); };
-
-  const handleTouchStartGuru = (e, guru) => {
-    if (guruSearch || !isSuperAdmin) return;
-    setDragGuruId(guru);
-  };
-
-  const handleTouchMoveGuru = (e) => {
-    if (guruSearch || !isSuperAdmin || !dragGuruId) return;
-    const touch = e.touches[0];
-    const target = document.elementFromPoint(touch.clientX, touch.clientY);
-    const card = target?.closest('[data-guru-card-id]');
-    if (card) {
-      const hoverId = card.getAttribute('data-guru-card-id');
-      if (hoverId !== dragOverGuruId) setDragOverGuruId(hoverId);
-    }
-  };
-
-  const handleTouchEndGuru = () => {
-    if (guruSearch || !isSuperAdmin) return;
-    if (dragGuruId && dragOverGuruId && dragGuruId !== dragOverGuruId) {
-      const draggedIdx = guruList.indexOf(dragGuruId);
-      const targetIdx = guruList.indexOf(dragOverGuruId);
-      if (draggedIdx !== -1 && targetIdx !== -1) {
-        const newList = [...guruList];
-        const [draggedItem] = newList.splice(draggedIdx, 1);
-        newList.splice(targetIdx, 0, draggedItem);
-        if (handleReorderGuru) handleReorderGuru(newList);
-      }
-    }
-    setDragGuruId(null); setDragOverGuruId(null);
-  };
 
   const handleExecuteBulkEdit = () => {
     const updates = {};
@@ -483,16 +326,16 @@ const SettingsView = ({
     const query = (studentSearch || '').toLowerCase();
     const nameMatch = (s?.name || '').toLowerCase().includes(query);
     const halaqohMatch = halaqoh.toLowerCase().includes(query);
-    return nameMatch || halaqohMatch;
+    const kelasMatch = (s?.kelas || '').toLowerCase().includes(query);
+    const nisMatch = (s?.nis || '').toLowerCase().includes(query);
+    return nameMatch || halaqohMatch || kelasMatch || nisMatch;
   });
 
   const displayedStudents = filteredStudentsMaster.slice(0, visibleCount);
 
-  const filteredGuruList = guruList.filter(guru => guru.toLowerCase().includes(guruSearch.toLowerCase()));
   const hasStudentFilters = Boolean(studentSearch || filterKelas || filterStatus !== (isSuperAdmin ? 'kosong' : 'all'));
   const quickSections = [
     ...(isSuperAdmin ? [{ id: 'settings-identity', icon: GraduationCap, label: 'Identitas', detail: 'Logo, kelas, target' }] : []),
-    ...(isSuperAdmin ? [{ id: 'settings-halaqoh', icon: Users, label: 'Guru & Halaqoh', detail: `${guruList.length} guru, ${totalHalaqoh} halaqoh` }] : []),
     ...(isSuperAdmin ? [{ id: 'settings-students', icon: Database, label: 'Data Siswa', detail: `${filteredStudentsMaster.length} tampil` }] : []),
     ...(isSuperAdmin ? [{ id: 'settings-maintenance', icon: Wrench, label: 'Perawatan', detail: 'Backup & semester' }] : [])
   ];
@@ -504,7 +347,7 @@ const SettingsView = ({
       ref={scrollContainerRef}
       onScroll={handleScroll}
     >
-      <div className="max-w-7xl mx-auto px-3 sm:px-5 md:px-8 py-5 sm:py-7 pb-32">
+      <div className="max-w-7xl mx-auto px-3 sm:px-5 md:px-8 py-5 sm:py-7 pb-24 md:pb-8">
         <div className="mb-6 sm:mb-8 bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
             <div className="min-w-0">
@@ -724,287 +567,33 @@ const SettingsView = ({
           )}
 
           {isSuperAdmin && (
-          <section id="settings-halaqoh" className="scroll-mt-24">
-            <SectionHeader
-              accent="bg-indigo-500"
-              title="Manajemen Guru & Halaqoh"
-              description={isSuperAdmin ? 'Kelola akun login, guru, dan kelompok halaqoh.' : 'Tambah dan rapikan kelompok halaqoh Anda.'}
-              icon={Users}
-            />
-
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-5">
-              {isSuperAdmin && (
-                <div className="xl:col-span-4">
-                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col xl:sticky xl:top-4 max-h-[520px]">
-                    <div className="p-4 sm:p-5 border-b border-slate-100 bg-slate-50">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-indigo-100 text-indigo-600 rounded-xl">
-                          <ShieldCheck size={20} />
-                        </div>
-                        <div>
-                          <h3 className="font-black text-slate-800 leading-tight">Akses Pengguna</h3>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Kelola akun login</p>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="p-3 sm:p-4 space-y-3 overflow-y-auto custom-scrollbar flex-1 bg-slate-50/60">
-                      {appUsers.map(user => (
-                        <div key={user.id} className={`bg-white border ${user.status === 'pending' ? 'border-orange-200' : 'border-slate-200'} rounded-2xl p-4 transition-all hover:border-indigo-300 hover:shadow-sm`}>
-                          {editingAccount?.id === user.id ? (
-                            <div className="space-y-3 animate-in fade-in duration-300">
-                              <div>
-                                <label className="text-[9px] font-black text-slate-400 uppercase">Nama Lengkap</label>
-                                <input type="text" value={editingAccount.name} onChange={e => setEditingAccount({ ...editingAccount, name: e.target.value })} className="w-full bg-white border border-indigo-200 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500/20" />
-                              </div>
-                              <div>
-                                <label className="text-[9px] font-black text-slate-400 uppercase">Username Login</label>
-                                <input type="text" value={editingAccount.username} onChange={e => setEditingAccount({ ...editingAccount, username: e.target.value })} className="w-full bg-white border border-indigo-200 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500/20" />
-                              </div>
-                              <div>
-                                <label className="text-[9px] font-black text-slate-400 uppercase">Password Baru</label>
-                                <input type="text" value={editingAccount.password} onChange={e => setEditingAccount({ ...editingAccount, password: e.target.value })} className="w-full bg-white border border-indigo-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-indigo-500/20" placeholder="Kosongkan jika tak diubah" />
-                              </div>
-                              <div className="grid grid-cols-2 gap-2 pt-1">
-                                <button onClick={handleSaveAccount} className="bg-indigo-600 text-white py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors">Simpan</button>
-                                <button onClick={() => setEditingAccount(null)} className="bg-slate-100 text-slate-500 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-colors">Batal</button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-between gap-3">
-                              <div className="min-w-0">
-                                <p className="font-black text-sm text-slate-900 truncate flex items-center gap-2">
-                                  <span className="truncate">{user.name}</span>
-                                  {user.status === 'pending' && <span className="text-[8px] bg-orange-500 text-white px-1.5 py-0.5 rounded font-black shrink-0">PENDING</span>}
-                                  {user.resetrequested && <span className="text-[8px] bg-red-500 text-white px-1.5 py-0.5 rounded font-black animate-pulse shrink-0">RESET</span>}
-                                </p>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase truncate">@{user.username} / {user.role}</p>
-                              </div>
-                              <button onClick={() => handleStartEditAccount(user)} className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all shrink-0" title="Edit akun"><Edit3 size={16} /></button>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className={isSuperAdmin ? 'xl:col-span-8' : 'xl:col-span-12'}>
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                  <div className="p-4 sm:p-5 bg-white border-b border-slate-100">
-                    <div className="grid grid-cols-1 2xl:grid-cols-2 gap-3 sm:gap-4">
-                      {isSuperAdmin ? (
-                        <>
-                          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                            <FieldLabel>Tambah Guru Baru</FieldLabel>
-                            <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_112px] gap-2">
-                              <input type="text" list="approved-gurus" placeholder="Nama lengkap..." value={newGuruName} onChange={e => setNewGuruName(e.target.value)} className="flex-1 w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors" />
-                              <button onClick={handleAddGuru} className="bg-slate-900 hover:bg-slate-800 transition-colors text-white py-3 px-4 rounded-xl font-black text-xs uppercase tracking-widest w-full active:scale-95 flex items-center justify-center gap-2"><UserPlus size={16} /> Tambah</button>
-                              <datalist id="approved-gurus">
-                                {appUsers.filter(u => (u.status === 'active' || u.role === 'superadmin') && !guruList.includes(u.name)).map(u => <option key={u.id} value={u.name}>{u.username}</option>)}
-                              </datalist>
-                            </div>
-                          </div>
-
-                          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                            <FieldLabel>Assign Halaqoh ke Guru</FieldLabel>
-                            <div className="space-y-2">
-                              <SelectShell className="w-full">
-                                <select value={selectedGuruForHalaqoh} onChange={e => setSelectedGuruForHalaqoh(e.target.value)} className="w-full h-full bg-white border border-slate-200 rounded-xl pl-4 pr-10 py-3 text-xs font-bold outline-none appearance-none cursor-pointer focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all">
-                                  <option value="">Pilih guru...</option>
-                                  {guruList.map(g => <option key={g} value={g}>{g}</option>)}
-                                </select>
-                              </SelectShell>
-                              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_120px] gap-2">
-                                <input type="text" placeholder="Nama halaqoh..." value={newHalaqohName} onChange={e => setNewHalaqohName(e.target.value)} className="min-w-0 w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all" />
-                                <button onClick={handleAddHalaqoh} disabled={!selectedGuruForHalaqoh} className="bg-indigo-600 hover:bg-indigo-700 text-white py-3 px-4 rounded-xl disabled:bg-slate-200 transition-colors w-full flex justify-center items-center font-bold text-xs uppercase tracking-widest active:scale-95"><Plus size={16} className="sm:hidden mr-2" /> Tambah</button>
-                              </div>
-                            </div>
-                          </div>
-                        </>
-                      ) : (
-                        <div className="lg:col-span-2 bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                          <FieldLabel>Tambah Halaqoh Baru Anda</FieldLabel>
-                          <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_112px] gap-2">
-                            <input type="text" placeholder="Nama kelompok..." value={newHalaqohName} onChange={e => setNewHalaqohName(e.target.value)} className="min-w-0 w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all" />
-                            <button onClick={handleAddHalaqoh} disabled={!newHalaqohName.trim()} className="bg-emerald-600 hover:bg-emerald-700 text-white py-3 px-4 rounded-xl font-black text-xs uppercase tracking-widest disabled:bg-slate-200 w-full transition-colors flex justify-center items-center gap-2 active:scale-95"><Save size={16} /> Simpan</button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div
-                    className="p-4 sm:p-5 bg-slate-50 grid grid-cols-1 lg:grid-cols-2 gap-4 max-h-[620px] overflow-y-auto custom-scrollbar"
-                    onTouchMove={handleTouchMoveGuru}
-                    onTouchEnd={handleTouchEndGuru}
-                  >
-                    {guruList.length > 1 && isSuperAdmin && (
-                      <div className="col-span-1 lg:col-span-2 relative mb-1">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                        <input
-                          type="text"
-                          placeholder="Cari nama pengajar..."
-                          value={localGuruSearch}
-                          onChange={(e) => setLocalGuruSearch(e.target.value)}
-                          className="w-full bg-white border border-slate-200 rounded-xl py-3 pl-11 pr-4 text-sm font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition-all placeholder:text-slate-400 shadow-sm"
-                        />
-                      </div>
-                    )}
-
-                    {filteredGuruList.map(guru => {
-                      const guruDataKey = Object.keys(guruHalaqohData).find(k => k.trim().toLowerCase() === guru.trim().toLowerCase());
-                      const halaqohsForGuru = guruDataKey ? guruHalaqohData[guruDataKey] : [];
-                      const linkedUser = appUsers.find(u => u.name?.trim() === guru.trim());
-                      return (
-                        <div
-                          key={guru}
-                          data-guru-card-id={guru}
-                          draggable={!guruSearch && isSuperAdmin && !editingGuru}
-                          onDragStart={(e) => handleDragStartGuru(e, guru)}
-                          onDragOver={(e) => handleDragOverGuru(e, guru)}
-                          onDrop={(e) => handleDropGuru(e, guru)}
-                          onDragEnd={handleDragEndGuru}
-                          className={`bg-white border ${dragOverGuruId === guru ? 'border-indigo-500 bg-indigo-50/30 shadow-md scale-[1.02] z-10' : 'border-slate-200'} rounded-2xl p-4 shadow-sm transition-all hover:shadow-md group/card flex flex-col ${dragGuruId === guru ? 'opacity-50 grayscale' : 'opacity-100'}`}
-                        >
-                          <div className="flex items-start justify-between gap-3 mb-4 pb-4 border-b border-slate-100">
-                            {editingGuru?.oldName === guru ? (
-                              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full animate-in fade-in slide-in-from-left-2 duration-300">
-                                <input
-                                  type="text"
-                                  autoFocus
-                                  value={editingGuru.newName}
-                                  onChange={e => setEditingGuru({ ...editingGuru, newName: e.target.value })}
-                                  className="flex-1 w-full bg-white border border-indigo-200 rounded-xl px-4 py-2.5 text-sm font-bold outline-none ring-2 ring-indigo-500/20"
-                                />
-                                <div className="grid grid-cols-2 sm:flex gap-2">
-                                  <button onClick={handleSaveEditGuru} className="p-2.5 sm:px-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all active:scale-95 flex justify-center items-center gap-1.5 font-bold text-xs"><Save size={16} /> Simpan</button>
-                                  <button onClick={() => setEditingGuru(null)} className="p-2.5 sm:px-3 bg-slate-100 text-slate-500 rounded-xl hover:bg-slate-200 transition-all flex justify-center items-center gap-1.5 font-bold text-xs"><X size={16} /> Batal</button>
-                                </div>
-                              </div>
-                            ) : (
-                              <>
-                                <div className="flex items-center gap-3 min-w-0">
-                                  {!guruSearch && isSuperAdmin && (
-                                    <div
-                                      className="text-slate-300 group-hover/card:text-slate-400 cursor-grab touch-none flex items-center shrink-0 -ml-1 mr-1"
-                                      onTouchStart={(e) => handleTouchStartGuru(e, guru)}
-                                    >
-                                      <GripVertical size={16} />
-                                    </div>
-                                  )}
-                                  <div className="w-11 h-11 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center shrink-0"><User size={19} /></div>
-                                  <div className="min-w-0">
-                                    <h4 className="font-black text-slate-800 text-base truncate tracking-tight">{guru}</h4>
-                                    {linkedUser ? (
-                                      <p className="text-[10px] font-bold text-slate-500 mt-0.5 flex items-center gap-1"><CheckCircle2 size={10} className="text-emerald-500" /> @{linkedUser.username}</p>
-                                    ) : isSuperAdmin ? (
-                                      <div className="mt-1 flex items-center gap-1.5">
-                                        <X size={10} className="text-orange-500 shrink-0" />
-                                        <select
-                                          value=""
-                                          onChange={(e) => { if (e.target.value) handleLinkAccount(guru, e.target.value); }}
-                                          className="text-[10px] bg-orange-50 border border-orange-200 text-orange-700 rounded-md px-1.5 py-0.5 outline-none cursor-pointer focus:ring-1 focus:ring-orange-500 max-w-[140px] truncate"
-                                        >
-                                          <option value="">Pilih Akun Guru...</option>
-                                          {appUsers.filter(u => (u.status === 'active' || u.role === 'superadmin') && !guruList.includes(u.name)).map(u => (
-                                            <option key={u.id} value={u.id}>@{u.username} ({u.name})</option>
-                                          ))}
-                                        </select>
-                                      </div>
-                                    ) : (
-                                      <p className="text-[10px] font-bold text-slate-400 mt-0.5">{halaqohsForGuru.length} halaqoh</p>
-                                    )}
-                                  </div>
-                                </div>
-                                {isSuperAdmin && (
-                                  <div className="flex gap-1.5 opacity-100 sm:opacity-0 sm:group-hover/card:opacity-100 transition-opacity shrink-0">
-                                    <button onClick={() => setEditingGuru({ oldName: guru, newName: guru })} className="p-2.5 bg-white border border-slate-200 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 hover:border-indigo-200 rounded-xl transition-all" title="Edit nama guru"><Edit3 size={16} /></button>
-                                    <button onClick={() => requestDeleteGuru(guru)} className="p-2.5 bg-white border border-slate-200 text-slate-400 hover:text-red-500 hover:bg-red-50 hover:border-red-200 rounded-xl transition-all" title="Hapus guru"><Trash2 size={16} /></button>
-                                  </div>
-                                )}
-                              </>
-                            )}
-                          </div>
-
-                          <div className="flex flex-col gap-3 flex-1">
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><FolderPlus size={12} /> Daftar Halaqoh</span>
-                            <div className="flex flex-wrap gap-2.5"
-                              onTouchMove={(e) => handleTouchMoveHalaqoh(e, guruDataKey || guru)}
-                              onTouchEnd={handleTouchEndHalaqoh}>
-                              {(halaqohsForGuru || []).map(halaqoh => (
-                                <React.Fragment key={halaqoh}>
-                                  {editingHalaqoh?.oldName === halaqoh && editingHalaqoh?.guruName === guru ? (
-                                    <div className="bg-indigo-50 border border-indigo-200 p-1.5 rounded-xl flex items-center gap-1.5 shadow-sm animate-in zoom-in-95 duration-200 w-full sm:w-auto">
-                                      <input
-                                        type="text"
-                                        autoFocus
-                                        value={editingHalaqoh.newName}
-                                        onChange={e => setEditingHalaqoh({ ...editingHalaqoh, newName: e.target.value })}
-                                        className="flex-1 sm:w-40 bg-white border border-indigo-100 rounded-lg px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500/20"
-                                      />
-                                      <button onClick={handleSaveEditHalaqoh} className="p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"><Save size={14} /></button>
-                                      <button onClick={() => setEditingHalaqoh(null)} className="p-2 text-slate-400 hover:bg-slate-200 bg-white rounded-lg transition-colors border border-slate-200"><X size={14} /></button>
-                                    </div>
-                                  ) : (
-                                    <div
-                                      data-halaqoh-id={halaqoh}
-                                      data-guru-id={guruDataKey || guru}
-                                      draggable
-                                      onDragStart={(e) => handleDragStartHalaqoh(e, guruDataKey || guru, halaqoh)}
-                                      onDragOver={(e) => handleDragOverHalaqoh(e, guruDataKey || guru, halaqoh)}
-                                      onDrop={(e) => handleDropHalaqoh(e, guruDataKey || guru, halaqoh)}
-                                      onDragEnd={handleDragEndHalaqoh}
-                                      className={`bg-slate-50 border ${dragOverHalaqohInfo?.halaqoh === halaqoh && dragOverHalaqohInfo?.guru === (guruDataKey || guru) ? 'border-indigo-500 bg-indigo-50 shadow-md scale-105' : 'border-slate-200'} pl-2 pr-1.5 py-1.5 rounded-xl text-xs font-bold text-slate-700 flex items-center justify-between gap-1.5 transition-all hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-800 hover:shadow-sm group/badge cursor-grab active:cursor-grabbing max-w-full ${dragHalaqohInfo?.halaqoh === halaqoh && dragHalaqohInfo?.guru === (guruDataKey || guru) ? 'opacity-50 grayscale' : 'opacity-100'}`}
-                                    >
-                                      <div className="text-slate-300 group-hover/badge:text-slate-400 cursor-grab touch-none flex items-center shrink-0" onTouchStart={(e) => handleTouchStartHalaqoh(e, guruDataKey || guru, halaqoh)}>
-                                        <GripVertical size={14} />
-                                      </div>
-                                      <span className="truncate py-0.5 select-none min-w-0">{halaqoh}</span>
-                                      <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover/badge:opacity-100 transition-opacity bg-white/80 backdrop-blur-sm rounded-lg p-0.5 shrink-0 ml-1.5">
-                                        {isSuperAdmin && (
-                                          <button onClick={() => setEditingHalaqoh({ guruName: guru, oldName: halaqoh, newName: halaqoh })} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-100 rounded-md transition-colors" title="Edit halaqoh"><Edit3 size={14} /></button>
-                                        )}
-                                        <button onClick={() => requestDeleteHalaqoh(guru, halaqoh)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-100 rounded-md transition-colors" title="Hapus halaqoh"><X size={14} /></button>
-                                      </div>
-                                    </div>
-                                  )}
-                                </React.Fragment>
-                              ))}
-                              {(!halaqohsForGuru || halaqohsForGuru.length === 0) && (
-                                <div className="w-full text-center py-6 bg-slate-50 rounded-xl border border-dashed border-slate-300">
-                                  <p className="text-xs text-slate-400 font-bold">Belum ada kelompok halaqoh.</p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-
-                    {filteredGuruList.length === 0 && guruList.length > 0 && (
-                      <div className="col-span-1 lg:col-span-2 text-center py-6 bg-slate-50 rounded-xl border border-dashed border-slate-300">
-                        <p className="text-xs text-slate-400 font-bold">Pengajar tidak ditemukan.</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-          )}
-
-          {isSuperAdmin && (
           <section id="settings-students" className="scroll-mt-24 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <SectionHeader
-              accent="bg-purple-500"
-              title={isSuperAdmin ? 'Bank Data Siswa' : 'Data Siswa Saya'}
-              description={isSuperAdmin ? 'Cari, filter, impor, dan lakukan edit massal data siswa.' : 'Cari data siswa dari halaqoh yang Anda bimbing.'}
-              icon={Database}
-            />
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex-1">
+                <SectionHeader
+                  accent="bg-purple-500"
+                  title={isSuperAdmin ? 'Bank Data Siswa' : 'Data Siswa Saya'}
+                  description={isSuperAdmin ? 'Cari, filter, impor, dan lakukan edit massal data siswa.' : 'Cari data siswa dari halaqoh yang Anda bimbing.'}
+                  icon={Database}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsBankSiswaOpen(!isBankSiswaOpen)}
+                className={`md:hidden shrink-0 w-10 h-10 rounded-xl border flex items-center justify-center transition-all ${
+                  isBankSiswaOpen
+                    ? 'bg-purple-50 border-purple-200 text-purple-600'
+                    : 'bg-slate-50 border-slate-200 text-slate-400'
+                }`}
+                title={isBankSiswaOpen ? 'Sembunyikan' : 'Tampilkan'}
+              >
+                <ChevronDown size={20} className={`transition-transform duration-300 ${isBankSiswaOpen ? '' : '-rotate-90'}`} />
+              </button>
+            </div>
 
-            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-visible">
-              <div className="p-4 sm:p-5 border-b border-slate-100 bg-white/95 backdrop-blur-md sticky top-[76px] z-20 rounded-t-2xl">
+            {isBankSiswaOpen && (
+            <div className="bg-white border border-slate-200 rounded-[24px] sm:rounded-2xl shadow-sm overflow-hidden">
+              <div className="p-3.5 sm:p-5 border-b border-slate-100 bg-white/95 backdrop-blur-md md:sticky md:top-[76px] z-20 rounded-t-[24px] sm:rounded-t-2xl">
                 <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-3 lg:items-center">
                   <div className="relative">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
@@ -1012,30 +601,39 @@ const SettingsView = ({
                       type="text"
                       inputMode="search"
                       enterKeyHint="search"
-                      placeholder="Cari nama atau halaqoh..."
+                      placeholder="Cari nama, NIS, kelas..."
                       value={localStudentSearch}
                       onChange={(e) => setLocalStudentSearch(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3.5 pl-11 pr-4 text-sm font-bold text-slate-800 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 outline-none transition-all placeholder:text-slate-400"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl sm:rounded-xl py-3.5 pl-11 pr-4 text-[13px] sm:text-sm font-bold text-slate-800 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 outline-none transition-all placeholder:text-slate-400"
                     />
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex gap-2">
-                    <SelectShell className="sm:col-span-1 lg:w-[210px]">
-                      <select
-                        value={filterStatus}
-                        onChange={(e) => setFilterStatus(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3.5 pl-4 pr-10 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 outline-none appearance-none cursor-pointer transition-colors"
-                      >
-                        <option value="all">Semua (Saya & Kosong)</option>
-                        <option value="kosong">Status: Belum Ada Halaqoh</option>
-                        <option value="assigned">Status: Punya Halaqoh</option>
-                      </select>
-                    </SelectShell>
+                    <div className="grid grid-cols-3 gap-2 sm:col-span-2 lg:w-[260px]">
+                      {[
+                        { value: 'kosong', label: 'Belum' },
+                        { value: 'assigned', label: 'Sudah' },
+                        { value: 'all', label: 'Semua' }
+                      ].map(opt => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => setFilterStatus(opt.value)}
+                          className={`min-h-[44px] rounded-2xl sm:rounded-xl border text-[10px] sm:text-xs font-black uppercase tracking-[0.08em] transition-all active:scale-95 ${
+                            filterStatus === opt.value
+                              ? 'bg-slate-900 text-white border-slate-900 shadow-sm'
+                              : 'bg-slate-50 text-slate-500 border-slate-200 hover:border-purple-200'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
                     <SelectShell className="sm:col-span-1 lg:w-[160px]">
                       <select
                         value={filterKelas}
                         onChange={(e) => setFilterKelas(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3.5 pl-4 pr-10 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 outline-none appearance-none cursor-pointer transition-colors"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl sm:rounded-xl py-3.5 pl-4 pr-10 text-[13px] sm:text-sm font-bold text-slate-700 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 outline-none appearance-none cursor-pointer transition-colors"
                       >
                         <option value="">Semua Kelas</option>
                         {kelasList.map(k => <option key={k} value={k}>Kelas {k}</option>)}
@@ -1043,7 +641,7 @@ const SettingsView = ({
                     </SelectShell>
                     <button
                       onClick={handleExportCSV}
-                      className="px-4 py-3.5 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 font-black text-xs uppercase tracking-widest border border-emerald-200"
+                      className="px-4 py-3.5 rounded-2xl sm:rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 font-black text-xs uppercase tracking-widest border border-emerald-200"
                       title="Ekspor data siswa ke CSV"
                     >
                       <Download size={18} strokeWidth={3} />
@@ -1052,7 +650,7 @@ const SettingsView = ({
                     {isSuperAdmin && (
                       <button
                         onClick={() => setIsBulkImportOpen(!isBulkImportOpen)}
-                        className={`px-4 py-3.5 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2 ${isBulkImportOpen ? 'bg-red-500 hover:bg-red-600' : 'bg-purple-600 hover:bg-purple-700'} text-white font-black text-xs uppercase tracking-widest`}
+                        className={`px-4 py-3.5 rounded-2xl sm:rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2 ${isBulkImportOpen ? 'bg-red-500 hover:bg-red-600' : 'bg-purple-600 hover:bg-purple-700'} text-white font-black text-xs uppercase tracking-widest`}
                       >
                         {isBulkImportOpen ? <X size={18} strokeWidth={3} /> : <Plus size={18} strokeWidth={3} />}
                         {isBulkImportOpen ? 'Tutup' : 'Impor'}
@@ -1061,7 +659,7 @@ const SettingsView = ({
                     {hasStudentFilters && (
                       <button
                         onClick={resetStudentFilters}
-                        className="px-4 py-3.5 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2 bg-slate-100 text-slate-600 hover:bg-slate-200 font-black text-xs uppercase tracking-widest border border-slate-200"
+                        className="px-4 py-3.5 rounded-2xl sm:rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2 bg-slate-100 text-slate-600 hover:bg-slate-200 font-black text-xs uppercase tracking-widest border border-slate-200"
                       >
                         <X size={16} strokeWidth={3} />
                         Reset
@@ -1069,17 +667,19 @@ const SettingsView = ({
                     )}
                   </div>
                 </div>
-                <div className="mt-3 flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-400">
                   <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 border border-slate-200">
                     {filteredStudentsMaster.length} hasil
                   </span>
+                  <span className="px-2.5 py-1 rounded-full bg-slate-900 text-white border border-slate-900">
+                    {filterStatus === 'kosong' ? 'Belum halaqoh' : filterStatus === 'assigned' ? 'Sudah halaqoh' : 'Semua status'}
+                  </span>
                   {studentSearch && <span className="px-2.5 py-1 rounded-full bg-purple-50 text-purple-600 border border-purple-100">Cari: {studentSearch}</span>}
                   {filterKelas && <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-600 border border-blue-100">Kelas {filterKelas}</span>}
-                  {filterStatus !== (isSuperAdmin ? 'kosong' : 'all') && <span className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-600 border border-amber-100">Filter status aktif</span>}
                 </div>
               </div>
 
-              <div className="p-4 sm:p-5 bg-slate-50">
+              <div className="p-3.5 sm:p-5 bg-slate-50">
                 {isBulkImportOpen && (
                   <div className="mb-4 p-4 bg-white border border-purple-100 rounded-2xl animate-in zoom-in-95 duration-300">
                     <FieldLabel>Input Massal (Bisa nama saja, atau Format: Nama, Kelas, Halaqoh)</FieldLabel>
@@ -1098,34 +698,34 @@ const SettingsView = ({
 
                 {displayedStudents.length > 0 && (
                   <div className="flex flex-col gap-2 mb-4">
-                    <div className="flex flex-col lg:flex-row lg:items-center justify-between bg-white border border-slate-200 p-3 sm:p-4 rounded-2xl gap-3">
-                      <label className="flex items-start sm:items-center gap-3 cursor-pointer group">
+                    <div className="flex flex-wrap items-center justify-between bg-white border border-slate-200 p-3 sm:p-4 rounded-[20px] sm:rounded-2xl gap-2.5">
+                      <label className="flex items-center gap-3 cursor-pointer group min-w-0 py-1">
                         <input
                           type="checkbox"
                           checked={selectedStudentIds.length === displayedStudents.length && displayedStudents.length > 0}
                           onChange={toggleSelectAll}
-                          className="w-5 h-5 mt-0.5 sm:mt-0 rounded border-slate-300 bg-white text-purple-600 focus:ring-purple-500 cursor-pointer shrink-0"
+                          className="w-5 h-5 rounded border-slate-300 bg-white text-purple-600 focus:ring-purple-500 cursor-pointer shrink-0"
                         />
-                        <span className="text-[13px] sm:text-sm font-bold text-slate-600 group-hover:text-slate-900 transition-colors leading-snug">Pilih semua yang tampil</span>
+                        <span className="text-[13px] sm:text-sm font-black text-slate-700 group-hover:text-slate-900 transition-colors truncate">Pilih semua</span>
                       </label>
 
-                      <div className="text-xs font-bold text-slate-400 lg:ml-auto">
-                        Menampilkan {displayedStudents.length} dari {filteredStudentsMaster.length} siswa
+                      <div className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-slate-400 lg:ml-auto shrink-0 bg-slate-50 border border-slate-100 rounded-full px-2.5 py-1">
+                        {displayedStudents.length} / {filteredStudentsMaster.length} siswa
                       </div>
 
                       {selectedStudentIds.length > 0 && (
-                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto">
+                        <div className="grid grid-cols-2 sm:flex items-stretch sm:items-center gap-2 w-full lg:w-auto">
                           <button
                             onClick={() => setIsBulkEditOpen(!isBulkEditOpen)}
                             className="flex justify-center items-center gap-2 px-4 py-3 sm:py-2.5 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded-xl text-[11px] sm:text-xs font-black uppercase tracking-widest transition-all"
                           >
-                            <Edit3 size={16} /> Edit ({selectedStudentIds.length})
+                            <Edit3 size={16} /> Edit {selectedStudentIds.length}
                           </button>
                           <button
                             onClick={handleBulkDelete}
                             className="flex justify-center items-center gap-2 px-4 py-3 sm:py-2.5 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded-xl text-[11px] sm:text-xs font-black uppercase tracking-widest transition-all"
                           >
-                            <Trash2 size={16} /> Hapus ({selectedStudentIds.length})
+                            <Trash2 size={16} /> Hapus
                           </button>
                         </div>
                       )}
@@ -1167,28 +767,52 @@ const SettingsView = ({
                   </div>
                 )}
 
+                <div className="max-h-[58vh] sm:max-h-none overflow-y-auto sm:overflow-visible overscroll-contain custom-scrollbar pr-1 sm:pr-0 pb-4 sm:pb-0">
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                  {displayedStudents.map(s => {
-                    const studentName = s?.name || '-';
+                  {displayedStudents.map((s, index) => {
+                    const g = normalizeGender(s.gender || s.jenis_kelamin);
+                    const initials = (s?.name || '?')
+                      .split(' ')
+                      .filter(Boolean)
+                      .map(part => part[0])
+                      .slice(0, 2)
+                      .join('')
+                      .toUpperCase();
+                    const isSelected = selectedStudentIds.includes(s.id);
                     return (
-                      <div key={s.id} className={`bg-white border ${selectedStudentIds.includes(s.id) ? 'border-purple-300 ring-2 ring-purple-100' : 'border-slate-200'} rounded-2xl p-4 flex flex-col gap-4 transition-all hover:border-purple-200 hover:shadow-sm group`}>
+                      <div key={s.id} className={`bg-white border ${isSelected ? 'border-purple-300 ring-2 ring-purple-100 shadow-sm shadow-purple-100' : 'border-slate-200'} rounded-[22px] sm:rounded-2xl p-3.5 sm:p-4 flex flex-col gap-3 hover:border-purple-200 hover:shadow-sm group`}>
                         <div className="min-w-0 flex-1 w-full flex items-start gap-3">
                           <input
                             type="checkbox"
-                            checked={selectedStudentIds.includes(s.id)}
+                            aria-label={`Pilih ${s.name || 'siswa'}`}
+                            checked={isSelected}
                             onChange={() => toggleSelectStudent(s.id)}
-                            className="w-5 h-5 mt-0.5 rounded border-slate-300 bg-white text-purple-600 focus:ring-purple-500 cursor-pointer shrink-0"
+                            className="w-5 h-5 mt-1.5 rounded border-slate-300 bg-white text-purple-600 cursor-pointer shrink-0"
                           />
-                          <div className="min-w-0 flex-1">
-                            <p className={`font-black text-slate-900 leading-tight mb-1.5 ${studentName.length > 26 ? 'text-sm whitespace-normal line-clamp-2' : 'text-base truncate'}`}>{studentName}</p>
-                            <p className="text-[10px] font-black text-purple-600 uppercase tracking-widest truncate">
-                              Halaqoh: <span className="text-slate-700">{s.halaqoh || 'Unassigned'}</span> / {s.kelas || 'N/A'}
+                          <div className={`w-12 h-12 rounded-2xl shrink-0 flex items-center justify-center font-black text-sm shadow-sm border ${g === 'P' ? 'bg-pink-50 text-pink-600 border-pink-100' : 'bg-sky-50 text-sky-600 border-sky-100'}`}>
+                            {initials}
+                          </div>
+                          <div className="min-w-0 flex-1 pt-0.5">
+                            <p className={`font-black text-slate-900 leading-tight line-clamp-2 whitespace-normal break-words [overflow-wrap:anywhere] ${getStudentNameClass(s.name)}`}>{s.name || 'Tanpa nama'}</p>
+                            <p className="mt-1 text-[10px] font-bold text-slate-400 truncate">
+                              NIS: <span className="text-slate-600 font-black">{s.nis || '-'}</span>
                             </p>
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                              <span className="inline-flex max-w-full bg-purple-50 text-purple-700 border border-purple-100 text-[9px] font-black uppercase tracking-[0.08em] px-2 py-1.5 rounded-lg leading-none">
+                                {s.halaqoh || 'Belum ada halaqoh'}
+                              </span>
+                              <span className="inline-flex bg-slate-100 text-slate-600 border border-slate-200 text-[9px] font-black uppercase tracking-[0.08em] px-2 py-1.5 rounded-lg leading-none">
+                                Kelas {s.kelas || '-'}
+                              </span>
+                              <span className={`inline-flex text-[9px] font-black uppercase tracking-[0.08em] px-2 py-1.5 rounded-lg border leading-none ${g === 'P' ? 'bg-pink-50 text-pink-600 border-pink-100' : 'bg-sky-50 text-sky-600 border-sky-100'}`}>
+                                {g === 'P' ? 'Perempuan' : 'Laki-laki'}
+                              </span>
+                            </div>
                           </div>
                         </div>
                         <div className="grid grid-cols-2 gap-2">
-                          <button onClick={() => openEditStudentModal(s)} className="flex justify-center items-center gap-2 p-3 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl transition-all font-bold text-xs"><Edit3 size={16} /> Edit</button>
-                          <button onClick={() => requestDeleteStudent(s)} className="flex justify-center items-center gap-2 p-3 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white rounded-xl transition-all font-bold text-xs"><Trash2 size={16} /> Hapus</button>
+                          <button onClick={() => openEditStudentModal(s)} className="flex justify-center items-center gap-2 p-3 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl font-black text-xs active:scale-95 transition-all"><Edit3 size={16} /> Edit</button>
+                          <button onClick={() => requestDeleteStudent(s)} className="flex justify-center items-center gap-2 p-3 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white rounded-xl font-black text-xs active:scale-95 transition-all"><Trash2 size={16} /> Hapus</button>
                         </div>
                       </div>
                     );
@@ -1201,6 +825,7 @@ const SettingsView = ({
                       <p className="text-xs text-slate-400 font-medium mt-1">Coba ubah kata kunci atau filter yang dipilih.</p>
                     </div>
                   )}
+                </div>
                 </div>
 
                 {visibleCount < filteredStudentsMaster.length && (
@@ -1215,6 +840,7 @@ const SettingsView = ({
                 )}
               </div>
             </div>
+            )}
           </section>
           )}
 
