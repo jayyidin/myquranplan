@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { X, BookOpen, Mic, Repeat, FileText, Plus, ChevronDown, Search, Check, UserX, Loader2, Calendar } from 'lucide-react';
+import { X, BookOpen, Mic, Repeat, FileText, Plus, ChevronDown, Search, Check, UserX, Loader2, Calendar, Eraser } from 'lucide-react';
 import SurahSelector from '../SurahSelector';
 import AyatSelector from '../AyatSelector';
 import { Tooltip } from 'react-tooltip';
@@ -9,7 +9,7 @@ export const JurnalModal = ({
   handleToggleArray, handleAddSurat, handleRemoveSurat, handleSuratChange,
   activeDropdown, setActiveDropdown, tahsinCategories, ghoribList, tajwidList, surahList,
   homeTab, handleSave, handleMarkAbsent, editingId, selectedStudents,
-  filteredStudents, toggleStudent
+  filteredStudents, toggleStudent, handleClearModalDraft
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isAbsentMenuOpen, setIsAbsentMenuOpen] = useState(false);
@@ -54,6 +54,19 @@ export const JurnalModal = ({
     }
   };
 
+  const availableClearActions = useMemo(() => {
+    if (modalMode === 'tahsin') return [{ section: 'tahsin', label: 'Tahsin' }];
+    if (modalMode === 'tahfidz') return [{ section: 'tahfidz', label: 'Tahfidz' }];
+    if (modalMode === 'murojaah') return [{ section: 'murojaah', label: 'Murojaah' }];
+    if (modalMode === 'catatan') return [{ section: 'catatan', label: 'Catatan' }];
+    return [
+      { section: 'all', label: 'Semua' },
+      { section: 'tahsin', label: 'Tahsin' },
+      { section: 'tahfidz', label: 'Tahfidz' },
+      { section: 'murojaah', label: 'Murojaah' }
+    ];
+  }, [modalMode]);
+
   const activeDate = lessonPlans[0]?.tanggal;
   let formattedDate = '';
   if (activeDate) {
@@ -87,6 +100,52 @@ export const JurnalModal = ({
   const handleAutoResize = (e) => {
     e.target.style.height = 'auto';
     e.target.style.height = `${e.target.scrollHeight}px`;
+  };
+
+  const renderMurojaahSection = (plan, listName, label, fallbackList = null) => {
+    const items = plan[listName] || fallbackList || [];
+    return (
+      <div className="rounded-2xl border border-emerald-100 dark:border-emerald-500/20 bg-emerald-50/30 dark:bg-emerald-500/5 p-3 flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-[10px] font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-400">{label}</div>
+        </div>
+        {items.map((item, idx) => (
+          <div key={item.id} className="bg-white dark:bg-slate-900/70 border border-emerald-100 dark:border-emerald-500/20 p-3 rounded-2xl flex flex-col gap-3 relative">
+            <SurahSelector
+              value={item.surat}
+              onChange={value => handleSuratChange(plan.id, listName, item.id, 'surat', value)}
+              surahList={surahList}
+              className="w-full bg-white dark:bg-slate-900/80 border border-emerald-200 dark:border-emerald-500/30 rounded-xl px-3 py-2.5 text-sm font-bold text-gray-800 dark:text-slate-200 outline-none focus:ring-1 focus:ring-emerald-500"
+            />
+            <div className="flex items-center gap-2">
+              <AyatSelector
+                surahName={item.surat}
+                surahList={surahList}
+                value={item.ayatStart}
+                onChange={value => handleSuratChange(plan.id, listName, item.id, 'ayatStart', value)}
+                maxAyat={item.ayatEnd}
+                placeholder="Awal"
+                className="w-full bg-white dark:bg-slate-900/80 border border-emerald-200 dark:border-emerald-500/30 rounded-xl px-3 py-2.5 text-sm font-bold text-gray-800 dark:text-slate-200 disabled:bg-gray-100 dark:disabled:bg-slate-800 disabled:border-gray-200 dark:disabled:border-slate-700 outline-none focus:ring-1 focus:ring-emerald-500"
+                disabled={!item.surat}
+              />
+              <span className="text-gray-400 font-bold">-</span>
+              <AyatSelector
+                surahName={item.surat}
+                surahList={surahList}
+                value={item.ayatEnd}
+                onChange={value => handleSuratChange(plan.id, listName, item.id, 'ayatEnd', value)}
+                minAyat={item.ayatStart}
+                placeholder="Akhir"
+                className="w-full bg-white dark:bg-slate-900/80 border border-emerald-200 dark:border-emerald-500/30 rounded-xl px-3 py-2.5 text-sm font-bold text-gray-800 dark:text-slate-200 disabled:bg-gray-100 dark:disabled:bg-slate-800 disabled:border-gray-200 dark:disabled:border-slate-700 outline-none focus:ring-1 focus:ring-emerald-500"
+                disabled={!item.surat || item.surat === '-'}
+              />
+            </div>
+            {idx > 0 && <button type="button" onClick={() => handleRemoveSurat(plan.id, listName, item.id)} className="absolute -top-2 -right-2 bg-red-100 dark:bg-red-500/20 text-red-500 dark:text-red-400 rounded-full p-1.5 shadow-sm hover:bg-red-500 hover:text-white dark:hover:bg-red-600 transition-colors"><X size={14} strokeWidth={3} /></button>}
+          </div>
+        ))}
+        <button type="button" onClick={() => handleAddSurat(plan.id, listName)} className="text-xs font-black bg-white dark:bg-slate-900/70 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 py-3 rounded-xl flex justify-center items-center gap-1.5 transition-colors border border-emerald-200/70 dark:border-emerald-500/20 mt-1"><Plus size={16} /> TAMBAH {label}</button>
+      </div>
+    );
   };
 
   // Pastikan Early Return berada SETELAH semua fungsi React Hooks dipanggil
@@ -198,6 +257,24 @@ export const JurnalModal = ({
             )}
           </div>
 
+          {handleClearModalDraft && (
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 shadow-sm shrink-0">
+              <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar">
+                <span className="shrink-0 px-1 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Bersihkan</span>
+                  {availableClearActions.map(action => (
+                    <button
+                      key={action.section}
+                      type="button"
+                      onClick={() => handleClearModalDraft(action.section)}
+                      className="shrink-0 h-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 text-[10px] font-black text-slate-600 dark:text-slate-300 hover:border-red-200 hover:bg-red-50 hover:text-red-600 dark:hover:border-red-500/30 dark:hover:bg-red-500/10 dark:hover:text-red-400 transition-colors flex items-center justify-center gap-1.5"
+                    >
+                      <Eraser size={13} /> {action.label}
+                    </button>
+                  ))}
+              </div>
+            </div>
+          )}
+
           {/* Form Input Data */}
           {lessonPlans.map(plan => (
             <div key={plan.id} className="flex flex-col gap-4">
@@ -205,7 +282,14 @@ export const JurnalModal = ({
               {/* --- FORM TAHSIN --- */}
               {['full_bulk', 'full_edit', 'tahsin'].includes(modalMode) && (
                 <div className="bg-white dark:bg-slate-800 p-5 rounded-3xl border border-gray-100 dark:border-slate-700 shadow-sm">
-                  <h3 className="font-black text-gray-800 dark:text-slate-100 text-sm mb-4 flex items-center gap-2"><BookOpen size={18} className="text-blue-500" /> Data Tahsin</h3>
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <h3 className="font-black text-gray-800 dark:text-slate-100 text-sm flex items-center gap-2"><BookOpen size={18} className="text-blue-500" /> Data Tahsin</h3>
+                    {handleClearModalDraft && (
+                      <button type="button" onClick={() => handleClearModalDraft('tahsin')} className="shrink-0 rounded-lg bg-blue-50 dark:bg-blue-500/10 px-2.5 py-1.5 text-[10px] font-black text-blue-600 dark:text-blue-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10 dark:hover:text-red-400 transition-colors flex items-center gap-1">
+                        <Eraser size={12} /> Bersihkan
+                      </button>
+                    )}
+                  </div>
                   <div className="flex flex-col gap-4">
 
                     {/* Kategori */}
@@ -403,7 +487,14 @@ export const JurnalModal = ({
               {/* --- FORM TAHFIDZ --- */}
               {['full_bulk', 'full_edit', 'tahfidz'].includes(modalMode) && (
                 <div className="bg-white dark:bg-slate-800 p-5 rounded-3xl border border-gray-100 dark:border-slate-700 shadow-sm">
-                  <h3 className="font-black text-gray-800 dark:text-slate-100 text-sm mb-4 flex items-center gap-2"><Mic size={18} className="text-purple-500" /> Data Tahfidz</h3>
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <h3 className="font-black text-gray-800 dark:text-slate-100 text-sm flex items-center gap-2"><Mic size={18} className="text-purple-500" /> Data Tahfidz</h3>
+                    {handleClearModalDraft && (
+                      <button type="button" onClick={() => handleClearModalDraft('tahfidz')} className="shrink-0 rounded-lg bg-purple-50 dark:bg-purple-500/10 px-2.5 py-1.5 text-[10px] font-black text-purple-600 dark:text-purple-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10 dark:hover:text-red-400 transition-colors flex items-center gap-1">
+                        <Eraser size={12} /> Bersihkan
+                      </button>
+                    )}
+                  </div>
                   <div className="flex flex-col gap-3">
                     {plan.tahfidzSuratList.map((item, idx) => (
                       <div key={item.id} className="bg-purple-50/50 dark:bg-purple-500/5 border border-purple-100 dark:border-purple-500/20 p-3 rounded-2xl flex flex-col gap-3 relative">
@@ -491,43 +582,17 @@ export const JurnalModal = ({
               {/* --- FORM MUROJAAH --- */}
               {['full_bulk', 'full_edit', 'murojaah'].includes(modalMode) && (
                 <div className="bg-white dark:bg-slate-800 p-5 rounded-3xl border border-gray-100 dark:border-slate-700 shadow-sm">
-                  <h3 className="font-black text-gray-800 dark:text-slate-100 text-sm mb-4 flex items-center gap-2"><Repeat size={18} className="text-emerald-500" /> Data Murojaah</h3>
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <h3 className="font-black text-gray-800 dark:text-slate-100 text-sm flex items-center gap-2"><Repeat size={18} className="text-emerald-500" /> Data Murojaah</h3>
+                    {handleClearModalDraft && (
+                      <button type="button" onClick={() => handleClearModalDraft('murojaah')} className="shrink-0 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-1.5 text-[10px] font-black text-emerald-600 dark:text-emerald-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10 dark:hover:text-red-400 transition-colors flex items-center gap-1">
+                        <Eraser size={12} /> Bersihkan
+                      </button>
+                    )}
+                  </div>
                   <div className="flex flex-col gap-3">
-                    {plan.murojaah.map((item, idx) => (
-                      <div key={item.id} className="bg-emerald-50/50 dark:bg-emerald-500/5 border border-emerald-100 dark:border-emerald-500/20 p-3 rounded-2xl flex flex-col gap-3 relative">
-                        <SurahSelector
-                          value={item.surat}
-                          onChange={value => handleSuratChange(plan.id, 'murojaah', item.id, 'surat', value)}
-                          surahList={surahList}
-                          className="w-full bg-white dark:bg-slate-900/80 border border-emerald-200 dark:border-emerald-500/30 rounded-xl px-3 py-2.5 text-sm font-bold text-gray-800 dark:text-slate-200 outline-none focus:ring-1 focus:ring-emerald-500"
-                        />
-                        <div className="flex items-center gap-2">
-                          <AyatSelector
-                            surahName={item.surat}
-                            surahList={surahList}
-                            value={item.ayatStart}
-                            onChange={value => handleSuratChange(plan.id, 'murojaah', item.id, 'ayatStart', value)}
-                            maxAyat={item.ayatEnd}
-                            placeholder="Awal"
-                            className="w-full bg-white dark:bg-slate-900/80 border border-emerald-200 dark:border-emerald-500/30 rounded-xl px-3 py-2.5 text-sm font-bold text-gray-800 dark:text-slate-200 disabled:bg-gray-100 dark:disabled:bg-slate-800 disabled:border-gray-200 dark:disabled:border-slate-700 outline-none focus:ring-1 focus:ring-emerald-500"
-                            disabled={!item.surat}
-                          />
-                          <span className="text-gray-400 font-bold">-</span>
-                          <AyatSelector
-                            surahName={item.surat}
-                            surahList={surahList}
-                            value={item.ayatEnd}
-                            onChange={value => handleSuratChange(plan.id, 'murojaah', item.id, 'ayatEnd', value)}
-                            minAyat={item.ayatStart}
-                            placeholder="Akhir"
-                            className="w-full bg-white dark:bg-slate-900/80 border border-emerald-200 dark:border-emerald-500/30 rounded-xl px-3 py-2.5 text-sm font-bold text-gray-800 dark:text-slate-200 disabled:bg-gray-100 dark:disabled:bg-slate-800 disabled:border-gray-200 dark:disabled:border-slate-700 outline-none focus:ring-1 focus:ring-emerald-500"
-                            disabled={!item.surat || item.surat === '-'}
-                          />
-                        </div>
-                        {idx > 0 && <button type="button" onClick={() => handleRemoveSurat(plan.id, 'murojaah', item.id)} className="absolute -top-2 -right-2 bg-red-100 dark:bg-red-500/20 text-red-500 dark:text-red-400 rounded-full p-1.5 shadow-sm hover:bg-red-500 hover:text-white dark:hover:bg-red-600 transition-colors"><X size={14} strokeWidth={3} /></button>}
-                      </div>
-                    ))}
-                    <button type="button" onClick={() => handleAddSurat(plan.id, 'murojaah')} className="text-xs font-black bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 py-3 rounded-xl flex justify-center items-center gap-1.5 transition-colors border border-emerald-200/50 dark:border-emerald-500/20 mt-1"><Plus size={16} /> TAMBAH SURAT MUROJAAH</button>
+                    {renderMurojaahSection(plan, 'murojaahQorib', 'Murojaah Qorib', plan.murojaah)}
+                    {renderMurojaahSection(plan, 'murojaahBaid', 'Murojaah Baid')}
                   </div>
                 </div>
               )}

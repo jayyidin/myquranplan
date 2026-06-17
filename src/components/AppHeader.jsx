@@ -6,6 +6,7 @@ const AppHeader = ({
   isSuperAdmin, currentUser, onLogout, theme, setTheme, mobileMenuOpen, setMobileMenuOpen, teacherPhotos
 }) => {
   const teacherPhoto = currentUser?.username ? teacherPhotos?.[currentUser.username] : null;
+  const currentUserDisplayName = currentUser?.panggilan || currentUser?.name || '';
   return (
     <header className="bg-white dark:bg-slate-900/95 dark:backdrop-blur-md border-b border-gray-100 dark:border-slate-800 shrink-0 z-[60] w-full shadow-sm print:hidden sticky top-0 transition-all duration-500">
       <div className="max-w-7xl mx-auto px-3 md:px-4 xl:px-6 min-h-14 md:min-h-[76px] xl:min-h-[88px] py-2 md:py-2.5 flex items-center justify-between gap-2 lg:gap-4">
@@ -43,11 +44,11 @@ const AppHeader = ({
           </button>
           <div className="hidden md:flex items-center gap-2 px-2.5 lg:px-3 py-1.5 bg-gray-50 dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 max-w-[150px] lg:max-w-[180px]">
             {teacherPhoto ? (
-              <img src={teacherPhoto} alt={currentUser.name} className="w-6 h-6 rounded-full object-cover border border-gray-200 dark:border-slate-600 shrink-0" />
+              <img src={teacherPhoto} alt={currentUserDisplayName} className="w-6 h-6 rounded-full object-cover border border-gray-200 dark:border-slate-600 shrink-0" />
             ) : (
               <User size={14} className="text-gray-400 dark:text-slate-400" />
             )}
-            <span className="text-[11px] lg:text-xs font-bold text-gray-600 dark:text-slate-300 truncate">{currentUser.name}</span>
+            <span className="text-[11px] lg:text-xs font-bold text-gray-600 dark:text-slate-300 truncate">{currentUserDisplayName}</span>
           </div>
           <button onClick={onLogout} className="p-2 text-gray-400 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 bg-gray-50 dark:bg-slate-800 rounded-xl hidden md:block"><LogOut size={18} /></button>
           <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 text-gray-600 dark:text-slate-300 bg-gray-50 dark:bg-slate-800 rounded-lg"><Menu size={18} /></button>

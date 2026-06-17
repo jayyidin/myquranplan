@@ -1,6 +1,6 @@
 // File: src/components/modals/StudentModals.jsx
 import React, { useState, useEffect } from 'react';
-import { X, Search, User, Plus, Camera, ShieldAlert, Edit3, Loader2, Trash2 } from 'lucide-react';
+import { X, Search, User, Plus, Camera, ShieldAlert, Edit3, Loader2, Trash2, Database } from 'lucide-react';
 
 export const AddStudentModal = ({
   isOpen, onClose, isSuperAdmin, addStudentMode, setAddStudentMode,
@@ -171,7 +171,7 @@ export const AddStudentModal = ({
 
 export const EditStudentModal = ({
   isOpen, onClose, editStudentData, setEditStudentData,
-  handlePhotoUpload, kelasList, handleUpdateStudent, requestDeleteStudentPhoto,
+  handlePhotoUpload, kelasList, handleUpdateStudent, requestDeleteStudentPhoto, requestDeleteStudent,
   guruHalaqohData, isSuperAdmin
 }) => {
   const [isRendered, setIsRendered] = useState(false);
@@ -193,14 +193,19 @@ export const EditStudentModal = ({
 
   if (!isRendered) return null;
 
+  const handleReturnToBankData = () => {
+    requestDeleteStudent?.(editStudentData);
+    onClose?.();
+  };
+
   return (
     <div onAnimationEnd={onAnimationEnd} className={`fixed inset-0 z-[300] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/40 backdrop-blur-sm print-hidden ${isOpen ? 'animate-in fade-in' : 'animate-out fade-out'}`}>
-      <div className={`bg-white dark:bg-slate-900 w-full sm:max-w-sm rounded-t-[2rem] sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden relative z-[305] border border-transparent dark:border-slate-800 ${isOpen ? 'animate-slide-up sm:animate-in sm:zoom-in-95' : 'animate-slide-down sm:animate-out sm:zoom-out-95'}`}>
-        <div className="px-5 py-4 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center bg-blue-50/50 dark:bg-blue-500/10">
+      <div className={`bg-white dark:bg-slate-900 w-full sm:max-w-sm max-h-[calc(100dvh-0.75rem)] sm:max-h-[90vh] rounded-t-[2rem] sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden relative z-[305] border border-transparent dark:border-slate-800 ${isOpen ? 'animate-slide-up sm:animate-in sm:zoom-in-95' : 'animate-slide-down sm:animate-out sm:zoom-out-95'}`}>
+        <div className="px-5 py-4 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center bg-blue-50/50 dark:bg-blue-500/10 shrink-0">
           <h2 className="text-lg font-black text-gray-800 dark:text-slate-100 flex items-center gap-2"><Edit3 size={18} className="text-blue-500 dark:text-blue-400" /> Edit Siswa</h2>
           <button onClick={onClose} className="w-8 h-8 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-400 rounded-full flex items-center justify-center hover:bg-gray-100 dark:hover:bg-slate-700"><X size={16} /></button>
         </div>
-        <form onSubmit={handleUpdateStudent} className="p-5 flex flex-col gap-4">
+        <form onSubmit={handleUpdateStudent} className="p-5 flex flex-col gap-4 overflow-y-auto overscroll-y-contain custom-scrollbar pb-[calc(env(safe-area-inset-bottom)+1.25rem)]" style={{ WebkitOverflowScrolling: 'touch' }}>
           <div className="flex flex-col items-center gap-2">
             <div className="relative">
               <label className="w-20 h-20 rounded-full bg-gray-100 dark:bg-slate-800 border-2 border-dashed border-gray-300 dark:border-slate-600 flex items-center justify-center overflow-hidden cursor-pointer hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors">
@@ -259,7 +264,18 @@ export const EditStudentModal = ({
               ))}
             </select>
           </div>
-          <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-2xl font-black mt-2 active:scale-95 transition-transform text-sm">Simpan Perubahan</button>
+          <div className="grid grid-cols-1 gap-2 pt-1">
+            <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-2xl font-black active:scale-95 transition-transform text-sm">Simpan Perubahan</button>
+            {!isSuperAdmin && editStudentData.halaqoh && (
+              <button
+                type="button"
+                onClick={handleReturnToBankData}
+                className="w-full bg-cyan-50 hover:bg-cyan-100 text-cyan-700 border border-cyan-100 py-3.5 rounded-2xl font-black active:scale-95 transition-all text-sm flex items-center justify-center gap-2"
+              >
+                <Database size={17} /> Kembalikan ke Bank Data
+              </button>
+            )}
+          </div>
         </form>
       </div>
     </div>

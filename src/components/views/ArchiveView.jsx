@@ -4,7 +4,7 @@ import { supabase } from '../supabase';
 import ReportView from './ReportView';
 import { getMonday, formatDateObj } from '../../utils/helpers';
 
-const ArchiveView = ({ isSuperAdmin, currentUser, institutionLogo, guruHalaqohData }) => {
+const ArchiveView = ({ isSuperAdmin, currentUser, institutionLogo, guruHalaqohData, getTeacherDisplayName }) => {
   const [archives, setArchives] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedArchive, setSelectedArchive] = useState(null);
@@ -129,7 +129,7 @@ const ArchiveView = ({ isSuperAdmin, currentUser, institutionLogo, guruHalaqohDa
             {isSuperAdmin && (
               <select value={activeGuru} onChange={(e) => { setActiveGuru(e.target.value); setActiveHalaqoh(''); }} className="flex-1 sm:flex-none bg-gray-50 border border-slate-200 rounded-lg p-2 font-bold text-xs outline-none focus:ring-2 focus:ring-emerald-500/20">
                 <option value="">Semua Guru</option>
-                {guruList.map(g => <option key={g} value={g}>{g}</option>)}
+                {guruList.map(g => <option key={g} value={g}>{getTeacherDisplayName?.(g) || g}</option>)}
               </select>
             )}
             <select value={activeHalaqoh} onChange={(e) => setActiveHalaqoh(e.target.value)} className="flex-1 sm:flex-none bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg p-2 font-bold text-xs outline-none focus:ring-2 focus:ring-emerald-500/20">
@@ -139,7 +139,7 @@ const ArchiveView = ({ isSuperAdmin, currentUser, institutionLogo, guruHalaqohDa
           </div>
         </div>
         <div className="flex-1 overflow-hidden relative">
-          <ReportView activeHalaqoh={activeHalaqoh} activeGuru={activeGuru} activeDate={activeDate} setActiveDate={setActiveDate} weekDates={weekDates} changeWeek={changeWeek} filteredStudents={filteredStudents} institutionLogo={institutionLogo} guruHalaqohData={guruHalaqohData} />
+          <ReportView activeHalaqoh={activeHalaqoh} activeGuru={activeGuru} activeGuruDisplayName={getTeacherDisplayName?.(activeGuru) || activeGuru} activeDate={activeDate} setActiveDate={setActiveDate} weekDates={weekDates} changeWeek={changeWeek} filteredStudents={filteredStudents} institutionLogo={institutionLogo} guruHalaqohData={guruHalaqohData} getTeacherDisplayName={getTeacherDisplayName} />
         </div>
       </div>
     );

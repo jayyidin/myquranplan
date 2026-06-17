@@ -105,6 +105,24 @@ const renderCatatanDetail = (valC, valCT, valCF) => {
   );
 }
 
+const hasProgressValue = (value) => {
+  if (value === undefined || value === null) return false;
+  const text = String(value).trim();
+  return text !== '' && text !== '-';
+};
+
+const getPublicRecordKeys = (tab) => tab === 'lesson_plan'
+  ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', mq: 'murojaahQorib', mb: 'murojaahBaid', c: 'catatan', cT: 'catatanTahsin', cF: 'catatanTahfidz' }
+  : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', mq: 'jurnalMurojaahQorib', mb: 'jurnalMurojaahBaid', c: 'jurnalCatatan', cT: 'jurnalCatatanTahsin', cF: 'jurnalCatatanTahfidz' };
+
+const getMurojaahQoribValue = (record, keys) => hasProgressValue(record?.[keys.mq])
+  ? String(record[keys.mq]).trim()
+  : hasProgressValue(record?.[keys.m])
+    ? String(record[keys.m]).trim()
+    : '-';
+const getMurojaahBaidValue = (record, keys) => hasProgressValue(record?.[keys.mb]) ? String(record[keys.mb]).trim() : '-';
+const hasMurojaahValue = (record, keys) => hasProgressValue(getMurojaahQoribValue(record, keys)) || hasProgressValue(getMurojaahBaidValue(record, keys));
+
 const normalizeTeacherText = (value) => value.trim().replace(/\s+/g, ' ');
 
 const cleanTeacherNickname = (name) => normalizeTeacherText(name)
@@ -622,7 +640,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
     const weekDates = Array.from({ length: 5 }).map((_, i) => { const d = new Date(weekStart); d.setDate(d.getDate() + i); return d; });
     const workDays = weekDates.filter(d => d && d.getDay() !== 0 && d.getDay() !== 6);
     const totalPages = workDays.length > 3 ? 2 : 1;
-    const k = publicTab === 'lesson_plan' ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan', cT: 'catatanTahsin', cF: 'catatanTahfidz' } : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan', cT: 'jurnalCatatanTahsin', cF: 'jurnalCatatanTahfidz' };
+    const k = getPublicRecordKeys(publicTab);
 
     return (
       <div className="min-h-[100svh] w-full bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 flex flex-col p-0 md:p-6 printable-area print:!static print:p-0 print:m-0 overflow-x-hidden [touch-action:pan-y] transition-all duration-500">
@@ -699,7 +717,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
   if (publicStudent) {
     const weekStart = publicWeekStart;
     const weekDates = Array.from({ length: 5 }).map((_, i) => { const d = new Date(weekStart); d.setDate(d.getDate() + i); return d; });
-    const k = publicTab === 'lesson_plan' ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan', cT: 'catatanTahsin', cF: 'catatanTahfidz' } : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan', cT: 'jurnalCatatanTahsin', cF: 'jurnalCatatanTahfidz' };
+    const k = getPublicRecordKeys(publicTab);
 
     // Mengambil seluruh tanggal yang memiliki rekaman untuk mode cetak riwayat lengkap
     const allDates = Object.keys(publicStudent.records || {})
@@ -707,7 +725,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
         const rec = publicStudent.records[dateStr];
         return (rec[k.t] && rec[k.t] !== '-') || (rec[k.tNilai] && rec[k.tNilai] !== '-') || (rec[k.tsNilai] && rec[k.tsNilai] !== '-') ||
           (rec[k.f] && rec[k.f] !== '-') || (rec[k.fNilai] && rec[k.fNilai] !== '-') ||
-          (rec[k.m] && rec[k.m] !== '-') || (rec[k.c] && rec[k.c] !== '-') || (rec[k.cT] && rec[k.cT] !== '-') || (rec[k.cF] && rec[k.cF] !== '-');
+          hasMurojaahValue(rec, k) || (rec[k.c] && rec[k.c] !== '-') || (rec[k.cT] && rec[k.cT] !== '-') || (rec[k.cF] && rec[k.cF] !== '-');
       })
       .sort((a, b) => new Date(b) - new Date(a))
       .map(d => new Date(d));
@@ -717,7 +735,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
     let latestTahfidz = null;
     let latestMurojaah = null;
 
-    const jurnalK = { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan' };
+    const jurnalK = getPublicRecordKeys('jurnal');
 
     const sortedAllDatesStr = Object.keys(publicStudent.records || {})
       .sort((a, b) => new Date(b) - new Date(a));
@@ -733,8 +751,8 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
       if (!latestTahfidz && ((rec[jurnalK.f] && rec[jurnalK.f] !== '-') || (rec[jurnalK.af] && rec[jurnalK.af] !== '-'))) {
         latestTahfidz = { date: dateStr, f: rec[jurnalK.f], af: rec[jurnalK.af], fNilai: rec[jurnalK.fNilai] };
       }
-      if (!latestMurojaah && (rec[jurnalK.m] && rec[jurnalK.m] !== '-')) {
-        latestMurojaah = { date: dateStr, m: rec[jurnalK.m] };
+      if (!latestMurojaah && hasMurojaahValue(rec, jurnalK)) {
+        latestMurojaah = { date: dateStr, qorib: getMurojaahQoribValue(rec, jurnalK), baid: getMurojaahBaidValue(rec, jurnalK) };
       }
       if (latestTahsin && latestTahfidz && latestMurojaah) break;
     }
@@ -935,7 +953,10 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
                       <div className="p-1 sm:p-1.5 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-md sm:rounded-lg"><Repeat size={12} className="sm:w-3.5 sm:h-3.5" strokeWidth={2.5} /></div>
                         <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-400">Murojaah</span>
                       </div>
-                    <div className="pl-0 sm:pl-1"><ExpandableText text={formatPrintData(latestMurojaah.m, '-', null, null)} /></div>
+                    <div className="pl-0 sm:pl-1 flex flex-col gap-1.5">
+                      {hasProgressValue(latestMurojaah.qorib) && <div><span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest block mb-0.5">Qorib:</span><ExpandableText text={formatPrintData(latestMurojaah.qorib, '-', null, null)} /></div>}
+                      {hasProgressValue(latestMurojaah.baid) && <div><span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest block mb-0.5">Baid:</span><ExpandableText text={formatPrintData(latestMurojaah.baid, '-', null, null)} /></div>}
+                    </div>
                     </div>
                   )}
                 </div>
@@ -1033,12 +1054,13 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
                 const rec = publicStudent.records?.[dateStr] || {};
 
                 // Cek apakah ada data di hari tersebut
-                const hasData = (rec[k.t] && rec[k.t] !== '-') || (rec[k.f] && rec[k.f] !== '-') || (rec[k.m] && rec[k.m] !== '-') || (rec[k.c] && rec[k.c] !== '-') || (rec[k.cT] && rec[k.cT] !== '-') || (rec[k.cF] && rec[k.cF] !== '-');
+                const hasData = (rec[k.t] && rec[k.t] !== '-') || (rec[k.f] && rec[k.f] !== '-') || hasMurojaahValue(rec, k) || (rec[k.c] && rec[k.c] !== '-') || (rec[k.cT] && rec[k.cT] !== '-') || (rec[k.cF] && rec[k.cF] !== '-');
                 if (!hasData) return null;
 
                 const valT = formatPrintData(rec[k.t], rec[k.h], rec[k.tNilai], rec[k.tsNilai]);
                 const valF = formatPrintData(rec[k.f], rec[k.af], null, rec[k.fNilai]);
-                const valM = formatPrintData(rec[k.m], '-', null, null);
+                const valMQ = getMurojaahQoribValue(rec, k);
+                const valMB = getMurojaahBaidValue(rec, k);
                 const valC = rec[k.c] && rec[k.c] !== '-' ? String(rec[k.c]) : '-';
                 const valCT = rec[k.cT] && rec[k.cT] !== '-' ? String(rec[k.cT]) : '-';
                 const valCF = rec[k.cF] && rec[k.cF] !== '-' ? String(rec[k.cF]) : '-';
@@ -1118,7 +1140,11 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
                       <div className="p-1 sm:p-1.5 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-md sm:rounded-lg shrink-0"><Repeat size={12} className="sm:w-3.5 sm:h-3.5" strokeWidth={2.5} /></div>
                       <span className="text-[9px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest text-emerald-700 dark:text-emerald-400 flex items-center gap-1 flex-wrap">Murojaah</span>
                         </div>
-                    <div className="pl-0 sm:pl-1 flex-1"><ExpandableText text={valM} /></div>
+                    <div className="pl-0 sm:pl-1 flex-1 flex flex-col gap-1.5">
+                      {hasProgressValue(valMQ) && <div><span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest block mb-0.5">Qorib:</span><ExpandableText text={formatPrintData(valMQ, '-', null, null)} /></div>}
+                      {hasProgressValue(valMB) && <div><span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest block mb-0.5">Baid:</span><ExpandableText text={formatPrintData(valMB, '-', null, null)} /></div>}
+                      {!hasProgressValue(valMQ) && !hasProgressValue(valMB) && <ExpandableText text="-" />}
+                    </div>
                       </div>
 
                       {/* Catatan */}
@@ -1138,7 +1164,7 @@ const LoginScreen = ({ onLogin, theme, setTheme }) => {
               {datesToDisplay.every(d => { // Add dark mode styles to this empty state
                 const ds = formatDateObj(d); // Fix: Use formatDateObj(d) instead of d
                 const r = publicStudent.records?.[ds] || {};
-                return !((r[k.t] && r[k.t] !== '-') || (r[k.tNilai] && r[k.tNilai] !== '-') || (r[k.tsNilai] && r[k.tsNilai] !== '-') || (r[k.f] && r[k.f] !== '-') || (r[k.fNilai] && r[k.fNilai] !== '-') || (r[k.m] && r[k.m] !== '-') || (r[k.c] && r[k.c] !== '-') || (r[k.cT] && r[k.cT] !== '-') || (r[k.cF] && r[k.cF] !== '-'));
+                return !((r[k.t] && r[k.t] !== '-') || (r[k.tNilai] && r[k.tNilai] !== '-') || (r[k.tsNilai] && r[k.tsNilai] !== '-') || (r[k.f] && r[k.f] !== '-') || (r[k.fNilai] && r[k.fNilai] !== '-') || hasMurojaahValue(r, k) || (r[k.c] && r[k.c] !== '-') || (r[k.cT] && r[k.cT] !== '-') || (r[k.cF] && r[k.cF] !== '-'));
               }) && (
                   <div className="py-20 text-center flex flex-col items-center gap-3 opacity-40 dark:opacity-30">
                     <Calendar size={48} />

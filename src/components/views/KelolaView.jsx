@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { ArrowUpDown, BookOpen, Check, ChevronDown, GripVertical, Layers, Mic, Search, ShieldCheck, SlidersHorizontal, Unlink2, Users, X, Shield, ShieldAlert, UserPlus, FolderPlus, Edit3, Trash2, Save, Plus, User, CheckCircle2, UserCheck } from 'lucide-react';
+import { ArrowUpDown, BookOpen, Check, ChevronDown, GripVertical, Layers, Mic, Search, ShieldCheck, SlidersHorizontal, Unlink2, Users, X, Shield, ShieldAlert, UserPlus, FolderPlus, Edit3, Trash2, Save, Plus, User, CheckCircle2, UserCheck, UserX, RotateCcw, AlertTriangle } from 'lucide-react';
 
 const UNASSIGNED = '__unassigned__';
 const HALAQOH_SESSION_OPTIONS = ['1', '2', '3'];
@@ -17,7 +17,16 @@ const SelectShell = ({ children, className = '' }) => (
 
 const isGraduatedStudent = (student) => {
   const status = String(student?.student_status || '').trim().toLowerCase();
-  return status === 'lulus' || status === 'alumni';
+  return ['lulus', 'alumni', 'pindah', 'selesai', 'nonaktif'].includes(status);
+};
+
+const getStudentStatusLabel = (student) => {
+  const status = String(student?.student_status || 'active').trim().toLowerCase();
+  if (status === 'pindah') return 'Pindah';
+  if (status === 'selesai') return 'Selesai';
+  if (status === 'nonaktif') return 'Nonaktif';
+  if (status === 'lulus' || status === 'alumni') return `Alumni ${student?.graduation_year || ''}`.trim();
+  return 'Aktif';
 };
 
 const hasValue = (value) => {
@@ -206,15 +215,23 @@ const ProgressLine = ({ icon, tone, text }) => {
   );
 };
 
+const normalizeGender = (val) => {
+  const t = String(val || '').trim().toLowerCase();
+  if (['l', 'laki', 'laki-laki', 'male', 'm'].includes(t)) return 'L';
+  if (['p', 'perempuan', 'wanita', 'female', 'f'].includes(t)) return 'P';
+  return '';
+};
+
 const StudentCard = ({ student, progress, selected, dragging, disabled, onToggle, onDragStart, onDragEnd, onTouchStart, onTouchMove, onTouchEnd }) => {
   const showPreviousShadow = !hasValue(student.halaqoh) && hasValue(student.previous_halaqoh);
   const previousText = [student.previous_halaqoh, student.previous_teacher].filter(hasValue).join(' - ');
+  const gender = normalizeGender(student.gender || student.jenis_kelamin);
 
   return (
     <div
       data-transfer-student-id={student.id}
       className={`rounded-lg border bg-white dark:bg-slate-800 p-2 shadow-sm transition-all ${
-        disabled ? 'opacity-90' : ''
+        disabled ? 'opacity-80' : ''
       } ${
         selected ? 'border-emerald-400 ring-2 ring-emerald-100 dark:ring-emerald-500/20' : 'border-slate-200 dark:border-slate-700'
       } ${dragging ? 'opacity-50 scale-[0.98]' : 'opacity-100'} [touch-action:pan-y]`}
@@ -230,19 +247,18 @@ const StudentCard = ({ student, progress, selected, dragging, disabled, onToggle
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}
           className="shrink-0 w-6 h-6 rounded-md bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-400 flex items-center justify-center disabled:opacity-30 cursor-grab active:cursor-grabbing [touch-action:pan-y]"
-          title={disabled ? 'Alumni tidak bisa dipindahkan' : 'Pindahkan'}
+          title={disabled ? 'Siswa nonaktif tidak bisa dipindahkan' : 'Pindahkan'}
         >
           <GripVertical size={13} />
         </button>
 
         <button
           type="button"
-          disabled={disabled}
           onClick={() => onToggle(student.id)}
           className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center mt-0.5 transition-colors ${
             selected ? 'bg-emerald-500 border-emerald-500 text-white' : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 text-transparent'
-          } disabled:opacity-30`}
-          title={disabled ? 'Alumni tidak bisa dipilih untuk mutasi' : 'Pilih siswa'}
+          }`}
+          title="Pilih siswa"
         >
           <Check size={10} strokeWidth={4} />
         </button>
@@ -259,9 +275,18 @@ const StudentCard = ({ student, progress, selected, dragging, disabled, onToggle
             <span className="max-w-full rounded border border-blue-100 dark:border-blue-500/20 bg-blue-50 dark:bg-blue-500/10 px-1 py-0.5 text-[8px] font-black text-blue-700 dark:text-blue-300 leading-tight break-words">
               Kelas {student.kelas || '-'}
             </span>
+            {gender && (
+              <span className={`rounded border px-1 py-0.5 text-[8px] font-black leading-tight ${
+                gender === 'L'
+                  ? 'border-sky-100 dark:border-sky-500/20 bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-300'
+                  : 'border-pink-100 dark:border-pink-500/20 bg-pink-50 dark:bg-pink-500/10 text-pink-600 dark:text-pink-300'
+              }`}>
+                {gender === 'L' ? '♂' : '♀'}
+              </span>
+            )}
             {disabled && (
               <span className="max-w-full rounded border border-amber-100 dark:border-amber-500/20 bg-amber-50 dark:bg-amber-500/10 px-1 py-0.5 text-[8px] font-black text-amber-700 dark:text-amber-300 leading-tight break-words">
-                Alumni {student.graduation_year || ''}
+                {getStudentStatusLabel(student)}
               </span>
             )}
           </div>
@@ -285,54 +310,81 @@ const StudentCard = ({ student, progress, selected, dragging, disabled, onToggle
   );
 };
 
-const HalaqohColumn = ({ group, students, progressMap, selectedIds, draggingIds, dragOver, onToggle, onDragStart, onDragEnd, onDragOver, onDrop, onTouchStart, onTouchMove, onTouchEnd }) => (
-  <section
-    data-transfer-halaqoh={group.value}
-    onDragOver={(e) => onDragOver(e, group.value)}
-    onDrop={(e) => onDrop(e, group.value)}
-    className={`flex flex-col min-h-[210px] rounded-xl border bg-slate-50/80 dark:bg-slate-900/40 p-2 transition-all ${
-      dragOver ? 'border-emerald-400 ring-4 ring-emerald-100 dark:ring-emerald-500/20' : 'border-slate-200 dark:border-slate-700'
-    }`}
-  >
-    <div className="mb-1.5 flex items-center justify-between gap-2 px-0.5">
-      <div className="min-w-0">
-        <h2 className={`font-black text-slate-900 dark:text-slate-100 leading-tight break-words ${group.label.length > 22 ? 'text-[11px]' : 'text-xs sm:text-sm'}`}>
-          {group.label}
-        </h2>
-        <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-400 truncate">{group.teacher}</p>
-      </div>
-      <span className="shrink-0 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-1.5 py-0.5 text-[9px] font-black text-slate-500 dark:text-slate-300">
-        {students.length}
-      </span>
-    </div>
+const HalaqohColumn = ({ group, students, progressMap, selectedIds, draggingIds, dragOver, onToggle, onToggleAll, onDragStart, onDragEnd, onDragOver, onDrop, onTouchStart, onTouchMove, onTouchEnd, getTeacherDisplayName }) => {
+  const selectableStudents = students.filter(s => !isGraduatedStudent(s));
+  const selectableIds = selectableStudents.map(s => s.id);
+  const selectedInColumn = selectableIds.filter(id => selectedIds.includes(id));
+  const allSelected = selectableIds.length > 0 && selectedInColumn.length === selectableIds.length;
+  const someSelected = selectedInColumn.length > 0 && !allSelected;
 
-    <div className="flex flex-col gap-1.5">
-      {students.map(student => (
-        <StudentCard
-          key={student.id}
-          student={student}
-          progress={progressMap[student.id] || { tahsin: '-', tahfidz: '-' }}
-          selected={selectedIds.includes(student.id)}
-          dragging={draggingIds.includes(student.id)}
-          disabled={isGraduatedStudent(student)}
-          onToggle={onToggle}
-          onDragStart={onDragStart}
-          onDragEnd={onDragEnd}
-          onTouchStart={onTouchStart}
-          onTouchMove={onTouchMove}
-          onTouchEnd={onTouchEnd}
-        />
-      ))}
-      {students.length === 0 && (
-        <div className="min-h-[92px] rounded-xl border border-dashed border-slate-200 dark:border-slate-700 bg-white/70 dark:bg-slate-800/40 flex items-center justify-center text-[10px] font-black uppercase tracking-widest text-slate-300">
-          Kosong
+  return (
+    <section
+      data-transfer-halaqoh={group.value}
+      onDragOver={(e) => onDragOver(e, group.value)}
+      onDrop={(e) => onDrop(e, group.value)}
+      className={`flex flex-col min-h-[210px] rounded-xl border bg-slate-50/80 dark:bg-slate-900/40 p-2 transition-all ${
+        dragOver ? 'border-emerald-400 ring-4 ring-emerald-100 dark:ring-emerald-500/20' : 'border-slate-200 dark:border-slate-700'
+      }`}
+    >
+      <div className="mb-1.5 flex items-center justify-between gap-2 px-0.5">
+        <div className="min-w-0 flex items-center gap-1.5">
+          {selectableIds.length > 0 && (
+            <button
+              type="button"
+              onClick={() => onToggleAll?.(selectableIds)}
+              className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                allSelected ? 'bg-emerald-500 border-emerald-500 text-white' :
+                someSelected ? 'bg-emerald-200 border-emerald-400 text-emerald-700' :
+                'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 text-transparent'
+              }`}
+              title={allSelected ? 'Batal pilih semua' : 'Pilih semua'}
+            >
+              <Check size={10} strokeWidth={4} />
+            </button>
+          )}
+          <div className="min-w-0">
+            <h2 className={`font-black text-slate-900 dark:text-slate-100 leading-tight break-words ${group.label.length > 22 ? 'text-[11px]' : 'text-xs sm:text-sm'}`}>
+              {group.label}
+            </h2>
+            <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-400 truncate">
+              {getTeacherDisplayName?.(group.teacher) || group.teacher}
+            </p>
+          </div>
         </div>
-      )}
-    </div>
-  </section>
-);
+        <span className="shrink-0 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-1.5 py-0.5 text-[9px] font-black text-slate-500 dark:text-slate-300">
+          {students.length}{selectedInColumn.length > 0 ? `/${selectedInColumn.length}` : ''}
+        </span>
+      </div>
 
-const KelolaView = ({ isSuperAdmin, students = [], guruHalaqohData = {}, guruList = [], kelasList = [], onMoveStudents, onStartNewSchoolYear, appUsers = [], handleApproveUser, handleRejectUser, handleUpdateUserAccount, handleCreateSuperAdmin, newGuruName, setNewGuruName, handleAddGuru, selectedGuruForHalaqoh, setSelectedGuruForHalaqoh, newHalaqohName, setNewHalaqohName, newHalaqohSesi, setNewHalaqohSesi, handleAddHalaqoh, editingGuru, setEditingGuru, handleSaveEditGuru, requestDeleteGuru, editingHalaqoh, setEditingHalaqoh, handleSaveEditHalaqoh, requestDeleteHalaqoh, handleReorderHalaqoh, handleReorderGuru, handleLinkAccount, showToast, currentUser }) => {
+      <div className="flex flex-col gap-1.5">
+        {students.map(student => (
+          <StudentCard
+            key={student.id}
+            student={student}
+            progress={progressMap[student.id] || { tahsin: '-', tahfidz: '-' }}
+            selected={selectedIds.includes(student.id)}
+            dragging={draggingIds.includes(student.id)}
+            disabled={isGraduatedStudent(student)}
+            onToggle={onToggle}
+            onDragStart={onDragStart}
+            onDragEnd={onDragEnd}
+            onTouchStart={onTouchStart}
+            onTouchMove={onTouchMove}
+            onTouchEnd={onTouchEnd}
+          />
+        ))}
+        {students.length === 0 && (
+          <div className="min-h-[92px] rounded-xl border border-dashed border-slate-200 dark:border-slate-700 bg-white/70 dark:bg-slate-800/40 flex flex-col items-center justify-center gap-1.5 text-slate-300">
+            <Users size={18} className="opacity-40" />
+            <span className="text-[10px] font-black uppercase tracking-widest">Kosong</span>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+};
+
+const KelolaView = ({ isSuperAdmin, students = [], guruHalaqohData = {}, guruList = [], activeGuruList = [], inactiveGuruList = [], handleDeactivateGuru, handleReactivateGuru, kelasList = [], onMoveStudents, onSetStudentStatus, onStartNewSchoolYear, appUsers = [], handleApproveUser, handleRejectUser, handleUpdateUserAccount, handleCreateSuperAdmin, newGuruName, setNewGuruName, handleAddGuru, selectedGuruForHalaqoh, setSelectedGuruForHalaqoh, newHalaqohName, setNewHalaqohName, newHalaqohSesi, setNewHalaqohSesi, handleAddHalaqoh, editingGuru, setEditingGuru, handleSaveEditGuru, requestDeleteGuru, editingHalaqoh, setEditingHalaqoh, handleSaveEditHalaqoh, requestDeleteHalaqoh, handleReorderHalaqoh, handleReorderGuru, handleLinkAccount, showToast, currentUser, getTeacherDisplayName }) => {
   const [search, setSearch] = useState('');
   const [masterSearch, setMasterSearch] = useState('');
   const [masterKelasFilter, setMasterKelasFilter] = useState('');
@@ -357,6 +409,8 @@ const KelolaView = ({ isSuperAdmin, students = [], guruHalaqohData = {}, guruLis
   const [isCreatingSuperAdmin, setIsCreatingSuperAdmin] = useState(false);
   const [guruSearch, setGuruSearch] = useState('');
   const [localGuruSearch, setLocalGuruSearch] = useState('');
+  const [showInactiveGuru, setShowInactiveGuru] = useState(false);
+  const [deactivatingGuru, setDeactivatingGuru] = useState(null); // { name, reassignTo }
   const [dragHalaqohInfo, setDragHalaqohInfo] = useState(null);
   const [dragOverHalaqohInfo, setDragOverHalaqohInfo] = useState(null);
   const [dragGuruId, setDragGuruId] = useState(null);
@@ -369,6 +423,7 @@ const KelolaView = ({ isSuperAdmin, students = [], guruHalaqohData = {}, guruLis
   }, [localGuruSearch]);
 
   const filteredGuruList = guruList.filter(guru => guru.toLowerCase().includes(guruSearch.toLowerCase()));
+  const displayedGuruList = showInactiveGuru ? filteredGuruList : filteredGuruList.filter(g => !inactiveGuruList.includes(g));
 
   // Pending user handling
   const [resolvedPendingUserIds, setResolvedPendingUserIds] = useState([]);
@@ -427,7 +482,7 @@ const KelolaView = ({ isSuperAdmin, students = [], guruHalaqohData = {}, guruLis
   const alumniCount = useMemo(() => students.filter(isGraduatedStudent).length, [students]);
 
   const visibleStudentsByStatus = useMemo(() => {
-    if (statusFilter === 'alumni') return students.filter(isGraduatedStudent);
+    if (statusFilter === 'inactive') return students.filter(isGraduatedStudent);
     if (statusFilter === 'all') return students;
     return students.filter(student => !isGraduatedStudent(student));
   }, [students, statusFilter]);
@@ -452,7 +507,7 @@ const KelolaView = ({ isSuperAdmin, students = [], guruHalaqohData = {}, guruLis
       }));
 
     return [
-      { value: UNASSIGNED, label: 'Belum Ada Halaqoh', teacher: 'Master Siswa' },
+      { value: UNASSIGNED, label: 'Bank Data Siswa', teacher: 'Belum Ada Halaqoh' },
       ...groups,
       ...outsideMasterGroups
     ];
@@ -557,6 +612,15 @@ const KelolaView = ({ isSuperAdmin, students = [], guruHalaqohData = {}, guruLis
     setMasterKelasFilter('');
   };
 
+  const toggleAllInColumn = (ids) => {
+    const allAlreadySelected = ids.every(id => selectedIds.includes(id));
+    if (allAlreadySelected) {
+      setSelectedIds(prev => prev.filter(id => !ids.includes(id)));
+    } else {
+      setSelectedIds(prev => [...new Set([...prev, ...ids])]);
+    }
+  };
+
   const getMoveIds = (studentId) => {
     if (selectedIds.includes(studentId)) return selectedIds;
     return [studentId];
@@ -584,6 +648,18 @@ const KelolaView = ({ isSuperAdmin, students = [], guruHalaqohData = {}, guruLis
     if (bulkTarget === targetValue) setBulkTarget('');
     setDraggingIds([]);
     setDragOverHalaqoh('');
+  };
+
+  const finishSetStudentStatus = async (status, ids = selectedIds) => {
+    if (!ids.length || !onSetStudentStatus) return;
+    await onSetStudentStatus(ids, status);
+    setSelectedIds(prev => prev.filter(id => !ids.includes(id)));
+    setBulkTarget('');
+  };
+
+  const returnSelectedToBankData = async () => {
+    if (statusFilter !== 'active' || selectedIds.length === 0) return;
+    await finishMove(UNASSIGNED, selectedIds);
   };
 
   const handleDragOver = (e, value) => {
@@ -695,7 +771,24 @@ const KelolaView = ({ isSuperAdmin, students = [], guruHalaqohData = {}, guruLis
         </div>
 
         {activeTab === 'mutasi' && (<>
-        <div className="sticky top-0 z-30 -mx-3 sm:mx-0 bg-slate-50/95 dark:bg-slate-950/95 backdrop-blur-md px-3 sm:px-0 py-2 sm:py-3 mb-3 sm:mb-4">
+        {/* Stats Summary */}
+        <div className="mb-3 sm:mb-4 grid grid-cols-4 gap-2 sm:gap-3">
+          {[
+            { label: 'Aktif', value: activeCount, icon: Users, tone: 'text-blue-600 bg-blue-50 border-blue-100 dark:bg-blue-500/10 dark:border-blue-500/20 dark:text-blue-300' },
+            { label: 'Belum Halaqoh', value: unassignedCount, icon: Layers, tone: 'text-cyan-600 bg-cyan-50 border-cyan-100 dark:bg-cyan-500/10 dark:border-cyan-500/20 dark:text-cyan-300' },
+            { label: 'Halaqoh', value: actualHalaqohGroups.length, icon: ShieldCheck, tone: 'text-indigo-600 bg-indigo-50 border-indigo-100 dark:bg-indigo-500/10 dark:border-indigo-500/20 dark:text-indigo-300' },
+            { label: 'Terpilih', value: selectedIds.length, icon: Check, tone: 'text-emerald-600 bg-emerald-50 border-emerald-100 dark:bg-emerald-500/10 dark:border-emerald-500/20 dark:text-emerald-300' }
+          ].map(item => (
+            <div key={item.label} className={`rounded-xl border px-2.5 py-2 sm:px-3 sm:py-2.5 ${item.tone}`}>
+              <div className="flex items-center gap-1.5 text-[9px] sm:text-[10px] font-black uppercase tracking-widest leading-tight">
+                <item.icon size={13} className="shrink-0" />
+                <span className="truncate">{item.label}</span>
+              </div>
+              <div className="mt-0.5 text-lg sm:text-xl font-black leading-none">{item.value}</div>
+            </div>
+          ))}
+        </div>
+        <div className={`relative md:sticky md:top-0 z-20 md:z-30 -mx-3 sm:mx-0 bg-slate-50/95 dark:bg-slate-950/95 backdrop-blur-md px-3 sm:px-0 py-2 sm:py-3 ${mobileFiltersOpen ? 'mb-5' : 'mb-3 sm:mb-4'}`}>
           <div className="md:hidden flex flex-col gap-2">
             <div className="grid grid-cols-[minmax(0,1fr)_92px] gap-2">
               <div className="relative">
@@ -728,8 +821,8 @@ const KelolaView = ({ isSuperAdmin, students = [], guruHalaqohData = {}, guruLis
                 {kelasFilter && <span className="shrink-0 rounded-lg bg-blue-50 dark:bg-blue-500/10 px-2 py-1 text-[9px] font-black text-blue-600 dark:text-blue-300">{kelasFilter}</span>}
                 {masterSearch && <span className="shrink-0 rounded-lg bg-cyan-50 dark:bg-cyan-500/10 px-2 py-1 text-[9px] font-black text-cyan-700 dark:text-cyan-300">Master: {masterSearch}</span>}
                 {masterKelasFilter && <span className="shrink-0 rounded-lg bg-cyan-50 dark:bg-cyan-500/10 px-2 py-1 text-[9px] font-black text-cyan-700 dark:text-cyan-300">Master Kelas {masterKelasFilter}</span>}
-                {teacherFilter && <span className="shrink-0 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 px-2 py-1 text-[9px] font-black text-emerald-600 dark:text-emerald-300">{teacherFilter}</span>}
-                {statusFilter !== 'active' && <span className="shrink-0 rounded-lg bg-amber-50 dark:bg-amber-500/10 px-2 py-1 text-[9px] font-black text-amber-600 dark:text-amber-300">{statusFilter === 'alumni' ? 'Alumni' : 'Semua'}</span>}
+                {teacherFilter && <span className="shrink-0 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 px-2 py-1 text-[9px] font-black text-emerald-600 dark:text-emerald-300">{getTeacherDisplayName?.(teacherFilter) || teacherFilter}</span>}
+                {statusFilter !== 'active' && <span className="shrink-0 rounded-lg bg-amber-50 dark:bg-amber-500/10 px-2 py-1 text-[9px] font-black text-amber-600 dark:text-amber-300">{statusFilter === 'inactive' ? 'Nonaktif' : 'Semua'}</span>}
               </div>
             )}
 
@@ -757,7 +850,7 @@ const KelolaView = ({ isSuperAdmin, students = [], guruHalaqohData = {}, guruLis
                     </select>
                     <select value={teacherFilter} onChange={(e) => setTeacherFilter(e.target.value)} className="min-w-0 h-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 text-xs font-black text-slate-600 dark:text-slate-200 outline-none focus:border-emerald-400">
                       <option value="">Semua Pengajar</option>
-                      {availableTeacherFilters.map(teacher => <option key={teacher} value={teacher}>{teacher}</option>)}
+                      {availableTeacherFilters.map(teacher => <option key={teacher} value={teacher}>{getTeacherDisplayName?.(teacher) || teacher}</option>)}
                     </select>
                   </div>
                   <div className="rounded-xl border border-cyan-100 dark:border-cyan-500/20 bg-cyan-50/60 dark:bg-cyan-500/10 p-2">
@@ -793,7 +886,7 @@ const KelolaView = ({ isSuperAdmin, students = [], guruHalaqohData = {}, guruLis
                   <div className="grid grid-cols-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-1">
                     {[
                       { value: 'active', label: 'Aktif' },
-                      { value: 'alumni', label: 'Alumni' },
+                      { value: 'inactive', label: 'Nonaktif' },
                       { value: 'all', label: 'Semua' }
                     ].map(option => (
                       <button
@@ -821,7 +914,7 @@ const KelolaView = ({ isSuperAdmin, students = [], guruHalaqohData = {}, guruLis
                         onClick={() => setTeacherFilter(item.teacher)}
                         className={`shrink-0 rounded-xl border px-3 py-2 text-left transition-all ${teacherFilter === item.teacher ? 'border-emerald-300 bg-emerald-500 text-white shadow-sm' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}
                       >
-                        <span className="block max-w-[120px] truncate text-[10px] font-black leading-tight">{item.teacher}</span>
+                        <span className="block max-w-[120px] truncate text-[10px] font-black leading-tight">{getTeacherDisplayName?.(item.teacher) || item.teacher}</span>
                         <span className="block text-[8px] font-black uppercase tracking-widest opacity-70 leading-tight">{item.groupCount} h - {item.studentCount} s</span>
                       </button>
                     ))}
@@ -869,12 +962,12 @@ const KelolaView = ({ isSuperAdmin, students = [], guruHalaqohData = {}, guruLis
             </select>
             <select value={teacherFilter} onChange={(e) => setTeacherFilter(e.target.value)} className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-xs sm:text-sm font-black text-slate-600 dark:text-slate-200 outline-none focus:border-emerald-400">
               <option value="">Semua Pengajar</option>
-              {availableTeacherFilters.map(teacher => <option key={teacher} value={teacher}>{teacher}</option>)}
+              {availableTeacherFilters.map(teacher => <option key={teacher} value={teacher}>{getTeacherDisplayName?.(teacher) || teacher}</option>)}
             </select>
             <div className="grid grid-cols-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-1">
               {[
                 { value: 'active', label: 'Aktif' },
-                { value: 'alumni', label: 'Alumni' },
+                { value: 'inactive', label: 'Nonaktif' },
                 { value: 'all', label: 'Semua' }
               ].map(option => (
                 <button
@@ -907,7 +1000,7 @@ const KelolaView = ({ isSuperAdmin, students = [], guruHalaqohData = {}, guruLis
                 onClick={() => setTeacherFilter(item.teacher)}
                 className={`shrink-0 rounded-xl border px-3 py-2 text-left transition-all ${teacherFilter === item.teacher ? 'border-emerald-300 bg-emerald-500 text-white shadow-sm' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}
               >
-                <span className="block max-w-[150px] truncate text-[10px] sm:text-xs font-black leading-tight">{item.teacher}</span>
+                <span className="block max-w-[150px] truncate text-[10px] sm:text-xs font-black leading-tight">{getTeacherDisplayName?.(item.teacher) || item.teacher}</span>
                 <span className="block text-[8px] sm:text-[9px] font-black uppercase tracking-widest opacity-70 leading-tight">{item.groupCount} halaqoh - {item.studentCount} siswa</span>
               </button>
             ))}
@@ -946,7 +1039,7 @@ const KelolaView = ({ isSuperAdmin, students = [], guruHalaqohData = {}, guruLis
           </div>
 
           {selectedIds.length > 0 && (
-            <div className="mt-2 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-xl border border-emerald-100 dark:border-emerald-500/20 bg-emerald-50 dark:bg-emerald-500/10 p-2">
+            <div className="mt-2 grid grid-cols-1 md:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto] items-center gap-2 rounded-xl border border-emerald-100 dark:border-emerald-500/20 bg-emerald-50 dark:bg-emerald-500/10 p-2">
               <span className="rounded-lg bg-white/80 dark:bg-slate-900/60 px-2 py-1 text-[10px] sm:text-xs font-black text-emerald-700 dark:text-emerald-200">
                 {selectedIds.length} terpilih
               </span>
@@ -954,30 +1047,65 @@ const KelolaView = ({ isSuperAdmin, students = [], guruHalaqohData = {}, guruLis
                 value={bulkTarget}
                 onChange={(e) => setBulkTarget(e.target.value)}
                 className="min-w-0 rounded-lg border border-emerald-200 dark:border-emerald-500/20 bg-white dark:bg-slate-800 px-2 py-2 text-[10px] sm:text-xs font-black text-slate-700 dark:text-slate-100 outline-none"
+                disabled={statusFilter !== 'active'}
               >
                 <option value="">Pilih tujuan</option>
                 {halaqohGroups.map(group => (
                   <option key={group.value} value={group.value}>
-                    {group.value === UNASSIGNED ? 'Lepas dari halaqoh' : `${group.label} - ${group.teacher}`}
+                    {group.value === UNASSIGNED ? 'Kembalikan ke Bank Data' : `${group.label} - ${getTeacherDisplayName?.(group.teacher) || group.teacher}`}
                   </option>
                 ))}
               </select>
               <button
                 type="button"
                 onClick={() => finishMove(bulkTarget, selectedIds)}
-                disabled={!bulkTarget}
+                disabled={!bulkTarget || statusFilter !== 'active'}
                 className="rounded-lg bg-emerald-600 px-3 py-2 text-[10px] sm:text-xs font-black text-white shadow-sm disabled:opacity-40"
               >
                 Pindahkan
               </button>
+              <button
+                type="button"
+                onClick={returnSelectedToBankData}
+                disabled={statusFilter !== 'active'}
+                className="rounded-lg bg-cyan-600 px-3 py-2 text-[10px] sm:text-xs font-black text-white shadow-sm disabled:opacity-40"
+              >
+                Ke Bank Data
+              </button>
+              <div className="grid grid-cols-3 gap-1.5 md:w-[260px]">
+                <button
+                  type="button"
+                  onClick={() => finishSetStudentStatus('pindah')}
+                  disabled={statusFilter !== 'active'}
+                  className="rounded-lg bg-amber-500 px-2 py-2 text-[10px] sm:text-xs font-black text-white shadow-sm disabled:opacity-40"
+                >
+                  Pindah
+                </button>
+                <button
+                  type="button"
+                  onClick={() => finishSetStudentStatus('selesai')}
+                  disabled={statusFilter !== 'active'}
+                  className="rounded-lg bg-slate-700 px-2 py-2 text-[10px] sm:text-xs font-black text-white shadow-sm disabled:opacity-40"
+                >
+                  Selesai
+                </button>
+                <button
+                  type="button"
+                  onClick={() => finishSetStudentStatus('active')}
+                  disabled={statusFilter === 'active'}
+                  className="rounded-lg bg-blue-600 px-2 py-2 text-[10px] sm:text-xs font-black text-white shadow-sm disabled:opacity-40"
+                >
+                  Aktifkan
+                </button>
+              </div>
             </div>
           )}
         </div>
 
-        <div className="overflow-visible md:overflow-x-auto custom-scrollbar -mx-3 px-3 sm:mx-0 sm:px-0">
+        <div className="overflow-visible md:overflow-x-auto custom-scrollbar -mx-3 px-3 sm:mx-0 sm:px-0 scroll-mt-4">
           <div className="grid grid-cols-1 md:flex md:items-start gap-3 sm:gap-4 md:min-w-max">
             {visibleGroups.map(group => (
-              <div key={group.value} className="md:w-[260px] md:shrink-0">
+              <div key={group.value} className="md:w-[290px] md:shrink-0">
                 <HalaqohColumn
                   group={group}
                   students={studentsByHalaqoh[group.value] || []}
@@ -986,6 +1114,7 @@ const KelolaView = ({ isSuperAdmin, students = [], guruHalaqohData = {}, guruLis
                   draggingIds={draggingIds}
                   dragOver={dragOverHalaqoh === group.value}
                   onToggle={toggleSelected}
+                  onToggleAll={toggleAllInColumn}
                   onDragStart={handleDragStart}
                   onDragEnd={() => { setDraggingIds([]); setDragOverHalaqoh(''); }}
                   onDragOver={handleDragOver}
@@ -993,6 +1122,7 @@ const KelolaView = ({ isSuperAdmin, students = [], guruHalaqohData = {}, guruLis
                   onTouchStart={handleTouchStart}
                   onTouchMove={handleTouchMove}
                   onTouchEnd={handleTouchEnd}
+                  getTeacherDisplayName={getTeacherDisplayName}
                 />
               </div>
             ))}
@@ -1157,18 +1287,26 @@ const KelolaView = ({ isSuperAdmin, students = [], guruHalaqohData = {}, guruLis
                   </div>
 
                   <div className="p-4 sm:p-5 bg-slate-50 dark:bg-slate-900 grid grid-cols-1 lg:grid-cols-2 gap-4 max-h-[620px] overflow-y-auto custom-scrollbar" onTouchMove={handleTouchMoveGuru} onTouchEnd={handleTouchEndGuru}>
-                    {guruList.length > 1 && (
-                      <div className="col-span-1 lg:col-span-2 relative mb-1">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                        <input type="text" placeholder="Cari nama pengajar..." value={localGuruSearch} onChange={(e) => setLocalGuruSearch(e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-3 pl-11 pr-4 text-sm font-bold text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition-all placeholder:text-slate-400 shadow-sm" />
-                      </div>
-                    )}
-                    {filteredGuruList.map(guru => {
+                    <div className="col-span-1 lg:col-span-2 flex flex-col sm:flex-row gap-2 mb-1">
+                      {guruList.length > 1 && (
+                        <div className="relative flex-1">
+                          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                          <input type="text" placeholder="Cari nama pengajar..." value={localGuruSearch} onChange={(e) => setLocalGuruSearch(e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-3 pl-11 pr-4 text-sm font-bold text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition-all placeholder:text-slate-400 shadow-sm" />
+                        </div>
+                      )}
+                      {inactiveGuruList.length > 0 && (
+                        <button onClick={() => setShowInactiveGuru(!showInactiveGuru)} className={`shrink-0 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 border ${showInactiveGuru ? 'bg-slate-800 dark:bg-slate-600 text-white border-slate-800 dark:border-slate-600' : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700 hover:border-slate-400'}`}>
+                          <UserX size={15} /> {showInactiveGuru ? 'Sembunyikan Nonaktif' : `Nonaktif (${inactiveGuruList.length})`}
+                        </button>
+                      )}
+                    </div>
+                    {displayedGuruList.map(guru => {
                       const guruDataKey = Object.keys(guruHalaqohData).find(k => k.trim().toLowerCase() === guru.trim().toLowerCase());
                       const halaqohsForGuru = guruDataKey ? guruHalaqohData[guruDataKey] : [];
                       const linkedUser = appUsers.find(u => u.name?.trim().toLowerCase() === guru.trim().toLowerCase());
+                      const isInactive = inactiveGuruList.includes(guru);
                       return (
-                        <div key={guru} data-guru-card-id={guru} draggable={!guruSearch && !editingGuru} onDragStart={(e) => handleDragStartGuru(e, guru)} onDragOver={(e) => handleDragOverGuru(e, guru)} onDrop={(e) => handleDropGuru(e, guru)} onDragEnd={handleDragEndGuru} className={`bg-white dark:bg-slate-800 border ${dragOverGuruId === guru ? 'border-indigo-500 bg-indigo-50/30 dark:bg-indigo-500/10 shadow-md scale-[1.02] z-10' : 'border-slate-200 dark:border-slate-700'} rounded-2xl p-4 shadow-sm transition-all hover:shadow-md group/card flex flex-col ${dragGuruId === guru ? 'opacity-50 grayscale' : 'opacity-100'}`}>
+                        <div key={guru} data-guru-card-id={guru} draggable={!guruSearch && !editingGuru && !isInactive} onDragStart={(e) => handleDragStartGuru(e, guru)} onDragOver={(e) => handleDragOverGuru(e, guru)} onDrop={(e) => handleDropGuru(e, guru)} onDragEnd={handleDragEndGuru} className={`bg-white dark:bg-slate-800 border ${isInactive ? 'border-slate-300 dark:border-slate-600 opacity-75' : dragOverGuruId === guru ? 'border-indigo-500 bg-indigo-50/30 dark:bg-indigo-500/10 shadow-md scale-[1.02] z-10' : 'border-slate-200 dark:border-slate-700'} rounded-2xl p-4 shadow-sm transition-all hover:shadow-md group/card flex flex-col ${dragGuruId === guru ? 'opacity-50 grayscale' : 'opacity-100'}`}>
                           <div className="flex items-start justify-between gap-3 mb-4 pb-4 border-b border-slate-100 dark:border-slate-700">
                             {editingGuru?.oldName === guru ? (
                               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full">
@@ -1184,7 +1322,10 @@ const KelolaView = ({ isSuperAdmin, students = [], guruHalaqohData = {}, guruLis
                                   {!guruSearch && (<div className="text-slate-300 group-hover/card:text-slate-400 cursor-grab touch-none flex items-center shrink-0 -ml-1 mr-1" onTouchStart={(e) => handleTouchStartGuru(e, guru)}><GripVertical size={16} /></div>)}
                                   <div className="w-11 h-11 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-500/20 flex items-center justify-center shrink-0"><User size={19} /></div>
                                   <div className="min-w-0">
-                                    <h4 className="font-black text-slate-800 dark:text-slate-100 text-base truncate tracking-tight">{guru}</h4>
+                                    <div className="flex items-center gap-2">
+                                      <h4 className={`font-black text-base truncate tracking-tight ${isInactive ? 'text-slate-400 dark:text-slate-500 line-through' : 'text-slate-800 dark:text-slate-100'}`}>{guru}</h4>
+                                      {isInactive && <span className="shrink-0 px-1.5 py-0.5 bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400 text-[9px] font-black uppercase tracking-widest rounded-md border border-red-200 dark:border-red-500/20">Nonaktif</span>}
+                                    </div>
                                     {linkedUser ? (
                                       <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1"><CheckCircle2 size={10} className="text-emerald-500" /> @{linkedUser.username}</p>
                                     ) : (
@@ -1199,12 +1340,47 @@ const KelolaView = ({ isSuperAdmin, students = [], guruHalaqohData = {}, guruLis
                                   </div>
                                 </div>
                                 <div className="flex gap-1.5 opacity-100 sm:opacity-0 sm:group-hover/card:opacity-100 transition-opacity shrink-0">
-                                  <button onClick={() => setEditingGuru({ oldName: guru, newName: guru })} className="p-2.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:border-indigo-200 dark:hover:border-indigo-500/20 rounded-xl transition-all" title="Edit nama guru"><Edit3 size={16} /></button>
-                                  <button onClick={() => requestDeleteGuru(guru)} className="p-2.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 hover:border-red-200 dark:hover:border-red-500/20 rounded-xl transition-all" title="Hapus guru"><Trash2 size={16} /></button>
+                                  {isInactive ? (
+                                    <>
+                                      <button onClick={() => handleReactivateGuru(guru)} className="p-2.5 bg-white dark:bg-slate-700 border border-emerald-200 dark:border-emerald-500/20 text-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 hover:border-emerald-300 rounded-xl transition-all" title="Aktifkan kembali"><RotateCcw size={16} /></button>
+                                      <button onClick={() => requestDeleteGuru(guru)} className="p-2.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 hover:border-red-200 dark:hover:border-red-500/20 rounded-xl transition-all" title="Hapus guru"><Trash2 size={16} /></button>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <button onClick={() => setEditingGuru({ oldName: guru, newName: guru })} className="p-2.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:border-indigo-200 dark:hover:border-indigo-500/20 rounded-xl transition-all" title="Edit nama guru"><Edit3 size={16} /></button>
+                                      <button onClick={() => setDeactivatingGuru({ name: guru, reassignTo: '' })} className="p-2.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-500/10 hover:border-amber-200 dark:hover:border-amber-500/20 rounded-xl transition-all" title="Nonaktifkan guru"><UserX size={16} /></button>
+                                      <button onClick={() => requestDeleteGuru(guru)} className="p-2.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 hover:border-red-200 dark:hover:border-red-500/20 rounded-xl transition-all" title="Hapus guru"><Trash2 size={16} /></button>
+                                    </>
+                                  )}
                                 </div>
                               </>
                             )}
                           </div>
+                          {/* Deactivation confirm panel */}
+                          {deactivatingGuru?.name === guru && (
+                            <div className="mb-3 p-3 bg-amber-50 dark:bg-amber-500/5 border border-amber-200 dark:border-amber-500/20 rounded-xl animate-in zoom-in-95 duration-200">
+                              <div className="flex items-start gap-2 mb-2">
+                                <AlertTriangle size={16} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                                <div className="min-w-0">
+                                  <p className="text-xs font-black text-slate-800 dark:text-slate-100">Nonaktifkan {guru}?</p>
+                                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Akun login guru ini akan dinonaktifkan. Data halaqoh tetap tersimpan.</p>
+                                </div>
+                              </div>
+                              {halaqohsForGuru.length > 0 && (
+                                <div className="mb-2">
+                                  <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Pindahkan halaqoh ke (opsional)</label>
+                                  <select value={deactivatingGuru.reassignTo || ''} onChange={e => setDeactivatingGuru({ ...deactivatingGuru, reassignTo: e.target.value })} className="w-full bg-white dark:bg-slate-700 border border-amber-200 dark:border-amber-500/20 rounded-lg px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500/20 text-slate-900 dark:text-slate-100 cursor-pointer">
+                                    <option value="">Jangan pindahkan</option>
+                                    {activeGuruList.filter(g => g !== guru).map(g => <option key={g} value={g}>{g}</option>)}
+                                  </select>
+                                </div>
+                              )}
+                              <div className="flex gap-2">
+                                <button onClick={async () => { await handleDeactivateGuru(guru, deactivatingGuru.reassignTo || null); setDeactivatingGuru(null); }} className="flex-1 px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-1.5"><UserX size={13} /> Ya, Nonaktifkan</button>
+                                <button onClick={() => setDeactivatingGuru(null)} className="px-3 py-2 bg-white dark:bg-slate-700 text-slate-500 border border-slate-200 dark:border-slate-600 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 dark:hover:bg-slate-600 transition-all active:scale-95">Batal</button>
+                              </div>
+                            </div>
+                          )}
                           <div className="flex flex-col gap-3 flex-1">
                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><FolderPlus size={12} /> Daftar Halaqoh</span>
                             <div className="flex flex-wrap gap-2.5" onTouchMove={(e) => handleTouchMoveHalaqoh(e, guruDataKey || guru)} onTouchEnd={handleTouchEndHalaqoh}>

@@ -45,6 +45,8 @@ CREATE TABLE students (
     nis text,
     gender text DEFAULT 'L',
     student_status text DEFAULT 'active',
+    inactive_at timestamp with time zone,
+    inactive_reason text,
     graduated_at timestamp with time zone,
     graduation_year text,
     previous_halaqoh text,
@@ -62,6 +64,8 @@ CREATE TABLE students (
   ALTER TABLE students ADD COLUMN IF NOT EXISTS gender text DEFAULT 'L';
   ALTER TABLE students ADD COLUMN IF NOT EXISTS nis text;
   ALTER TABLE students ADD COLUMN IF NOT EXISTS student_status text DEFAULT 'active';
+  ALTER TABLE students ADD COLUMN IF NOT EXISTS inactive_at timestamp with time zone;
+  ALTER TABLE students ADD COLUMN IF NOT EXISTS inactive_reason text;
   ALTER TABLE students ADD COLUMN IF NOT EXISTS graduated_at timestamp with time zone;
   ALTER TABLE students ADD COLUMN IF NOT EXISTS graduation_year text;
   ALTER TABLE students ADD COLUMN IF NOT EXISTS previous_halaqoh text;

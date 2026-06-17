@@ -4,6 +4,7 @@ import { User, Home, Users, BarChart3, PieChart, Activity, Settings, LogOut, X, 
 const MobileMenu = ({ mobileMenuOpen, setMobileMenuOpen, currentUser, theme, setTheme, currentView, setCurrentView, isSuperAdmin, onLogout, teacherPhotos, handleTeacherPhotoUpload, requestDeleteTeacherPhoto }) => {
   const photoRef = React.useRef(null);
   const teacherPhoto = currentUser?.username ? teacherPhotos?.[currentUser.username] : null;
+  const currentUserDisplayName = currentUser?.panggilan || currentUser?.name || '';
   if (!mobileMenuOpen) return null;
   return (
     <div className="md:hidden fixed inset-0 z-[150] flex justify-end animate-in fade-in duration-300">
@@ -13,7 +14,7 @@ const MobileMenu = ({ mobileMenuOpen, setMobileMenuOpen, currentUser, theme, set
           <div className="flex items-center gap-3">
             <div className="relative w-10 h-10 bg-green-50 dark:bg-emerald-500/10 rounded-xl flex items-center justify-center text-green-600 dark:text-emerald-400 overflow-hidden">
               {teacherPhoto ? (
-                <img src={teacherPhoto} alt={currentUser.name} className="w-full h-full object-cover" />
+                <img src={teacherPhoto} alt={currentUserDisplayName} className="w-full h-full object-cover" />
               ) : (
                 <User size={20} />
               )}
@@ -33,7 +34,7 @@ const MobileMenu = ({ mobileMenuOpen, setMobileMenuOpen, currentUser, theme, set
               )}
             </div>
             <div className="flex flex-col">
-              <span className="text-sm font-black text-slate-800 dark:text-slate-100 leading-none">{currentUser.name}</span>
+              <span className="text-sm font-black text-slate-800 dark:text-slate-100 leading-none">{currentUserDisplayName}</span>
               <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{currentUser.role}</span>
             </div>
           </div>

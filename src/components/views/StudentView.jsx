@@ -163,6 +163,8 @@ const StudentDataSection = ({ students, openEditStudentModal, requestDeleteStude
   }, [studentSearch, filterStatus, filterKelas]);
 
   const guruName = currentUser?.name?.trim().toLowerCase() || '';
+  const isSuperAdminUser = currentUser?.role === 'superadmin';
+  const deleteActionLabel = isSuperAdminUser ? 'Hapus' : 'Ke Bank Data';
   const guruKey = Object.keys(guruHalaqohData).find(k => k !== '_order_' && k.trim().toLowerCase() === guruName);
   const myHalaqohs = guruKey ? (guruHalaqohData[guruKey] || []) : [];
   const allHalaqohs = Array.from(new Set(Object.keys(guruHalaqohData).filter(k => k !== '_order_').flatMap(k => guruHalaqohData[k]).filter(Boolean)));
@@ -530,7 +532,7 @@ const StudentDataSection = ({ students, openEditStudentModal, requestDeleteStude
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <button onClick={() => openEditStudentModal(s)} className="flex justify-center items-center gap-2 p-3 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl font-black text-xs active:scale-95 transition-all"><Edit3 size={16} /> Edit</button>
-                  <button onClick={() => requestDeleteStudent(s)} className="flex justify-center items-center gap-2 p-3 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white rounded-xl font-black text-xs active:scale-95 transition-all"><Trash2 size={16} /> Hapus</button>
+                  <button onClick={() => requestDeleteStudent(s)} className="flex justify-center items-center gap-2 p-3 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white rounded-xl font-black text-xs active:scale-95 transition-all"><Trash2 size={16} /> {deleteActionLabel}</button>
                 </div>
               </div>
             );
@@ -790,7 +792,7 @@ const StudentView = ({
                     <td className="p-3 text-center print:hidden">
                       <div className="flex items-center justify-center gap-1">
                         <button onClick={() => openEditStudentModal(student)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg" title="Edit"><Edit3 size={14}/></button>
-                        <button onClick={() => requestDeleteStudent(student)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg" title="Hapus"><Trash2 size={14}/></button>
+                        <button onClick={() => requestDeleteStudent(student)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg" title={isSuperAdmin ? 'Hapus siswa permanen' : 'Kembalikan ke Bank Data'}><Trash2 size={14}/></button>
                       </div>
                     </td>
                   </tr>
@@ -817,15 +819,17 @@ const StudentView = ({
                 <div className="flex flex-col items-center justify-center shrink-0 text-gray-300 group-hover:text-gray-400 cursor-grab touch-none p-0.5 -ml-1 print:hidden" onTouchStart={(e) => handleTouchStart(e, student.id)}>
                   <GripVertical size={18} />
                 </div>
-                <div className={`w-[50px] h-[50px] md:w-[60px] md:h-[60px] rounded-full flex items-center justify-center font-black text-lg md:text-xl overflow-hidden relative shrink-0 border border-gray-100 group/avatar ${student.color || 'bg-blue-100 text-blue-600'}`}>
-                  {student.photo ? (<img src={student.photo} alt="" className="w-full h-full object-cover" />) : (student.initial || getInitials(student.name))}
+                <div className="relative w-[50px] h-[50px] md:w-[60px] md:h-[60px] shrink-0 group/avatar">
+                  <div className={`w-full h-full rounded-full flex items-center justify-center font-black text-lg md:text-xl overflow-hidden border border-gray-100 ${student.color || 'bg-blue-100 text-blue-600'}`}>
+                    {student.photo ? (<img src={student.photo} alt="" className="w-full h-full object-cover" />) : (student.initial || getInitials(student.name))}
+                  </div>
                   {uploadingPhotoId === student.id ? (
-                    <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm flex flex-col items-center justify-center text-white cursor-wait p-2">
+                    <div className="absolute inset-0 rounded-full bg-slate-900/80 backdrop-blur-sm flex flex-col items-center justify-center text-white cursor-wait p-2 overflow-hidden">
                       <div className="w-full bg-white/20 rounded-full h-1.5 mb-2"><div className="bg-white h-1.5 rounded-full transition-all duration-300" style={{ width: `${uploadProgress}%` }}></div></div>
                       <span className="text-[10px] font-black uppercase tracking-widest">{Math.round(uploadProgress)}%</span>
                     </div>
                   ) : (
-                    <label className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm opacity-0 group-hover/avatar:opacity-100 focus-within:opacity-100 transition-opacity flex flex-col items-center justify-center text-white cursor-pointer text-center p-2 print:hidden">
+                    <label className="absolute inset-0 rounded-full bg-slate-900/60 backdrop-blur-sm opacity-0 group-hover/avatar:opacity-100 focus-within:opacity-100 transition-opacity flex flex-col items-center justify-center text-white cursor-pointer text-center p-2 print:hidden overflow-hidden">
                       <Camera size={17} className="mb-0.5 sm:w-5 sm:h-5 sm:mb-1" /><span className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest">Ganti</span>
                       <input type="file" accept="image/*" className="hidden" onChange={(e) => onPhotoChange(e, student.id)} />
                     </label>
@@ -841,7 +845,7 @@ const StudentView = ({
                     </button>
                   )}
                   {!student.photo && uploadingPhotoId !== student.id && (
-                    <span className="sm:hidden absolute -right-1 -bottom-1 w-5 h-5 rounded-full bg-white text-slate-500 border border-gray-100 shadow-sm flex items-center justify-center pointer-events-none print:hidden">
+                    <span className="sm:hidden absolute -right-0.5 -bottom-0.5 w-5 h-5 rounded-full bg-white text-slate-500 border border-gray-100 shadow-sm flex items-center justify-center pointer-events-none print:hidden">
                       <Camera size={11} strokeWidth={3} />
                     </span>
                   )}
@@ -873,7 +877,7 @@ const StudentView = ({
               </div>
               <div className="grid grid-cols-4 sm:flex sm:flex-col items-center gap-1.5 shrink-0 sm:pl-1 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 print:hidden">
                 <button onClick={() => openEditStudentModal(student)} className="flex items-center justify-center p-2.5 sm:p-2 text-gray-400 bg-gray-50 hover:text-blue-600 hover:bg-blue-100 rounded-lg md:rounded-xl transition-all shadow-sm active:scale-95" title="Edit Data Siswa"><Edit3 size={16}/></button>
-                <button onClick={() => requestDeleteStudent(student)} className="flex items-center justify-center p-2.5 sm:p-2 text-gray-400 bg-gray-50 hover:text-white hover:bg-red-500 rounded-lg md:rounded-xl transition-all shadow-sm active:scale-95" title={isSuperAdmin ? "Hapus Siswa (Permanen)" : "Keluarkan dari Halaqoh"}><Trash2 size={16}/></button>
+                <button onClick={() => requestDeleteStudent(student)} className="flex items-center justify-center p-2.5 sm:p-2 text-gray-400 bg-gray-50 hover:text-white hover:bg-red-500 rounded-lg md:rounded-xl transition-all shadow-sm active:scale-95" title={isSuperAdmin ? "Hapus Siswa (Permanen)" : "Kembalikan ke Bank Data"}><Trash2 size={16}/></button>
                 {/* #10: Quick action to exam */}
                 {setCurrentView && (
                   <>

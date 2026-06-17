@@ -27,6 +27,8 @@ const JURNAL = {
   ayatTahfidz: 'jurnalAyatTahfidz',
   tahfidzNilai: 'jurnalTahfidzNilai',
   murojaah: 'jurnalMurojaah',
+  murojaahQorib: 'jurnalMurojaahQorib',
+  murojaahBaid: 'jurnalMurojaahBaid',
   catatan: 'jurnalCatatan'
 };
 
@@ -38,6 +40,14 @@ const hasValue = (value) => {
   const text = String(value).trim();
   return text !== '' && text !== '-';
 };
+
+const getMurojaahQorib = (record) => hasValue(record?.[JURNAL.murojaahQorib])
+  ? String(record[JURNAL.murojaahQorib])
+  : hasValue(record?.[JURNAL.murojaah])
+    ? String(record[JURNAL.murojaah])
+    : '-';
+const getMurojaahBaid = (record) => hasValue(record?.[JURNAL.murojaahBaid]) ? String(record[JURNAL.murojaahBaid]) : '-';
+const hasMurojaah = (record) => hasValue(getMurojaahQorib(record)) || hasValue(getMurojaahBaid(record));
 
 const getMonthTitle = (dateInput) => {
   const date = new Date(dateInput);
@@ -55,9 +65,8 @@ const hasJournalData = (record) => {
     JURNAL.tahfidz,
     JURNAL.ayatTahfidz,
     JURNAL.tahfidzNilai,
-    JURNAL.murojaah,
     JURNAL.catatan
-  ].some((field) => hasValue(record[field]));
+  ].some((field) => hasValue(record[field])) || hasMurojaah(record);
 };
 
 const extractJilid = (tahsin) => {
@@ -83,10 +92,11 @@ const getTahsinLevel = (tahsin) => {
 const getRecordDisplay = (record) => {
   const tahsin = formatPrintData(record?.[JURNAL.tahsin], record?.[JURNAL.halTahsin], record?.[JURNAL.tahsinNilai], record?.[JURNAL.tahsinSuratNilai]);
   const tahfidz = formatPrintData(record?.[JURNAL.tahfidz], record?.[JURNAL.ayatTahfidz], null, record?.[JURNAL.tahfidzNilai]);
-  const murojaah = hasValue(record?.[JURNAL.murojaah]) ? String(record[JURNAL.murojaah]) : '-';
+  const murojaahQorib = getMurojaahQorib(record);
+  const murojaahBaid = getMurojaahBaid(record);
   const catatan = hasValue(record?.[JURNAL.catatan]) ? String(record[JURNAL.catatan]) : '-';
 
-  return { tahsin, tahfidz, murojaah, catatan };
+  return { tahsin, tahfidz, murojaahQorib, murojaahBaid, catatan };
 };
 
 const getStudentGuru = (guruHalaqohData, halaqoh) => {
@@ -100,14 +110,17 @@ const getStudentGuru = (guruHalaqohData, halaqoh) => {
 const ReportView = ({
   activeHalaqoh,
   activeGuru,
+  activeGuruDisplayName,
   weekDates,
   changeWeek,
   filteredStudents,
   institutionLogo,
-  guruHalaqohData
+  guruHalaqohData,
+  getTeacherDisplayName
 }) => {
   const [reportType, setReportType] = useState('weekly');
   const [monthDate, setMonthDate] = useState(new Date());
+  const teacherDisplayName = activeGuruDisplayName || activeGuru || '';
   const [studentSearch, setStudentSearch] = useState('');
   const [showScrollTop, setShowScrollTop] = useState(false);
   const scrollContainerRef = useRef(null);
@@ -195,7 +208,7 @@ const ReportView = ({
         display,
         journey,
         lastJilid,
-        teacherName,
+        teacherName: getTeacherDisplayName?.(teacherName) || teacherName,
         tahsinLevel: getTahsinLevel(latest?.record?.[JURNAL.tahsin])
       };
     })
@@ -207,7 +220,7 @@ const ReportView = ({
     filled: reportRows.filter((row) => row.latest).length,
     tahsin: reportRows.filter((row) => hasValue(row.latest?.record?.[JURNAL.tahsin])).length,
     tahfidz: reportRows.filter((row) => hasValue(row.latest?.record?.[JURNAL.tahfidz])).length,
-    murojaah: reportRows.filter((row) => hasValue(row.latest?.record?.[JURNAL.murojaah])).length,
+    murojaah: reportRows.filter((row) => hasMurojaah(row.latest?.record)).length,
     jilid: reportRows.filter((row) => row.journey.length > 0).length
   };
 
@@ -343,7 +356,7 @@ const ReportView = ({
                 <span className="font-black text-slate-400 uppercase tracking-widest">Halaqoh</span>
                 <span className="font-black text-slate-800 truncate">{activeHalaqoh || '-'}</span>
                 <span className="font-black text-slate-400 uppercase tracking-widest">Ustadz/ah</span>
-                <span className="font-black text-slate-800 truncate">{activeGuru || '-'}</span>
+                <span className="font-black text-slate-800 truncate">{teacherDisplayName || '-'}</span>
                 <span className="font-black text-slate-400 uppercase tracking-widest">Sumber</span>
                 <span className="font-black text-slate-800 truncate">Jurnal Harian</span>
               </div>
@@ -522,7 +535,11 @@ const ReportView = ({
                         </div>
                         <div className="bg-emerald-50/70 border border-emerald-100 rounded-2xl p-2.5 sm:p-3 min-w-0">
                           <div className="flex items-center gap-1.5 text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-2"><Repeat size={12} /> Murojaah</div>
-                          <div className="text-[11px] sm:text-xs font-bold text-emerald-900 whitespace-pre-wrap break-words leading-snug max-h-24 overflow-y-auto custom-scrollbar">{row.display.murojaah}</div>
+                          <div className="text-[11px] sm:text-xs font-bold text-emerald-900 whitespace-pre-wrap break-words leading-snug max-h-24 overflow-y-auto custom-scrollbar flex flex-col gap-1">
+                            {hasValue(row.display.murojaahQorib) && <div><span className="font-black text-emerald-600">Qorib:</span> {row.display.murojaahQorib}</div>}
+                            {hasValue(row.display.murojaahBaid) && <div><span className="font-black text-emerald-600">Baid:</span> {row.display.murojaahBaid}</div>}
+                            {!hasValue(row.display.murojaahQorib) && !hasValue(row.display.murojaahBaid) && '-'}
+                          </div>
                         </div>
                         <div className="bg-orange-50/70 border border-orange-100 rounded-2xl p-2.5 sm:p-3">
                           <div className="flex items-center gap-1.5 text-[9px] font-black text-orange-600 uppercase tracking-widest mb-2"><Award size={12} /> Posisi Tahsin</div>
@@ -548,7 +565,7 @@ const ReportView = ({
               </div>
               <div className="text-center">
                 <p className="mb-20 text-xs font-bold text-slate-600 uppercase tracking-widest">Bogor, ........................ 20....<br />Pengajar Halaqoh</p>
-                <p className="font-black text-slate-900 border-b border-slate-800 w-56 mx-auto pb-1 uppercase">{activeGuru || '...........................'}</p>
+                <p className="font-black text-slate-900 border-b border-slate-800 w-56 mx-auto pb-1 uppercase">{teacherDisplayName || '...........................'}</p>
                 <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Ustadz / Ustadzah</p>
               </div>
             </div>

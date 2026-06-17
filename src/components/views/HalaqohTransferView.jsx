@@ -5,7 +5,7 @@ const UNASSIGNED = '__unassigned__';
 
 const isGraduatedStudent = (student) => {
   const status = String(student?.student_status || '').trim().toLowerCase();
-  return status === 'lulus' || status === 'alumni';
+  return ['lulus', 'alumni', 'pindah', 'selesai', 'nonaktif'].includes(status);
 };
 
 const hasValue = (value) => {
@@ -218,7 +218,7 @@ const StudentCard = ({ student, progress, selected, dragging, disabled, onToggle
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}
           className="shrink-0 w-6 h-6 rounded-md bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-400 flex items-center justify-center disabled:opacity-30 cursor-grab active:cursor-grabbing [touch-action:pan-y]"
-          title={disabled ? 'Alumni tidak bisa dipindahkan' : 'Pindahkan'}
+          title={disabled ? 'Siswa nonaktif tidak bisa dipindahkan sebelum diaktifkan kembali' : 'Pindahkan'}
         >
           <GripVertical size={13} />
         </button>
@@ -230,7 +230,7 @@ const StudentCard = ({ student, progress, selected, dragging, disabled, onToggle
           className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center mt-0.5 transition-colors ${
             selected ? 'bg-emerald-500 border-emerald-500 text-white' : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 text-transparent'
           } disabled:opacity-30`}
-          title={disabled ? 'Alumni tidak bisa dipilih untuk mutasi' : 'Pilih siswa'}
+          title={disabled ? 'Siswa nonaktif tidak bisa dipilih untuk mutasi' : 'Pilih siswa'}
         >
           <Check size={10} strokeWidth={4} />
         </button>
@@ -340,7 +340,7 @@ const HalaqohTransferView = ({ isSuperAdmin, students = [], guruHalaqohData = {}
   const alumniCount = useMemo(() => students.filter(isGraduatedStudent).length, [students]);
 
   const visibleStudentsByStatus = useMemo(() => {
-    if (statusFilter === 'alumni') return students.filter(isGraduatedStudent);
+    if (statusFilter === 'inactive') return students.filter(isGraduatedStudent);
     if (statusFilter === 'all') return students;
     return students.filter(student => !isGraduatedStudent(student));
   }, [students, statusFilter]);
@@ -662,7 +662,7 @@ const HalaqohTransferView = ({ isSuperAdmin, students = [], guruHalaqohData = {}
                 {masterSearch && <span className="shrink-0 rounded-lg bg-cyan-50 dark:bg-cyan-500/10 px-2 py-1 text-[9px] font-black text-cyan-700 dark:text-cyan-300">Master: {masterSearch}</span>}
                 {masterKelasFilter && <span className="shrink-0 rounded-lg bg-cyan-50 dark:bg-cyan-500/10 px-2 py-1 text-[9px] font-black text-cyan-700 dark:text-cyan-300">Master Kelas {masterKelasFilter}</span>}
                 {teacherFilter && <span className="shrink-0 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 px-2 py-1 text-[9px] font-black text-emerald-600 dark:text-emerald-300">{teacherFilter}</span>}
-                {statusFilter !== 'active' && <span className="shrink-0 rounded-lg bg-amber-50 dark:bg-amber-500/10 px-2 py-1 text-[9px] font-black text-amber-600 dark:text-amber-300">{statusFilter === 'alumni' ? 'Alumni' : 'Semua'}</span>}
+                {statusFilter !== 'active' && <span className="shrink-0 rounded-lg bg-amber-50 dark:bg-amber-500/10 px-2 py-1 text-[9px] font-black text-amber-600 dark:text-amber-300">{statusFilter === 'inactive' ? 'Nonaktif' : 'Semua'}</span>}
               </div>
             )}
 
@@ -726,7 +726,7 @@ const HalaqohTransferView = ({ isSuperAdmin, students = [], guruHalaqohData = {}
                   <div className="grid grid-cols-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-1">
                     {[
                       { value: 'active', label: 'Aktif' },
-                      { value: 'alumni', label: 'Alumni' },
+                      { value: 'inactive', label: 'Nonaktif' },
                       { value: 'all', label: 'Semua' }
                     ].map(option => (
                       <button
@@ -807,7 +807,7 @@ const HalaqohTransferView = ({ isSuperAdmin, students = [], guruHalaqohData = {}
             <div className="grid grid-cols-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-1">
               {[
                 { value: 'active', label: 'Aktif' },
-                { value: 'alumni', label: 'Alumni' },
+                { value: 'inactive', label: 'Nonaktif' },
                 { value: 'all', label: 'Semua' }
               ].map(option => (
                 <button

@@ -25,7 +25,7 @@ const ViewLoading = () => (
 
 const isGraduatedStudent = (student) => {
   const status = String(student?.student_status || '').trim().toLowerCase();
-  return status === 'lulus' || status === 'alumni';
+  return ['lulus', 'alumni', 'pindah', 'selesai', 'nonaktif'].includes(status);
 };
 
 const getClassGrade = (kelas) => {
@@ -78,6 +78,14 @@ const cleanProgressText = (value) => {
   if (!hasProgressValue(value)) return '';
   return String(value).split(',').map(item => item.trim()).filter(hasProgressValue).join(', ');
 };
+
+const getRecordKeys = (tab) => tab === 'lesson_plan'
+  ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', mq: 'murojaahQorib', mb: 'murojaahBaid', c: 'catatan', cT: 'catatanTahsin', cF: 'catatanTahfidz' }
+  : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', mq: 'jurnalMurojaahQorib', mb: 'jurnalMurojaahBaid', c: 'jurnalCatatan', cT: 'jurnalCatatanTahsin', cF: 'jurnalCatatanTahfidz' };
+
+const getMurojaahQoribValue = (record, keys) => cleanProgressText(record?.[keys.mq]) || cleanProgressText(record?.[keys.m]) || '-';
+const getMurojaahBaidValue = (record, keys) => cleanProgressText(record?.[keys.mb]) || '-';
+const hasMurojaahRecordValue = (record, keys) => hasProgressValue(getMurojaahQoribValue(record, keys)) || hasProgressValue(getMurojaahBaidValue(record, keys));
 
 const getJuzFromSurahName = (surahString) => {
   if (!hasProgressValue(surahString)) return '';
@@ -222,7 +230,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
   // Menggunakan _order_ karena tipe jsonb di Supabase tidak mempertahankan urutan key
   const guruList = useMemo(() => {
     const order = guruHalaqohData._order_ || [];
-    const keys = Object.keys(guruHalaqohData).filter(k => k !== '_order_');
+    const keys = Object.keys(guruHalaqohData).filter(k => k !== '_order_' && k !== '_inactive_');
     if (order.length > 0) {
       return keys.sort((a, b) => {
         const ia = order.indexOf(a);
@@ -235,6 +243,10 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
     }
     return keys;
   }, [guruHalaqohData]);
+
+  const _inactiveList = guruHalaqohData._inactive_ || [];
+  const activeGuruList = useMemo(() => guruList.filter(g => !_inactiveList.includes(g)), [guruList, _inactiveList]);
+  const inactiveGuruList = useMemo(() => guruList.filter(g => _inactiveList.includes(g)), [guruList, _inactiveList]);
   const [kelasList, setKelasList] = useState([]);
   const [institutionName, setInstitutionName] = useState('Nama Sekolah Anda');
   const [institutionLogo, setInstitutionLogo] = useState('logo.png');
@@ -243,15 +255,44 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
   const [targetAlQuran, setTargetAlQuran] = useState('');
   const [kkmScore, setKkmScore] = useState(75);
   const [appUsers, setAppUsers] = useState([]);
+  const teacherProfiles = useMemo(() => teacherPhotos?._profiles_ || {}, [teacherPhotos]);
+  const getStoredTeacherProfile = useCallback((teacher) => {
+    if (!teacher) return null;
+    const keys = typeof teacher === 'string'
+      ? [teacher]
+      : [teacher.id, teacher.username, teacher.name].filter(Boolean);
+
+    for (const key of keys) {
+      if (teacherProfiles[key]) return teacherProfiles[key];
+    }
+
+    const targetName = typeof teacher === 'string'
+      ? teacher.trim().toLowerCase()
+      : String(teacher.name || '').trim().toLowerCase();
+    if (!targetName) return null;
+
+    return Object.values(teacherProfiles).find(profile => (
+      String(profile?.name || '').trim().toLowerCase() === targetName
+    )) || null;
+  }, [teacherProfiles]);
   const currentUserProfile = useMemo(() => {
     const matchedUser = appUsers.find(user => (
       (currentUser?.id && user.id === currentUser.id) ||
       (currentUser?.username && user.username === currentUser.username)
     ));
-    return matchedUser ? { ...currentUser, ...matchedUser } : currentUser;
-  }, [appUsers, currentUser]);
+    const storedProfile = getStoredTeacherProfile(matchedUser || currentUser);
+    return { ...currentUser, ...(matchedUser || {}), ...(storedProfile || {}) };
+  }, [appUsers, currentUser, getStoredTeacherProfile]);
+  const getTeacherDisplayName = useCallback((teacherName) => {
+    const name = String(teacherName || '').trim();
+    if (!name) return '';
+    const matchedUser = appUsers.find(user => String(user?.name || '').trim().toLowerCase() === name.toLowerCase());
+    const storedProfile = getStoredTeacherProfile(matchedUser || name);
+    return String(storedProfile?.panggilan || matchedUser?.panggilan || '').trim() || name;
+  }, [appUsers, getStoredTeacherProfile]);
 
   const [activeGuru, setActiveGuru] = useState(() => localStorage.getItem('myquranplan_active_guru') || '');
+  const activeGuruDisplayName = useMemo(() => getTeacherDisplayName(activeGuru), [activeGuru, getTeacherDisplayName]);
   const [activeHalaqoh, setActiveHalaqoh] = useState(() => localStorage.getItem('myquranplan_active_halaqoh') || '');
   const [students, setStudents] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -293,7 +334,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
   const [selectedStudents, setSelectedStudents] = useState([]);
 
   const emptySurat = () => ({ id: Date.now() + Math.random(), surat: '', ayatStart: '', ayatEnd: '', nilai: '' });
-  const [lessonPlans, setLessonPlans] = useState([{ id: 1, tanggal: '', murojaah: [emptySurat()], tahsinKategori: '', tahsinSuratList: [emptySurat()], tahsinHalaman: [], tahsinBaris: [], tahsinMateri: [], tahsinHalamanTg: [], tahfidzSuratList: [emptySurat()], lainLain: '', catatanTahsin: '', catatanTahfidz: '', tahsinNilai: '' }]);
+  const [lessonPlans, setLessonPlans] = useState([{ id: 1, tanggal: '', murojaahQorib: [emptySurat()], murojaahBaid: [emptySurat()], tahsinKategori: '', tahsinSuratList: [emptySurat()], tahsinHalaman: [], tahsinBaris: [], tahsinMateri: [], tahsinHalamanTg: [], tahfidzSuratList: [emptySurat()], lainLain: '', catatanTahsin: '', catatanTahfidz: '', tahsinNilai: '' }]);
 
   // -- STATE UNGGAH FOTO & CROP --
   const [isCropModalOpen, setIsCropModalOpen] = useState(false);
@@ -365,9 +406,9 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
         setActiveHalaqoh('');
       }
     } else {
-      if (guruList.length > 0) {
-        if (!activeGuru || !guruList.includes(activeGuru)) {
-          const firstGuru = guruList[0];
+      if (activeGuruList.length > 0) {
+        if (!activeGuru || !activeGuruList.includes(activeGuru)) {
+          const firstGuru = activeGuruList[0];
           setActiveGuru(firstGuru);
           setActiveHalaqoh((guruHalaqohData[firstGuru] && guruHalaqohData[firstGuru].length > 0) ? guruHalaqohData[firstGuru][0] : '');
         } else {
@@ -383,7 +424,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
         setActiveHalaqoh('');
       }
     }
-  }, [guruList, guruHalaqohData, isSuperAdmin, currentUserProfile?.name, activeGuru, activeHalaqoh, selectedGuruForHalaqoh, isDbReady]);
+  }, [activeGuruList, guruHalaqohData, isSuperAdmin, currentUserProfile?.name, activeGuru, activeHalaqoh, selectedGuruForHalaqoh, isDbReady]);
 
   useEffect(() => { setNewStudent(prev => ({ ...prev, halaqoh: activeHalaqoh, kelas: prev.kelas || (kelasList.length > 0 ? kelasList[0] : '') })); }, [activeHalaqoh, kelasList]);
 
@@ -457,7 +498,12 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
     return '';
   }, [guruHalaqohData]);
 
+  const supportsStudentHistoryColumns = useMemo(() => {
+    return students.some(student => Object.prototype.hasOwnProperty.call(student, 'previous_halaqoh'));
+  }, [students]);
+
   const buildReleasedStudentShadow = useCallback((student, releasedAt = new Date().toISOString()) => {
+    if (!supportsStudentHistoryColumns) return {};
     const snapshot = getLatestMutationProgressSnapshot(student);
     return {
       previous_halaqoh: student?.halaqoh || student?.previous_halaqoh || '',
@@ -466,12 +512,10 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       previous_tahsin_summary: snapshot.tahsin,
       previous_tahfidz_summary: snapshot.tahfidz
     };
-  }, [getTeacherForHalaqoh]);
+  }, [getTeacherForHalaqoh, supportsStudentHistoryColumns]);
 
   // OPTIMASI: Kunci filter unfilled terpisah agar filteredStudents tidak recompute saat pindah tab (kecuali showUnfilledOnly aktif)
-  const unfilledKeys = homeTab === 'lesson_plan'
-    ? { t: 'tahsin', f: 'tahfidz', m: 'murojaah', c: 'catatan', cT: 'catatanTahsin', cF: 'catatanTahfidz' }
-    : { t: 'jurnalTahsin', f: 'jurnalTahfidz', m: 'jurnalMurojaah', c: 'jurnalCatatan', cT: 'jurnalCatatanTahsin', cF: 'jurnalCatatanTahfidz' };
+  const unfilledKeys = getRecordKeys(homeTab);
 
   // Filter siswa yang sangat ketat: Jika bukan SuperAdmin, hanya tampilkan siswa yang ada di halaqoh guru tersebut
   const filteredStudents = useMemo(() => {
@@ -489,7 +533,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
         const hasData = r && (
           (r[unfilledKeys.t] && r[unfilledKeys.t] !== '-') ||
           (r[unfilledKeys.f] && r[unfilledKeys.f] !== '-') ||
-          (r[unfilledKeys.m] && r[unfilledKeys.m] !== '-') ||
+          hasMurojaahRecordValue(r, unfilledKeys) ||
           (r[unfilledKeys.c] && r[unfilledKeys.c] !== '-') ||
           (r[unfilledKeys.cT] && r[unfilledKeys.cT] !== '-') ||
           (r[unfilledKeys.cF] && r[unfilledKeys.cF] !== '-')
@@ -638,10 +682,14 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       ttl: (profileData.ttl || '').trim() || null,
       certificate_no: (profileData.certificate_no || '').trim() || null
     };
+    const dbSafeData = { name: nextName };
+    const runProfileUpdate = async (payload) => {
+      const query = supabase.from('app_users').update(payload);
+      return userId ? await query.eq('id', userId) : await query.eq('username', username);
+    };
 
     try {
-      const query = supabase.from('app_users').update(updatedData);
-      const { error } = userId ? await query.eq('id', userId) : await query.eq('username', username);
+      const { error } = await runProfileUpdate(dbSafeData);
       if (error) throw error;
 
       let updatedGuruHalaqohData = null;
@@ -666,6 +714,24 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
           : user
       )));
 
+      const storedProfile = {
+        ...updatedData,
+        ...(userId ? { id: userId } : {}),
+        ...(username ? { username } : {})
+      };
+      const profileKeys = Array.from(new Set([userId, username, oldName, nextName].filter(Boolean)));
+      const updatedTeacherPhotos = {
+        ...teacherPhotos,
+        _profiles_: {
+          ...(teacherPhotos?._profiles_ || {})
+        }
+      };
+      profileKeys.forEach(key => {
+        updatedTeacherPhotos._profiles_[key] = storedProfile;
+      });
+      setTeacherPhotos(updatedTeacherPhotos);
+      await updateMasterDataCloud({ teacherPhotos: updatedTeacherPhotos });
+
       try {
         await supabase.auth.updateUser({
           data: {
@@ -676,6 +742,19 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
         });
       } catch (metadataError) {
         console.warn('Gagal memperbarui metadata auth:', metadataError);
+      }
+
+      try {
+        const savedUser = localStorage.getItem('myquranplan_user');
+        if (savedUser) {
+          const parsedUser = JSON.parse(savedUser);
+          const isSameUser = (userId && parsedUser?.id === userId) || (!userId && parsedUser?.username === username);
+          if (isSameUser) {
+            localStorage.setItem('myquranplan_user', JSON.stringify({ ...parsedUser, ...updatedData, fullName: nextName }));
+          }
+        }
+      } catch (storageError) {
+        console.warn('Gagal memperbarui cache user lokal:', storageError);
       }
 
       showToast('Profil guru berhasil disimpan!');
@@ -1040,6 +1119,60 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
     });
   };
 
+  const handleDeactivateGuru = async (guru, reassignTo) => {
+    const updated = { ...guruHalaqohData };
+    const inactiveArr = updated._inactive_ || [];
+    if (!inactiveArr.includes(guru)) {
+      updated._inactive_ = [...inactiveArr, guru];
+    }
+
+    // Reassign halaqohs if target teacher provided
+    if (reassignTo) {
+      const halaqohsToMove = updated[guru] || [];
+      if (halaqohsToMove.length > 0) {
+        const targetHalaqohs = updated[reassignTo] || [];
+        const merged = [...new Set([...targetHalaqohs, ...halaqohsToMove])];
+        updated[reassignTo] = merged;
+        updated[guru] = [];
+
+        // Update students whose halaqoh was reassigned
+        for (const h of halaqohsToMove) {
+          await supabase.from('students').update({ halaqoh: h }).eq('halaqoh', h);
+        }
+        setStudents(prev => prev.map(s => halaqohsToMove.includes(s.halaqoh) ? { ...s, halaqoh: s.halaqoh } : s));
+      }
+    }
+
+    setGuruHalaqohData(updated);
+    await updateMasterDataCloud({ guruHalaqohData: updated });
+
+    // Deactivate linked app_users account
+    const linkedUser = appUsers.find(u => u.name?.trim().toLowerCase() === guru.trim().toLowerCase());
+    if (linkedUser) {
+      await supabase.from('app_users').update({ status: 'inactive' }).eq('id', linkedUser.id);
+      setAppUsers(prev => prev.map(u => u.id === linkedUser.id ? { ...u, status: 'inactive' } : u));
+    }
+
+    if (activeGuru === guru) setActiveGuru('');
+    showToast(`${guru} berhasil dinonaktifkan.${reassignTo ? ` Halaqoh dipindahkan ke ${reassignTo}.` : ''}`);
+  };
+
+  const handleReactivateGuru = async (guru) => {
+    const updated = { ...guruHalaqohData };
+    updated._inactive_ = (updated._inactive_ || []).filter(g => g !== guru);
+    setGuruHalaqohData(updated);
+    await updateMasterDataCloud({ guruHalaqohData: updated });
+
+    // Reactivate linked app_users account
+    const linkedUser = appUsers.find(u => u.name?.trim().toLowerCase() === guru.trim().toLowerCase());
+    if (linkedUser) {
+      await supabase.from('app_users').update({ status: 'active' }).eq('id', linkedUser.id);
+      setAppUsers(prev => prev.map(u => u.id === linkedUser.id ? { ...u, status: 'active' } : u));
+    }
+
+    showToast(`${guru} berhasil diaktifkan kembali!`);
+  };
+
   const handleSaveEditHalaqoh = async () => {
     const finalName = editingHalaqoh.newSesi?.trim() ? `${editingHalaqoh.newName.trim()} (Sesi ${editingHalaqoh.newSesi.trim()})` : editingHalaqoh.newName.trim();
     if (!finalName || finalName === editingHalaqoh.oldName) { setEditingHalaqoh(null); return; }
@@ -1095,14 +1228,14 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
     // ... (Logika internal untuk memodifikasi objek 'rec' tetap sama)
     const student = students.find(s => s.id === studentId); if (!student) return;
     const rec = student.records[dateStr] ? { ...student.records[dateStr] } : {};
-    const k = homeTab === 'lesson_plan' ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan', cT: 'catatanTahsin', cF: 'catatanTahfidz' } : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan', cT: 'jurnalCatatanTahsin', cF: 'jurnalCatatanTahfidz' };
+    const k = getRecordKeys(homeTab);
 
     for (let key of Object.values(k)) if (!rec[key]) rec[key] = '-';
 
     if (type === 'catatan') { rec[k.c] = '-'; rec[k.cT] = '-'; rec[k.cF] = '-'; }
     else if (type === 'tahsin_all') { rec[k.t] = '-'; rec[k.h] = '-'; rec[k.tNilai] = '-'; rec[k.tsNilai] = '-'; }
     else if (type === 'tahfidz_all') { rec[k.f] = '-'; rec[k.af] = '-'; rec[k.fNilai] = '-'; }
-    else if (type === 'murojaah_all') { rec[k.m] = '-'; }
+    else if (type === 'murojaah_all') { rec[k.m] = '-'; rec[k.mq] = '-'; rec[k.mb] = '-'; }
     else if (type === 'tahsin_surat') {
       let tList = rec[k.t].split(',').map(s => s.trim()); let aList = rec[k.h] !== '-' ? (rec[k.h] || '').split(',').map(s => s.trim()) : []; let nList = rec[k.tsNilai] !== '-' ? (rec[k.tsNilai] || '').split(',').map(s => s.trim()) : [];
       tList.splice(subIndex, 1);
@@ -1114,8 +1247,10 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       if (rec[k.t] === '-') { rec[k.h] = '-'; rec[k.tNilai] = '-'; rec[k.tsNilai] = '-'; }
     }
     else if (type === 'murojaah') {
-      let items = rec[k.m].split(',').map(s => s.trim()); items.splice(subIndex, 1);
-      rec[k.m] = items.length > 0 && items.join(', ') !== '' ? items.join(', ') : '-';
+      const targetKey = type === 'murojaah_baid' ? k.mb : k.mq;
+      let items = (rec[targetKey] || rec[k.m] || '-').split(',').map(s => s.trim()); items.splice(subIndex, 1);
+      rec[targetKey] = items.length > 0 && items.join(', ') !== '' ? items.join(', ') : '-';
+      if (targetKey === k.mq) rec[k.m] = rec[targetKey];
     }
     else if (type === 'tahfidz') {
       let tList = rec[k.f].split(',').map(s => s.trim()); let aList = rec[k.af] !== '-' ? (rec[k.af] || '').split(',').map(s => s.trim()) : []; let nList = rec[k.fNilai] !== '-' ? (rec[k.fNilai] || '').split(',').map(s => s.trim()) : [];
@@ -1162,10 +1297,10 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
     e.preventDefault(); e.stopPropagation();
     if (window.confirm('Yakin ingin mengosongkan data pada tanggal ini?')) {
       const student = students.find(s => s.id === studentId); if (!student) return;
-      const k = homeTab === 'lesson_plan' ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan', cT: 'catatanTahsin', cF: 'catatanTahfidz' } : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan', cT: 'jurnalCatatanTahsin', cF: 'jurnalCatatanTahfidz' };
+      const k = getRecordKeys(homeTab);
       const newRecords = { ...student.records };
       const dayRec = newRecords[dateStr] ? { ...newRecords[dateStr] } : {};
-      dayRec[k.t] = '-'; dayRec[k.h] = '-'; dayRec[k.tNilai] = '-'; dayRec[k.tsNilai] = '-'; dayRec[k.f] = '-'; dayRec[k.af] = '-'; dayRec[k.fNilai] = '-'; dayRec[k.m] = '-'; dayRec[k.c] = '-'; dayRec[k.cT] = '-'; dayRec[k.cF] = '-';
+      dayRec[k.t] = '-'; dayRec[k.h] = '-'; dayRec[k.tNilai] = '-'; dayRec[k.tsNilai] = '-'; dayRec[k.f] = '-'; dayRec[k.af] = '-'; dayRec[k.fNilai] = '-'; dayRec[k.m] = '-'; dayRec[k.mq] = '-'; dayRec[k.mb] = '-'; dayRec[k.c] = '-'; dayRec[k.cT] = '-'; dayRec[k.cF] = '-';
       newRecords[dateStr] = dayRec;
 
       const { error } = await supabase.from('students').update({ records: newRecords }).eq('id', studentId);
@@ -1200,13 +1335,13 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       message: `Yakin ingin mengosongkan semua data ${typeName} untuk SELURUH SISWA yang tampil saat ini pada tanggal ${formatShortDate(new Date(dateStr))}? Tindakan ini tidak dapat dibatalkan.`,
       onConfirm: async () => {
         setIsLoading(true);
-        const k = tab === 'lesson_plan' ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan', cT: 'catatanTahsin', cF: 'catatanTahfidz' } : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan', cT: 'jurnalCatatanTahsin', cF: 'jurnalCatatanTahfidz' };
+        const k = getRecordKeys(tab);
 
         try {
           const updates = filteredStudents.map(student => {
             const newRecords = { ...student.records };
             const dayRec = newRecords[dateStr] ? { ...newRecords[dateStr] } : {};
-            dayRec[k.t] = '-'; dayRec[k.h] = '-'; dayRec[k.tNilai] = '-'; dayRec[k.tsNilai] = '-'; dayRec[k.f] = '-'; dayRec[k.af] = '-'; dayRec[k.fNilai] = '-'; dayRec[k.m] = '-'; dayRec[k.c] = '-'; dayRec[k.cT] = '-'; dayRec[k.cF] = '-';
+            dayRec[k.t] = '-'; dayRec[k.h] = '-'; dayRec[k.tNilai] = '-'; dayRec[k.tsNilai] = '-'; dayRec[k.f] = '-'; dayRec[k.af] = '-'; dayRec[k.fNilai] = '-'; dayRec[k.m] = '-'; dayRec[k.mq] = '-'; dayRec[k.mb] = '-'; dayRec[k.c] = '-'; dayRec[k.cT] = '-'; dayRec[k.cF] = '-';
             newRecords[dateStr] = dayRec;
             return { ...student, records: newRecords };
           });
@@ -1248,14 +1383,18 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       message: `Yakin ingin menyalin riwayat terakhir untuk semua siswa yang BELUM DIISI pada tanggal ${formatShortDate(new Date(targetDate))}? (Siswa yang sudah diisi tidak akan tertimpa)`,
       onConfirm: async () => {
         setIsLoading(true);
-        const k = tab === 'lesson_plan'
-          ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan', cT: 'catatanTahsin', cF: 'catatanTahfidz' }
-          : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan', cT: 'jurnalCatatanTahsin', cF: 'jurnalCatatanTahfidz' };
+        const k = getRecordKeys(tab);
 
         try {
           const updates = targetStudents.reduce((acc, student) => {
             const ghost = ghostData[student.id];
             if (!ghost) return acc;
+            const ghostWithMurojaah = {
+              ...ghost,
+              [k.mq]: getMurojaahQoribValue(ghost, k),
+              [k.mb]: getMurojaahBaidValue(ghost, k),
+              [k.m]: getMurojaahQoribValue(ghost, k)
+            };
 
             const newRecords = { ...student.records };
             const currentRec = newRecords[targetDate] || {};
@@ -1270,8 +1409,8 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
               if (keyName === k.tNilai || keyName === k.tsNilai || keyName === k.fNilai) return;
 
               if (!finalRec[keyName] || finalRec[keyName] === '-') {
-                if (ghost[keyName] && ghost[keyName] !== '-') {
-                  finalRec[keyName] = ghost[keyName];
+                if (ghostWithMurojaah[keyName] && ghostWithMurojaah[keyName] !== '-') {
+                  finalRec[keyName] = ghostWithMurojaah[keyName];
                   hasChanges = true;
                 }
               }
@@ -1376,11 +1515,13 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
         ? {
             ...student,
             halaqoh: target,
-            previous_halaqoh: '',
-            previous_teacher: '',
-            previous_halaqoh_released_at: null,
-            previous_tahsin_summary: '',
-            previous_tahfidz_summary: ''
+            ...(supportsStudentHistoryColumns ? {
+              previous_halaqoh: '',
+              previous_teacher: '',
+              previous_halaqoh_released_at: null,
+              previous_tahsin_summary: '',
+              previous_tahfidz_summary: ''
+            } : {})
           }
         : {
             ...student,
@@ -1417,6 +1558,77 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       console.error(error);
       setStudents(previousStudents);
       showToast('Gagal memindahkan siswa.');
+    }
+  };
+
+  const handleSetStudentStatus = async (studentIds, status, reason = '') => {
+    if (!isSuperAdmin) {
+      showToast('Hanya Super Admin yang dapat mengubah status siswa.');
+      return;
+    }
+
+    const ids = Array.from(new Set((studentIds || []).filter(Boolean)));
+    if (ids.length === 0) return;
+
+    const nextStatus = String(status || 'active').trim().toLowerCase();
+    const isReactivating = nextStatus === 'active';
+    const targetStudents = students.filter(student => ids.includes(student.id));
+    if (targetStudents.length === 0) return;
+
+    const previousStudents = students;
+    const changedAt = new Date().toISOString();
+    const changedStudentMap = new Map(targetStudents.map(student => {
+      if (isReactivating) {
+        return [student.id, {
+          ...student,
+          student_status: 'active',
+          inactive_at: null,
+          inactive_reason: null,
+          graduated_at: null,
+          graduation_year: null
+        }];
+      }
+
+      const shadow = hasProgressValue(student.halaqoh) ? buildReleasedStudentShadow(student, changedAt) : {};
+      return [student.id, {
+        ...student,
+        ...shadow,
+        halaqoh: '',
+        student_status: nextStatus,
+        inactive_at: changedAt,
+        inactive_reason: reason || (nextStatus === 'pindah' ? 'Pindah' : nextStatus === 'selesai' ? 'Selesai belajar' : 'Nonaktif')
+      }];
+    }));
+
+    setStudents(prev => prev.map(student => changedStudentMap.get(student.id) || student));
+
+    try {
+      const updates = Array.from(changedStudentMap.values());
+      const CHUNK_SIZE = 250;
+      for (let i = 0; i < updates.length; i += CHUNK_SIZE) {
+        const chunk = updates.slice(i, i + CHUNK_SIZE);
+        const { error } = await supabase.from('students').upsert(chunk);
+        if (error) throw error;
+      }
+
+      try {
+        await supabase.from('activity_logs').insert([{
+          guru_name: currentUser?.name || 'System / Unknown',
+          action: isReactivating ? 'Mengaktifkan Siswa' : 'Menonaktifkan Siswa',
+          details: `Status: ${isReactivating ? 'active' : nextStatus}\nSiswa (${targetStudents.length}): ${targetStudents.map(s => s.name).join(', ')}`
+        }]);
+      } catch (logErr) {
+        console.error('Gagal mencatat log status siswa:', logErr);
+      }
+
+      showToast(isReactivating
+        ? `${targetStudents.length} siswa diaktifkan kembali.`
+        : `${targetStudents.length} siswa ditandai ${nextStatus}.`
+      );
+    } catch (error) {
+      console.error(error);
+      setStudents(previousStudents);
+      showToast('Gagal mengubah status siswa. Pastikan kolom status nonaktif sudah ditambahkan di Supabase.');
     }
   };
 
@@ -1642,11 +1854,22 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
     } else {
       setConfirmDialog({
         isOpen: true,
-        message: `Yakin ingin mengeluarkan "${student.name}" dari halaqoh ${activeHalaqoh}?`,
+        message: `Yakin ingin mengembalikan "${student.name}" ke Bank Data Siswa?\n\nSiswa akan dilepas dari halaqoh ${student.halaqoh || activeHalaqoh || 'saat ini'}, tetapi data profil, riwayat, dan progresnya tetap tersimpan.`,
         onConfirm: () => {
-          supabase.from('students').update({ halaqoh: '' }).eq('id', student.id).then(() => {
-            setStudents(prev => prev.map(s => s.id === student.id ? { ...s, halaqoh: '' } : s));
-            showToast('Siswa berhasil dikeluarkan.');
+          const releasedAt = new Date().toISOString();
+          const updates = {
+            ...(hasProgressValue(student.halaqoh) ? buildReleasedStudentShadow(student, releasedAt) : {}),
+            halaqoh: ''
+          };
+          supabase.from('students').update(updates).eq('id', student.id).then(({ error }) => {
+            if (error) {
+              console.error(error);
+              showToast('Gagal mengembalikan siswa ke Bank Data.');
+              return;
+            }
+            setStudents(prev => prev.map(s => s.id === student.id ? { ...s, ...updates } : s));
+            setIsEditStudentModalOpen(false);
+            showToast('Siswa dikembalikan ke Bank Data.');
           });
         }
       });
@@ -1680,13 +1903,33 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
     } else {
       setConfirmDialog({
         isOpen: true,
-        message: `Yakin ingin mengeluarkan ${studentIds.length} siswa dari halaqoh Anda?`,
+        message: `Yakin ingin mengembalikan ${studentIds.length} siswa ke Bank Data Siswa?\n\nSiswa akan dilepas dari halaqoh Anda, tetapi data profil, riwayat, dan progresnya tetap tersimpan.`,
         onConfirm: () => {
-          supabase.from('students').update({ halaqoh: '' }).in('id', studentIds).then(() => {
-            setStudents(prev => prev.map(s => studentIds.includes(s.id) ? { ...s, halaqoh: '' } : s));
-            showToast(`${studentIds.length} siswa dikeluarkan.`);
-            if (onSuccess) onSuccess();
-          });
+          const releasedAt = new Date().toISOString();
+          const targetStudents = students.filter(s => studentIds.includes(s.id));
+          const updatedStudents = targetStudents.map(student => ({
+            ...student,
+            ...(hasProgressValue(student.halaqoh) ? buildReleasedStudentShadow(student, releasedAt) : {}),
+            halaqoh: ''
+          }));
+          const run = async () => {
+            try {
+              const CHUNK_SIZE = 250;
+              for (let i = 0; i < updatedStudents.length; i += CHUNK_SIZE) {
+                const chunk = updatedStudents.slice(i, i + CHUNK_SIZE);
+                const { error } = await supabase.from('students').upsert(chunk);
+                if (error) throw error;
+              }
+              const updateMap = new Map(updatedStudents.map(student => [student.id, student]));
+              setStudents(prev => prev.map(s => updateMap.get(s.id) || s));
+              showToast(`${targetStudents.length} siswa dikembalikan ke Bank Data.`);
+              if (onSuccess) onSuccess();
+            } catch (error) {
+              console.error(error);
+              showToast('Gagal mengembalikan siswa ke Bank Data.');
+            }
+          };
+          run();
         }
       });
     }
@@ -2040,7 +2283,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
 
   const handleOpenModal = (student = null, mode = 'full_bulk') => {
     setActiveDropdown(null); setModalMode(mode);
-    const k = homeTab === 'lesson_plan' ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan', cT: 'catatanTahsin', cF: 'catatanTahfidz' } : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan', cT: 'jurnalCatatanTahsin', cF: 'jurnalCatatanTahfidz' };
+    const k = getRecordKeys(homeTab);
 
     let initialDataForModal = {};
     let studentToProcess = student; // The student whose data we are primarily interested in
@@ -2055,7 +2298,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       currentWeekStart.setDate(diffToMonday);
       currentWeekStart.setHours(0, 0, 0, 0);
 
-      const jurnalKeys = { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan', cT: 'jurnalCatatanTahsin', cF: 'jurnalCatatanTahfidz' };
+      const jurnalKeys = getRecordKeys('jurnal');
 
       const recordedDates = Object.keys(s.records || {})
         .map(d => new Date(d))
@@ -2072,6 +2315,8 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
         [k.af]: '-',
         [k.fNilai]: '-',
         [k.m]: '-',
+        [k.mq]: '-',
+        [k.mb]: '-',
         [k.c]: '-',
         [k.cT]: '-',
         [k.cF]: '-',
@@ -2079,7 +2324,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       };
       const hasTahsin = () => hasValue(combinedRecord[k.t]) || hasValue(combinedRecord[k.h]);
       const hasTahfidz = () => hasValue(combinedRecord[k.f]) || hasValue(combinedRecord[k.af]);
-      const hasMurojaah = () => hasValue(combinedRecord[k.m]);
+      const hasMurojaah = () => hasMurojaahRecordValue(combinedRecord, k);
       const hasCatatanTfTs = () => hasValue(combinedRecord[k.cT]) || hasValue(combinedRecord[k.cF]);
 
       for (const d of recordedDates) {
@@ -2108,8 +2353,10 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
             combinedRecord.__dates.tahfidz = dStr;
           }
 
-          if (!hasMurojaah() && hasValue(rec[searchKeys.m])) {
-            combinedRecord[k.m] = rec[searchKeys.m] || '-';
+          if (!hasMurojaah() && hasMurojaahRecordValue(rec, searchKeys)) {
+            combinedRecord[k.mq] = getMurojaahQoribValue(rec, searchKeys);
+            combinedRecord[k.mb] = getMurojaahBaidValue(rec, searchKeys);
+            combinedRecord[k.m] = combinedRecord[k.mq];
             combinedRecord.__dates.murojaah = dStr;
           }
 
@@ -2166,10 +2413,16 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       // Ambil data bayangan (ghost data) sebagai saran input jika field masih kosong
       const ghostRecord = window._lastDayData ? window._lastDayData[studentToProcess.id] : null;
       if (ghostRecord) {
+        const normalizedGhostRecord = {
+          ...ghostRecord,
+          [k.mq]: getMurojaahQoribValue(ghostRecord, k),
+          [k.mb]: getMurojaahBaidValue(ghostRecord, k),
+          [k.m]: getMurojaahQoribValue(ghostRecord, k)
+        };
         Object.values(k).forEach(keyName => {
           if (!initialDataForModal[keyName] || initialDataForModal[keyName] === '-') {
-            if (ghostRecord[keyName] && ghostRecord[keyName] !== '-') {
-              initialDataForModal[keyName] = ghostRecord[keyName];
+            if (normalizedGhostRecord[keyName] && normalizedGhostRecord[keyName] !== '-') {
+              initialDataForModal[keyName] = normalizedGhostRecord[keyName];
             }
           }
         });
@@ -2196,6 +2449,9 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
           }
         });
       }
+      if (!hasProgressValue(cleanData[k.mq])) cleanData[k.mq] = cleanData[k.m] || '-';
+      if (!hasProgressValue(cleanData[k.m])) cleanData[k.m] = cleanData[k.mq] || '-';
+      if (!hasProgressValue(cleanData[k.mb])) cleanData[k.mb] = '-';
 
       let tKategori = '', tSurat = cleanData[k.t] || '', tHalaman = [], tBaris = [], tMateri = [], tHalamanTg = [], rawTahsinAyat = cleanData[k.h] || '', tahsinAyatOnly = rawTahsinAyat;
       if (tSurat === '-') tSurat = '';
@@ -2257,7 +2513,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       }
 
       setLessonPlans([{
-        id: Date.now(), tanggal: activeDate, murojaah: parseMurojaahList(cleanData[k.m]), tahsinKategori: tKategori, tahsinSuratList: parseSuratAyatList(tSurat, tahsinAyatOnly, cleanData[k.tsNilai]), tahsinHalaman: tHalaman, tahsinBaris: tBaris, tahsinMateri: tMateri, tahsinHalamanTg: tHalamanTg, tahfidzSuratList: parseSuratAyatList(cleanData[k.f], cleanData[k.af], cleanData[k.fNilai]), lainLain: cleanData[k.c] && cleanData[k.c] !== '-' ? cleanData[k.c] : '', catatanTahsin: cleanData[k.cT] && cleanData[k.cT] !== '-' ? cleanData[k.cT] : '', catatanTahfidz: cleanData[k.cF] && cleanData[k.cF] !== '-' ? cleanData[k.cF] : '', tahsinNilai: cleanData[k.tNilai] && cleanData[k.tNilai] !== '-' ? cleanData[k.tNilai] : ''
+        id: Date.now(), tanggal: activeDate, murojaahQorib: parseMurojaahList(cleanData[k.mq]), murojaahBaid: parseMurojaahList(cleanData[k.mb]), tahsinKategori: tKategori, tahsinSuratList: parseSuratAyatList(tSurat, tahsinAyatOnly, cleanData[k.tsNilai]), tahsinHalaman: tHalaman, tahsinBaris: tBaris, tahsinMateri: tMateri, tahsinHalamanTg: tHalamanTg, tahfidzSuratList: parseSuratAyatList(cleanData[k.f], cleanData[k.af], cleanData[k.fNilai]), lainLain: cleanData[k.c] && cleanData[k.c] !== '-' ? cleanData[k.c] : '', catatanTahsin: cleanData[k.cT] && cleanData[k.cT] !== '-' ? cleanData[k.cT] : '', catatanTahfidz: cleanData[k.cF] && cleanData[k.cF] !== '-' ? cleanData[k.cF] : '', tahsinNilai: cleanData[k.tNilai] && cleanData[k.tNilai] !== '-' ? cleanData[k.tNilai] : ''
       }]);
       setIsModalOpen(true); // Open modal only if there's data or it's a new bulk
     } else {
@@ -2320,6 +2576,43 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       return p;
     }));
   };
+
+  const handleClearModalDraft = (section = 'all') => {
+    const clearTahsin = section === 'all' || section === 'tahsin';
+    const clearTahfidz = section === 'all' || section === 'tahfidz';
+    const clearMurojaah = section === 'all' || section === 'murojaah';
+    const clearCatatan = section === 'all' || section === 'catatan';
+
+    setActiveDropdown(null);
+    setLessonPlans(plans => plans.map(plan => ({
+      ...plan,
+      ...(clearTahsin ? {
+        tahsinKategori: '',
+        tahsinSuratList: [emptySurat()],
+        tahsinHalaman: [],
+        tahsinBaris: [],
+        tahsinMateri: [],
+        tahsinHalamanTg: [],
+        catatanTahsin: '',
+        tahsinNilai: ''
+      } : {}),
+      ...(clearTahfidz ? {
+        tahfidzSuratList: [emptySurat()],
+        catatanTahfidz: ''
+      } : {}),
+      ...(clearMurojaah ? {
+        murojaahQorib: [emptySurat()],
+        murojaahBaid: [emptySurat()]
+      } : {}),
+      ...(clearCatatan ? {
+        lainLain: ''
+      } : {})
+    })));
+
+    const labels = { all: 'semua data', tahsin: 'data tahsin', tahfidz: 'data tahfidz', murojaah: 'data murojaah', catatan: 'catatan' };
+    showToast(`Draft ${labels[section] || 'data'} dibersihkan.`);
+  };
+
   const handleToggleArray = (planId, field, value) => {
     setLessonPlans(plans => plans.map(p => {
       if (p.id === planId) {
@@ -2349,13 +2642,13 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       return p;
     }));
   };
-  const handleAddSurat = (planId, listName) => setLessonPlans(plans => plans.map(p => p.id === planId ? { ...p, [listName]: [...p[listName], emptySurat()] } : p));
-  const handleRemoveSurat = (planId, listName, suratId) => setLessonPlans(plans => plans.map(p => p.id === planId ? { ...p, [listName]: p[listName].filter(m => m.id !== suratId) } : p));
+  const handleAddSurat = (planId, listName) => setLessonPlans(plans => plans.map(p => p.id === planId ? { ...p, [listName]: [...(p[listName] || []), emptySurat()] } : p));
+  const handleRemoveSurat = (planId, listName, suratId) => setLessonPlans(plans => plans.map(p => p.id === planId ? { ...p, [listName]: (p[listName] || []).filter(m => m.id !== suratId) } : p));
   const handleSuratChange = (planId, listName, suratId, field, value) => {
     setLessonPlans(plans => plans.map(p => {
       if (p.id !== planId) return p;
 
-      const newList = p[listName].map(m => {
+      const newList = (p[listName] || []).map(m => {
         if (m.id !== suratId) return m;
 
         const updated = { ...m, [field]: value };
@@ -2383,7 +2676,9 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       return;
     }
     const dateStr = lessonPlans[0].tanggal;
-    const k = homeTab === 'lesson_plan' ? { c: 'catatan', cT: 'catatanTahsin', cF: 'catatanTahfidz' } : { c: 'jurnalCatatan', cT: 'jurnalCatatanTahsin', cF: 'jurnalCatatanTahfidz', t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah' };
+    const k = homeTab === 'lesson_plan'
+      ? { c: 'catatan', cT: 'catatanTahsin', cF: 'catatanTahfidz' }
+      : getRecordKeys(homeTab);
 
     try {
       const updates = students.reduce((acc, student) => {
@@ -2421,7 +2716,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       const v = list.filter(i => i.surat || i.nilai);
       return { surat: v.map(i => i.surat || '-').join(', ') || '-', ayat: v.map(i => (i.surat && i.surat !== '-') ? getAyatRangeOrDefault(i.surat, i.ayatStart, i.ayatEnd) : '-').join(', ') || '-', nilai: v.map(i => i.nilai || '-').join(', ') || '-' };
     };
-    const mS = formatS(plan.murojaah), tS = formatS(plan.tahsinSuratList), fS = formatS(plan.tahfidzSuratList);
+    const tS = formatS(plan.tahsinSuratList), fS = formatS(plan.tahfidzSuratList);
     let tahsinKat = plan.tahsinKategori, halAyat = tS.ayat;
 
     if (['Jilid 1', 'Jilid 2', 'Jilid 3', 'Jilid 4', 'Jilid 5', 'Jilid 6'].includes(tahsinKat)) {
@@ -2473,11 +2768,14 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       const hStr = sortedHal.length > 0 ? 'Hal. ' + sortedHal.join(', ') : ''; const mStr = (plan.tahsinMateri || []).length > 0 ? plan.tahsinMateri.join(' | ') : ''; const hm = [hStr, mStr].filter(Boolean).join(' - '); halAyat = (hm && tS.ayat !== '-') ? hm + ' / ' + tS.ayat : hm || tS.ayat; tahsinKat = tS.surat !== '-' ? tahsinKat + ', ' + tS.surat : tahsinKat;
     } else if (tahsinKat === 'Al-Qur\'an') { tahsinKat = tS.surat || '-'; }
 
-    const modalMurojaah = plan.murojaah.filter(m => m.surat).map(m => { const ayat = getAyatRangeOrDefault(m.surat, m.ayatStart, m.ayatEnd); return ayat === 'Semua Ayat' ? m.surat : m.surat + ' ' + ayat; }).join(', ') || '-';
+    const formatMurojaahList = (list) => (list || []).filter(m => m.surat).map(m => { const ayat = getAyatRangeOrDefault(m.surat, m.ayatStart, m.ayatEnd); return ayat === 'Semua Ayat' ? m.surat : m.surat + ' ' + ayat; }).join(', ') || '-';
+    const modalMurojaahQorib = formatMurojaahList(plan.murojaahQorib || plan.murojaah);
+    const modalMurojaahBaid = formatMurojaahList(plan.murojaahBaid);
+    const hasModalMurojaah = modalMurojaahQorib !== '-' || modalMurojaahBaid !== '-';
     const modalTahsin = tahsinKat || '-'; const modalHalAyatTahsin = halAyat || '-'; const modalTahfidz = fS.surat || '-'; const modalAyatTahfidz = fS.ayat || '-'; const modalCatatan = plan.lainLain || '-'; const modalCatatanTahsin = plan.catatanTahsin || '-'; const modalCatatanTahfidz = plan.catatanTahfidz || '-';
     const modalTahsinNilai = plan.tahsinNilai || '-'; const modalTahsinSuratNilai = tS.nilai; const modalTahfidzNilai = fS.nilai;
     const isCategoryEdit = ['tahsin', 'tahfidz', 'murojaah', 'catatan'].includes(modalMode);
-    const k = homeTab === 'lesson_plan' ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan', cT: 'catatanTahsin', cF: 'catatanTahfidz' } : { t: 'jurnalTahsin', h: 'jurnalHalAyatTahsin', tNilai: 'jurnalTahsinNilai', tsNilai: 'jurnalTahsinSuratNilai', f: 'jurnalTahfidz', af: 'jurnalAyatTahfidz', fNilai: 'jurnalTahfidzNilai', m: 'jurnalMurojaah', c: 'jurnalCatatan', cT: 'jurnalCatatanTahsin', cF: 'jurnalCatatanTahfidz' };
+    const k = getRecordKeys(homeTab);
     const targetStudentIds = shouldRestrictApplyToOthers(modalCatatan) ? [editingId] : selectedStudents;
 
     try {
@@ -2516,7 +2814,11 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
 
           const doMurojaah = () => {
             if (!isOtherStudent || applyOptions.surat) {
-              if (isCategoryEdit || !isOtherStudent || modalMurojaah !== '-') finalRecord[k.m] = modalMurojaah;
+              if (isCategoryEdit || !isOtherStudent || hasModalMurojaah) {
+                finalRecord[k.mq] = modalMurojaahQorib;
+                finalRecord[k.mb] = modalMurojaahBaid;
+                finalRecord[k.m] = modalMurojaahQorib;
+              }
             }
           };
 
@@ -2538,7 +2840,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
               }
             }
             if (modalMode === 'murojaah' || modalMode === 'full_bulk') {
-              if (modalMode === 'murojaah' || modalMurojaah !== '-') {
+              if (modalMode === 'murojaah' || hasModalMurojaah) {
                 doMurojaah();
               }
             }
@@ -2579,7 +2881,8 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
 
         if (modalTahsin !== '-' || modalHalAyatTahsin !== '-' || modalTahsinNilai !== '-' || modalTahsinSuratNilai !== '-') detailMsg += `Tahsin: ${modalTahsin} ${modalHalAyatTahsin !== '-' ? '- ' + modalHalAyatTahsin : ''} (Nilai: ${modalTahsinSuratNilai !== '-' ? modalTahsinSuratNilai : modalTahsinNilai})\n`;
         if (modalTahfidz !== '-' || modalAyatTahfidz !== '-' || modalTahfidzNilai !== '-') detailMsg += `Tahfidz: ${modalTahfidz} ${modalAyatTahfidz !== '-' ? '- ' + modalAyatTahfidz : ''} (Nilai: ${modalTahfidzNilai})\n`;
-        if (modalMurojaah !== '-') detailMsg += `Murojaah: ${modalMurojaah}\n`;
+        if (modalMurojaahQorib !== '-') detailMsg += `Murojaah Qorib: ${modalMurojaahQorib}\n`;
+        if (modalMurojaahBaid !== '-') detailMsg += `Murojaah Baid: ${modalMurojaahBaid}\n`;
         if (modalCatatan !== '-') detailMsg += `Catatan Umum: ${modalCatatan}\n`;
         if (modalCatatanTahsin !== '-') detailMsg += `Catatan Tahsin: ${modalCatatanTahsin}\n`;
         if (modalCatatanTahfidz !== '-') detailMsg += `Catatan Tahfidz: ${modalCatatanTahfidz}\n`;
@@ -2651,17 +2954,29 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
           // Gunakan data yang baru saja disimpan pada hari sebelumnya sebagai bayangan (ghost data)
           const todayRecord = studentToProcess.records[plan.tanggal];
           const globalGhost = window._lastDayData ? window._lastDayData[studentToProcess.id] : null;
+          const normalizedTodayRecord = todayRecord ? {
+            ...todayRecord,
+            [k.mq]: getMurojaahQoribValue(todayRecord, k),
+            [k.mb]: getMurojaahBaidValue(todayRecord, k),
+            [k.m]: getMurojaahQoribValue(todayRecord, k)
+          } : null;
+          const normalizedGlobalGhost = globalGhost ? {
+            ...globalGhost,
+            [k.mq]: getMurojaahQoribValue(globalGhost, k),
+            [k.mb]: getMurojaahBaidValue(globalGhost, k),
+            [k.m]: getMurojaahQoribValue(globalGhost, k)
+          } : null;
 
           const ghostRecord = {};
-          if (todayRecord || globalGhost) {
+          if (normalizedTodayRecord || normalizedGlobalGhost) {
             Object.values(k).forEach(keyName => {
-              const valToday = todayRecord?.[keyName];
+              const valToday = normalizedTodayRecord?.[keyName];
 
               let isCategoryEdited = false;
               if (modalMode === 'full_bulk' || modalMode === 'full_edit') isCategoryEdited = true;
               else if (modalMode === 'tahsin' && (keyName === k.t || keyName === k.h || keyName === k.tNilai || keyName === k.tsNilai || keyName === k.cT)) isCategoryEdited = true;
               else if (modalMode === 'tahfidz' && (keyName === k.f || keyName === k.af || keyName === k.fNilai || keyName === k.cF)) isCategoryEdited = true;
-              else if (modalMode === 'murojaah' && keyName === k.m) isCategoryEdited = true;
+              else if (modalMode === 'murojaah' && (keyName === k.m || keyName === k.mq || keyName === k.mb)) isCategoryEdited = true;
               else if (modalMode === 'catatan' && keyName === k.c) isCategoryEdited = true;
 
               if (valToday && valToday !== '-') {
@@ -2669,8 +2984,8 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
               } else if (isCategoryEdited) {
                 // Jika dikosongkan secara eksplisit hari ini, jangan restore dari bayangan lama
                 ghostRecord[keyName] = '-';
-              } else if (globalGhost && globalGhost[keyName] && globalGhost[keyName] !== '-') {
-                ghostRecord[keyName] = globalGhost[keyName];
+              } else if (normalizedGlobalGhost && normalizedGlobalGhost[keyName] && normalizedGlobalGhost[keyName] !== '-') {
+                ghostRecord[keyName] = normalizedGlobalGhost[keyName];
               }
             });
           }
@@ -2697,6 +3012,9 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
               cleanData[keyName] = initialDataForModal[keyName];
             }
           });
+          if (!hasProgressValue(cleanData[k.mq])) cleanData[k.mq] = cleanData[k.m] || '-';
+          if (!hasProgressValue(cleanData[k.m])) cleanData[k.m] = cleanData[k.mq] || '-';
+          if (!hasProgressValue(cleanData[k.mb])) cleanData[k.mb] = '-';
 
           let tKategori = '', tSurat = cleanData[k.t] || '', tHalaman = [], tBaris = [], tMateri = [], tHalamanTg = [], rawTahsinAyat = cleanData[k.h] || '', tahsinAyatOnly = rawTahsinAyat;
           if (tSurat === '-') tSurat = '';
@@ -2753,7 +3071,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
           }
 
           setLessonPlans([{
-            id: Date.now(), tanggal: nextDateStr, murojaah: parseMurojaahList(cleanData[k.m]), tahsinKategori: tKategori, tahsinSuratList: parseSuratAyatList(tSurat, tahsinAyatOnly, cleanData[k.tsNilai]), tahsinHalaman: tHalaman, tahsinBaris: tBaris, tahsinMateri: tMateri, tahsinHalamanTg: tHalamanTg, tahfidzSuratList: parseSuratAyatList(cleanData[k.f], cleanData[k.af], cleanData[k.fNilai]), lainLain: cleanData[k.c] && cleanData[k.c] !== '-' ? cleanData[k.c] : '', catatanTahsin: cleanData[k.cT] && cleanData[k.cT] !== '-' ? cleanData[k.cT] : '', catatanTahfidz: cleanData[k.cF] && cleanData[k.cF] !== '-' ? cleanData[k.cF] : '', tahsinNilai: cleanData[k.tNilai] && cleanData[k.tNilai] !== '-' ? cleanData[k.tNilai] : ''
+            id: Date.now(), tanggal: nextDateStr, murojaahQorib: parseMurojaahList(cleanData[k.mq]), murojaahBaid: parseMurojaahList(cleanData[k.mb]), tahsinKategori: tKategori, tahsinSuratList: parseSuratAyatList(tSurat, tahsinAyatOnly, cleanData[k.tsNilai]), tahsinHalaman: tHalaman, tahsinBaris: tBaris, tahsinMateri: tMateri, tahsinHalamanTg: tHalamanTg, tahfidzSuratList: parseSuratAyatList(cleanData[k.f], cleanData[k.af], cleanData[k.fNilai]), lainLain: cleanData[k.c] && cleanData[k.c] !== '-' ? cleanData[k.c] : '', catatanTahsin: cleanData[k.cT] && cleanData[k.cT] !== '-' ? cleanData[k.cT] : '', catatanTahfidz: cleanData[k.cF] && cleanData[k.cF] !== '-' ? cleanData[k.cF] : '', tahsinNilai: cleanData[k.tNilai] && cleanData[k.tNilai] !== '-' ? cleanData[k.tNilai] : ''
           }]);
         }
       } else {
@@ -2842,7 +3160,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       <MobileMenu mobileMenuOpen={mobileMenuOpen} setMobileMenuOpen={setMobileMenuOpen} currentUser={currentUserProfile} theme={theme} setTheme={setTheme} currentView={currentView} setCurrentView={setCurrentView} isSuperAdmin={isSuperAdmin} onLogout={onLogout} teacherPhotos={teacherPhotos} handleTeacherPhotoUpload={handleTeacherPhotoUpload} requestDeleteTeacherPhoto={requestDeleteTeacherPhoto} />
 
       {/* Area Filter Halaqoh & Guru */}
-      <FilterBar currentView={currentView} isSuperAdmin={isSuperAdmin} activeGuru={activeGuru} setActiveGuru={handleGuruChange} setActiveHalaqoh={setActiveHalaqoh} guruList={guruList} currentUser={currentUserProfile} showUnfilledOnly={showUnfilledOnly} setShowUnfilledOnly={setShowUnfilledOnly} handleCopyPortalLink={handleCopyPortalLink} activeHalaqoh={activeHalaqoh} guruHalaqohData={guruHalaqohData} students={students} teacherPhotos={teacherPhotos} />
+      <FilterBar currentView={currentView} isSuperAdmin={isSuperAdmin} activeGuru={activeGuru} activeGuruDisplayName={activeGuruDisplayName} getTeacherDisplayName={getTeacherDisplayName} setActiveGuru={handleGuruChange} setActiveHalaqoh={setActiveHalaqoh} guruList={activeGuruList} currentUser={currentUserProfile} showUnfilledOnly={showUnfilledOnly} setShowUnfilledOnly={setShowUnfilledOnly} activeHalaqoh={activeHalaqoh} guruHalaqohData={guruHalaqohData} students={students} teacherPhotos={teacherPhotos} />
 
       {/* Main Content Area */}
       <main className="flex-1 w-full max-w-7xl mx-auto overflow-hidden relative flex flex-col min-h-0 transition-colors duration-500 print:h-auto print:overflow-visible print:block">
@@ -2851,6 +3169,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
             <HomeView
               activeHalaqoh={activeHalaqoh}
               activeGuru={activeGuru}
+              activeGuruDisplayName={activeGuruDisplayName}
               homeTab={homeTab}
               setHomeTab={handleTabChange}
               weekStart={weekStart}
@@ -2923,8 +3242,13 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
               students={students}
               guruHalaqohData={guruHalaqohData}
               guruList={guruList}
+              activeGuruList={activeGuruList}
+              inactiveGuruList={inactiveGuruList}
+              handleDeactivateGuru={handleDeactivateGuru}
+              handleReactivateGuru={handleReactivateGuru}
               kelasList={kelasList}
               onMoveStudents={handleMoveStudentsToHalaqoh}
+              onSetStudentStatus={handleSetStudentStatus}
               onStartNewSchoolYear={requestStartNewSchoolYear}
               appUsers={appUsers}
               handleApproveUser={handleApproveUser}
@@ -2954,6 +3278,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
               handleLinkAccount={handleLinkAccount}
               showToast={showToast}
               currentUser={currentUserProfile}
+              getTeacherDisplayName={getTeacherDisplayName}
             />
           )}
           {currentView === 'laporan' && (
@@ -2961,6 +3286,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
               <ReportView
                 activeHalaqoh={activeHalaqoh}
                 activeGuru={activeGuru}
+                activeGuruDisplayName={activeGuruDisplayName}
                 activeDate={activeDate}
                 setActiveDate={setActiveDate}
                 weekDates={weekDates}
@@ -2968,6 +3294,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
                 filteredStudents={filteredStudents}
                 institutionLogo={institutionLogo}
                 guruHalaqohData={guruHalaqohData}
+                getTeacherDisplayName={getTeacherDisplayName}
               />
             </div>
           )}
@@ -2977,6 +3304,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
               currentUser={currentUserProfile}
               institutionLogo={institutionLogo}
               guruHalaqohData={guruHalaqohData}
+              getTeacherDisplayName={getTeacherDisplayName}
             />
           )}
           {currentView === 'pengaturan' && (
@@ -2987,7 +3315,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
               targetReguler={targetReguler} setTargetReguler={setTargetReguler} targetAlQuran={targetAlQuran} setTargetAlQuran={setTargetAlQuran}
               kkmScore={kkmScore} setKkmScore={setKkmScore}
               kelasList={kelasList} newKelasName={newKelasName} setNewKelasName={setNewKelasName} handleAddKelas={handleAddKelas} handleDeleteKelas={handleDeleteKelas} handleReorderKelas={handleReorderKelas}
-              guruList={isSuperAdmin ? guruList : [currentUserProfile.name]}
+              guruList={isSuperAdmin ? activeGuruList : [currentUserProfile.name]}
               newHalaqohName={newHalaqohName} setNewHalaqohName={setNewHalaqohName} newHalaqohSesi={newHalaqohSesi} setNewHalaqohSesi={setNewHalaqohSesi} handleAddHalaqoh={handleAddHalaqoh}
               currentUser={currentUserProfile} guruHalaqohData={guruHalaqohData}
               teacherPhotos={teacherPhotos} handleTeacherPhotoUpload={handleTeacherPhotoUpload} requestDeleteTeacherPhoto={requestDeleteTeacherPhoto}
@@ -3048,6 +3376,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
         kelasList={kelasList}
         handleUpdateStudent={handleUpdateStudent}
         requestDeleteStudentPhoto={() => requestDeleteStudentPhoto(editStudentData)}
+        requestDeleteStudent={requestDeleteStudent}
         guruHalaqohData={getFilteredHalaqohDataForEdit()}
         isSuperAdmin={isSuperAdmin}
         currentUser={currentUserProfile}
@@ -3057,6 +3386,7 @@ const MainApp = ({ currentUser, onLogout, theme, setTheme }) => {
       <JurnalModal
         isOpen={isModalOpen} onClose={handleCloseModal} modalMode={modalMode} getModalTitle={getModalTitle} lessonPlans={lessonPlans} handlePlanChange={handlePlanChange} handleToggleArray={handleToggleArray} handleAddSurat={handleAddSurat} handleRemoveSurat={handleRemoveSurat} handleSuratChange={handleSuratChange} activeDropdown={activeDropdown} setActiveDropdown={setActiveDropdown} tahsinCategories={tahsinCategories} ghoribList={ghoribList} tajwidList={tajwidList} surahList={surahList} homeTab={homeTab} handleSave={handleSave} editingId={editingId} selectedStudents={selectedStudents} filteredStudents={studentsInHalaqoh} toggleStudent={toggleStudent}
         handleMarkAbsent={handleMarkAbsent}
+        handleClearModalDraft={handleClearModalDraft}
       />
 
       {/* MODAL CROP GAMBAR */}

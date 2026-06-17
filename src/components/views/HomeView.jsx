@@ -95,6 +95,8 @@ const jurnalKeys = {
   af: 'jurnalAyatTahfidz',
   fNilai: 'jurnalTahfidzNilai',
   m: 'jurnalMurojaah',
+  mq: 'jurnalMurojaahQorib',
+  mb: 'jurnalMurojaahBaid',
   c: 'jurnalCatatan',
   cT: 'jurnalCatatanTahsin',
   cF: 'jurnalCatatanTahfidz'
@@ -148,13 +150,18 @@ const hasMeaningfulValue = (value) => {
   return normalized !== '' && normalized !== '-';
 };
 
+const getCleanValue = (value) => hasMeaningfulValue(value) ? String(value).trim() : '-';
+const getMurojaahQoribValue = (record, keys) => hasMeaningfulValue(record?.[keys.mq]) ? String(record[keys.mq]).trim() : getCleanValue(record?.[keys.m]);
+const getMurojaahBaidValue = (record, keys) => getCleanValue(record?.[keys.mb]);
+const hasMurojaahValue = (record, keys) => hasMeaningfulValue(getMurojaahQoribValue(record, keys)) || hasMeaningfulValue(getMurojaahBaidValue(record, keys));
+
 const getGhostDateLabel = (record, group) => {
   const date = record?.__dates?.[group] || record?.date;
   return date ? formatShortDate(new Date(date)) : '-';
 };
 
 const HomeView = ({
-  activeHalaqoh, activeGuru, homeTab, setHomeTab, weekStart, changeWeek,
+  activeHalaqoh, activeGuru, activeGuruDisplayName, homeTab, setHomeTab, weekStart, changeWeek,
   activeDate, setActiveDate, weekDates, filteredStudents, handleOpenModal,
   requestClearRecord, requestClearAllRecordForDay, handleAutoFillFromGhost, setSharingStudent, handleRemoveData, getStatusColor,
   institutionLogo,
@@ -167,6 +174,7 @@ const HomeView = ({
   targetAlQuran,
   showToast
 }) => {
+  const teacherDisplayName = activeGuruDisplayName || activeGuru || '-';
   // State untuk fitur Share Laporan Individu
   const [shareStudent, setShareStudent] = useState(null);
   const [activeStudentId, setActiveStudentId] = useState(null);
@@ -772,20 +780,30 @@ const HomeView = ({
   };
 
   // --- FUNGSI DESAIN KARTU MUROJAAH (TAMPILAN WEB) - ANTI CRASH ---
-  const renderMurojaahCard = (murojaah, studentId, dateStr) => {
+  const renderMurojaahCard = (murojaahQorib, murojaahBaid = '-') => {
     try {
-      if (!murojaah || murojaah === '-' || typeof murojaah !== 'string') return <span className="text-xs sm:text-sm text-gray-300 font-medium">-</span>;
-      const items = murojaah.split(',').map(s => s.trim());
+      const groups = [
+        { label: 'Qorib', value: murojaahQorib },
+        { label: 'Baid', value: murojaahBaid }
+      ].filter(group => hasMeaningfulValue(group.value));
+      if (groups.length === 0) return <span className="text-xs sm:text-sm text-gray-300 font-medium">-</span>;
       return (
-        <div className="flex flex-col items-center justify-center gap-1 w-full min-w-0">
-          {items.map((item, i) => {
-            const textSize = item.length > 25 ? 'text-[9px] md:text-[10px]' : item.length > 15 ? 'text-[10px] md:text-[11px]' : 'text-[11px] md:text-[12px]';
-            return (
-              <div key={i} className={`${textSize} font-bold text-emerald-800 bg-emerald-50 px-2.5 py-2 rounded-lg border border-emerald-100 flex items-center justify-center gap-1 leading-snug w-fit max-w-full group relative text-center`}>
-                <div className="flex items-center justify-center gap-1 overflow-hidden"><Repeat size={14} className="text-emerald-500 shrink-0 mt-0.5" /><span className="flex-1 min-w-0 break-words whitespace-normal">{item}</span></div>
+        <div className="flex flex-col items-center justify-center gap-1.5 w-full min-w-0">
+          {groups.map(group => (
+            <div key={group.label} className="flex flex-col items-center gap-1 w-full">
+              <span className="text-[8px] font-black uppercase tracking-widest text-emerald-500">{group.label}</span>
+              <div className="flex flex-col items-center justify-center gap-1 w-full">
+                {String(group.value).split(',').map(s => s.trim()).filter(Boolean).map((item, i) => {
+                  const textSize = item.length > 25 ? 'text-[9px] md:text-[10px]' : item.length > 15 ? 'text-[10px] md:text-[11px]' : 'text-[11px] md:text-[12px]';
+                  return (
+                    <div key={`${group.label}-${i}`} className={`${textSize} font-bold text-emerald-800 bg-emerald-50 px-2.5 py-2 rounded-lg border border-emerald-100 flex items-center justify-center gap-1 leading-snug w-fit max-w-full group relative text-center`}>
+                      <div className="flex items-center justify-center gap-1 overflow-hidden"><Repeat size={14} className="text-emerald-500 shrink-0 mt-0.5" /><span className="flex-1 min-w-0 break-words whitespace-normal">{item}</span></div>
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       );
     } catch (err) {
@@ -795,10 +813,10 @@ const HomeView = ({
 
   // Kunci data dinamis berdasarkan tab yang aktif (Target vs Capaian)
   const k = homeTab === 'lesson_plan'
-    ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan', cT: 'catatanTahsin', cF: 'catatanTahfidz' }
+    ? { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', mq: 'murojaahQorib', mb: 'murojaahBaid', c: 'catatan', cT: 'catatanTahsin', cF: 'catatanTahfidz' }
     : jurnalKeys;
 
-  const lessonPlanKeys = { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', c: 'catatan', cT: 'catatanTahsin', cF: 'catatanTahfidz' };
+  const lessonPlanKeys = { t: 'tahsin', h: 'halAyatTahsin', tNilai: 'tahsinNilai', tsNilai: 'tahsinSuratNilai', f: 'tahfidz', af: 'ayatTahfidz', fNilai: 'tahfidzNilai', m: 'murojaah', mq: 'murojaahQorib', mb: 'murojaahBaid', c: 'catatan', cT: 'catatanTahsin', cF: 'catatanTahfidz' };
 
   // OPTIMASI: Hitung ghost data untuk KEDUA tab sekaligus (lesson_plan + jurnal).
   // Saat user pindah tab, cukup pilih hasil yang sudah di-cache — tanpa recomputasi.
@@ -811,14 +829,14 @@ const HomeView = ({
 
       const ghostRecord = {
         [keySet.t]: '-', [keySet.h]: '-', [keySet.tNilai]: '-', [keySet.tsNilai]: '-',
-        [keySet.f]: '-', [keySet.af]: '-', [keySet.fNilai]: '-', [keySet.m]: '-',
+        [keySet.f]: '-', [keySet.af]: '-', [keySet.fNilai]: '-', [keySet.m]: '-', [keySet.mq]: '-', [keySet.mb]: '-',
         [keySet.c]: '-', [keySet.cT]: '-', [keySet.cF]: '-', __dates: {}
       };
 
       const hasG = {
         tahsin: () => hasMeaningfulValue(ghostRecord[keySet.t]) || hasMeaningfulValue(ghostRecord[keySet.h]),
         tahfidz: () => hasMeaningfulValue(ghostRecord[keySet.f]) || hasMeaningfulValue(ghostRecord[keySet.af]),
-        murojaah: () => hasMeaningfulValue(ghostRecord[keySet.m]),
+        murojaah: () => hasMurojaahValue(ghostRecord, keySet),
         catatan: () => hasMeaningfulValue(ghostRecord[keySet.cT]) || hasMeaningfulValue(ghostRecord[keySet.cF])
       };
 
@@ -845,8 +863,10 @@ const HomeView = ({
             ghostRecord[keySet.fNilai] = isLessonPlan ? '-' : rec[searchKeys.fNilai] || '-';
             ghostRecord.__dates.tahfidz = dStr;
           }
-          if (!hasG.murojaah() && hasMeaningfulValue(rec[searchKeys.m])) {
-            ghostRecord[keySet.m] = rec[searchKeys.m] || '-';
+          if (!hasG.murojaah() && hasMurojaahValue(rec, searchKeys)) {
+            ghostRecord[keySet.mq] = getMurojaahQoribValue(rec, searchKeys);
+            ghostRecord[keySet.mb] = getMurojaahBaidValue(rec, searchKeys);
+            ghostRecord[keySet.m] = ghostRecord[keySet.mq];
             ghostRecord.__dates.murojaah = dStr;
           }
           if (!hasG.catatan() && (hasMeaningfulValue(rec[searchKeys.cT]) || hasMeaningfulValue(rec[searchKeys.cF]))) {
@@ -901,7 +921,7 @@ const HomeView = ({
       return r && (
         (r[k.t] && r[k.t] !== '-') || (r[k.tNilai] && r[k.tNilai] !== '-') || (r[k.tsNilai] && r[k.tsNilai] !== '-') ||
         (r[k.f] && r[k.f] !== '-') || (r[k.fNilai] && r[k.fNilai] !== '-') ||
-        (r[k.m] && r[k.m] !== '-') || (r[k.c] && r[k.c] !== '-') || (r[k.cT] && r[k.cT] !== '-') || (r[k.cF] && r[k.cF] !== '-')
+        hasMurojaahValue(r, k) || (r[k.c] && r[k.c] !== '-') || (r[k.cT] && r[k.cT] !== '-') || (r[k.cF] && r[k.cF] !== '-')
       );
     }).length;
 
@@ -956,7 +976,7 @@ const HomeView = ({
             </div>
             <div className="flex-1 border-l-4 border-[#00b050] pl-3">
               <p className="text-[9px] font-black text-gray-400 tracking-widest uppercase">Ustadz/ah</p>
-              <p className="text-sm font-extrabold text-gray-800">{String(activeGuru || '-')}</p>
+              <p className="text-sm font-extrabold text-gray-800">{String(teacherDisplayName)}</p>
             </div>
           </div>
 
@@ -1020,7 +1040,8 @@ const HomeView = ({
                           const rec = student?.records?.[dateStr] || {};
 
                           // AMBIL DATA & NILAI UNTUK CETAKAN
-                          const valM = rec?.[k.m] || '-';
+                          const valMQ = getMurojaahQoribValue(rec, k);
+                          const valMB = getMurojaahBaidValue(rec, k);
                           const valT = rec?.[k.t] || '-';
                           const valH = rec?.[k.h] || '-';
                           const valTNilai = rec?.[k.tNilai] || '-';
@@ -1055,7 +1076,9 @@ const HomeView = ({
                           return (
                             <React.Fragment key={dateStr + '-data'}>
                               <td className="p-1.5 text-center text-[9px] font-bold text-emerald-600 whitespace-pre-wrap leading-snug bg-white align-top">
-                                {renderTextWithHighlights(formatPrintData(valM, '-', null, null))}
+                                {hasMeaningfulValue(valMQ) && <div><span className="font-black uppercase tracking-widest">Qorib:</span> {renderTextWithHighlights(formatPrintData(valMQ, '-', null, null))}</div>}
+                                {hasMeaningfulValue(valMB) && <div className="mt-1"><span className="font-black uppercase tracking-widest">Baid:</span> {renderTextWithHighlights(formatPrintData(valMB, '-', null, null))}</div>}
+                                {!hasMeaningfulValue(valMQ) && !hasMeaningfulValue(valMB) && '-'}
                               </td>
                               <td className="relative p-1.5 text-center text-[9px] font-bold text-blue-600 whitespace-pre-wrap leading-snug bg-white align-top">
                                 {isTahsinAchieved && <Check size={10} className="text-emerald-500 absolute top-1 right-1" strokeWidth={4} />}
@@ -1189,7 +1212,8 @@ const HomeView = ({
                             const dateStr = getDateString(dateObj);
                             const rec = student?.records?.[dateStr] || {};
 
-                            const valM = formatPrintData(rec?.[k.m], '-', null, null);
+                            const valMQ = getMurojaahQoribValue(rec, k);
+                            const valMB = getMurojaahBaidValue(rec, k);
                             const valT = formatPrintData(rec?.[k.t], rec?.[k.h], rec?.[k.tNilai], rec?.[k.tsNilai]);
                             const valF = formatPrintData(rec?.[k.f], rec?.[k.af], null, rec?.[k.fNilai]);
                             const valC = rec?.[k.c] && rec?.[k.c] !== '-' ? String(rec[k.c]) : '';
@@ -1215,17 +1239,18 @@ const HomeView = ({
                               actualNilai: rec?.jurnalTahfidzNilai
                             });
 
-                            const hasData = valM !== '-' || valT !== '-' || valF !== '-' || valC !== '' || valCT !== '' || valCF !== '';
+                            const hasData = hasMeaningfulValue(valMQ) || hasMeaningfulValue(valMB) || valT !== '-' || valF !== '-' || valC !== '' || valCT !== '' || valCF !== '';
                             if (!hasData) return null;
 
                             return (
                               <div key={dateStr} className="bg-slate-50 rounded-xl p-3 border border-slate-100">
                                 <div className="text-[10px] font-black text-emerald-600 mb-2 uppercase tracking-widest">{getDayName(dateObj)} <span className="text-slate-400 normal-case font-bold ml-1">{formatShortDate(dateObj)}</span></div>
                                 <div className="flex flex-col gap-2">
-                                  {valM !== '-' && (
+                                  {(hasMeaningfulValue(valMQ) || hasMeaningfulValue(valMB)) && (
                                     <div>
                                       <div className="text-[9px] text-emerald-500 font-black uppercase tracking-widest mb-0.5">Murojaah</div>
-                                      <div className="text-[11px] font-bold text-slate-700 leading-snug whitespace-pre-wrap">{renderTextWithHighlights(valM)}</div>
+                                      {hasMeaningfulValue(valMQ) && <div className="text-[11px] font-bold text-slate-700 leading-snug whitespace-pre-wrap"><span className="text-emerald-600 font-black">Qorib:</span> {renderTextWithHighlights(formatPrintData(valMQ, '-', null, null))}</div>}
+                                      {hasMeaningfulValue(valMB) && <div className="text-[11px] font-bold text-slate-700 leading-snug whitespace-pre-wrap mt-1"><span className="text-emerald-600 font-black">Baid:</span> {renderTextWithHighlights(formatPrintData(valMB, '-', null, null))}</div>}
                                     </div>
                                   )}
                                   {valT !== '-' && (
@@ -1257,7 +1282,7 @@ const HomeView = ({
 
                           {workDays.every(d => {
                             const rec = student?.records?.[getDateString(d)] || {};
-                            return !(rec[k.m] && rec[k.m] !== '-') && !(rec[k.t] && rec[k.t] !== '-') && !(rec[k.f] && rec[k.f] !== '-') && !(rec[k.c] && rec[k.c] !== '-') && !(rec[k.cT] && rec[k.cT] !== '-') && !(rec[k.cF] && rec[k.cF] !== '-');
+                            return !hasMurojaahValue(rec, k) && !(rec[k.t] && rec[k.t] !== '-') && !(rec[k.f] && rec[k.f] !== '-') && !(rec[k.c] && rec[k.c] !== '-') && !(rec[k.cT] && rec[k.cT] !== '-') && !(rec[k.cF] && rec[k.cF] !== '-');
                           }) && (
                               <div className="text-center py-4 text-slate-400 text-[11px] font-bold italic">
                                 Belum ada rekaman pekan ini.
@@ -1365,7 +1390,7 @@ const HomeView = ({
                   if (dateObj.getDay() === 0 || dateObj.getDay() === 6) return true;
                   const dateStr = getDateString(dateObj);
                   const rec = shareStudent?.records?.[dateStr] || {};
-                  return !(rec?.[k.t] && rec?.[k.t] !== '-') && !(rec?.[k.f] && rec?.[k.f] !== '-') && !(rec?.[k.m] && rec?.[k.m] !== '-') && !(rec?.[k.c] && rec?.[k.c] !== '-');
+                  return !(rec?.[k.t] && rec?.[k.t] !== '-') && !(rec?.[k.f] && rec?.[k.f] !== '-') && !hasMurojaahValue(rec, k) && !(rec?.[k.c] && rec?.[k.c] !== '-');
                 }) && (
                     <div className="py-12 text-center flex flex-col items-center gap-3 opacity-40">
                       <Calendar size={48} />
@@ -1381,10 +1406,11 @@ const HomeView = ({
 
                   const rec = shareStudent?.records?.[dateStr] || {};
 
-                  const hasData = (rec?.[k.t] && rec?.[k.t] !== '-') || (rec?.[k.f] && rec?.[k.f] !== '-') || (rec?.[k.m] && rec?.[k.m] !== '-') || (rec?.[k.c] && rec?.[k.c] !== '-');
+                  const hasData = (rec?.[k.t] && rec?.[k.t] !== '-') || (rec?.[k.f] && rec?.[k.f] !== '-') || hasMurojaahValue(rec, k) || (rec?.[k.c] && rec?.[k.c] !== '-');
                   if (!hasData) return null;
 
-                  const valM = formatPrintData(rec?.[k.m], '-', null, null);
+                  const valMQ = getMurojaahQoribValue(rec, k);
+                  const valMB = getMurojaahBaidValue(rec, k);
                   const valT = formatPrintData(rec?.[k.t], rec?.[k.h], rec?.[k.tNilai], rec?.[k.tsNilai]);
                   const valF = formatPrintData(rec?.[k.f], rec?.[k.af], null, rec?.[k.fNilai]);
                   const valC = rec?.[k.c] && rec?.[k.c] !== '-' ? String(rec[k.c]) : '';
@@ -1414,7 +1440,11 @@ const HomeView = ({
                         {/* Info MUROJAAH */}
                         <div className="bg-slate-50/50 sm:bg-transparent p-2.5 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-transparent h-full flex flex-col">
                           <div className="flex items-center gap-1.5 mb-1.5 text-emerald-500"><Repeat size={12} className="sm:w-3.5 sm:h-3.5 shrink-0" /><span className="text-[9px] sm:text-xs font-black uppercase tracking-wider truncate">Murojaah</span></div>
-                          <ExpandableText text={valM} />
+                          <div className="flex flex-col gap-1.5">
+                            {hasMeaningfulValue(valMQ) && <div><span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest block mb-0.5">Qorib:</span><ExpandableText text={formatPrintData(valMQ, '-', null, null)} /></div>}
+                            {hasMeaningfulValue(valMB) && <div><span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest block mb-0.5">Baid:</span><ExpandableText text={formatPrintData(valMB, '-', null, null)} /></div>}
+                            {!hasMeaningfulValue(valMQ) && !hasMeaningfulValue(valMB) && <ExpandableText text="-" />}
+                          </div>
                         </div>
 
                         {/* Info CATATAN */}
@@ -1432,7 +1462,7 @@ const HomeView = ({
               <div className="bg-[#111827] p-5 sm:p-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-white text-center sm:text-left">
                 <div className="flex items-center justify-center sm:justify-start gap-3 w-full sm:w-auto">
                   <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0"><Users size={14} className="text-gray-300" /></div>
-                  <span className="text-xs sm:text-sm font-medium text-gray-400">Ustadz/ah: <strong className="text-white inline ml-1">{String(activeGuru || '-')}</strong></span>
+                  <span className="text-xs sm:text-sm font-medium text-gray-400">Ustadz/ah: <strong className="text-white inline ml-1">{String(teacherDisplayName)}</strong></span>
                 </div>
                 <div className="flex items-center justify-center sm:justify-start gap-3 w-full sm:w-auto">
                   <div className="w-8 h-8 rounded-full bg-[#00e676]/20 flex items-center justify-center shrink-0"><Calendar size={14} className="text-[#00e676]" /></div>
@@ -1474,7 +1504,7 @@ const HomeView = ({
                   <span className="hidden md:inline text-gray-300 shrink-0">•</span>
                   <span className="flex items-center gap-1 min-w-0 max-w-full rounded-lg border border-blue-100 bg-blue-50 px-2 py-1">
                     <span className="shrink-0 text-blue-700/70">Ustadz/ah</span>
-                    <strong className={`min-w-0 truncate text-blue-700 ${(activeGuru || '').length > 22 ? 'text-[8px] sm:text-[10px]' : (activeGuru || '').length > 15 ? 'text-[9px] sm:text-[11px]' : 'text-[10px] sm:text-xs'}`}>{String(activeGuru || '-')}</strong>
+                    <strong className={`min-w-0 truncate text-blue-700 ${teacherDisplayName.length > 22 ? 'text-[8px] sm:text-[10px]' : teacherDisplayName.length > 15 ? 'text-[9px] sm:text-[11px]' : 'text-[10px] sm:text-xs'}`}>{String(teacherDisplayName)}</strong>
                   </span>
                   <span className="hidden md:inline text-gray-300 shrink-0">•</span>
                   <span className="flex items-center gap-1 min-w-0 max-w-full rounded-lg border border-amber-100 bg-amber-50 px-2 py-1" title="Target Hafalan Sekolah">
@@ -1876,7 +1906,8 @@ const HomeView = ({
                           const valAF = record?.[k.af] || '-';
                           const valFNilai = record?.[k.fNilai] || '-';
 
-                          const valM = record?.[k.m] || '-';
+                          const valMQ = getMurojaahQoribValue(record, k);
+                          const valMB = getMurojaahBaidValue(record, k);
                           const valC = record?.[k.c] || '-';
                           const valCT = record?.[k.cT] || '-';
                           const valCF = record?.[k.cF] || '-';
@@ -1894,7 +1925,7 @@ const HomeView = ({
                           const isTahfidzNoSurat = valF === '-' && valAF === '-';
                           const hasTahfidzGrade = valFNilai !== '-';
                           const hasGhostTahfidz = isTahfidzNoSurat && lastRec && lastRec[k.f] && lastRec[k.f] !== '-';
-                          const isMurojaahEmpty = valM === '-';
+                          const isMurojaahEmpty = !hasMurojaahValue(record, k);
                           const isCatatanEmpty = !hasAnyCatatan(valC, valCT, valCF);
 
                           const isTahsinAchieved = homeTab === 'lesson_plan' && isLessonProgressAchieved({
@@ -1916,7 +1947,7 @@ const HomeView = ({
                             actualNilai: record?.jurnalTahfidzNilai
                           });
 
-                          const hasGhostMurojaah = isMurojaahEmpty && lastRec && lastRec[k.m] && lastRec[k.m] !== '-';
+                          const hasGhostMurojaah = isMurojaahEmpty && lastRec && hasMurojaahValue(lastRec, k);
                           const hasGhostCatatan = isCatatanEmpty && lastRec && hasAnyCatatan(lastRec[k.c], lastRec[k.cT], lastRec[k.cF]);
                           const isAbsent = !isCatatanEmpty && ['alpa', 'sakit', 'izin', 'tidak hadir'].some(keyword => String(valC).toLowerCase().includes(keyword));
                           const isLibur = !isCatatanEmpty && String(valC).toLowerCase().includes('libur');
@@ -2003,13 +2034,13 @@ const HomeView = ({
                               <td className="p-2">
                                 <div onClick={() => { setActiveStudentId(student.id); handleOpenModal(student, 'murojaah', homeTab); }} className="min-h-[60px] flex flex-col items-center justify-center border border-transparent hover:border-gray-200 rounded-xl cursor-pointer relative group/cell transition-colors active:bg-gray-50">
                                   {!isMurojaahEmpty ? (
-                                    renderMurojaahCard(valM, student?.id, activeDate)
+                                    renderMurojaahCard(valMQ, valMB)
                                   ) : hasGhostMurojaah ? (
                                     <div className="pointer-events-none opacity-30 grayscale blur-[0.5px] scale-90 origin-center transition-all group-hover/cell:opacity-70 group-hover/cell:blur-none group-hover/cell:grayscale-0" title={`Dari tgl ${getGhostDateLabel(lastRec, 'murojaah')}`}>
                                       <div className="flex items-center justify-center gap-1 text-[9px] font-black text-gray-400 uppercase tracking-tighter mb-0.5">
                                         <History size={10} /> {ghostLabel}
                                       </div>
-                                      {renderMurojaahCard(lastRec[k.m], student?.id, 'ghost')}
+                                      {renderMurojaahCard(getMurojaahQoribValue(lastRec, k), getMurojaahBaidValue(lastRec, k))}
                                     </div>
                                   ) : <span className="text-gray-300 group-hover:text-slate-400 transition-colors">-</span>}
                                   {!isMurojaahEmpty ? (
@@ -2086,7 +2117,8 @@ const HomeView = ({
                       const valF = record?.[k.f] || '-';
                       const valAF = record?.[k.af] || '-';
                       const valFNilai = record?.[k.fNilai] || '-';
-                      const valM = record?.[k.m] || '-';
+                      const valMQ = getMurojaahQoribValue(record, k);
+                      const valMB = getMurojaahBaidValue(record, k);
                       const valC = record?.[k.c] || '-';
                       const valCT = record?.[k.cT] || '-';
                       const valCF = record?.[k.cF] || '-';
@@ -2099,7 +2131,7 @@ const HomeView = ({
                       const isTahfidzNoSurat = valF === '-' && valAF === '-';
                       const hasTahfidzGrade = valFNilai !== '-';
                       const hasGhostTahfidz = isTahfidzNoSurat && lastRec && lastRec[k.f] && lastRec[k.f] !== '-';
-                      const isMurojaahEmpty = valM === '-';
+                      const isMurojaahEmpty = !hasMurojaahValue(record, k);
                       const isCatatanEmpty = valC === '-' && valCT === '-' && valCF === '-';
 
                       const isTahsinAchieved = homeTab === 'lesson_plan' && isLessonProgressAchieved({
@@ -2120,7 +2152,7 @@ const HomeView = ({
                         actualDetail: record?.jurnalAyatTahfidz,
                         actualNilai: record?.jurnalTahfidzNilai
                       });
-                      const hasGhostMurojaah = isMurojaahEmpty && lastRec && lastRec[k.m] && lastRec[k.m] !== '-';
+                      const hasGhostMurojaah = isMurojaahEmpty && lastRec && hasMurojaahValue(lastRec, k);
                       const hasGhostCatatan = isCatatanEmpty && lastRec && (lastRec[k.c] !== '-' || lastRec[k.cT] !== '-' || lastRec[k.cF] !== '-');
                       const isAbsent = !isCatatanEmpty && ['alpa', 'sakit', 'izin', 'tidak hadir'].some(keyword => String(valC).toLowerCase().includes(keyword));
                       const isLibur = !isCatatanEmpty && String(valC).toLowerCase().includes('libur');
@@ -2207,7 +2239,7 @@ const HomeView = ({
                             {/* Murojaah */}
                             <div onClick={() => handleOpenModal(student, 'murojaah', homeTab)} className="p-3 bg-emerald-50/30 border border-emerald-100 rounded-2xl flex flex-col items-start justify-start min-h-[90px] h-full text-left active:scale-95 transition-all relative">
                               <div className="flex items-center gap-1.5 mb-2 text-emerald-500 font-black uppercase text-[9px] tracking-widest"><Repeat size={12} /> Murojaah</div>
-                              {!isMurojaahEmpty ? renderMurojaahCard(valM, student.id, activeDate) : (hasGhostMurojaah ? <div className="pointer-events-none opacity-30 grayscale blur-[0.5px] scale-90 transition-all" title={`Dari tgl ${getGhostDateLabel(lastRec, 'murojaah')}`}>{renderMurojaahCard(lastRec[k.m], student.id, 'ghost')}</div> : <span className="text-gray-300">-</span>)
+                              {!isMurojaahEmpty ? renderMurojaahCard(valMQ, valMB) : (hasGhostMurojaah ? <div className="pointer-events-none opacity-30 grayscale blur-[0.5px] scale-90 transition-all" title={`Dari tgl ${getGhostDateLabel(lastRec, 'murojaah')}`}>{renderMurojaahCard(getMurojaahQoribValue(lastRec, k), getMurojaahBaidValue(lastRec, k))}</div> : <span className="text-gray-300">-</span>)
                               }
                               {!isMurojaahEmpty && (
                                 <button onClick={(e) => { e.stopPropagation(); handleRemoveData(e, student.id, activeDate, 'murojaah_all', homeTab); }} className="absolute top-1 right-1 p-1 bg-red-50 text-red-500 rounded-lg">
