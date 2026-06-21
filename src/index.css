@@ -1,6 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap');
 @import "tailwindcss";
-@custom-variant dark (&:where(.dark, .dark *));
 
 /* --- CSS KUSTOM MYQURANPLAN --- */
 
@@ -60,11 +59,6 @@ body {
 
 /* Pengaturan Cetakan */
 @media print {
-  @page {
-    size: A4 landscape;
-    margin: 10mm 15mm;
-  }
-
   body {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../supabase';
-import { Award, Plus, Trash2, Settings, ClipboardList, Loader2, BookOpen, Mic, Printer, Search, ChevronDown, AlertTriangle, X, Download, FileText, ArrowLeft, Check, CalendarDays, Calendar, Users, Edit3, GripVertical, History } from 'lucide-react';
+import { Award, Plus, Trash2, Settings, ClipboardList, Loader2, BookOpen, Mic, Printer, Search, ChevronDown, ChevronLeft, ChevronRight, AlertTriangle, X, Download, FileText, ArrowLeft, Check, CalendarDays, Calendar, Users, Edit3, GripVertical, History, Maximize2, Presentation } from 'lucide-react';
 import SurahSelector from '../SurahSelector';
 import AyatSelector from '../AyatSelector';
 import { surahList, ghoribList, tajwidList } from '../../data/constants';
@@ -501,8 +501,6 @@ const StudentMobileCard = React.memo(({ student, index, materials, hasTajwidSub,
         return scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : '-';
     };
 
-    const nameSize = student.name.length > 24 ? 'text-sm' : student.name.length > 18 ? 'text-[15px]' : 'text-base sm:text-lg';
-
     const overallAvg = React.useMemo(() => {
         let total = 0;
         let count = 0;
@@ -620,6 +618,238 @@ const StudentMobileCard = React.memo(({ student, index, materials, hasTajwidSub,
     );
 });
 
+const PRESENTATION_JOURNAL = {
+    tahsin: ['jurnalTahsin', 'tahsin'],
+    halTahsin: ['jurnalHalAyatTahsin', 'halAyatTahsin'],
+    tahfidz: ['jurnalTahfidz', 'tahfidz'],
+    ayatTahfidz: ['jurnalAyatTahfidz', 'ayatTahfidz'],
+    catatan: ['jurnalCatatan', 'catatan'],
+    catatanTahsin: ['jurnalCatatanTahsin', 'catatanTahsin'],
+    catatanTahfidz: ['jurnalCatatanTahfidz', 'catatanTahfidz']
+};
+
+const hasPresentationValue = (value) => {
+    if (value === undefined || value === null) return false;
+    const text = String(value).trim();
+    return text !== '' && text !== '-';
+};
+
+const getPresentationRecordValue = (record, keys = []) => {
+    for (const key of keys) {
+        if (hasPresentationValue(record?.[key])) return record[key];
+    }
+    return '';
+};
+
+const cleanPresentationText = (value) => {
+    if (!hasPresentationValue(value)) return '-';
+    return String(value)
+        .replace(/\(Nilai:[^)]+\)/gi, '')
+        .replace(/\s+\(([A-C][+-]?|D)\)/g, '')
+        .replace(/\n{2,}/g, '\n')
+        .trim() || '-';
+};
+
+const formatPresentationTahsinPage = (value) => {
+    const text = cleanPresentationText(value);
+    if (!hasPresentationValue(text)) return '-';
+    const pages = [...text.matchAll(/Hal\.\s*([\d,\s]+)/gi)]
+        .flatMap((match) => match[1].split(',').map((page) => page.trim()))
+        .filter(Boolean);
+    if (pages.length === 0) return text.replace(/\s*Brs\s*[\d,\s:]+/gi, '').trim() || '-';
+    return `Hal. ${[...new Set(pages)].join(', ')}`;
+};
+
+const isPresentationInactiveRecord = (record) => {
+    const text = String(getPresentationRecordValue(record, PRESENTATION_JOURNAL.catatan) || '').toLowerCase();
+    return ['libur', 'sakit', 'izin', 'alpa', 'tidak hadir'].some((word) => text.includes(word));
+};
+
+const hasPresentationDrillNote = (record) => [
+    ...PRESENTATION_JOURNAL.catatan,
+    ...PRESENTATION_JOURNAL.catatanTahsin,
+    ...PRESENTATION_JOURNAL.catatanTahfidz
+].some((field) => String(record?.[field] || '').toLowerCase().includes('drill'));
+
+const getPresentationDateLabel = (dateInput) => {
+    const date = new Date(dateInput);
+    if (Number.isNaN(date.getTime())) return '-';
+    return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
+const getPresentationFinalCapaian = (student) => {
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    const records = Object.entries(student?.records || {})
+        .map(([date, record]) => ({ date, dateObj: new Date(date), record }))
+        .filter(({ dateObj, record }) => (
+            !Number.isNaN(dateObj.getTime())
+            && dateObj <= today
+            && !isPresentationInactiveRecord(record)
+        ))
+        .sort((a, b) => b.dateObj - a.dateObj);
+
+    const latestDrillTime = records.find(({ record }) => hasPresentationDrillNote(record))?.dateObj.getTime() || null;
+    let latestTahsin = null;
+    let latestTahfidz = null;
+
+    for (const item of records) {
+        const tahsin = getPresentationRecordValue(item.record, PRESENTATION_JOURNAL.tahsin);
+        const halTahsin = getPresentationRecordValue(item.record, PRESENTATION_JOURNAL.halTahsin);
+        const tahfidz = getPresentationRecordValue(item.record, PRESENTATION_JOURNAL.tahfidz);
+        const ayatTahfidz = getPresentationRecordValue(item.record, PRESENTATION_JOURNAL.ayatTahfidz);
+
+        if (!latestTahsin && (hasPresentationValue(tahsin) || hasPresentationValue(halTahsin))) {
+            const shouldUseDrillPage = hasPresentationDrillNote(item.record) || (latestDrillTime !== null && latestDrillTime >= item.dateObj.getTime());
+            latestTahsin = {
+                title: cleanPresentationText(tahsin),
+                detail: shouldUseDrillPage ? 'Hal. 40' : formatPresentationTahsinPage(halTahsin),
+                date: item.date
+            };
+        }
+
+        if (!latestTahfidz && (hasPresentationValue(tahfidz) || hasPresentationValue(ayatTahfidz))) {
+            latestTahfidz = {
+                title: cleanPresentationText(tahfidz),
+                detail: cleanPresentationText(ayatTahfidz),
+                date: item.date
+            };
+        }
+
+        if (latestTahsin && latestTahfidz) break;
+    }
+
+    return {
+        tahsin: latestTahsin || { title: '-', detail: '-', date: null },
+        tahfidz: latestTahfidz || { title: '-', detail: '-', date: null }
+    };
+};
+
+const isStudentAssignedToPresentationMaterial = (student, material) => (
+    !material?.students
+    || material.students.includes('all')
+    || material.students.some((id) => String(id) === String(student?.id))
+);
+
+const PRESENTATION_TAHSIN_EXTRA_SCORES = [
+    { name: 'Tilawah', keys: ['Tilawah'] },
+    { name: 'Fashohah', keys: ['Fashohah', 'Fashahah'] }
+];
+
+const isPresentationFashohahName = (name) => /^fashohah$|^fashahah$/i.test(String(name || '').trim());
+const isPresentationTahsinExtraName = (name, extra) => extra.keys.some((key) => (
+    isPresentationFashohahName(key)
+        ? isPresentationFashohahName(name)
+        : String(name || '').trim().toLowerCase() === String(key).trim().toLowerCase()
+));
+
+const getPresentationExamScore = (student, materialName) => {
+    const keys = isPresentationFashohahName(materialName)
+        ? [...new Set([materialName, 'Fashohah', 'Fashahah'])]
+        : [materialName];
+
+    for (const key of keys) {
+        const value = student?.ujian_records?.[key];
+        if (value !== undefined && value !== null && String(value).trim() !== '') return value;
+    }
+    return '';
+};
+
+const buildPresentationScoreRow = (student, name, type = 'tahsin') => {
+    const rawScore = getPresentationExamScore(student, name);
+    const numericScore = parseFloat(rawScore);
+    return {
+        type,
+        name,
+        score: rawScore !== undefined && rawScore !== null && String(rawScore).trim() !== '' ? String(rawScore) : '-',
+        numericScore: Number.isNaN(numericScore) ? null : numericScore
+    };
+};
+
+const getPresentationScoreRows = (student, materials = [], type = 'tahsin') => materials
+    .filter((material) => isStudentAssignedToPresentationMaterial(student, material))
+    .map((material) => buildPresentationScoreRow(student, material.name, type));
+
+const isPresentationSurahScoreKey = (name) => {
+    const text = String(name || '').trim();
+    if (!text) return false;
+    return Boolean(getTahfidzSurahNo(text));
+};
+
+const getPresentationSurahScoreKey = (name) => {
+    const no = getTahfidzSurahNo(name);
+    return no ? `surah-${no}` : normalizeSurahText(name);
+};
+
+const getPresentationAdditionalTahfidzRows = (student, baseRows = []) => {
+    const existingKeys = new Set(baseRows.map((row) => getPresentationSurahScoreKey(row.name)));
+
+    return Object.entries(student?.ujian_records || {})
+        .filter(([name, value]) => (
+            hasPresentationValue(value)
+            && isPresentationSurahScoreKey(name)
+            && !existingKeys.has(getPresentationSurahScoreKey(name))
+        ))
+        .map(([name]) => buildPresentationScoreRow(student, name, 'tahfidz'));
+};
+
+const getAveragePresentationScore = (rows = []) => {
+    const scores = rows.map((row) => row.numericScore).filter((score) => score !== null);
+    if (scores.length === 0) return '-';
+    return (scores.reduce((sum, value) => sum + value, 0) / scores.length).toFixed(1);
+};
+
+const getPresentationPredicate = (score, kkm = 75) => {
+    const num = parseFloat(score);
+    if (Number.isNaN(num)) return 'Belum Dinilai';
+    if (num >= 92) return 'Mumtaz';
+    if (num >= 83) return 'Jayyid Jiddan';
+    if (num >= kkm) return 'Jayyid';
+    return 'Perlu Penguatan';
+};
+
+const getPresentationScorePercent = (score) => {
+    const num = parseFloat(score);
+    if (Number.isNaN(num)) return 0;
+    return Math.max(0, Math.min(100, num));
+};
+
+const buildRaportPresentationData = (student, tahsinMaterials = [], tahfidzMaterials = [], kkmScore = 75) => {
+    const baseTahsinRows = getPresentationScoreRows(student, tahsinMaterials, 'tahsin');
+    const extraTahsinRows = PRESENTATION_TAHSIN_EXTRA_SCORES
+        .filter((extra) => !baseTahsinRows.some((row) => isPresentationTahsinExtraName(row.name, extra)))
+        .map((extra) => buildPresentationScoreRow(student, extra.name, 'tahsin'))
+        .filter((row) => row.numericScore !== null);
+    const tahsinRows = [...baseTahsinRows, ...extraTahsinRows];
+    const baseTahfidzRows = getPresentationScoreRows(student, tahfidzMaterials, 'tahfidz');
+    const additionalTahfidzRows = getPresentationAdditionalTahfidzRows(student, baseTahfidzRows);
+    const tahfidzRows = [...baseTahfidzRows, ...additionalTahfidzRows];
+    const allRows = [...tahsinRows, ...tahfidzRows];
+    const tahsinAverage = getAveragePresentationScore(tahsinRows);
+    const tahfidzAverage = getAveragePresentationScore(tahfidzRows);
+    const overallAverage = getAveragePresentationScore(allRows);
+    const scoredCount = allRows.filter((row) => row.numericScore !== null).length;
+    const completePercent = allRows.length ? Math.round((scoredCount / allRows.length) * 100) : 0;
+    const topScores = allRows
+        .filter((row) => row.numericScore !== null)
+        .sort((a, b) => b.numericScore - a.numericScore)
+        .slice(0, 5);
+
+    return {
+        tahsinRows,
+        tahfidzRows,
+        tahsinAverage,
+        tahfidzAverage,
+        overallAverage,
+        scoredCount,
+        totalCount: allRows.length,
+        completePercent,
+        topScores,
+        predicate: getPresentationPredicate(overallAverage, kkmScore),
+        capaian: getPresentationFinalCapaian(student)
+    };
+};
+
 const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, showToast, currentUser, institutionLogo }) => {
     const [activeTab, setActiveTab] = useState('penilaian'); // 'penilaian' | 'jadwal' | 'materi'
     const [materials, setMaterials] = useState({ tahsin: [], tahfidz: [], jadwal: [], reportSettings: {}, institutionName: '', institutionLogo: '' });
@@ -630,6 +860,7 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
     const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, message: '', onConfirm: null });
     const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
     const [activePrintStudent, setActivePrintStudent] = useState(null);
+    const [isPresentationOpen, setIsPresentationOpen] = useState(false);
     const [assignmentModal, setAssignmentModal] = useState({ isOpen: false, type: '', material: null });
 
     const [newTahsin, setNewTahsin] = useState('');
@@ -807,6 +1038,15 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
 
         return result;
     }, [filteredStudents, searchQuery, showUnscoredOnly, visibleTahsin, visibleTahfidz]);
+
+    const presentationStudents = useMemo(() => (
+        displayedStudents.length > 0 ? displayedStudents : studentsInHalaqoh
+    ), [displayedStudents, studentsInHalaqoh]);
+
+    const presentationMaterials = useMemo(() => ({
+        tahsin: visibleTahsin.length > 0 ? visibleTahsin : currentTahsin,
+        tahfidz: visibleTahfidz.length > 0 ? visibleTahfidz : currentTahfidz
+    }), [visibleTahsin, visibleTahfidz, currentTahsin, currentTahfidz]);
 
     const studentsRef = useRef(students);
     const currentUserRef = useRef(currentUser);
@@ -1225,7 +1465,9 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                 const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Ags", "Sep", "Okt", "Nov", "Des"];
                 return `${days[d.getDay()]}, ${day} ${months[month]} ${year}`;
             }
-        } catch(e) {}
+        } catch {
+            // Fallback ke parser Date bawaan di bawah.
+        }
         const d = new Date(dateStr);
         const days = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
         const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Ags", "Sep", "Okt", "Nov", "Des"];
@@ -1521,7 +1763,7 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                         </div>
 
                         {activeTab === 'penilaian' && (
-                            <div className="grid grid-cols-2 md:grid-cols-[minmax(0,1fr)_150px_92px_92px_92px] xl:grid-cols-[minmax(280px,430px)_150px_92px_92px_92px] gap-2 w-full min-w-0 animate-in fade-in slide-in-from-top-2 duration-300">
+                            <div className="grid grid-cols-2 md:grid-cols-[minmax(0,1fr)_150px_112px_92px_92px_92px] xl:grid-cols-[minmax(280px,430px)_150px_112px_92px_92px_92px] gap-2 w-full min-w-0 animate-in fade-in slide-in-from-top-2 duration-300">
                                 {currentJadwal && currentJadwal.length > 0 ? (
                                     <div className="relative col-span-2 md:col-span-1 min-w-0">
                                         <select
@@ -1548,6 +1790,9 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                                     />
                                     Belum Dinilai
                                 </label>
+                                <button onClick={() => setIsPresentationOpen(true)} disabled={presentationStudents.length === 0} className="h-10 rounded-xl bg-amber-400 hover:bg-amber-500 text-slate-950 px-3 flex items-center justify-center gap-2 font-black text-xs sm:text-sm transition-all shadow-sm active:scale-95 whitespace-nowrap disabled:opacity-50">
+                                    <Presentation size={16} className="shrink-0" /> <span>Presentasi</span>
+                                </button>
                                 <button onClick={handleExportCSV} className="h-10 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3 flex items-center justify-center gap-2 font-black text-xs sm:text-sm transition-all shadow-sm active:scale-95 whitespace-nowrap">
                                     <Download size={16} className="shrink-0" /> <span>Excel</span>
                                 </button>
@@ -2086,6 +2331,17 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                 </div>
             )}
 
+            {isPresentationOpen && (
+                <RaportPresentation
+                    students={presentationStudents}
+                    materials={presentationMaterials}
+                    activeHalaqoh={activeHalaqoh}
+                    kkmScore={kkmScore}
+                    institutionLogo={institutionLogo || materials.institutionLogo}
+                    onClose={() => setIsPresentationOpen(false)}
+                />
+            )}
+
             <AssignmentModal 
                 isOpen={assignmentModal.isOpen}
                 onClose={() => setAssignmentModal({ isOpen: false, type: '', material: null })}
@@ -2116,6 +2372,335 @@ const UjianView = ({ activeHalaqoh, filteredStudents, students, setStudents, sho
                     </div>
                 </div>
             )}
+        </div>
+    );
+};
+
+const PresentationStatCard = ({ icon, label, value, detail, tone = 'emerald' }) => {
+    const toneClass = {
+        emerald: 'bg-emerald-50 border-emerald-100 text-emerald-700',
+        blue: 'bg-blue-50 border-blue-100 text-blue-700',
+        purple: 'bg-purple-50 border-purple-100 text-purple-700',
+        amber: 'bg-amber-50 border-amber-100 text-amber-700'
+    }[tone] || 'bg-slate-50 border-slate-100 text-slate-700';
+
+    return (
+        <div className={`rounded-2xl border p-4 min-h-[112px] flex flex-col justify-between ${toneClass}`}>
+            <div className="flex items-center justify-between gap-3">
+                <span className="text-[10px] font-black uppercase tracking-widest opacity-70">{label}</span>
+                {icon && React.createElement(icon, { size: 19, strokeWidth: 2.8, className: 'shrink-0 opacity-80' })}
+            </div>
+            <div>
+                <div className="text-3xl font-black leading-none tracking-normal">{value}</div>
+                <div className="mt-2 text-xs font-bold leading-snug opacity-75 line-clamp-2">{detail}</div>
+            </div>
+        </div>
+    );
+};
+
+const PresentationProgress = ({ label, value, tone = 'emerald' }) => {
+    const percent = getPresentationScorePercent(value);
+    const colorClass = {
+        emerald: 'bg-emerald-500',
+        blue: 'bg-blue-500',
+        purple: 'bg-purple-500',
+        amber: 'bg-amber-400'
+    }[tone] || 'bg-slate-500';
+
+    return (
+        <div className="min-w-0">
+            <div className="mb-2 flex items-center justify-between gap-3">
+                <span className="text-xs font-black text-slate-500 uppercase tracking-widest truncate">{label}</span>
+                <span className="text-sm font-black text-slate-900">{value || '-'}</span>
+            </div>
+            <div className="h-3 rounded-full bg-slate-100 overflow-hidden">
+                <div className={`h-full rounded-full ${colorClass}`} style={{ width: `${percent}%` }} />
+            </div>
+        </div>
+    );
+};
+
+const RaportPresentation = ({ students, materials, activeHalaqoh, kkmScore, institutionLogo, onClose }) => {
+    const studentList = useMemo(() => (Array.isArray(students) ? students.filter(Boolean) : []), [students]);
+    const [index, setIndex] = useState(0);
+    const presentationRef = useRef(null);
+    const tahsinMaterials = useMemo(() => materials?.tahsin || [], [materials?.tahsin]);
+    const tahfidzMaterials = useMemo(() => materials?.tahfidz || [], [materials?.tahfidz]);
+
+    useEffect(() => {
+        const handleKeyDown = (event) => {
+            if (event.key === 'Escape') {
+                onClose();
+                return;
+            }
+            if (studentList.length <= 1) return;
+            if (event.key === 'ArrowRight') {
+                setIndex((current) => (current + 1) % studentList.length);
+            }
+            if (event.key === 'ArrowLeft') {
+                setIndex((current) => (current - 1 + studentList.length) % studentList.length);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [onClose, studentList.length]);
+
+    const safeIndex = studentList.length > 0 ? Math.min(index, studentList.length - 1) : 0;
+    const selectedStudent = studentList[safeIndex] || null;
+    const presentationData = useMemo(
+        () => buildRaportPresentationData(selectedStudent, tahsinMaterials, tahfidzMaterials, kkmScore),
+        [selectedStudent, tahsinMaterials, tahfidzMaterials, kkmScore]
+    );
+    const overallPercent = getPresentationScorePercent(presentationData.overallAverage);
+    const passed = presentationData.overallAverage !== '-' && parseFloat(presentationData.overallAverage) >= kkmScore;
+    const scoreTone = passed ? 'text-emerald-600 bg-emerald-50 border-emerald-100' : presentationData.overallAverage === '-' ? 'text-slate-500 bg-slate-50 border-slate-100' : 'text-amber-700 bg-amber-50 border-amber-100';
+    const studentInitial = selectedStudent?.name ? selectedStudent.name.charAt(0).toUpperCase() : '?';
+    const tahsinPreview = presentationData.tahsinRows.filter((row) => row.numericScore !== null).slice(0, 4);
+    const tahfidzPreview = presentationData.tahfidzRows.filter((row) => row.numericScore !== null).slice(0, 8);
+
+    const goToStudent = (nextIndex) => {
+        if (studentList.length === 0) return;
+        setIndex((nextIndex + studentList.length) % studentList.length);
+    };
+
+    const handleFullscreen = async () => {
+        try {
+            if (document.fullscreenElement) {
+                await document.exitFullscreen();
+            } else {
+                await presentationRef.current?.requestFullscreen?.();
+            }
+        } catch (error) {
+            console.error('Gagal membuka layar penuh:', error);
+        }
+    };
+
+    return (
+        <div ref={presentationRef} className="fixed inset-0 z-[100000] bg-slate-100 text-slate-950 flex flex-col overflow-hidden print:hidden">
+            <div className="h-auto shrink-0 border-b border-slate-200 bg-white/95 backdrop-blur px-3 sm:px-5 py-3 shadow-sm">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="flex items-center gap-3 min-w-0">
+                        <button onClick={onClose} className="h-10 w-10 rounded-xl bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-600 flex items-center justify-center transition-colors shrink-0" title="Tutup">
+                            <X size={20} strokeWidth={3} />
+                        </button>
+                        <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                                <Presentation size={18} className="text-amber-500 shrink-0" />
+                                <h2 className="text-base sm:text-lg font-black truncate">Presentasi Raport Al-Qur&apos;an</h2>
+                            </div>
+                            <p className="text-xs font-bold text-slate-500 truncate">{activeHalaqoh || 'Semua Halaqoh'} · {studentList.length} siswa</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-[42px_minmax(0,1fr)_42px_42px] sm:flex sm:items-center gap-2">
+                        <button onClick={() => goToStudent(safeIndex - 1)} disabled={studentList.length <= 1} className="h-10 rounded-xl bg-slate-900 text-white px-3 flex items-center justify-center disabled:opacity-40 transition-all active:scale-95" title="Sebelumnya">
+                            <ChevronLeft size={20} strokeWidth={3} />
+                        </button>
+                        <select
+                            value={safeIndex}
+                            onChange={(event) => setIndex(Number(event.target.value))}
+                            className="h-10 min-w-0 sm:min-w-[260px] rounded-xl border border-slate-200 bg-white px-3 text-xs sm:text-sm font-black text-slate-700 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-200"
+                        >
+                            {studentList.map((student, studentIndex) => (
+                                <option key={student.id || studentIndex} value={studentIndex}>{student.name}</option>
+                            ))}
+                        </select>
+                        <button onClick={() => goToStudent(safeIndex + 1)} disabled={studentList.length <= 1} className="h-10 rounded-xl bg-slate-900 text-white px-3 flex items-center justify-center disabled:opacity-40 transition-all active:scale-95" title="Berikutnya">
+                            <ChevronRight size={20} strokeWidth={3} />
+                        </button>
+                        <button onClick={handleFullscreen} className="h-10 rounded-xl bg-amber-400 hover:bg-amber-500 text-slate-950 px-3 flex items-center justify-center transition-all active:scale-95" title="Layar penuh">
+                            <Maximize2 size={18} strokeWidth={3} />
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-5 lg:p-7 custom-scrollbar">
+                {!selectedStudent ? (
+                    <div className="h-full min-h-[420px] rounded-[2rem] bg-white border border-slate-200 flex flex-col items-center justify-center text-center p-8">
+                        <Users size={44} className="text-slate-300 mb-4" />
+                        <div className="text-xl font-black text-slate-800">Belum ada siswa</div>
+                        <div className="text-sm font-bold text-slate-500 mt-1">Data presentasi akan tampil setelah siswa tersedia.</div>
+                    </div>
+                ) : (
+                    <section className="mx-auto w-full max-w-[1500px] rounded-[2rem] bg-white border border-slate-200 shadow-[0_24px_80px_rgba(15,23,42,0.10)] overflow-hidden">
+                        <div className="bg-emerald-50 border-b border-emerald-100 px-5 sm:px-7 py-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                            <div className="flex items-center gap-4 min-w-0">
+                                {institutionLogo && institutionLogo !== 'logo.png' ? (
+                                    <img src={institutionLogo} alt="Logo" className="w-16 h-16 sm:w-20 sm:h-20 object-contain shrink-0" />
+                                ) : (
+                                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white border border-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                                        <BookOpen size={34} strokeWidth={2.6} />
+                                    </div>
+                                )}
+                                <div className="min-w-0">
+                                    <div className="text-[10px] sm:text-xs font-black uppercase tracking-[0.24em] text-emerald-600">Raport Al-Qur&apos;an</div>
+                                    <h1 className="text-2xl sm:text-4xl font-black text-slate-950 tracking-normal leading-tight truncate">{selectedStudent.name}</h1>
+                                    <div className="mt-2 flex flex-wrap gap-2 text-xs sm:text-sm font-black text-slate-600">
+                                        <span className="rounded-full bg-white border border-emerald-100 px-3 py-1">Kelas {selectedStudent.kelas || '-'}</span>
+                                        <span className="rounded-full bg-white border border-emerald-100 px-3 py-1">{selectedStudent.halaqoh || activeHalaqoh || '-'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className={`rounded-3xl border px-6 py-4 min-w-[160px] text-center ${scoreTone}`}>
+                                <div className="text-[10px] font-black uppercase tracking-widest opacity-70">Rata-rata Ujian</div>
+                                <div className="text-5xl font-black leading-none mt-1">{presentationData.overallAverage}</div>
+                                <div className="text-sm font-black mt-2">{presentationData.predicate}</div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 xl:grid-cols-[360px_minmax(0,1fr)] gap-5 p-5 sm:p-7">
+                            <aside className="rounded-3xl bg-slate-950 text-white overflow-hidden flex flex-col min-h-[560px]">
+                                <div className="relative h-72 bg-slate-900 flex items-center justify-center overflow-hidden">
+                                    {selectedStudent.photo ? (
+                                        <img src={selectedStudent.photo} alt={selectedStudent.name} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <div className="w-36 h-36 rounded-full bg-emerald-400 text-slate-950 flex items-center justify-center text-6xl font-black">{studentInitial}</div>
+                                    )}
+                                    <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-slate-950 to-transparent" />
+                                </div>
+                                <div className="p-5 flex-1 flex flex-col justify-between gap-5">
+                                    <div>
+                                        <div className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-300">Profil Siswa</div>
+                                        <div className="mt-2 text-2xl font-black leading-tight">{selectedStudent.name}</div>
+                                        <div className="mt-4 grid grid-cols-2 gap-2 text-sm font-bold">
+                                            <div className="rounded-2xl bg-white/10 p-3">
+                                                <div className="text-[10px] uppercase tracking-widest text-slate-400">Kelas</div>
+                                                <div className="text-lg font-black">{selectedStudent.kelas || '-'}</div>
+                                            </div>
+                                            <div className="rounded-2xl bg-white/10 p-3">
+                                                <div className="text-[10px] uppercase tracking-widest text-slate-400">KKM</div>
+                                                <div className="text-lg font-black">{kkmScore}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <div className="mb-2 flex items-center justify-between text-xs font-black uppercase tracking-widest text-slate-300">
+                                            <span>Kelengkapan Nilai</span>
+                                            <span>{presentationData.completePercent}%</span>
+                                        </div>
+                                        <div className="h-3 rounded-full bg-white/10 overflow-hidden">
+                                            <div className="h-full rounded-full bg-emerald-400" style={{ width: `${presentationData.completePercent}%` }} />
+                                        </div>
+                                        <div className="mt-2 text-xs font-bold text-slate-400">{presentationData.scoredCount} dari {presentationData.totalCount} nilai terisi</div>
+                                    </div>
+                                </div>
+                            </aside>
+
+                            <div className="min-w-0 flex flex-col gap-5">
+                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                                    <PresentationStatCard icon={FileText} label="Nilai Ujian" value={presentationData.overallAverage} detail={passed ? 'Tuntas dan siap dilaporkan' : presentationData.overallAverage === '-' ? 'Belum ada nilai' : 'Butuh penguatan lanjutan'} tone="emerald" />
+                                    <PresentationStatCard icon={BookOpen} label="Tahsin" value={presentationData.tahsinAverage} detail={`${presentationData.tahsinRows.length} materi terjadwal`} tone="blue" />
+                                    <PresentationStatCard icon={Mic} label="Tahfidz" value={presentationData.tahfidzAverage} detail={`${presentationData.tahfidzRows.length} materi & tambahan`} tone="purple" />
+                                    <PresentationStatCard icon={Award} label="Predikat" value={presentationData.predicate} detail={`Standar KKM ${kkmScore}`} tone="amber" />
+                                </div>
+
+                                <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] gap-5">
+                                    <section className="rounded-3xl border border-slate-200 p-5 min-w-0">
+                                        <div className="flex items-center justify-between gap-4 mb-5">
+                                            <div>
+                                                <div className="text-xs font-black uppercase tracking-widest text-slate-400">Hasil Nilai Ujian</div>
+                                                <h3 className="text-2xl font-black text-slate-950 mt-1">Ringkasan Akademik</h3>
+                                            </div>
+                                            <div className="w-20 h-20 rounded-full border-[10px] border-emerald-100 flex items-center justify-center text-lg font-black text-emerald-600 shrink-0">
+                                                {overallPercent}%
+                                            </div>
+                                        </div>
+                                        <div className="space-y-5">
+                                            <PresentationProgress label="Rata-rata Tahsin" value={presentationData.tahsinAverage} tone="blue" />
+                                            <PresentationProgress label="Rata-rata Tahfidz" value={presentationData.tahfidzAverage} tone="purple" />
+                                            <PresentationProgress label="Rata-rata Akhir" value={presentationData.overallAverage} tone="emerald" />
+                                        </div>
+
+                                        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                            {(presentationData.topScores.length > 0 ? presentationData.topScores : [{ name: 'Belum ada nilai tertinggi', score: '-', type: 'tahsin' }]).map((row, rowIndex) => (
+                                                <div key={`${row.name}-${rowIndex}`} className="rounded-2xl bg-slate-50 border border-slate-100 px-4 py-3 min-w-0">
+                                                    <div className={`text-[10px] font-black uppercase tracking-widest ${row.type === 'tahfidz' ? 'text-purple-500' : 'text-blue-500'}`}>{row.type === 'tahfidz' ? 'Tahfidz' : 'Tahsin'}</div>
+                                                    <div className="mt-1 flex items-center justify-between gap-3">
+                                                        <div className="text-sm font-black text-slate-800 truncate">{row.name}</div>
+                                                        <div className="text-lg font-black text-slate-950 shrink-0">{row.score}</div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </section>
+
+                                    <section className="rounded-3xl border border-slate-200 p-5 bg-slate-50 min-w-0">
+                                        <div className="flex items-center justify-between gap-4 mb-5">
+                                            <div>
+                                                <div className="text-xs font-black uppercase tracking-widest text-slate-400">Capaian Akhir</div>
+                                                <h3 className="text-2xl font-black text-slate-950 mt-1">Mutabaah Terakhir</h3>
+                                            </div>
+                                            <Calendar size={28} className="text-slate-400 shrink-0" />
+                                        </div>
+
+                                        <div className="grid grid-cols-1 gap-3">
+                                            <div className="rounded-2xl bg-white border border-blue-100 p-4">
+                                                <div className="flex items-center gap-2 text-blue-600 mb-3">
+                                                    <BookOpen size={19} />
+                                                    <span className="text-xs font-black uppercase tracking-widest">Tahsin</span>
+                                                </div>
+                                                <div className="text-xl font-black text-slate-950 leading-tight">{presentationData.capaian.tahsin.title}</div>
+                                                <div className="mt-2 text-sm font-black text-blue-600">{presentationData.capaian.tahsin.detail}</div>
+                                                <div className="mt-2 text-xs font-bold text-slate-400">{getPresentationDateLabel(presentationData.capaian.tahsin.date)}</div>
+                                            </div>
+                                            <div className="rounded-2xl bg-white border border-purple-100 p-4">
+                                                <div className="flex items-center gap-2 text-purple-600 mb-3">
+                                                    <Mic size={19} />
+                                                    <span className="text-xs font-black uppercase tracking-widest">Tahfidz</span>
+                                                </div>
+                                                <div className="text-xl font-black text-slate-950 leading-tight">{presentationData.capaian.tahfidz.title}</div>
+                                                <div className="mt-2 text-sm font-black text-purple-600">{presentationData.capaian.tahfidz.detail}</div>
+                                                <div className="mt-2 text-xs font-bold text-slate-400">{getPresentationDateLabel(presentationData.capaian.tahfidz.date)}</div>
+                                            </div>
+                                        </div>
+                                    </section>
+                                </div>
+
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                                    <section className="rounded-3xl border border-blue-100 bg-blue-50 p-5 min-w-0">
+                                        <div className="mb-4 flex items-center justify-between gap-3">
+                                            <div>
+                                                <div className="text-xs font-black uppercase tracking-widest text-blue-500">Tahsin</div>
+                                                <h3 className="text-xl font-black text-slate-950">Detail Nilai & Capaian</h3>
+                                            </div>
+                                            <Check size={24} className="text-blue-500 shrink-0" />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {(tahsinPreview.length > 0 ? tahsinPreview : [{ name: 'Belum ada nilai tahsin', score: '-' }]).map((row, rowIndex) => (
+                                                <div key={`${row.name}-${rowIndex}`} className="rounded-2xl bg-white/90 border border-blue-100 p-3 min-w-0">
+                                                    <div className="text-xs font-black text-slate-800 truncate">{row.name}</div>
+                                                    <div className="mt-2 text-2xl font-black text-blue-600">{row.score}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </section>
+
+                                    <section className="rounded-3xl border border-purple-100 bg-purple-50 p-5 min-w-0">
+                                        <div className="mb-4 flex items-center justify-between gap-3">
+                                            <div>
+                                                <div className="text-xs font-black uppercase tracking-widest text-purple-500">Tahfidz</div>
+                                                <h3 className="text-xl font-black text-slate-950">Detail Nilai & Hafalan</h3>
+                                            </div>
+                                            <Check size={24} className="text-purple-500 shrink-0" />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {(tahfidzPreview.length > 0 ? tahfidzPreview : [{ name: 'Belum ada nilai tahfidz', score: '-' }]).map((row, rowIndex) => (
+                                                <div key={`${row.name}-${rowIndex}`} className="rounded-2xl bg-white/90 border border-purple-100 p-3 min-w-0">
+                                                    <div className="text-xs font-black text-slate-800 truncate">{row.name}</div>
+                                                    <div className="mt-2 text-2xl font-black text-purple-600">{row.score}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </section>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                )}
+            </div>
         </div>
     );
 };
@@ -2536,9 +3121,9 @@ function getIndonesianDate() {
 
 const getInitialReportZoom = () => {
     if (typeof window === 'undefined') return 0.85;
-    if (window.innerWidth < 380) return 0.42;
-    if (window.innerWidth < 480) return 0.45;
-    if (window.innerWidth < 768) return 0.5;
+    if (window.innerWidth < 380) return 0.68;
+    if (window.innerWidth < 480) return 0.72;
+    if (window.innerWidth < 768) return 0.78;
     return 0.85;
 };
 
@@ -2587,17 +3172,6 @@ const QuranReportWizard = ({ student, reportStudents = [], onClose, materials, s
     const hasInstitutionLogo = reportInstitutionLogo && reportInstitutionLogo !== 'logo.png';
 
     const halaqohForFilter = activeReportStudent.halaqoh || activeHalaqoh || '';
-    
-    const currentTahsin = useMemo(() => {
-        if (!halaqohForFilter) return (materials.tahsin || []).filter(m => !m.halaqoh || m.halaqoh === 'Semua').filter(m => !(m.students && m.students.includes('HIDDEN')));
-        const localNames = (materials.tahsin || []).filter(m => m.halaqoh === halaqohForFilter).map(m => m.name);
-        const combined = (materials.tahsin || []).filter(m => {
-            if (m.halaqoh === halaqohForFilter) return true;
-            if ((!m.halaqoh || m.halaqoh === 'Semua') && !localNames.includes(m.name)) return true;
-            return false;
-        });
-        return combined.filter(m => !(m.students && m.students.includes('HIDDEN')));
-    }, [materials.tahsin, halaqohForFilter]);
 
     const currentTahfidz = useMemo(() => {
         if (!halaqohForFilter) return sortTahfidzMaterials((materials.tahfidz || []).filter(m => !m.halaqoh || m.halaqoh === 'Semua').filter(m => !(m.students && m.students.includes('HIDDEN'))));
@@ -3075,7 +3649,7 @@ const QuranReportWizard = ({ student, reportStudents = [], onClose, materials, s
             <div className="flex flex-col lg:flex-row flex-1 min-h-0 overflow-y-auto lg:overflow-hidden custom-scrollbar print:overflow-visible print:block">
 
                 {/* Left Panel: Sidebar Editors */}
-                <div className="w-full lg:w-[450px] bg-slate-950 sm:bg-slate-900 lg:border-r border-b border-slate-800 flex flex-col lg:h-full lg:min-h-0 lg:overflow-y-auto overscroll-y-contain custom-scrollbar shrink-0 p-3 sm:p-6 gap-3.5 sm:gap-6 print:hidden" style={{ WebkitOverflowScrolling: 'touch' }}>
+                <div className="order-last lg:order-none w-full lg:w-[450px] bg-slate-950 sm:bg-slate-900 lg:border-r border-b border-slate-800 flex flex-col lg:h-full lg:min-h-0 lg:overflow-y-auto overscroll-y-contain custom-scrollbar shrink-0 p-3 sm:p-6 gap-3.5 sm:gap-6 print:hidden" style={{ WebkitOverflowScrolling: 'touch' }}>
 
                     {/* 1. DATA IDENTITAS CARD */}
                     <div className="bg-slate-900 sm:bg-slate-800/50 p-4 sm:p-5 rounded-2xl border border-slate-800 sm:border-slate-700/60 flex flex-col gap-4">
@@ -3327,11 +3901,11 @@ const QuranReportWizard = ({ student, reportStudents = [], onClose, materials, s
                 </div>
 
                 {/* Right Panel: A4 Live Preview (with transforms) */}
-                <div className="flex-1 min-h-0 bg-slate-950 flex justify-center overflow-auto p-2 sm:p-8 pb-24 lg:pb-8 relative items-start select-none custom-scrollbar print:p-0 print:overflow-visible print:bg-white print:block" style={{ WebkitOverflowScrolling: 'touch' }}>
+                <div className="order-first lg:order-none flex-none lg:flex-1 h-[calc(100dvh-142px)] min-h-[560px] lg:h-auto lg:min-h-0 bg-slate-950 flex justify-start sm:justify-center overflow-auto p-3 sm:p-8 pb-40 lg:pb-8 relative items-start select-none custom-scrollbar print:p-0 print:overflow-visible print:bg-white print:block" style={{ WebkitOverflowScrolling: 'touch' }}>
 
                     <div
                         id="zoom-wrapper"
-                        className="origin-top transition-transform shadow-2xl duration-200 mb-12 shrink-0 border border-slate-800"
+                        className="origin-top-left transition-transform shadow-2xl duration-200 mb-12 shrink-0 border border-slate-800"
                         style={{ transform: `scale(${zoom})`, height: `${297 * zoom}mm` }}
                     >
 
@@ -3661,11 +4235,11 @@ const QuranReportWizard = ({ student, reportStudents = [], onClose, materials, s
             </div>
 
             {/* Tombol Aksi Melayang (Bawah) */}
-            <div className="fixed left-4 right-4 bottom-4 lg:left-auto lg:right-8 lg:bottom-8 z-[100] grid grid-cols-3 lg:flex items-center justify-center lg:justify-end gap-2 print:hidden">
+            <div className="fixed left-3 right-3 bottom-3 lg:left-auto lg:right-8 lg:bottom-8 z-[100] grid grid-cols-3 lg:flex items-center justify-center lg:justify-end gap-2 print:hidden">
                 <button
                     onClick={handleDownloadPDF}
                     disabled={isDownloading || isDownloadingAll}
-                    className="flex items-center justify-center gap-2 px-3 sm:px-5 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl lg:rounded-full shadow-[0_10px_25px_rgba(37,99,235,0.35)] active:scale-95 transition-all font-black border border-blue-500 disabled:opacity-50"
+                    className="flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2.5 sm:py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl sm:rounded-2xl lg:rounded-full shadow-[0_10px_25px_rgba(37,99,235,0.35)] active:scale-95 transition-all font-black border border-blue-500 disabled:opacity-50 text-sm sm:text-base"
                     title="Download PDF"
                 >
                     {isDownloading ? <Loader2 size={18} className="animate-spin" /> : <FileText size={18} strokeWidth={3} />}
@@ -3675,7 +4249,7 @@ const QuranReportWizard = ({ student, reportStudents = [], onClose, materials, s
                 <button
                     onClick={handlePrint}
                     disabled={isDownloading || isDownloadingAll}
-                    className="flex items-center justify-center gap-2 px-3 sm:px-5 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl lg:rounded-full shadow-[0_10px_25px_rgba(5,150,105,0.35)] active:scale-95 transition-all font-black border border-emerald-500 disabled:opacity-50"
+                    className="flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2.5 sm:py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl sm:rounded-2xl lg:rounded-full shadow-[0_10px_25px_rgba(5,150,105,0.35)] active:scale-95 transition-all font-black border border-emerald-500 disabled:opacity-50 text-sm sm:text-base"
                     title="Print Raport"
                 >
                     <Printer size={18} strokeWidth={3} />
@@ -3684,7 +4258,7 @@ const QuranReportWizard = ({ student, reportStudents = [], onClose, materials, s
 
                 <button
                     onClick={onClose}
-                    className="flex items-center justify-center gap-2 px-3 sm:px-5 py-3.5 bg-red-600 hover:bg-red-700 text-white rounded-2xl lg:rounded-full shadow-[0_10px_25px_rgba(220,38,38,0.4)] active:scale-95 transition-all font-black border border-red-500"
+                    className="flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2.5 sm:py-3.5 bg-red-600 hover:bg-red-700 text-white rounded-xl sm:rounded-2xl lg:rounded-full shadow-[0_10px_25px_rgba(220,38,38,0.4)] active:scale-95 transition-all font-black border border-red-500 text-sm sm:text-base"
                     title="Tutup Pratinjau"
                 >
                     <X size={18} strokeWidth={3} />

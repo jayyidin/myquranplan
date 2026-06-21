@@ -1,8 +1,13 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { ArrowUpDown, BookOpen, Check, ChevronDown, GripVertical, Layers, Mic, Search, ShieldCheck, SlidersHorizontal, Unlink2, Users, X, Shield, ShieldAlert, UserPlus, FolderPlus, Edit3, Trash2, Save, Plus, User, CheckCircle2, UserCheck, UserX, RotateCcw, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ArrowUpDown, BookOpen, Check, ChevronDown, GripVertical, Layers, Mic, Move, Search, ShieldCheck, SlidersHorizontal, Unlink2, Users, X, Shield, ShieldAlert, UserPlus, FolderPlus, Edit3, Trash2, Save, Plus, User, CheckCircle2, UserCheck, UserX, RotateCcw, AlertTriangle, PanelLeftClose, PanelLeftOpen, Database, MoveRight, ZoomIn, ZoomOut } from 'lucide-react';
 
 const UNASSIGNED = '__unassigned__';
 const HALAQOH_SESSION_OPTIONS = ['1', '2', '3'];
+const MIN_BOARD_ZOOM = 0.65;
+const MAX_BOARD_ZOOM = 1.35;
+const BOARD_ZOOM_STEP = 0.1;
+
+const clampBoardZoom = (value) => Math.min(MAX_BOARD_ZOOM, Math.max(MIN_BOARD_ZOOM, Number(value.toFixed(2))));
 
 const FieldLabel = ({ children }) => (
   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{children}</label>
@@ -206,9 +211,9 @@ const ProgressLine = ({ icon, tone, text }) => {
   const safeText = hasValue(text) ? String(text) : '-';
   const isEmpty = safeText === '-';
   return (
-    <div className={`flex items-start gap-1 rounded-md border px-1.5 py-1 min-h-[27px] ${tone.bg} ${tone.border}`}>
-      {React.createElement(icon, { size: 11, className: `${tone.icon} shrink-0 mt-0.5` })}
-      <p className={`min-w-0 whitespace-pre-wrap break-words leading-snug font-bold ${isEmpty ? 'text-slate-300 text-[9px]' : 'text-slate-700 dark:text-slate-200 text-[9px] sm:text-[10px]'}`}>
+    <div className={`flex items-start gap-1 rounded-md border px-1.5 py-0.5 min-h-[22px] ${tone.bg} ${tone.border}`}>
+      {React.createElement(icon, { size: 10, className: `${tone.icon} shrink-0 mt-0.5` })}
+      <p className={`min-w-0 whitespace-pre-wrap break-words leading-snug font-bold ${isEmpty ? 'text-slate-300 text-[8px]' : 'text-slate-700 dark:text-slate-200 text-[8px] sm:text-[9px]'}`}>
         {safeText}
       </p>
     </div>
@@ -230,13 +235,18 @@ const StudentCard = ({ student, progress, selected, dragging, disabled, onToggle
   return (
     <div
       data-transfer-student-id={student.id}
-      className={`rounded-lg border bg-white dark:bg-slate-800 p-2 shadow-sm transition-all ${
-        disabled ? 'opacity-80' : ''
+      draggable={!disabled}
+      onDragStart={(e) => !disabled && onDragStart(e, student.id)}
+      onDragEnd={onDragEnd}
+      className={`group rounded-lg border bg-white dark:bg-slate-800 p-1.5 shadow-sm transition-all duration-150 ${
+        disabled ? 'opacity-60' : 'hover:-translate-y-[1px] hover:shadow-md cursor-grab active:cursor-grabbing'
       } ${
-        selected ? 'border-emerald-400 ring-2 ring-emerald-100 dark:ring-emerald-500/20' : 'border-slate-200 dark:border-slate-700'
-      } ${dragging ? 'opacity-50 scale-[0.98]' : 'opacity-100'} [touch-action:pan-y]`}
+        selected
+          ? 'border-l-[3px] border-l-emerald-500 border-t-emerald-200 border-r-emerald-200 border-b-emerald-200 dark:border-t-emerald-500/30 dark:border-r-emerald-500/30 dark:border-b-emerald-500/30 ring-2 ring-emerald-100 dark:ring-emerald-500/20 shadow-md'
+          : 'border-slate-200 dark:border-slate-700'
+      } ${dragging ? 'opacity-40 scale-95 rotate-[1deg]' : 'opacity-100'} [touch-action:pan-y]`}
     >
-      <div className="flex items-start gap-2 min-w-0">
+      <div className="flex items-start gap-1.5 min-w-0">
         <button
           type="button"
           disabled={disabled}
@@ -246,24 +256,24 @@ const StudentCard = ({ student, progress, selected, dragging, disabled, onToggle
           onTouchStart={(e) => !disabled && onTouchStart(e, student.id)}
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}
-          className="shrink-0 w-6 h-6 rounded-md bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-400 flex items-center justify-center disabled:opacity-30 cursor-grab active:cursor-grabbing [touch-action:pan-y]"
+          className="shrink-0 w-5 h-5 rounded-md bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-300 hover:text-slate-500 flex items-center justify-center disabled:opacity-30 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity duration-150 [touch-action:pan-y]"
           title={disabled ? 'Siswa nonaktif tidak bisa dipindahkan' : 'Pindahkan'}
         >
-          <GripVertical size={13} />
+          <GripVertical size={11} />
         </button>
 
         <button
           type="button"
           onClick={() => onToggle(student.id)}
-          className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center mt-0.5 transition-colors ${
-            selected ? 'bg-emerald-500 border-emerald-500 text-white' : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 text-transparent'
+          className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center mt-0.5 transition-all duration-150 ${
+            selected ? 'bg-emerald-500 border-emerald-500 text-white shadow-sm scale-110' : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 text-transparent hover:border-emerald-300'
           }`}
           title="Pilih siswa"
         >
           <Check size={10} strokeWidth={4} />
         </button>
 
-        <div className="w-7 h-7 rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-500/20 flex items-center justify-center font-black text-[9px] shrink-0 overflow-hidden">
+        <div className="w-6 h-6 rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-500/20 flex items-center justify-center font-black text-[8px] shrink-0 overflow-hidden">
           {student.photo ? <img src={student.photo} alt="" className="w-full h-full object-cover" /> : getInitials(student.name)}
         </div>
 
@@ -271,12 +281,12 @@ const StudentCard = ({ student, progress, selected, dragging, disabled, onToggle
           <h3 className={`${getStudentTextSize(student.name)} font-black text-slate-900 dark:text-slate-100 leading-tight break-words`} title={student.name}>
             {student.name}
           </h3>
-          <div className="mt-0.5 flex flex-wrap gap-1">
-            <span className="max-w-full rounded border border-blue-100 dark:border-blue-500/20 bg-blue-50 dark:bg-blue-500/10 px-1 py-0.5 text-[8px] font-black text-blue-700 dark:text-blue-300 leading-tight break-words">
-              Kelas {student.kelas || '-'}
+          <div className="mt-0.5 flex flex-wrap gap-0.5">
+            <span className="max-w-full rounded border border-blue-100 dark:border-blue-500/20 bg-blue-50 dark:bg-blue-500/10 px-1 py-px text-[7px] font-black text-blue-700 dark:text-blue-300 leading-tight">
+              {student.kelas || '-'}
             </span>
             {gender && (
-              <span className={`rounded border px-1 py-0.5 text-[8px] font-black leading-tight ${
+              <span className={`rounded border px-1 py-px text-[7px] font-black leading-tight ${
                 gender === 'L'
                   ? 'border-sky-100 dark:border-sky-500/20 bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-300'
                   : 'border-pink-100 dark:border-pink-500/20 bg-pink-50 dark:bg-pink-500/10 text-pink-600 dark:text-pink-300'
@@ -285,7 +295,7 @@ const StudentCard = ({ student, progress, selected, dragging, disabled, onToggle
               </span>
             )}
             {disabled && (
-              <span className="max-w-full rounded border border-amber-100 dark:border-amber-500/20 bg-amber-50 dark:bg-amber-500/10 px-1 py-0.5 text-[8px] font-black text-amber-700 dark:text-amber-300 leading-tight break-words">
+              <span className="max-w-full rounded border border-amber-100 dark:border-amber-500/20 bg-amber-50 dark:bg-amber-500/10 px-1 py-px text-[7px] font-black text-amber-700 dark:text-amber-300 leading-tight">
                 {getStudentStatusLabel(student)}
               </span>
             )}
@@ -295,14 +305,14 @@ const StudentCard = ({ student, progress, selected, dragging, disabled, onToggle
 
       {showPreviousShadow && (
         <div className="mt-1 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 px-1.5 py-1">
-          <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-slate-400 leading-none">Sebelumnya</p>
-          <p className="mt-0.5 text-[9px] sm:text-[10px] font-bold leading-tight text-slate-600 dark:text-slate-300 break-words">
+          <p className="text-[7px] sm:text-[8px] font-black uppercase tracking-widest text-slate-400 leading-none">Sebelumnya</p>
+          <p className="mt-0.5 text-[8px] sm:text-[9px] font-bold leading-tight text-slate-600 dark:text-slate-300 break-words">
             {previousText}
           </p>
         </div>
       )}
 
-      <div className="mt-1.5 grid grid-cols-1 gap-1">
+      <div className="mt-1 grid grid-cols-1 gap-0.5">
         <ProgressLine icon={BookOpen} tone={{ bg: 'bg-blue-50/70 dark:bg-blue-500/10', border: 'border-blue-100 dark:border-blue-500/20', icon: 'text-blue-500' }} text={progress.tahsin} />
         <ProgressLine icon={Mic} tone={{ bg: 'bg-purple-50/70 dark:bg-purple-500/10', border: 'border-purple-100 dark:border-purple-500/20', icon: 'text-purple-500' }} text={progress.tahfidz} />
       </div>
@@ -310,32 +320,65 @@ const StudentCard = ({ student, progress, selected, dragging, disabled, onToggle
   );
 };
 
-const HalaqohColumn = ({ group, students, progressMap, selectedIds, draggingIds, dragOver, onToggle, onToggleAll, onDragStart, onDragEnd, onDragOver, onDrop, onTouchStart, onTouchMove, onTouchEnd, getTeacherDisplayName }) => {
+const FRAME_COLORS = [
+  { top: 'border-t-blue-500', badge: 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-300' },
+  { top: 'border-t-emerald-500', badge: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-300' },
+  { top: 'border-t-purple-500', badge: 'bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-300' },
+  { top: 'border-t-amber-500', badge: 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-300' },
+  { top: 'border-t-rose-500', badge: 'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-300' },
+  { top: 'border-t-cyan-500', badge: 'bg-cyan-50 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-300' },
+  { top: 'border-t-indigo-500', badge: 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-300' },
+  { top: 'border-t-orange-500', badge: 'bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-300' },
+];
+
+const getFrameColor = (index) => FRAME_COLORS[index % FRAME_COLORS.length];
+
+const HalaqohColumn = ({ group, students, progressMap, selectedIds, draggingIds, dragOver, onToggle, onToggleAll, onDragStart, onDragEnd, onDragOver, onDrop, onTouchStart, onTouchMove, onTouchEnd, onColumnWheel, getTeacherDisplayName, colorIndex = 0, collapsed, onToggleCollapse }) => {
   const selectableStudents = students.filter(s => !isGraduatedStudent(s));
   const selectableIds = selectableStudents.map(s => s.id);
   const selectedInColumn = selectableIds.filter(id => selectedIds.includes(id));
   const allSelected = selectableIds.length > 0 && selectedInColumn.length === selectableIds.length;
   const someSelected = selectedInColumn.length > 0 && !allSelected;
+  const color = getFrameColor(colorIndex);
+  const teacherName = getTeacherDisplayName?.(group.teacher) || group.teacher;
+
+  if (collapsed) {
+    return (
+      <button
+        type="button"
+        onClick={() => onToggleCollapse?.(group.value)}
+        className={`w-[44px] rounded-2xl border-t-[3px] ${color.top} bg-white dark:bg-slate-800 shadow-lg hover:shadow-xl transition-all duration-200 p-2 flex flex-col items-center gap-2`}
+        title={`${group.label} - ${teacherName}`}
+      >
+        <span className={`text-[9px] font-black ${color.badge.split(' ').slice(2).join(' ')}`}>
+          {students.length}
+        </span>
+        <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 writing-mode-vertical whitespace-nowrap truncate max-h-[140px]">
+          {group.label}
+        </span>
+      </button>
+    );
+  }
 
   return (
     <section
       data-transfer-halaqoh={group.value}
       onDragOver={(e) => onDragOver(e, group.value)}
       onDrop={(e) => onDrop(e, group.value)}
-      className={`flex flex-col min-h-[210px] rounded-xl border bg-slate-50/80 dark:bg-slate-900/40 p-2 transition-all ${
-        dragOver ? 'border-emerald-400 ring-4 ring-emerald-100 dark:ring-emerald-500/20' : 'border-slate-200 dark:border-slate-700'
+      className={`flex flex-col rounded-2xl border-t-[3px] ${color.top} bg-white dark:bg-slate-800 shadow-lg transition-all duration-200 md:h-full ${
+        dragOver ? 'ring-4 ring-emerald-200 dark:ring-emerald-500/30 shadow-xl scale-[1.02]' : 'hover:shadow-xl'
       }`}
     >
-      <div className="mb-1.5 flex items-center justify-between gap-2 px-0.5">
-        <div className="min-w-0 flex items-center gap-1.5">
+      <div className="px-3 pt-2.5 pb-2 flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-700/50">
+        <div className="min-w-0 flex items-center gap-2">
           {selectableIds.length > 0 && (
             <button
               type="button"
               onClick={() => onToggleAll?.(selectableIds)}
-              className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center transition-colors ${
-                allSelected ? 'bg-emerald-500 border-emerald-500 text-white' :
+              className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center transition-all duration-150 ${
+                allSelected ? 'bg-emerald-500 border-emerald-500 text-white shadow-sm' :
                 someSelected ? 'bg-emerald-200 border-emerald-400 text-emerald-700' :
-                'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 text-transparent'
+                'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 text-transparent hover:border-emerald-300'
               }`}
               title={allSelected ? 'Batal pilih semua' : 'Pilih semua'}
             >
@@ -343,20 +386,27 @@ const HalaqohColumn = ({ group, students, progressMap, selectedIds, draggingIds,
             </button>
           )}
           <div className="min-w-0">
-            <h2 className={`font-black text-slate-900 dark:text-slate-100 leading-tight break-words ${group.label.length > 22 ? 'text-[11px]' : 'text-xs sm:text-sm'}`}>
+            <h2 className={`font-black text-slate-900 dark:text-slate-100 leading-tight truncate ${group.label.length > 22 ? 'text-[11px]' : 'text-xs sm:text-sm'}`}>
               {group.label}
             </h2>
-            <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-400 truncate">
-              {getTeacherDisplayName?.(group.teacher) || group.teacher}
+            <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 truncate">
+              {teacherName}
             </p>
           </div>
         </div>
-        <span className="shrink-0 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-1.5 py-0.5 text-[9px] font-black text-slate-500 dark:text-slate-300">
-          {students.length}{selectedInColumn.length > 0 ? `/${selectedInColumn.length}` : ''}
-        </span>
+        <div className="flex items-center gap-1.5">
+          <span className={`shrink-0 rounded-full ${color.badge} px-2 py-0.5 text-[9px] font-black`}>
+            {students.length}{selectedInColumn.length > 0 ? `/${selectedInColumn.length}` : ''}
+          </span>
+          {onToggleCollapse && (
+            <button type="button" onClick={() => onToggleCollapse(group.value)} className="shrink-0 w-5 h-5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-center text-slate-400 transition-colors" title="Ciutkan">
+              <PanelLeftClose size={12} />
+            </button>
+          )}
+        </div>
       </div>
 
-      <div className="flex flex-col gap-1.5">
+      <div data-transfer-column-scroll onWheel={onColumnWheel} className={`flex flex-col gap-1.5 p-2 transition-all duration-200 custom-scrollbar overscroll-contain md:flex-1 md:min-h-0 md:overflow-auto ${dragOver ? 'bg-emerald-50/50 dark:bg-emerald-500/5' : ''}`}>
         {students.map(student => (
           <StudentCard
             key={student.id}
@@ -374,9 +424,9 @@ const HalaqohColumn = ({ group, students, progressMap, selectedIds, draggingIds,
           />
         ))}
         {students.length === 0 && (
-          <div className="min-h-[92px] rounded-xl border border-dashed border-slate-200 dark:border-slate-700 bg-white/70 dark:bg-slate-800/40 flex flex-col items-center justify-center gap-1.5 text-slate-300">
-            <Users size={18} className="opacity-40" />
-            <span className="text-[10px] font-black uppercase tracking-widest">Kosong</span>
+          <div className="min-h-[80px] rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30 flex flex-col items-center justify-center gap-1.5 text-slate-300 dark:text-slate-600">
+            <Database size={20} className="opacity-40" />
+            <span className="text-[9px] font-black uppercase tracking-widest">Drop siswa here</span>
           </div>
         )}
       </div>
@@ -384,7 +434,7 @@ const HalaqohColumn = ({ group, students, progressMap, selectedIds, draggingIds,
   );
 };
 
-const KelolaView = ({ isSuperAdmin, students = [], guruHalaqohData = {}, guruList = [], activeGuruList = [], inactiveGuruList = [], handleDeactivateGuru, handleReactivateGuru, kelasList = [], onMoveStudents, onSetStudentStatus, onStartNewSchoolYear, appUsers = [], handleApproveUser, handleRejectUser, handleUpdateUserAccount, handleCreateSuperAdmin, newGuruName, setNewGuruName, handleAddGuru, selectedGuruForHalaqoh, setSelectedGuruForHalaqoh, newHalaqohName, setNewHalaqohName, newHalaqohSesi, setNewHalaqohSesi, handleAddHalaqoh, editingGuru, setEditingGuru, handleSaveEditGuru, requestDeleteGuru, editingHalaqoh, setEditingHalaqoh, handleSaveEditHalaqoh, requestDeleteHalaqoh, handleReorderHalaqoh, handleReorderGuru, handleLinkAccount, showToast, currentUser, getTeacherDisplayName }) => {
+const KelolaView = ({ isSuperAdmin, students = [], guruHalaqohData = {}, guruList = [], activeGuruList = [], inactiveGuruList = [], handleDeactivateGuru, handleReactivateGuru, kelasList = [], onMoveStudents, onSetStudentStatus, onStartNewSchoolYear, appUsers = [], handleApproveUser, handleRejectUser, handleUpdateUserAccount, handleCreateSuperAdmin, newGuruName, setNewGuruName, handleAddGuru, selectedGuruForHalaqoh, setSelectedGuruForHalaqoh, newHalaqohName, setNewHalaqohName, newHalaqohSesi, setNewHalaqohSesi, handleAddHalaqoh, editingGuru, setEditingGuru, handleSaveEditGuru, requestDeleteGuru, editingHalaqoh, setEditingHalaqoh, handleSaveEditHalaqoh, requestDeleteHalaqoh, handleReorderHalaqoh, handleReorderGuru, handleLinkAccount, showToast, getTeacherDisplayName }) => {
   const [search, setSearch] = useState('');
   const [masterSearch, setMasterSearch] = useState('');
   const [masterKelasFilter, setMasterKelasFilter] = useState('');
@@ -399,6 +449,13 @@ const KelolaView = ({ isSuperAdmin, students = [], guruHalaqohData = {}, guruLis
   const [dragOverHalaqoh, setDragOverHalaqoh] = useState('');
   const touchDragTimerRef = useRef(null);
   const touchDragCandidateRef = useRef(null);
+  const [collapsedFrames, setCollapsedFrames] = useState([]);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [boardZoom, setBoardZoom] = useState(0.9);
+  const [guruCardsZoom, setGuruCardsZoom] = useState(1);
+  const [isCanvasPanning, setIsCanvasPanning] = useState(false);
+  const canvasRef = useRef(null);
+  const canvasPanRef = useRef(null);
 
   // --- TAB STATE ---
   const [activeTab, setActiveTab] = useState('kelola'); // 'kelola' | 'mutasi' | 'tahun'
@@ -479,7 +536,7 @@ const KelolaView = ({ isSuperAdmin, students = [], guruHalaqohData = {}, guruLis
   const handleTouchEndHalaqoh = () => { if (dragHalaqohInfo && dragOverHalaqohInfo && dragHalaqohInfo.guru === dragOverHalaqohInfo.guru && dragHalaqohInfo.halaqoh !== dragOverHalaqohInfo.halaqoh) { const guru = dragHalaqohInfo.guru; const halaqohs = guruHalaqohData[guru] || []; const draggedIdx = halaqohs.indexOf(dragHalaqohInfo.halaqoh); const targetIdx = halaqohs.indexOf(dragOverHalaqohInfo.halaqoh); if (draggedIdx !== -1 && targetIdx !== -1) { const newList = [...halaqohs]; const [draggedItem] = newList.splice(draggedIdx, 1); newList.splice(targetIdx, 0, draggedItem); if (handleReorderHalaqoh) handleReorderHalaqoh(guru, newList); } } setDragHalaqohInfo(null); setDragOverHalaqohInfo(null); };
 
   const activeCount = useMemo(() => students.filter(student => !isGraduatedStudent(student)).length, [students]);
-  const alumniCount = useMemo(() => students.filter(isGraduatedStudent).length, [students]);
+  const _alumniCount = useMemo(() => students.filter(isGraduatedStudent).length, [students]);
 
   const visibleStudentsByStatus = useMemo(() => {
     if (statusFilter === 'inactive') return students.filter(isGraduatedStudent);
@@ -621,6 +678,10 @@ const KelolaView = ({ isSuperAdmin, students = [], guruHalaqohData = {}, guruLis
     }
   };
 
+  const toggleFrameCollapse = (frameId) => {
+    setCollapsedFrames(prev => prev.includes(frameId) ? prev.filter(id => id !== frameId) : [...prev, frameId]);
+  };
+
   const getMoveIds = (studentId) => {
     if (selectedIds.includes(studentId)) return selectedIds;
     return [studentId];
@@ -730,6 +791,120 @@ const KelolaView = ({ isSuperAdmin, students = [], guruHalaqohData = {}, guruLis
     setDragOverHalaqoh('');
   };
 
+  const setBoardZoomClamped = (nextZoom) => {
+    setBoardZoom(prev => clampBoardZoom(typeof nextZoom === 'function' ? nextZoom(prev) : nextZoom));
+  };
+
+  const zoomBoard = (direction) => {
+    setBoardZoomClamped(prev => prev + (direction * BOARD_ZOOM_STEP));
+  };
+
+  const resetBoardViewport = () => {
+    setBoardZoom(0.9);
+    if (canvasRef.current) {
+      canvasRef.current.scrollTo({ left: 0, top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const scrollCanvasBy = (deltaX) => {
+    canvasRef.current?.scrollBy({ left: deltaX, behavior: 'smooth' });
+  };
+
+  const handleCanvasWheel = (e) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      setBoardZoomClamped(prev => prev + (e.deltaY > 0 ? -BOARD_ZOOM_STEP : BOARD_ZOOM_STEP));
+      return;
+    }
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const horizontalDelta = e.shiftKey ? e.deltaY : e.deltaX;
+    if (Math.abs(horizontalDelta) > 0) {
+      e.preventDefault();
+      canvas.scrollLeft += horizontalDelta;
+      return;
+    }
+
+    if (Math.abs(e.deltaY) > 0 && !e.target.closest('[data-transfer-column-scroll]')) {
+      const columnBodies = Array.from(canvas.querySelectorAll('[data-transfer-column-scroll]'));
+      const nearestColumn = columnBodies.reduce((nearest, el) => {
+        const rect = el.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const distance = Math.abs(centerX - e.clientX);
+        if (!nearest || distance < nearest.distance) return { el, distance };
+        return nearest;
+      }, null)?.el;
+
+      if (nearestColumn) {
+        e.preventDefault();
+        nearestColumn.scrollTop += e.deltaY;
+      }
+    }
+  };
+
+  const handleTransferColumnWheel = (e) => {
+    if (e.ctrlKey || e.metaKey) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const horizontalDelta = e.shiftKey ? e.deltaY : e.deltaX;
+    if (Math.abs(horizontalDelta) > 0) {
+      e.preventDefault();
+      canvas.scrollLeft += horizontalDelta;
+    }
+  };
+
+  const zoomGuruCards = (direction) => {
+    setGuruCardsZoom(prev => clampBoardZoom(prev + (direction * BOARD_ZOOM_STEP)));
+  };
+
+  const resetGuruCardsZoom = () => {
+    setGuruCardsZoom(1);
+  };
+
+  const handleGuruCardsWheel = (e) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      setGuruCardsZoom(prev => clampBoardZoom(prev + (e.deltaY > 0 ? -BOARD_ZOOM_STEP : BOARD_ZOOM_STEP)));
+    }
+  };
+
+  const handleCanvasPointerDown = (e) => {
+    if (e.button !== 0 || draggingIds.length > 0) return;
+    if (e.target.closest('button, input, select, textarea, a, [role="button"], [data-transfer-student-id], [data-transfer-halaqoh]')) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    canvasPanRef.current = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      scrollLeft: canvas.scrollLeft,
+      scrollTop: canvas.scrollTop
+    };
+    setIsCanvasPanning(true);
+    canvas.setPointerCapture?.(e.pointerId);
+  };
+
+  const handleCanvasPointerMove = (e) => {
+    const pan = canvasPanRef.current;
+    const canvas = canvasRef.current;
+    if (!pan || !canvas) return;
+    canvas.scrollLeft = pan.scrollLeft - (e.clientX - pan.startX);
+    canvas.scrollTop = pan.scrollTop - (e.clientY - pan.startY);
+  };
+
+  const stopCanvasPan = (e) => {
+    const canvas = canvasRef.current;
+    if (canvasPanRef.current?.pointerId != null && canvas?.hasPointerCapture?.(canvasPanRef.current.pointerId)) {
+      canvas.releasePointerCapture(canvasPanRef.current.pointerId);
+    } else if (e?.pointerId && canvas?.hasPointerCapture?.(e.pointerId)) {
+      canvas.releasePointerCapture(e.pointerId);
+    }
+    canvasPanRef.current = null;
+    setIsCanvasPanning(false);
+  };
+
   if (!isSuperAdmin) {
     return (
       <div className="flex-1 p-4 sm:p-8">
@@ -771,360 +946,314 @@ const KelolaView = ({ isSuperAdmin, students = [], guruHalaqohData = {}, guruLis
         </div>
 
         {activeTab === 'mutasi' && (<>
-        {/* Stats Summary */}
-        <div className="mb-3 sm:mb-4 grid grid-cols-4 gap-2 sm:gap-3">
-          {[
-            { label: 'Aktif', value: activeCount, icon: Users, tone: 'text-blue-600 bg-blue-50 border-blue-100 dark:bg-blue-500/10 dark:border-blue-500/20 dark:text-blue-300' },
-            { label: 'Belum Halaqoh', value: unassignedCount, icon: Layers, tone: 'text-cyan-600 bg-cyan-50 border-cyan-100 dark:bg-cyan-500/10 dark:border-cyan-500/20 dark:text-cyan-300' },
-            { label: 'Halaqoh', value: actualHalaqohGroups.length, icon: ShieldCheck, tone: 'text-indigo-600 bg-indigo-50 border-indigo-100 dark:bg-indigo-500/10 dark:border-indigo-500/20 dark:text-indigo-300' },
-            { label: 'Terpilih', value: selectedIds.length, icon: Check, tone: 'text-emerald-600 bg-emerald-50 border-emerald-100 dark:bg-emerald-500/10 dark:border-emerald-500/20 dark:text-emerald-300' }
-          ].map(item => (
-            <div key={item.label} className={`rounded-xl border px-2.5 py-2 sm:px-3 sm:py-2.5 ${item.tone}`}>
-              <div className="flex items-center gap-1.5 text-[9px] sm:text-[10px] font-black uppercase tracking-widest leading-tight">
-                <item.icon size={13} className="shrink-0" />
-                <span className="truncate">{item.label}</span>
+        {/* Canvas Board Container */}
+        <div className="relative hidden md:block">
+
+          {/* Floating Top Toolbar */}
+          <div className="sticky top-16 z-40 flex justify-center px-4 pb-3 pt-1 pointer-events-none">
+            <div className="pointer-events-auto flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200/70 dark:border-slate-700/70 bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl shadow-lg px-3 py-2 max-w-4xl">
+              <div className="relative min-w-[170px]">
+                <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Cari siswa..." className="w-full h-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 pl-8 pr-7 text-xs font-bold text-slate-700 dark:text-slate-100 outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/20" />
+                {search && <button type="button" onClick={() => setSearch('')} className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-slate-400 hover:text-red-500"><X size={13} /></button>}
               </div>
-              <div className="mt-0.5 text-lg sm:text-xl font-black leading-none">{item.value}</div>
-            </div>
-          ))}
-        </div>
-        <div className={`relative md:sticky md:top-0 z-20 md:z-30 -mx-3 sm:mx-0 bg-slate-50/95 dark:bg-slate-950/95 backdrop-blur-md px-3 sm:px-0 py-2 sm:py-3 ${mobileFiltersOpen ? 'mb-5' : 'mb-3 sm:mb-4'}`}>
-          <div className="md:hidden flex flex-col gap-2">
-            <div className="grid grid-cols-[minmax(0,1fr)_92px] gap-2">
+              <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-0.5" />
+              <div className="flex items-center rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-0.5">
+                {[{ value: 'active', label: 'Aktif' }, { value: 'inactive', label: 'Nonaktif' }, { value: 'all', label: 'Semua' }].map(o => (
+                  <button key={o.value} type="button" onClick={() => { setStatusFilter(o.value); setSelectedIds([]); }} className={`rounded-md px-2.5 py-1 text-[10px] font-black transition-all duration-150 ${statusFilter === o.value ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+              <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-0.5" />
               <div className="relative">
-                <Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Cari siswa..."
-                  className="w-full h-11 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 pl-9 pr-9 text-sm font-bold text-slate-700 dark:text-slate-100 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20"
-                />
-                {search && (
-                  <button type="button" onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1 text-slate-400 hover:bg-red-50 hover:text-red-500">
-                    <X size={15} />
-                  </button>
-                )}
+                <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <select value={teacherFilter} onChange={(e) => setTeacherFilter(e.target.value)} className="h-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 pl-2.5 pr-7 text-[10px] font-black text-slate-600 dark:text-slate-200 outline-none focus:border-emerald-400 appearance-none cursor-pointer">
+                  <option value="">Semua Pengajar</option>
+                  {availableTeacherFilters.map(t => <option key={t} value={t}>{getTeacherDisplayName?.(t) || t}</option>)}
+                </select>
               </div>
-              <button
-                type="button"
-                onClick={() => setMobileFiltersOpen(prev => !prev)}
-                className={`h-11 rounded-xl border px-3 flex items-center justify-center gap-1.5 text-xs font-black shadow-sm transition-colors ${mobileFiltersOpen ? 'border-emerald-300 bg-emerald-500 text-white' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}
-              >
-                <SlidersHorizontal size={15} />
-                Filter
-              </button>
+              <div className="relative">
+                <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <select value={kelasFilter} onChange={(e) => setKelasFilter(e.target.value)} className="h-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 pl-2.5 pr-7 text-[10px] font-black text-slate-600 dark:text-slate-200 outline-none focus:border-emerald-400 appearance-none cursor-pointer">
+                  <option value="">Semua Kelas</option>
+                  {kelasList.map(k => <option key={k} value={k}>{k}</option>)}
+                </select>
+              </div>
+              <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-0.5" />
+              <div className="flex items-center gap-2 text-[10px] font-black">
+                <span className="text-blue-600 dark:text-blue-300"><Users size={12} className="inline mr-0.5" />{activeCount}</span>
+                <span className="text-cyan-600 dark:text-cyan-300"><Layers size={12} className="inline mr-0.5" />{unassignedCount}</span>
+                {selectedIds.length > 0 && <span className="text-emerald-600 dark:text-emerald-300"><Check size={12} className="inline mr-0.5" />{selectedIds.length}</span>}
+              </div>
+              <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-0.5" />
+              <div className="flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-0.5">
+                <button type="button" onClick={() => scrollCanvasBy(-360)} className="h-7 w-7 rounded-md text-slate-500 hover:bg-white hover:text-emerald-600 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors flex items-center justify-center" title="Geser kiri">
+                  <ArrowLeft size={14} />
+                </button>
+                <button type="button" onClick={() => scrollCanvasBy(360)} className="h-7 w-7 rounded-md text-slate-500 hover:bg-white hover:text-emerald-600 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors flex items-center justify-center" title="Geser kanan">
+                  <ArrowRight size={14} />
+                </button>
+              </div>
+              <div className="flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-0.5">
+                <button type="button" onClick={() => zoomBoard(-1)} className="h-7 w-7 rounded-md text-slate-500 hover:bg-white hover:text-emerald-600 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors flex items-center justify-center" title="Zoom out">
+                  <ZoomOut size={14} />
+                </button>
+                <button type="button" onClick={resetBoardViewport} className="h-7 min-w-11 rounded-md px-1.5 text-[10px] font-black text-slate-500 hover:bg-white hover:text-emerald-600 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors" title="Reset zoom dan posisi">
+                  {Math.round(boardZoom * 100)}%
+                </button>
+                <button type="button" onClick={() => zoomBoard(1)} className="h-7 w-7 rounded-md text-slate-500 hover:bg-white hover:text-emerald-600 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors flex items-center justify-center" title="Zoom in">
+                  <ZoomIn size={14} />
+                </button>
+              </div>
+              <div className="hidden xl:flex items-center gap-1 text-[9px] font-black text-slate-400">
+                <Move size={12} /> Drag area kosong
+              </div>
             </div>
+          </div>
 
-            {(kelasFilter || teacherFilter || groupSearch || masterSearch || masterKelasFilter || statusFilter !== 'active') && !mobileFiltersOpen && (
-              <div className="flex gap-1.5 overflow-x-auto custom-scrollbar pb-0.5">
-                {groupSearch && <span className="shrink-0 rounded-lg bg-slate-100 dark:bg-slate-800 px-2 py-1 text-[9px] font-black text-slate-500 dark:text-slate-300">Halaqoh: {groupSearch}</span>}
-                {kelasFilter && <span className="shrink-0 rounded-lg bg-blue-50 dark:bg-blue-500/10 px-2 py-1 text-[9px] font-black text-blue-600 dark:text-blue-300">{kelasFilter}</span>}
-                {masterSearch && <span className="shrink-0 rounded-lg bg-cyan-50 dark:bg-cyan-500/10 px-2 py-1 text-[9px] font-black text-cyan-700 dark:text-cyan-300">Master: {masterSearch}</span>}
-                {masterKelasFilter && <span className="shrink-0 rounded-lg bg-cyan-50 dark:bg-cyan-500/10 px-2 py-1 text-[9px] font-black text-cyan-700 dark:text-cyan-300">Master Kelas {masterKelasFilter}</span>}
-                {teacherFilter && <span className="shrink-0 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 px-2 py-1 text-[9px] font-black text-emerald-600 dark:text-emerald-300">{getTeacherDisplayName?.(teacherFilter) || teacherFilter}</span>}
-                {statusFilter !== 'active' && <span className="shrink-0 rounded-lg bg-amber-50 dark:bg-amber-500/10 px-2 py-1 text-[9px] font-black text-amber-600 dark:text-amber-300">{statusFilter === 'inactive' ? 'Nonaktif' : 'Semua'}</span>}
+          {/* Active filter chips */}
+          {(groupSearch || masterSearch || masterKelasFilter) && (
+            <div className="flex justify-center px-4 pb-2">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {groupSearch && <span className="shrink-0 rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-[9px] font-black text-slate-500 dark:text-slate-300 flex items-center gap-1">Halaqoh: {groupSearch}<button type="button" onClick={() => setGroupSearch('')} className="text-slate-400 hover:text-red-500"><X size={11} /></button></span>}
+                {masterSearch && <span className="shrink-0 rounded-full bg-cyan-50 dark:bg-cyan-500/10 px-2.5 py-1 text-[9px] font-black text-cyan-700 dark:text-cyan-300 flex items-center gap-1">Master: {masterSearch}<button type="button" onClick={() => setMasterSearch('')} className="text-cyan-400 hover:text-red-500"><X size={11} /></button></span>}
+                {masterKelasFilter && <span className="shrink-0 rounded-full bg-cyan-50 dark:bg-cyan-500/10 px-2.5 py-1 text-[9px] font-black text-cyan-700 dark:text-cyan-300 flex items-center gap-1">Kelas: {masterKelasFilter}<button type="button" onClick={() => setMasterKelasFilter('')} className="text-cyan-400 hover:text-red-500"><X size={11} /></button></span>}
+                {(masterSearch || masterKelasFilter) && <button type="button" onClick={clearMasterFilters} className="text-[9px] font-black text-slate-400 hover:text-red-500 underline underline-offset-2">Reset</button>}
               </div>
-            )}
+            </div>
+          )}
 
-            {mobileFiltersOpen && (
-              <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-2.5 shadow-sm animate-in fade-in slide-in-from-top-2 duration-200">
-                <div className="grid grid-cols-1 gap-2">
-                  <div className="relative">
-                    <Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input
-                      value={groupSearch}
-                      onChange={(e) => setGroupSearch(e.target.value)}
-                      placeholder="Cari halaqoh..."
-                      className="w-full h-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 pl-9 pr-9 text-sm font-bold text-slate-700 dark:text-slate-100 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20"
-                    />
-                    {groupSearch && (
-                      <button type="button" onClick={() => setGroupSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1 text-slate-400 hover:bg-red-50 hover:text-red-500">
-                        <X size={15} />
-                      </button>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <select value={kelasFilter} onChange={(e) => setKelasFilter(e.target.value)} className="min-w-0 h-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 text-xs font-black text-slate-600 dark:text-slate-200 outline-none focus:border-emerald-400">
-                      <option value="">Semua Kelas</option>
-                      {kelasList.map(kelas => <option key={kelas} value={kelas}>{kelas}</option>)}
-                    </select>
-                    <select value={teacherFilter} onChange={(e) => setTeacherFilter(e.target.value)} className="min-w-0 h-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 text-xs font-black text-slate-600 dark:text-slate-200 outline-none focus:border-emerald-400">
-                      <option value="">Semua Pengajar</option>
-                      {availableTeacherFilters.map(teacher => <option key={teacher} value={teacher}>{getTeacherDisplayName?.(teacher) || teacher}</option>)}
-                    </select>
-                  </div>
-                  <div className="rounded-xl border border-cyan-100 dark:border-cyan-500/20 bg-cyan-50/60 dark:bg-cyan-500/10 p-2">
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                      <span className="text-[9px] font-black uppercase tracking-widest text-cyan-700 dark:text-cyan-300">Filter Master Siswa</span>
-                      {(masterSearch || masterKelasFilter) && (
-                        <button type="button" onClick={clearMasterFilters} className="text-[9px] font-black text-cyan-700 dark:text-cyan-300 underline underline-offset-2">
-                          Reset
-                        </button>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-1 gap-2">
-                      <div className="relative">
-                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-cyan-500" />
-                        <input
-                          value={masterSearch}
-                          onChange={(e) => setMasterSearch(e.target.value)}
-                          placeholder="Cari siswa di master..."
-                          className="w-full h-10 rounded-xl border border-cyan-100 dark:border-cyan-500/20 bg-white dark:bg-slate-800 pl-9 pr-9 text-sm font-bold text-slate-700 dark:text-slate-100 outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
-                        />
-                        {masterSearch && (
-                          <button type="button" onClick={() => setMasterSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1 text-slate-400 hover:bg-red-50 hover:text-red-500">
-                            <X size={15} />
-                          </button>
-                        )}
-                      </div>
-                      <select value={masterKelasFilter} onChange={(e) => setMasterKelasFilter(e.target.value)} className="h-10 rounded-xl border border-cyan-100 dark:border-cyan-500/20 bg-white dark:bg-slate-800 px-3 text-xs font-black text-slate-600 dark:text-slate-200 outline-none focus:border-cyan-400">
-                        <option value="">Semua Kelas Master</option>
-                        {kelasList.map(kelas => <option key={kelas} value={kelas}>Kelas {kelas}</option>)}
-                      </select>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-1">
-                    {[
-                      { value: 'active', label: 'Aktif' },
-                      { value: 'inactive', label: 'Nonaktif' },
-                      { value: 'all', label: 'Semua' }
-                    ].map(option => (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => { setStatusFilter(option.value); setSelectedIds([]); }}
-                        className={`rounded-lg px-2 py-2 text-[10px] font-black transition-all ${statusFilter === option.value ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-500 dark:text-slate-300'}`}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="flex gap-2 overflow-x-auto custom-scrollbar pb-0.5">
-                    <button
-                      type="button"
-                      onClick={() => setTeacherFilter('')}
-                      className={`shrink-0 rounded-xl border px-3 py-2 text-[10px] font-black transition-all ${!teacherFilter ? 'border-emerald-300 bg-emerald-500 text-white shadow-sm' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-300'}`}
-                    >
-                      Semua ({actualHalaqohGroups.length})
-                    </button>
-                    {teacherStats.map(item => (
-                      <button
-                        key={item.teacher}
-                        type="button"
-                        onClick={() => setTeacherFilter(item.teacher)}
-                        className={`shrink-0 rounded-xl border px-3 py-2 text-left transition-all ${teacherFilter === item.teacher ? 'border-emerald-300 bg-emerald-500 text-white shadow-sm' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}
-                      >
-                        <span className="block max-w-[120px] truncate text-[10px] font-black leading-tight">{getTeacherDisplayName?.(item.teacher) || item.teacher}</span>
-                        <span className="block text-[8px] font-black uppercase tracking-widest opacity-70 leading-tight">{item.groupCount} h - {item.studentCount} s</span>
-                      </button>
-                    ))}
-                  </div>
-                  <button type="button" onClick={clearSelection} disabled={selectedIds.length === 0} className="h-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 text-xs font-black text-slate-500 dark:text-slate-300 disabled:opacity-40">
-                    Bersihkan Pilihan
-                  </button>
+          {/* 3-Panel Layout: Sidebar + Canvas */}
+          <div className="flex min-h-0" style={{ height: 'calc(100dvh - 150px)' }}>
+
+            {/* Left Sidebar - Layers Panel */}
+            <div className={`hidden md:flex flex-col border-r border-slate-200/60 dark:border-slate-700/60 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm transition-all duration-300 shrink-0 ${sidebarOpen ? 'w-[210px]' : 'w-0 overflow-hidden'}`}>
+              <div className="px-3 pt-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+                <div className="relative">
+                  <Search size={13} className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input value={groupSearch} onChange={(e) => setGroupSearch(e.target.value)} placeholder="Cari halaqoh..." className="w-full h-7 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 pl-7 pr-7 text-[10px] font-bold text-slate-700 dark:text-slate-100 outline-none focus:border-emerald-400" />
+                  {groupSearch && <button type="button" onClick={() => setGroupSearch('')} className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-slate-400 hover:text-red-500"><X size={11} /></button>}
                 </div>
               </div>
-            )}
-          </div>
 
-          <div className="hidden md:grid grid-cols-1 md:grid-cols-[minmax(190px,1fr)_minmax(170px,0.8fr)_150px_180px_190px_auto] gap-2">
-            <div className="relative">
-              <Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Cari siswa..."
-                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 pl-9 pr-9 py-2.5 text-sm font-bold text-slate-700 dark:text-slate-100 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20"
-              />
-              {search && (
-                <button type="button" onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1 text-slate-400 hover:bg-red-50 hover:text-red-500">
-                  <X size={15} />
+              {/* Layers list */}
+              <div className="flex-1 overflow-y-auto custom-scrollbar py-1">
+                <button type="button" onClick={() => setTeacherFilter('')} className={`w-full flex items-center gap-2 px-3 py-1.5 text-left transition-all duration-150 ${!teacherFilter ? 'bg-emerald-50 dark:bg-emerald-500/10 border-l-2 border-l-emerald-500' : 'hover:bg-slate-50 dark:hover:bg-slate-800 border-l-2 border-l-transparent'}`}>
+                  <Database size={13} className={`shrink-0 ${!teacherFilter ? 'text-emerald-500' : 'text-slate-400'}`} />
+                  <div className="min-w-0 flex-1">
+                    <span className={`block text-[10px] font-black truncate ${!teacherFilter ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-600 dark:text-slate-300'}`}>Semua Halaqoh</span>
+                    <span className="block text-[8px] font-bold text-slate-400">{actualHalaqohGroups.length} grup</span>
+                  </div>
                 </button>
-              )}
+
+                {teacherStats.map(item => {
+                  const isActive = teacherFilter === item.teacher;
+                  const tName = getTeacherDisplayName?.(item.teacher) || item.teacher;
+                  return (
+                    <button key={item.teacher} type="button" onClick={() => setTeacherFilter(item.teacher)} className={`w-full flex items-center gap-2 px-3 py-1.5 text-left transition-all duration-150 ${isActive ? 'bg-emerald-50 dark:bg-emerald-500/10 border-l-2 border-l-emerald-500' : 'hover:bg-slate-50 dark:hover:bg-slate-800 border-l-2 border-l-transparent'}`}>
+                      <User size={12} className={`shrink-0 ${isActive ? 'text-emerald-500' : 'text-slate-400'}`} />
+                      <div className="min-w-0 flex-1">
+                        <span className={`block text-[10px] font-black truncate ${isActive ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-600 dark:text-slate-300'}`}>{tName}</span>
+                        <span className="block text-[8px] font-bold text-slate-400">{item.groupCount}h / {item.studentCount}s</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Master filter in sidebar */}
+              <div className="px-3 py-2 border-t border-slate-100 dark:border-slate-800">
+                <div className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Master Filter</div>
+                <div className="relative mb-1.5">
+                  <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-cyan-400" />
+                  <input value={masterSearch} onChange={(e) => setMasterSearch(e.target.value)} placeholder="Cari master..." className="w-full h-7 rounded-lg border border-cyan-100 dark:border-cyan-500/20 bg-slate-50 dark:bg-slate-900 pl-6 pr-6 text-[10px] font-bold text-slate-700 dark:text-slate-100 outline-none focus:border-cyan-400" />
+                  {masterSearch && <button type="button" onClick={() => setMasterSearch('')} className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-slate-400 hover:text-red-500"><X size={11} /></button>}
+                </div>
+                <div className="relative">
+                  <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  <select value={masterKelasFilter} onChange={(e) => setMasterKelasFilter(e.target.value)} className="w-full h-7 rounded-lg border border-cyan-100 dark:border-cyan-500/20 bg-slate-50 dark:bg-slate-900 pl-2 pr-6 text-[10px] font-black text-slate-600 dark:text-slate-200 outline-none focus:border-cyan-400 appearance-none cursor-pointer">
+                    <option value="">Semua Kelas</option>
+                    {kelasList.map(k => <option key={k} value={k}>Kelas {k}</option>)}
+                  </select>
+                </div>
+              </div>
             </div>
-            <div className="relative">
-              <Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                value={groupSearch}
-                onChange={(e) => setGroupSearch(e.target.value)}
-                placeholder="Cari halaqoh..."
-                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 pl-9 pr-9 py-2.5 text-sm font-bold text-slate-700 dark:text-slate-100 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20"
-              />
-              {groupSearch && (
-                <button type="button" onClick={() => setGroupSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1 text-slate-400 hover:bg-red-50 hover:text-red-500">
-                  <X size={15} />
-                </button>
-              )}
-            </div>
-            <select value={kelasFilter} onChange={(e) => setKelasFilter(e.target.value)} className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-xs sm:text-sm font-black text-slate-600 dark:text-slate-200 outline-none focus:border-emerald-400">
-              <option value="">Semua Kelas</option>
-              {kelasList.map(kelas => <option key={kelas} value={kelas}>{kelas}</option>)}
-            </select>
-            <select value={teacherFilter} onChange={(e) => setTeacherFilter(e.target.value)} className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-xs sm:text-sm font-black text-slate-600 dark:text-slate-200 outline-none focus:border-emerald-400">
-              <option value="">Semua Pengajar</option>
-              {availableTeacherFilters.map(teacher => <option key={teacher} value={teacher}>{getTeacherDisplayName?.(teacher) || teacher}</option>)}
-            </select>
-            <div className="grid grid-cols-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-1">
-              {[
-                { value: 'active', label: 'Aktif' },
-                { value: 'inactive', label: 'Nonaktif' },
-                { value: 'all', label: 'Semua' }
-              ].map(option => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => { setStatusFilter(option.value); setSelectedIds([]); }}
-                  className={`rounded-lg px-2 py-1.5 text-[10px] sm:text-xs font-black transition-all ${statusFilter === option.value ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-500 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
-                >
-              {option.label}
-                </button>
-              ))}
-            </div>
-            <button type="button" onClick={clearSelection} disabled={selectedIds.length === 0} className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-xs sm:text-sm font-black text-slate-500 dark:text-slate-300 disabled:opacity-40">
-              Bersihkan
+
+            {/* Sidebar toggle */}
+            <button type="button" onClick={() => setSidebarOpen(prev => !prev)} className="hidden md:flex shrink-0 items-center justify-center w-5 border-r border-slate-200/60 dark:border-slate-700/60 bg-white/40 dark:bg-slate-900/40 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 transition-colors" title={sidebarOpen ? 'Tutup sidebar' : 'Buka sidebar'}>
+              {sidebarOpen ? <PanelLeftClose size={12} /> : <PanelLeftOpen size={12} />}
             </button>
-          </div>
 
-          <div className="hidden md:flex mt-2 -mx-1 gap-2 overflow-x-auto custom-scrollbar px-1 pb-1">
-            <button
-              type="button"
-              onClick={() => setTeacherFilter('')}
-              className={`shrink-0 rounded-xl border px-3 py-2 text-[10px] sm:text-xs font-black transition-all ${!teacherFilter ? 'border-emerald-300 bg-emerald-500 text-white shadow-sm' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-300'}`}
-            >
-              Semua Halaqoh <span className="opacity-80">({actualHalaqohGroups.length})</span>
-            </button>
-            {teacherStats.map(item => (
-              <button
-                key={item.teacher}
-                type="button"
-                onClick={() => setTeacherFilter(item.teacher)}
-                className={`shrink-0 rounded-xl border px-3 py-2 text-left transition-all ${teacherFilter === item.teacher ? 'border-emerald-300 bg-emerald-500 text-white shadow-sm' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}
-              >
-                <span className="block max-w-[150px] truncate text-[10px] sm:text-xs font-black leading-tight">{getTeacherDisplayName?.(item.teacher) || item.teacher}</span>
-                <span className="block text-[8px] sm:text-[9px] font-black uppercase tracking-widest opacity-70 leading-tight">{item.groupCount} halaqoh - {item.studentCount} siswa</span>
-              </button>
-            ))}
-          </div>
-
-          <div className="hidden md:grid mt-2 grid-cols-[160px_minmax(220px,1fr)_180px_auto] items-center gap-2 rounded-xl border border-cyan-100 dark:border-cyan-500/20 bg-cyan-50/70 dark:bg-cyan-500/10 p-2">
-            <div className="px-2 text-[10px] font-black uppercase tracking-widest text-cyan-700 dark:text-cyan-300">
-              Filter Master Siswa
-            </div>
-            <div className="relative min-w-0">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-cyan-500" />
-              <input
-                value={masterSearch}
-                onChange={(e) => setMasterSearch(e.target.value)}
-                placeholder="Cari siswa yang belum punya halaqoh..."
-                className="w-full rounded-xl border border-cyan-100 dark:border-cyan-500/20 bg-white dark:bg-slate-800 pl-9 pr-9 py-2.5 text-sm font-bold text-slate-700 dark:text-slate-100 outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
-              />
-              {masterSearch && (
-                <button type="button" onClick={() => setMasterSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1 text-slate-400 hover:bg-red-50 hover:text-red-500">
-                  <X size={15} />
-                </button>
-              )}
-            </div>
-            <select value={masterKelasFilter} onChange={(e) => setMasterKelasFilter(e.target.value)} className="rounded-xl border border-cyan-100 dark:border-cyan-500/20 bg-white dark:bg-slate-800 px-3 py-2.5 text-xs sm:text-sm font-black text-slate-600 dark:text-slate-200 outline-none focus:border-cyan-400">
-              <option value="">Semua Kelas Master</option>
-              {kelasList.map(kelas => <option key={kelas} value={kelas}>Kelas {kelas}</option>)}
-            </select>
-            <button
-              type="button"
-              onClick={clearMasterFilters}
-              disabled={!masterSearch && !masterKelasFilter}
-              className="rounded-xl border border-cyan-100 dark:border-cyan-500/20 bg-white dark:bg-slate-800 px-4 py-2.5 text-xs sm:text-sm font-black text-cyan-700 dark:text-cyan-300 disabled:opacity-40"
-            >
-              Reset
-            </button>
-          </div>
-
-          {selectedIds.length > 0 && (
-            <div className="mt-2 grid grid-cols-1 md:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto] items-center gap-2 rounded-xl border border-emerald-100 dark:border-emerald-500/20 bg-emerald-50 dark:bg-emerald-500/10 p-2">
-              <span className="rounded-lg bg-white/80 dark:bg-slate-900/60 px-2 py-1 text-[10px] sm:text-xs font-black text-emerald-700 dark:text-emerald-200">
-                {selectedIds.length} terpilih
-              </span>
-              <select
-                value={bulkTarget}
-                onChange={(e) => setBulkTarget(e.target.value)}
-                className="min-w-0 rounded-lg border border-emerald-200 dark:border-emerald-500/20 bg-white dark:bg-slate-800 px-2 py-2 text-[10px] sm:text-xs font-black text-slate-700 dark:text-slate-100 outline-none"
-                disabled={statusFilter !== 'active'}
-              >
-                <option value="">Pilih tujuan</option>
-                {halaqohGroups.map(group => (
-                  <option key={group.value} value={group.value}>
-                    {group.value === UNASSIGNED ? 'Kembalikan ke Bank Data' : `${group.label} - ${getTeacherDisplayName?.(group.teacher) || group.teacher}`}
-                  </option>
+            {/* Canvas Area */}
+            <div
+              ref={canvasRef}
+              onWheel={handleCanvasWheel}
+              onPointerDown={handleCanvasPointerDown}
+              onPointerMove={handleCanvasPointerMove}
+              onPointerUp={stopCanvasPan}
+              onPointerCancel={stopCanvasPan}
+              onPointerLeave={stopCanvasPan}
+              className={`flex-1 min-h-0 overflow-auto custom-scrollbar relative select-none [touch-action:none] ${isCanvasPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
+              style={{
+              backgroundImage: 'radial-gradient(circle, rgb(226 232 240 / 0.5) 1px, transparent 1px)',
+              backgroundSize: '24px 24px'
+            }}>
+              <div className="flex items-stretch gap-4 p-4 min-w-max h-full origin-top-left" style={{ zoom: boardZoom }}>
+                {visibleGroups.map((group, idx) => (
+                  <div key={group.value} className={`${collapsedFrames.includes(group.value) ? 'w-[44px]' : 'w-[300px]'} shrink-0 h-full transition-all duration-300`}>
+                    <HalaqohColumn
+                      group={group}
+                      students={studentsByHalaqoh[group.value] || []}
+                      progressMap={progressMap}
+                      selectedIds={selectedIds}
+                      draggingIds={draggingIds}
+                      dragOver={dragOverHalaqoh === group.value}
+                      onToggle={toggleSelected}
+                      onToggleAll={toggleAllInColumn}
+                      onDragStart={handleDragStart}
+                      onDragEnd={() => { setDraggingIds([]); setDragOverHalaqoh(''); }}
+                      onDragOver={handleDragOver}
+                      onDrop={handleDrop}
+                      onTouchStart={handleTouchStart}
+                      onTouchMove={handleTouchMove}
+                      onTouchEnd={handleTouchEnd}
+                      onColumnWheel={handleTransferColumnWheel}
+                      getTeacherDisplayName={getTeacherDisplayName}
+                      colorIndex={idx}
+                      collapsed={collapsedFrames.includes(group.value)}
+                      onToggleCollapse={toggleFrameCollapse}
+                    />
+                  </div>
                 ))}
-              </select>
-              <button
-                type="button"
-                onClick={() => finishMove(bulkTarget, selectedIds)}
-                disabled={!bulkTarget || statusFilter !== 'active'}
-                className="rounded-lg bg-emerald-600 px-3 py-2 text-[10px] sm:text-xs font-black text-white shadow-sm disabled:opacity-40"
-              >
-                Pindahkan
-              </button>
-              <button
-                type="button"
-                onClick={returnSelectedToBankData}
-                disabled={statusFilter !== 'active'}
-                className="rounded-lg bg-cyan-600 px-3 py-2 text-[10px] sm:text-xs font-black text-white shadow-sm disabled:opacity-40"
-              >
-                Ke Bank Data
-              </button>
-              <div className="grid grid-cols-3 gap-1.5 md:w-[260px]">
-                <button
-                  type="button"
-                  onClick={() => finishSetStudentStatus('pindah')}
-                  disabled={statusFilter !== 'active'}
-                  className="rounded-lg bg-amber-500 px-2 py-2 text-[10px] sm:text-xs font-black text-white shadow-sm disabled:opacity-40"
-                >
-                  Pindah
+              </div>
+            </div>
+          </div>
+
+          {/* Floating Bulk Action Bar */}
+          {selectedIds.length > 0 && (
+            <div className="sticky bottom-3 z-40 flex justify-center px-4 mt-3 pointer-events-none">
+              <div className="pointer-events-auto flex flex-wrap items-center gap-2 rounded-2xl border border-emerald-200/70 dark:border-emerald-500/30 bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl shadow-xl px-4 py-2.5 max-w-3xl">
+                <span className="shrink-0 rounded-full bg-emerald-500 text-white px-2.5 py-0.5 text-[10px] font-black">{selectedIds.length} terpilih</span>
+                <div className="h-6 w-px bg-slate-200 dark:bg-slate-700" />
+                <div className="relative min-w-[160px]">
+                  <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  <select value={bulkTarget} onChange={(e) => setBulkTarget(e.target.value)} className="w-full h-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 pl-2.5 pr-7 text-[10px] font-black text-slate-700 dark:text-slate-100 outline-none appearance-none cursor-pointer" disabled={statusFilter !== 'active'}>
+                    <option value="">Pilih tujuan</option>
+                    {halaqohGroups.map(g => (
+                      <option key={g.value} value={g.value}>
+                        {g.value === UNASSIGNED ? 'Kembalikan ke Bank Data' : `${g.label} - ${getTeacherDisplayName?.(g.teacher) || g.teacher}`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <button type="button" onClick={() => finishMove(bulkTarget, selectedIds)} disabled={!bulkTarget || statusFilter !== 'active'} className="h-8 rounded-lg bg-emerald-500 hover:bg-emerald-600 px-3 text-[10px] font-black text-white shadow-sm transition-colors disabled:opacity-40 flex items-center gap-1">
+                  <MoveRight size={13} /> Pindahkan
                 </button>
-                <button
-                  type="button"
-                  onClick={() => finishSetStudentStatus('selesai')}
-                  disabled={statusFilter !== 'active'}
-                  className="rounded-lg bg-slate-700 px-2 py-2 text-[10px] sm:text-xs font-black text-white shadow-sm disabled:opacity-40"
-                >
-                  Selesai
+                <button type="button" onClick={returnSelectedToBankData} disabled={statusFilter !== 'active'} className="h-8 rounded-lg bg-cyan-500 hover:bg-cyan-600 px-3 text-[10px] font-black text-white shadow-sm transition-colors disabled:opacity-40">
+                  Bank Data
                 </button>
-                <button
-                  type="button"
-                  onClick={() => finishSetStudentStatus('active')}
-                  disabled={statusFilter === 'active'}
-                  className="rounded-lg bg-blue-600 px-2 py-2 text-[10px] sm:text-xs font-black text-white shadow-sm disabled:opacity-40"
-                >
-                  Aktifkan
+                <div className="h-6 w-px bg-slate-200 dark:bg-slate-700" />
+                <div className="flex items-center gap-1">
+                  <button type="button" onClick={() => finishSetStudentStatus('pindah')} disabled={statusFilter !== 'active'} className="h-8 rounded-lg bg-amber-500 hover:bg-amber-600 px-2.5 text-[10px] font-black text-white shadow-sm transition-colors disabled:opacity-40">Pindah</button>
+                  <button type="button" onClick={() => finishSetStudentStatus('selesai')} disabled={statusFilter !== 'active'} className="h-8 rounded-lg bg-slate-600 hover:bg-slate-700 px-2.5 text-[10px] font-black text-white shadow-sm transition-colors disabled:opacity-40">Selesai</button>
+                  <button type="button" onClick={() => finishSetStudentStatus('active')} disabled={statusFilter === 'active'} className="h-8 rounded-lg bg-blue-500 hover:bg-blue-600 px-2.5 text-[10px] font-black text-white shadow-sm transition-colors disabled:opacity-40">Aktifkan</button>
+                </div>
+                <div className="h-6 w-px bg-slate-200 dark:bg-slate-700" />
+                <button type="button" onClick={clearSelection} className="shrink-0 w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 flex items-center justify-center text-slate-400 hover:text-red-500 transition-colors" title="Bersihkan pilihan">
+                  <X size={15} />
                 </button>
               </div>
             </div>
           )}
+
         </div>
 
-        <div className="overflow-visible md:overflow-x-auto custom-scrollbar -mx-3 px-3 sm:mx-0 sm:px-0 scroll-mt-4">
-          <div className="grid grid-cols-1 md:flex md:items-start gap-3 sm:gap-4 md:min-w-max">
-            {visibleGroups.map(group => (
-              <div key={group.value} className="md:w-[290px] md:shrink-0">
-                <HalaqohColumn
-                  group={group}
-                  students={studentsByHalaqoh[group.value] || []}
-                  progressMap={progressMap}
-                  selectedIds={selectedIds}
-                  draggingIds={draggingIds}
-                  dragOver={dragOverHalaqoh === group.value}
-                  onToggle={toggleSelected}
-                  onToggleAll={toggleAllInColumn}
-                  onDragStart={handleDragStart}
-                  onDragEnd={() => { setDraggingIds([]); setDragOverHalaqoh(''); }}
-                  onDragOver={handleDragOver}
-                  onDrop={handleDrop}
-                  onTouchStart={handleTouchStart}
-                  onTouchMove={handleTouchMove}
-                  onTouchEnd={handleTouchEnd}
-                  getTeacherDisplayName={getTeacherDisplayName}
-                />
+        {/* Mobile fallback layout */}
+        <div className="md:hidden -mx-3 px-3">
+          <div className="grid grid-cols-[minmax(0,1fr)_80px] gap-2 mb-3">
+            <div className="relative">
+              <Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Cari siswa..." className="w-full h-11 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 pl-9 pr-9 text-sm font-bold text-slate-700 dark:text-slate-100 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20" />
+              {search && <button type="button" onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1 text-slate-400 hover:bg-red-50 hover:text-red-500"><X size={15} /></button>}
+            </div>
+            <button type="button" onClick={() => setMobileFiltersOpen(prev => !prev)} className={`h-11 rounded-xl border px-3 flex items-center justify-center gap-1.5 text-xs font-black shadow-sm transition-colors ${mobileFiltersOpen ? 'border-emerald-300 bg-emerald-500 text-white' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>
+              <SlidersHorizontal size={15} />
+              Filter
+            </button>
+          </div>
+
+          {mobileFiltersOpen && (
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-2.5 shadow-sm mb-3">
+              <div className="grid grid-cols-1 gap-2">
+                <div className="relative">
+                  <Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input value={groupSearch} onChange={(e) => setGroupSearch(e.target.value)} placeholder="Cari halaqoh..." className="w-full h-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 pl-9 pr-9 text-sm font-bold text-slate-700 dark:text-slate-100 outline-none focus:border-emerald-400" />
+                  {groupSearch && <button type="button" onClick={() => setGroupSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1 text-slate-400 hover:bg-red-50 hover:text-red-500"><X size={15} /></button>}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <select value={kelasFilter} onChange={(e) => setKelasFilter(e.target.value)} className="min-w-0 h-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 text-xs font-black text-slate-600 dark:text-slate-200 outline-none focus:border-emerald-400">
+                    <option value="">Semua Kelas</option>
+                    {kelasList.map(kelas => <option key={kelas} value={kelas}>{kelas}</option>)}
+                  </select>
+                  <select value={teacherFilter} onChange={(e) => setTeacherFilter(e.target.value)} className="min-w-0 h-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 text-xs font-black text-slate-600 dark:text-slate-200 outline-none focus:border-emerald-400">
+                    <option value="">Semua Pengajar</option>
+                    {availableTeacherFilters.map(teacher => <option key={teacher} value={teacher}>{getTeacherDisplayName?.(teacher) || teacher}</option>)}
+                  </select>
+                </div>
+                <div className="grid grid-cols-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-1">
+                  {[{ value: 'active', label: 'Aktif' }, { value: 'inactive', label: 'Nonaktif' }, { value: 'all', label: 'Semua' }].map(option => (
+                    <button key={option.value} type="button" onClick={() => { setStatusFilter(option.value); setSelectedIds([]); }} className={`rounded-lg px-2 py-2 text-[10px] font-black transition-all ${statusFilter === option.value ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-500 dark:text-slate-300'}`}>{option.label}</button>
+                  ))}
+                </div>
+                {selectedIds.length > 0 && (
+                  <div className="rounded-xl border border-emerald-100 dark:border-emerald-500/20 bg-emerald-50 dark:bg-emerald-500/10 p-2">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="rounded-full bg-emerald-500 text-white px-2 py-0.5 text-[10px] font-black">{selectedIds.length} terpilih</span>
+                      <button type="button" onClick={clearSelection} className="ml-auto text-[10px] font-black text-slate-400 hover:text-red-500">Bersihkan</button>
+                    </div>
+                    <div className="relative mb-2">
+                      <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                      <select value={bulkTarget} onChange={(e) => setBulkTarget(e.target.value)} className="w-full h-9 rounded-lg border border-emerald-200 dark:border-emerald-500/20 bg-white dark:bg-slate-800 pl-2.5 pr-7 text-[10px] font-black text-slate-700 dark:text-slate-100 outline-none appearance-none" disabled={statusFilter !== 'active'}>
+                        <option value="">Pilih tujuan</option>
+                        {halaqohGroups.map(g => <option key={g.value} value={g.value}>{g.value === UNASSIGNED ? 'Bank Data' : `${g.label} - ${getTeacherDisplayName?.(g.teacher) || g.teacher}`}</option>)}
+                      </select>
+                    </div>
+                    <button type="button" onClick={() => finishMove(bulkTarget, selectedIds)} disabled={!bulkTarget || statusFilter !== 'active'} className="w-full h-9 rounded-lg bg-emerald-500 px-3 text-[10px] font-black text-white shadow-sm disabled:opacity-40 mb-1.5">Pindahkan</button>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      <button type="button" onClick={() => finishSetStudentStatus('pindah')} disabled={statusFilter !== 'active'} className="rounded-lg bg-amber-500 px-2 py-2 text-[10px] font-black text-white shadow-sm disabled:opacity-40">Pindah</button>
+                      <button type="button" onClick={() => finishSetStudentStatus('selesai')} disabled={statusFilter !== 'active'} className="rounded-lg bg-slate-700 px-2 py-2 text-[10px] font-black text-white shadow-sm disabled:opacity-40">Selesai</button>
+                      <button type="button" onClick={() => finishSetStudentStatus('active')} disabled={statusFilter === 'active'} className="rounded-lg bg-blue-600 px-2 py-2 text-[10px] font-black text-white shadow-sm disabled:opacity-40">Aktifkan</button>
+                    </div>
+                  </div>
+                )}
               </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 gap-3">
+            {visibleGroups.map((group, idx) => (
+              <HalaqohColumn
+                key={group.value}
+                group={group}
+                students={studentsByHalaqoh[group.value] || []}
+                progressMap={progressMap}
+                selectedIds={selectedIds}
+                draggingIds={draggingIds}
+                dragOver={dragOverHalaqoh === group.value}
+                onToggle={toggleSelected}
+                onToggleAll={toggleAllInColumn}
+                onDragStart={handleDragStart}
+                onDragEnd={() => { setDraggingIds([]); setDragOverHalaqoh(''); }}
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+                onColumnWheel={handleTransferColumnWheel}
+                getTeacherDisplayName={getTeacherDisplayName}
+                colorIndex={idx}
+              />
             ))}
           </div>
         </div>
@@ -1286,27 +1415,39 @@ const KelolaView = ({ isSuperAdmin, students = [], guruHalaqohData = {}, guruLis
                     </div>
                   </div>
 
-                  <div className="p-4 sm:p-5 bg-slate-50 dark:bg-slate-900 grid grid-cols-1 lg:grid-cols-2 gap-4 max-h-[620px] overflow-y-auto custom-scrollbar" onTouchMove={handleTouchMoveGuru} onTouchEnd={handleTouchEndGuru}>
-                    <div className="col-span-1 lg:col-span-2 flex flex-col sm:flex-row gap-2 mb-1">
-                      {guruList.length > 1 && (
-                        <div className="relative flex-1">
-                          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                          <input type="text" placeholder="Cari nama pengajar..." value={localGuruSearch} onChange={(e) => setLocalGuruSearch(e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-3 pl-11 pr-4 text-sm font-bold text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition-all placeholder:text-slate-400 shadow-sm" />
+                  <div className="p-4 sm:p-5 bg-slate-50 dark:bg-slate-900 h-[calc(100dvh-280px)] min-h-[360px] max-h-[620px] overflow-auto overscroll-contain custom-scrollbar" onWheel={handleGuruCardsWheel} onTouchMove={handleTouchMoveGuru} onTouchEnd={handleTouchEndGuru}>
+                    <div className="min-w-[760px] grid grid-cols-2 items-start gap-4 origin-top-left" style={{ zoom: guruCardsZoom }}>
+                      <div className="col-span-2 sticky top-0 z-20 flex flex-col sm:flex-row gap-2 mb-1 pb-2 bg-slate-50 dark:bg-slate-900">
+                        {guruList.length > 1 && (
+                          <div className="relative flex-1">
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                            <input type="text" placeholder="Cari nama pengajar..." value={localGuruSearch} onChange={(e) => setLocalGuruSearch(e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-3 pl-11 pr-4 text-sm font-bold text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition-all placeholder:text-slate-400 shadow-sm" />
+                          </div>
+                        )}
+                        {inactiveGuruList.length > 0 && (
+                          <button onClick={() => setShowInactiveGuru(!showInactiveGuru)} className={`shrink-0 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 border ${showInactiveGuru ? 'bg-slate-800 dark:bg-slate-600 text-white border-slate-800 dark:border-slate-600' : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700 hover:border-slate-400'}`}>
+                            <UserX size={15} /> {showInactiveGuru ? 'Sembunyikan Nonaktif' : `Nonaktif (${inactiveGuruList.length})`}
+                          </button>
+                        )}
+                        <div className="shrink-0 flex items-center gap-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-1 shadow-sm">
+                          <button type="button" onClick={() => zoomGuruCards(-1)} className="h-9 w-9 rounded-lg text-slate-500 hover:bg-indigo-50 hover:text-indigo-600 dark:text-slate-300 dark:hover:bg-indigo-500/10 flex items-center justify-center transition-colors" title="Zoom out kartu">
+                            <ZoomOut size={16} />
+                          </button>
+                          <button type="button" onClick={resetGuruCardsZoom} className="h-9 min-w-12 rounded-lg px-2 text-[11px] font-black text-slate-500 hover:bg-indigo-50 hover:text-indigo-600 dark:text-slate-300 dark:hover:bg-indigo-500/10 transition-colors" title="Reset zoom kartu">
+                            {Math.round(guruCardsZoom * 100)}%
+                          </button>
+                          <button type="button" onClick={() => zoomGuruCards(1)} className="h-9 w-9 rounded-lg text-slate-500 hover:bg-indigo-50 hover:text-indigo-600 dark:text-slate-300 dark:hover:bg-indigo-500/10 flex items-center justify-center transition-colors" title="Zoom in kartu">
+                            <ZoomIn size={16} />
+                          </button>
                         </div>
-                      )}
-                      {inactiveGuruList.length > 0 && (
-                        <button onClick={() => setShowInactiveGuru(!showInactiveGuru)} className={`shrink-0 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 border ${showInactiveGuru ? 'bg-slate-800 dark:bg-slate-600 text-white border-slate-800 dark:border-slate-600' : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700 hover:border-slate-400'}`}>
-                          <UserX size={15} /> {showInactiveGuru ? 'Sembunyikan Nonaktif' : `Nonaktif (${inactiveGuruList.length})`}
-                        </button>
-                      )}
-                    </div>
-                    {displayedGuruList.map(guru => {
+                      </div>
+                      {displayedGuruList.map(guru => {
                       const guruDataKey = Object.keys(guruHalaqohData).find(k => k.trim().toLowerCase() === guru.trim().toLowerCase());
                       const halaqohsForGuru = guruDataKey ? guruHalaqohData[guruDataKey] : [];
                       const linkedUser = appUsers.find(u => u.name?.trim().toLowerCase() === guru.trim().toLowerCase());
                       const isInactive = inactiveGuruList.includes(guru);
                       return (
-                        <div key={guru} data-guru-card-id={guru} draggable={!guruSearch && !editingGuru && !isInactive} onDragStart={(e) => handleDragStartGuru(e, guru)} onDragOver={(e) => handleDragOverGuru(e, guru)} onDrop={(e) => handleDropGuru(e, guru)} onDragEnd={handleDragEndGuru} className={`bg-white dark:bg-slate-800 border ${isInactive ? 'border-slate-300 dark:border-slate-600 opacity-75' : dragOverGuruId === guru ? 'border-indigo-500 bg-indigo-50/30 dark:bg-indigo-500/10 shadow-md scale-[1.02] z-10' : 'border-slate-200 dark:border-slate-700'} rounded-2xl p-4 shadow-sm transition-all hover:shadow-md group/card flex flex-col ${dragGuruId === guru ? 'opacity-50 grayscale' : 'opacity-100'}`}>
+                        <div key={guru} data-guru-card-id={guru} draggable={!guruSearch && !editingGuru && !isInactive} onDragStart={(e) => handleDragStartGuru(e, guru)} onDragOver={(e) => handleDragOverGuru(e, guru)} onDrop={(e) => handleDropGuru(e, guru)} onDragEnd={handleDragEndGuru} className={`min-w-0 bg-white dark:bg-slate-800 border ${isInactive ? 'border-slate-300 dark:border-slate-600 opacity-75' : dragOverGuruId === guru ? 'border-indigo-500 bg-indigo-50/30 dark:bg-indigo-500/10 shadow-md scale-[1.02] z-10' : 'border-slate-200 dark:border-slate-700'} rounded-2xl p-4 shadow-sm transition-all hover:shadow-md group/card flex flex-col ${dragGuruId === guru ? 'opacity-50 grayscale' : 'opacity-100'}`}>
                           <div className="flex items-start justify-between gap-3 mb-4 pb-4 border-b border-slate-100 dark:border-slate-700">
                             {editingGuru?.oldName === guru ? (
                               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full">
@@ -1416,7 +1557,8 @@ const KelolaView = ({ isSuperAdmin, students = [], guruHalaqohData = {}, guruLis
                         </div>
                       );
                     })}
-                    {filteredGuruList.length === 0 && guruList.length > 0 && (<div className="col-span-1 lg:col-span-2 text-center py-6 bg-slate-50 dark:bg-slate-800 rounded-xl border border-dashed border-slate-300 dark:border-slate-600"><p className="text-xs text-slate-400 font-bold">Pengajar tidak ditemukan.</p></div>)}
+                    {filteredGuruList.length === 0 && guruList.length > 0 && (<div className="col-span-2 text-center py-6 bg-slate-50 dark:bg-slate-800 rounded-xl border border-dashed border-slate-300 dark:border-slate-600"><p className="text-xs text-slate-400 font-bold">Pengajar tidak ditemukan.</p></div>)}
+                    </div>
                   </div>
                 </div>
               </div>
